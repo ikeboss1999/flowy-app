@@ -1,0 +1,92 @@
+{
+  "name": "flowy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FlowY Construction Management Desktop Application",
+  "main": "electron/main.js",
+  "author": {
+    "name": "FlowY Team"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "electron-dev": "concurrently \"npm run dev\" \"ping 127.0.0.1 -n 11 > nul && electron .\"",
+    "electron-build": "next build && electron-builder",
+    "electron-publish": "next build && electron-builder --publish always"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "html2canvas": "^1.4.1",
+    "html2pdf.js": "^0.14.0",
+    "jose": "^6.1.3",
+    "jspdf": "^4.0.0",
+    "lucide-react": "^0.562.0",
+    "nanoid": "^5.1.6",
+    "next": "14.2.16",
+    "react": "^18",
+    "react-dom": "^18",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.3.6",
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "better-sqlite3": "^12.6.2",
+    "concurrently": "^9.2.1",
+    "electron": "^40.1.0",
+    "electron-builder": "^25.1.8",
+    "electron-is-dev": "^3.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.16",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  },
+  "build": {
+    "appId": "com.flowy.app",
+    "productName": "FlowY",
+    "copyright": "Copyright © 2026 FlowY",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      ".next/**/*",
+      "public/**/*",
+      "node_modules/**/*",
+      "Logo.png",
+      "package.json"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ikeboss1999",
+        "repo": "flowy-app"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "Logo.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FlowY"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/better-sqlite3"
+    ]
+  }
+}

@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+
+  --background: #ffffff;
+  --foreground: #020617;
+
+  --sidebar-background: #1e1b4b;
+  /* deep indigo/navy */
+  --sidebar-foreground: #e2e8f0;
+
+  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+
+  --card-glass: rgba(255, 255, 255, 0.85);
+  --card-glass-border: rgba(255, 255, 255, 0.5);
+  --card-glass-blur: blur(16px);
+}
+
+@layer base {
+  body {
+    @apply antialiased text-foreground bg-[#f8fafc] min-h-screen text-[16px];
+    font-family: var(--font-inter), sans-serif;
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: var(--card-glass);
+    backdrop-filter: var(--card-glass-blur);
+    border: 1px solid var(--card-glass-border);
+    @apply rounded-2xl shadow-sm transition-all duration-300;
+  }
+
+  .glass-card:hover {
+    @apply shadow-md border-white/50;
+  }
+
+  .gradient-button {
+    background: var(--primary-gradient);
+    @apply text-white font-medium rounded-xl px-6 py-2 transition-transform duration-200 active:scale-95;
+  }
+}
+
+@layer utilities {
+  .bg-primary-gradient {
+    background: var(--primary-gradient);
+  }
+}
+
+/* 
+   ---------------------------------------------------------
+   PROFESSIONAL PRINT SYSTEM (PORTAL-BASED)
+   ---------------------------------------------------------
+   This system is designed for high performance and zero lag.
+   It hides the main application entirely during print.
+*/
+/* 
+   ---------------------------------------------------------
+   PROFESSIONAL PRINT SYSTEM (IFRAME-BASED)
+   ---------------------------------------------------------
+   Printing is now handled by an isolated iframe to ensure 
+   perfect usage of existing styles without layout shifts
+   or lag in the main application.
+*/
+@media print {
+  @page {
+    margin: 0;
+    size: A4 portrait;
+  }
+
+  /* 
+     These styles appy mostly to the content INSIDE the iframe,
+     since the main app is not what's being printed anymore 
+     (though if someone ctrl+p's the main app, this still helps).
+  */
+  body {
+    margin: 0;
+    padding: 0;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

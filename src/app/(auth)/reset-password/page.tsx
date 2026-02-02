@@ -1,0 +1,162 @@
+'use client';
+
+import React, { useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+function ResetPasswordForm() {
+    const searchParams = useSearchParams();
+    const token = searchParams.get('token');
+    const router = useRouter();
+
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+
+        if (password !== confirmPassword) {
+            setError('Passwörter stimmen nicht überein');
+            setLoading(false);
+            return;
+        }
+
+        if (!token) {
+            setError('Ungültiger oder fehlender Token.');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/auth/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, password }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+
+            setSuccess(true);
+            setTimeout(() => router.push('/login'), 3000);
+        } catch (err: any) {
+            setError(err.message || 'Ein Fehler ist aufgetreten.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (success) {
+        return (
+            <div className="text-center animate-in fade-in zoom-in duration-500">
+                <div className="w-24 h-24 bg-green-500/20 text-green-400 rounded-[2rem] flex items-center justify-center mx-auto mb-8 border border-green-500/20 shadow-2xl shadow-green-500/20">
+                    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <h1 className="text-4xl font-black text-white mb-4">Passwort geändert!</h1>
+                <p className="text-xl text-slate-400 font-medium mb-10">Sie können sich jetzt mit Ihrem neuen Passwort anmelden.</p>
+                <Link href="/login">
+                    <button className="w-full py-6 px-8 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xl rounded-2xl shadow-2xl transition-all">
+                        Jetzt einloggen
+                    </button>
+                </Link>
+            </div>
+        );
+    }
+
+    if (!token) {
+        return (
+            <div className="text-center">
+                <div className="p-8 bg-rose-500/10 text-rose-400 rounded-[3rem] border border-rose-500/20">
+                    <h2 className="text-2xl font-black mb-4">Ungültiger Link</h2>
+                    <p className="text-slate-400 mb-8 font-medium">Der Token ist ungültig oder abgelaufen.</p>
+                    <Link href="/forgot-password">
+                        <button className="w-full py-5 px-8 bg-white/5 hover:bg-white/10 text-white font-black rounded-2xl border border-white/10 transition-all">
+                            Neuen Link anfordern
+                        </button>
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <div className="text-center mb-10">
+                <div className="inline-flex items-center justify-center h-24 w-24 rounded-[2rem] bg-white/5 backdrop-blur-3xl border border-white/10 shadow-2xl shadow-indigo-500/20 p-3 mb-8 hover:scale-105 transition-transform duration-500">
+                    <img src="/logo.png" alt="FlowY Logo" className="h-full w-full object-contain drop-shadow-[0_0_20px_rgba(99,102,241,0.4)]" />
+                </div>
+                <h1 className="text-5xl font-black text-white tracking-tight mb-4 leading-tight">
+                    Neues <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-400">Passwort</span>
+                </h1>
+                <p className="text-lg text-slate-400 font-medium">Wählen Sie ein sicheres neues Passwort.</p>
+            </div>
+
+            <div className="bg-slate-900/40 backdrop-blur-3xl rounded-[3rem] border border-white/5 p-10 lg:p-14 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)]">
+                <form onSubmit={handleSubmit} className="space-y-8">
+                    <div className="space-y-2">
+                        <label className="block text-sm font-bold text-slate-400 uppercase tracking-widest ml-1">Neues Passwort</label>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            placeholder="••••••••"
+                            minLength={8}
+                            className="w-full px-6 py-5 bg-slate-950/50 border border-white/10 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-white placeholder:text-slate-700 font-medium text-lg"
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="block text-sm font-bold text-slate-400 uppercase tracking-widest ml-1">Passwort wiederholen</label>
+                        <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required
+                            placeholder="••••••••"
+                            className="w-full px-6 py-5 bg-slate-950/50 border border-white/10 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-white placeholder:text-slate-700 font-medium text-lg"
+                        />
+                    </div>
+
+                    {error && (
+                        <div className="p-5 text-sm font-bold text-rose-400 bg-rose-500/10 rounded-2xl border border-rose-500/20 flex items-center gap-3">
+                            <span className="text-xl">⚠️</span> {error}
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-6 px-8 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xl rounded-2xl shadow-2xl shadow-indigo-600/30 hover:scale-[1.01] active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                        {loading ? 'Speichern...' : 'Passwort ändern'}
+                    </button>
+                </form>
+            </div>
+        </>
+    );
+}
+
+export default function ResetPasswordPage() {
+    return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden font-sans">
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-[-20%] left-[-10%] w-[1000px] h-[1000px] bg-indigo-600/10 rounded-full blur-[140px] animate-pulse" />
+                <div className="absolute bottom-[-20%] right-[-10%] w-[1000px] h-[1000px] bg-blue-600/10 rounded-full blur-[140px]" />
+            </div>
+
+            <div className="w-full max-w-2xl relative z-10 animate-in fade-in zoom-in-95 duration-700">
+                <Suspense fallback={<div className="text-white text-center">Laden...</div>}>
+                    <ResetPasswordForm />
+                </Suspense>
+            </div>
+        </div>
+    );
+}

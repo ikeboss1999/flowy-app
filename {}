@@ -1,0 +1,24 @@
+[1] [eval]:1
+[1] setTimeout(() =, 10000)
+[1]             ^
+[1] Parenthesized expression cannot be empty
+[1] 
+[1] SyntaxError: Unexpected token ')'
+[1]     at makeContextifyScript (node:internal/vm:194:14)
+[1]     at compileScript (node:internal/process/execution:388:10)
+[1]     at evalTypeScript (node:internal/process/execution:260:22)
+[1]     at node:internal/main/eval_string:71:3
+[1] 
+[1] Node.js v24.12.0
+[1] node -e "setTimeout(() =, 10000)" && electron . exited with code 1
+[0] 
+[0] > flowy@0.1.0 dev
+[0] > next dev
+[0] 
+[0]   ▲ Next.js 14.2.16
+[0]   - Local:        http://localhost:3000
+[0] 
+[0]  ✓ Starting...
+[0]  ✓ Ready in 1860ms
+[0] ^C^C
+[0] npm run dev exited with code 3221225786
