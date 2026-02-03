@@ -2,14 +2,16 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 const verifySchema = z.object({
     email: z.string().email(),
     code: z.string().length(6, 'Code muss 6-stellig sein'),
 });
 
-export async function POST(req: Request) {
+export async function GET(request: Request) {
     try {
-        const body = await req.json();
+        const body = await request.json();
         const result = verifySchema.safeParse(body);
 
         if (!result.success) {

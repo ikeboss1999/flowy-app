@@ -3,27 +3,32 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useAuth } from "@/context/AuthContext";
 
 export function OnboardingCheck() {
     const router = useRouter();
     const pathname = usePathname();
-    const { data, isLoading } = useCompanySettings();
+    const { data, isLoading: settingsLoading } = useCompanySettings();
+    const { user, loading: authLoading } = useAuth();
 
     useEffect(() => {
-        if (isLoading) return;
+        if (settingsLoading || authLoading) return;
 
-        // Skip check if we are already on onboarding or settings page
-        // Settings page allowed so user can fix it if they navigate there manually
-        if (pathname === "/onboarding" || pathname === "/settings" || pathname === "/verify") return;
+        // If no user is logged in, middleware should handle it,
+        // but we double check here to prevent erroneous redirects.
+        if (!user) return;
+
+        // Skip check for auth and onboarding pages
+        if (pathname === "/onboarding" || pathname === "/settings" || pathname === "/verify" || pathname.startsWith('/login')) return;
 
         // Check if critical data is missing (e.g., Company Name)
-        // Adjust condition based on what constitutes "Empty"
         const isCompanyEmpty = !data.companyName || data.companyName.trim() === "";
 
         if (isCompanyEmpty) {
+            console.log("OnboardingCheck: Redirecting to onboarding. Reason: Company Data Empty. Data:", data);
             router.replace("/onboarding");
         }
-    }, [data, isLoading, pathname, router]);
+    }, [data, settingsLoading, authLoading, user, pathname, router]);
 
     return null;
 }

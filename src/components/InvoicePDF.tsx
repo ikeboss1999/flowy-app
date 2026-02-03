@@ -48,7 +48,7 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                             <div style={{ fontSize: '28pt', fontWeight: 900, fontStyle: 'italic', color: '#111', letterSpacing: '-1px' }}>
                                 <span style={{ color: '#f43f5e', marginRight: '4px' }}>//</span>{companySettings.companyName.toUpperCase()}
                             </div>
-                            <div style={{ color: '#f43f5e', fontSize: '11pt', fontWeight: 'bold', marginTop: '-4px' }}>Auf Qualität ist Verlass</div>
+                            <div style={{ color: '#f43f5e', fontSize: '11pt', fontWeight: 'bold', marginTop: '-4px' }}>Ihr Partner für Bauprojekte</div>
                         </>
                     )}
                 </div>
@@ -120,7 +120,7 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                     <div style={{ width: '45%', paddingLeft: '40px' }}>
                         {[
                             ['Datum:', formatDate(invoice.issueDate)],
-                            ['Bearbeiter:', (invoice.processor && invoice.processor !== 'Mithat Etovic')
+                            ['Bearbeiter:', (invoice.processor && invoice.processor !== 'Max Mustermann')
                                 ? invoice.processor
                                 : `${companySettings.ceoFirstName} ${companySettings.ceoLastName}`.trim() || invoice.processor || '-'],
                             ['E-Mail:', companySettings.email],

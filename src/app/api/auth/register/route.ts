@@ -11,6 +11,8 @@ const registerSchema = z.object({
     name: z.string().min(2, 'Name muss mindestens 2 Zeichen lang sein'),
 });
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
     try {
         const body = await req.json();

@@ -1,12 +1,15 @@
 import fs from 'fs';
 import path from 'path';
 import { DbSchema, User, VerificationToken } from './types';
+import { getAppDataPath } from './datapath';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = getAppDataPath();
 const DB_PATH = path.join(DATA_DIR, 'db.json');
+console.log('DB_PATH initialized at:', DB_PATH);
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
+    console.log('Creating Data Directory:', DATA_DIR);
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
@@ -18,6 +21,7 @@ const initialDb: DbSchema = {
 
 // Initialize DB file if it doesn't exist
 if (!fs.existsSync(DB_PATH)) {
+    console.log('Creating initial DB file');
     fs.writeFileSync(DB_PATH, JSON.stringify(initialDb, null, 2));
 }
 
@@ -33,6 +37,7 @@ function readDb(): DbSchema {
 
 function writeDb(data: DbSchema): void {
     try {
+        console.log('Writing to DB:', DB_PATH);
         fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
     } catch (error) {
         console.error('Error writing DB:', error);

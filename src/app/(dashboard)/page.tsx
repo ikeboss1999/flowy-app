@@ -12,22 +12,129 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { RealtimeClock } from "@/components/RealtimeClock";
-
-// ... imports
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAccountSettings } from "@/hooks/useAccountSettings";
+import { Modal } from "@/components/ui/Modal";
+import { useState } from "react";
+
+// Re-using cn helper for icons
+function cn(...inputs: any[]) {
+  return inputs.filter(Boolean).join(' ');
+}
 
 export default function Home() {
-  const { data: companySettings } = useCompanySettings();
-  const { data: accountSettings } = useAccountSettings();
+  const { data: companySettings, isLoading: companyLoading } = useCompanySettings();
+  const { data: accountSettings, isLoading: accountLoading } = useAccountSettings();
+  const [selectedFeature, setSelectedFeature] = useState<any>(null);
 
   const today = new Date();
   const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' };
   const formattedDate = today.toLocaleDateString('de-DE', options);
 
   // Fallback values if data is loading or empty
-  const companyName = companySettings?.companyName || "RASNO BAU GMBH";
+  const companyName = companySettings?.companyName || "FlowY Professional";
   const userName = accountSettings?.name || "Benutzer";
+
+  const features = [
+    {
+      icon: FileText,
+      title: "Rechnungsverwaltung",
+      color: "text-blue-500",
+      bg: "bg-blue-50/50",
+      desc: "Erstellen und verwalten Sie professionelle Rechnungen mit nur wenigen Klicks. Automatisierte Berechnungen inklusive.",
+      details: (
+        <div className="space-y-4">
+          <p className="text-lg leading-relaxed text-slate-600">
+            Unser <strong>Rechnungsmodul</strong> revolutioniert Ihre Buchhaltung. Erstellen Sie GoBD-konforme Angebote und Rechnungen in wenigen Sekunden und verwandeln Sie Angebote mit einem Klick in Rechnungen.
+          </p>
+          <ul className="space-y-3 mt-4">
+            <li className="flex items-start gap-3">
+              <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <ArrowRight className="h-3 w-3 text-green-600" />
+              </div>
+              <span className="text-slate-700"><strong>Automatisierung:</strong> Steuerberechnungen und Summierungen erfolgen vollautomatisch.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <ArrowRight className="h-3 w-3 text-green-600" />
+              </div>
+              <span className="text-slate-700"><strong>Mahnwesen:</strong> Behalten Sie offene Posten im Blick und erstellen Sie Mahnungen per Knopfdruck.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <ArrowRight className="h-3 w-3 text-green-600" />
+              </div>
+              <span className="text-slate-700"><strong>PDF-Export:</strong> Professionelles Design für Ihre Dokumente, sofort versandfertig.</span>
+            </li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      icon: Users,
+      title: "Kunden & Mitarbeiter",
+      color: "text-purple-500",
+      bg: "bg-purple-50/50",
+      desc: "Verwalten Sie alle Kontakte und Mitarbeiterdaten zentral an einem Ort mit detaillierten Profilen.",
+      details: (
+        <div className="space-y-4">
+          <p className="text-lg leading-relaxed text-slate-600">
+            Das Herzstück Ihres Unternehmens sind Menschen. Mit FlowY verwalten Sie <strong>Kunden und Mitarbeiter</strong> effizient und DSGVO-konform an einem zentralen Ort.
+          </p>
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <h5 className="font-bold text-slate-900 mb-2">Für Kunden</h5>
+              <p className="text-sm text-slate-600">Historie aller Projekte, Rechnungen und Dokumente. Schneller Zugriff auf Kontaktdaten und Ansprechpartner.</p>
+            </div>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <h5 className="font-bold text-slate-900 mb-2">Für Mitarbeiter</h5>
+              <p className="text-sm text-slate-600">Digitale Personalakte mit Stammdaten, Urlaubsverwaltung und Stundensätzen für die Kalkulation.</p>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      icon: Briefcase,
+      title: "Projektverwaltung",
+      color: "text-emerald-500",
+      bg: "bg-emerald-50/50",
+      desc: "Behalten Sie den Überblick über alle Ihre Bauprojekte, Meilensteilen und Aufträge in Echtzeit.",
+      details: (
+        <div className="space-y-4">
+          <p className="text-lg leading-relaxed text-slate-600">
+            Behalten Sie die volle Kontrolle über Ihre Baustellen. Von der ersten Planung bis zur Abnahme dokumentieren Sie jeden Schritt in der <strong>Projektverwaltung</strong>.
+          </p>
+          <ul className="space-y-3 mt-4">
+            <li className="flex items-start gap-3">
+              <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Briefcase className="h-3 w-3 text-blue-600" />
+              </div>
+              <span className="text-slate-700"><strong>Zeiterfassung:</strong> Buchen Sie Arbeitszeiten direkt auf Projekte für eine genaue Nachkalkulation.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Briefcase className="h-3 w-3 text-blue-600" />
+              </div>
+              <span className="text-slate-700"><strong>Fortschritt:</strong> Status-Updates und Meilensteine zeigen Ihnen sofort, wo Projekte stehen.</span>
+            </li>
+          </ul>
+        </div>
+      )
+    }
+  ];
+
+  if (companyLoading || accountLoading || !companySettings || !accountSettings) {
+    console.log("Dashboard: Loading data...", { companyLoading, accountLoading });
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <p className="font-bold tracking-widest uppercase text-xs text-indigo-400">Initialisierung...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -50,7 +157,7 @@ export default function Home() {
                     //{companyName.toUpperCase()}
                   </h2>
                   <p className="text-xs text-slate-400 uppercase font-bold tracking-widest">
-                    Auf Qualität ist Verlass
+                    Ihr Partner für Bauprojekte
                   </p>
                 </div>
               )}
@@ -115,12 +222,8 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-3 gap-12">
-            {[
-              { icon: FileText, title: "Rechnungsverwaltung", color: "text-blue-500", bg: "bg-blue-50/50", desc: "Erstellen und verwalten Sie professionelle Rechnungen mit nur wenigen Klicks. Automatisierte Berechnungen inklusive." },
-              { icon: Users, title: "Kunden & Mitarbeiter", color: "text-purple-500", bg: "bg-purple-50/50", desc: "Verwalten Sie alle Kontakte und Mitarbeiterdaten zentral an einem Ort mit detaillierten Profilen." },
-              { icon: Briefcase, title: "Projektverwaltung", color: "text-emerald-500", bg: "bg-emerald-50/50", desc: "Behalten Sie den Überblick über alle Ihre Bauprojekte, Meilensteile und Aufträge in Echtzeit." }
-            ].map((feature, i) => (
-              <div key={i} className="glass-card p-12 group cursor-pointer hover:border-indigo-500/40 hover:-translate-y-2 duration-300">
+            {features.map((feature, i) => (
+              <div key={i} className="glass-card p-12 group cursor-pointer hover:border-indigo-500/40 hover:-translate-y-2 duration-300" onClick={() => setSelectedFeature(feature)}>
                 <div className={cn("h-16 w-16 rounded-2xl flex items-center justify-center mb-8 transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg", feature.bg)}>
                   <feature.icon className={cn("h-8 w-8", feature.color)} />
                 </div>
@@ -128,7 +231,10 @@ export default function Home() {
                 <p className="text-lg text-slate-500 leading-relaxed mb-8">
                   {feature.desc}
                 </p>
-                <button className="text-base font-black text-indigo-600 flex items-center gap-2 group-hover:gap-3 transition-all">
+                <button className="text-base font-black text-indigo-600 flex items-center gap-2 group-hover:gap-3 transition-all" onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedFeature(feature);
+                }}>
                   Mehr erfahren <ArrowRight className="h-5 w-5" />
                 </button>
               </div>
@@ -136,11 +242,14 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <Modal
+        isOpen={!!selectedFeature}
+        onClose={() => setSelectedFeature(null)}
+        title={selectedFeature?.title || ""}
+      >
+        {selectedFeature?.details}
+      </Modal>
     </div>
   );
-}
-
-// Re-using cn helper for icons
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
 }

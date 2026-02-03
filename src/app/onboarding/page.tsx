@@ -47,11 +47,26 @@ export default function OnboardingPage() {
     useEffect(() => {
         if (!isAccountLoading && accountSettings) {
             if (accountSettings.onboardingCompleted) {
+                console.log("Onboarding: Completed flag found, redirecting to /");
                 router.push("/");
+                return;
             }
+
+            // Intelligence: Skip steps if data exists
+            let nextStep: Step = "pin";
+
+            if (accountSettings.pinCode) {
+                setPin(accountSettings.pinCode);
+                setConfirmPin(accountSettings.pinCode);
+                nextStep = "username";
+            }
+
             if (accountSettings.name && accountSettings.name !== 'Benutzer') {
                 setUsername(accountSettings.name);
+                if (nextStep === "username") nextStep = "company";
             }
+
+            setCurrentStep(nextStep);
         }
     }, [isAccountLoading, accountSettings, router]);
 
@@ -104,14 +119,19 @@ export default function OnboardingPage() {
         setCurrentStep("success");
     };
 
-    const handleFinalize = () => {
-        updateCompany(companyData);
-        updateAccount({ onboardingCompleted: true });
+    const handleFinalize = async () => {
+        await updateCompany(companyData);
+        await updateAccount({ onboardingCompleted: true });
         router.push("/");
     };
 
     if (isAccountLoading || isCompanyLoading) {
-        return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Laden...</div>;
+        return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
+            <div className="flex flex-col items-center gap-4">
+                <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-slate-400 text-sm font-medium tracking-widest uppercase">Lade Profil...</p>
+            </div>
+        </div>;
     }
 
     return (

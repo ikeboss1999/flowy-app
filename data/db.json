@@ -1,24 +1,14 @@
 {
   "users": [
     {
-      "id": "PH16E8FTgd4cyyT91Jmps",
+      "id": "C0Ts8YqyuZaE0Rud2WNun",
       "email": "ike@ike.at",
-      "passwordHash": "$2b$12$qFA1T7fhOEHOM9b4.7AesOWjsLXBCO7dNGx0VsUEo8DzpYeA1v68C",
-      "name": "Ike",
+      "passwordHash": "$2b$12$xEn.jUG44XsIRie5Bt6nzeicd4o0Krt//QRmzJ5KKpoqXJj1xnEwK",
+      "name": "Ike Test",
       "role": "user",
       "isVerified": true,
-      "createdAt": "2026-01-31T11:51:02.075Z",
-      "updatedAt": "2026-01-31T11:51:02.075Z"
-    },
-    {
-      "id": "3zRl9Z94Pba6cSlCi8BuM",
-      "email": "kemko@kem.at",
-      "passwordHash": "$2b$12$Lzs1F9kBc5CrJVskRJXkpuWoU0Cwx27VatQsLG67qTkwwaT8W/8Qe",
-      "name": "Kemkooo",
-      "role": "user",
-      "isVerified": true,
-      "createdAt": "2026-02-02T22:55:23.442Z",
-      "updatedAt": "2026-02-02T22:55:23.442Z"
+      "createdAt": "2026-02-03T23:19:55.534Z",
+      "updatedAt": "2026-02-03T23:19:55.534Z"
     }
   ],
   "tokens": []

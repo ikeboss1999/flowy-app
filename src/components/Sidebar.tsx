@@ -162,7 +162,7 @@ export function Sidebar() {
                     Ausloggen
                 </button>
                 <div className="mt-8 px-5 text-[11px] text-white/20 uppercase font-black tracking-[0.2em] text-center">
-                    FlowY Version 2.0
+                    FlowY Version {process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0"}
                 </div>
             </div>
         </aside>

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/sqlite';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     try {
         console.log('--- BACKUP EXPORT START ---');

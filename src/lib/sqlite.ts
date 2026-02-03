@@ -1,17 +1,35 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { getAppDataPath } from './datapath';
 
-// Database file path
-// In development, it's in the project root.
-// In production, we'll need to handle it properly, but for now:
-const dbDir = path.join(process.cwd(), 'data');
+const dbDir = getAppDataPath();
+
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
 const dbPath = path.join(dbDir, 'flowy.db');
-const db = new Database(dbPath);
+const logPath = path.join(dbDir, 'sqlite_debug.log');
+
+let db: Database.Database;
+
+try {
+  fs.appendFileSync(logPath, `[${new Date().toISOString()}] Attempting to open DB at ${dbPath}\n`);
+  db = new Database(dbPath, { verbose: (msg) => fs.appendFileSync(logPath, `[SQL] ${msg}\n`) });
+  fs.appendFileSync(logPath, `[${new Date().toISOString()}] DB Opened Successfully\n`);
+} catch (e) {
+  const errorMsg = `[${new Date().toISOString()}] CRITICAL: Failed to open DB: ${e}\n`;
+  // Try to write to a fallback location if main fails
+  try {
+    if (fs.existsSync(dbDir)) fs.appendFileSync(logPath, errorMsg);
+  } catch (err) {
+    // helplessness
+  }
+  console.error(errorMsg);
+  // Re-throw so app knows it failed, but maybe we want to fallback?
+  throw e;
+}
 
 // Initialize schema
 db.exec(`

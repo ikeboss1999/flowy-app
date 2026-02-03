@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/sqlite';
 
+export const dynamic = 'force-dynamic';
+
 // DELETE a specific vehicle
 export async function DELETE(
     request: Request,

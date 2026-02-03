@@ -3,14 +3,16 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 const resetPasswordSchema = z.object({
     token: z.string(),
     password: z.string().min(8, 'Passwort muss mindestens 8 Zeichen lang sein'),
 });
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
     try {
-        const body = await req.json();
+        const body = await request.json();
         const result = resetPasswordSchema.safeParse(body);
 
         if (!result.success) {

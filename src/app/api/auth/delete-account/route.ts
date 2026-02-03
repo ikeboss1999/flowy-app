@@ -4,6 +4,8 @@ import sqliteDb from '@/lib/sqlite';
 import { cookies } from 'next/headers';
 import { verifySessionToken } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST() {
     try {
         const token = cookies().get('session_token')?.value;

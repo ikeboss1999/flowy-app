@@ -5,13 +5,15 @@ import { generateVerificationToken } from '@/lib/auth';
 import { VerificationToken } from '@/lib/types';
 import { nanoid } from 'nanoid';
 
+export const dynamic = 'force-dynamic';
+
 const forgotPasswordSchema = z.object({
     email: z.string().email(),
 });
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
     try {
-        const body = await req.json();
+        const body = await request.json();
         const result = forgotPasswordSchema.safeParse(body);
 
         if (!result.success) {
