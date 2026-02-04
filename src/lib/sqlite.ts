@@ -196,6 +196,26 @@ db.exec(`
     unit TEXT,
     userId TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    passwordHash TEXT NOT NULL,
+    name TEXT,
+    role TEXT DEFAULT 'user',
+    isVerified INTEGER DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS tokens (
+    id TEXT PRIMARY KEY,
+    userId TEXT,
+    token TEXT,
+    type TEXT,
+    expiresAt INTEGER,
+    createdAt TEXT
+  );
 `);
 
 export default db;

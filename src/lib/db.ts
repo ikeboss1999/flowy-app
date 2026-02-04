@@ -1,110 +1,147 @@
-import fs from 'fs';
-import path from 'path';
-import { DbSchema, User, VerificationToken } from './types';
-import { getAppDataPath } from './datapath';
+import sqliteDb from './sqlite';
+import { User, VerificationToken } from './types';
 
-const DATA_DIR = getAppDataPath();
-const DB_PATH = path.join(DATA_DIR, 'db.json');
-console.log('DB_PATH initialized at:', DB_PATH);
-
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-    console.log('Creating Data Directory:', DATA_DIR);
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-// Initial DB state
-const initialDb: DbSchema = {
-    users: [],
-    tokens: []
-};
-
-// Initialize DB file if it doesn't exist
-if (!fs.existsSync(DB_PATH)) {
-    console.log('Creating initial DB file');
-    fs.writeFileSync(DB_PATH, JSON.stringify(initialDb, null, 2));
-}
-
-function readDb(): DbSchema {
-    try {
-        const data = fs.readFileSync(DB_PATH, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        console.error('Error reading DB:', error);
-        return initialDb;
-    }
-}
-
-function writeDb(data: DbSchema): void {
-    try {
-        console.log('Writing to DB:', DB_PATH);
-        fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
-    } catch (error) {
-        console.error('Error writing DB:', error);
-    }
-}
+// Wrapper to make SQLite behave like the old JSON db adapter
+// This unifies the persistence layer so Auth uses the same DB as the rest of the app.
 
 export const db = {
-    getUsers: () => readDb().users,
+    // Users
+    getUsers: (): User[] => {
+        try {
+            return sqliteDb.prepare('SELECT * FROM users').all() as User[];
+        } catch (error) {
+            console.error('SQLite: Failed to get users', error);
+            return [];
+        }
+    },
+
     addUser: (user: User) => {
-        const data = readDb();
-        data.users.push(user);
-        writeDb(data);
-        return user;
+        try {
+            const stmt = sqliteDb.prepare(`
+                INSERT INTO users (id, email, passwordHash, name, role, isVerified, createdAt, updatedAt)
+                VALUES (@id, @email, @passwordHash, @name, @role, @isVerified, @createdAt, @updatedAt)
+            `);
+            // Convert boolean to integer for SQLite
+            const sqlUser = { ...user, isVerified: user.isVerified ? 1 : 0 };
+            stmt.run(sqlUser);
+            return user;
+        } catch (error) {
+            console.error('SQLite: Failed to add user', error);
+            throw error;
+        }
     },
-    findUserByEmail: (email: string) => {
-        const users = readDb().users;
-        return users.find(u => u.email === email);
+
+    findUserByEmail: (email: string): User | undefined => {
+        try {
+            const user = sqliteDb.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
+            if (!user) return undefined;
+            // Convert integer back to boolean
+            return { ...user, isVerified: !!user.isVerified };
+        } catch (error) {
+            console.error('SQLite: Failed to find user by email', error);
+            return undefined;
+        }
     },
-    findUserById: (id: string) => {
-        const users = readDb().users;
-        return users.find(u => u.id === id);
+
+    findUserById: (id: string): User | undefined => {
+        try {
+            const user = sqliteDb.prepare('SELECT * FROM users WHERE id = ?').get(id) as any;
+            if (!user) return undefined;
+            return { ...user, isVerified: !!user.isVerified };
+        } catch (error) {
+            console.error('SQLite: Failed to find user by id', error);
+            return undefined;
+        }
     },
+
     updateUser: (id: string, updates: Partial<User>) => {
-        const data = readDb();
-        const index = data.users.findIndex(u => u.id === id);
-        if (index !== -1) {
-            data.users[index] = { ...data.users[index], ...updates, updatedAt: new Date().toISOString() };
-            writeDb(data);
-            return data.users[index];
+        try {
+            // Validate user exists
+            const existing = sqliteDb.prepare('SELECT * FROM users WHERE id = ?').get(id);
+            if (!existing) return null;
+
+            const fields = Object.keys(updates).filter(k => k !== 'id');
+            if (fields.length === 0) return existing;
+
+            const setClause = fields.map(f => `${f} = @${f}`).join(', ');
+            const stmt = sqliteDb.prepare(`UPDATE users SET ${setClause}, updatedAt = @updatedAt WHERE id = @id`);
+
+            const updateData: any = { ...updates, id, updatedAt: new Date().toISOString() };
+            if (typeof updateData.isVerified === 'boolean') {
+                updateData.isVerified = updateData.isVerified ? 1 : 0;
+            }
+
+            stmt.run(updateData);
+
+            // Return updated user
+            const updated = sqliteDb.prepare('SELECT * FROM users WHERE id = ?').get(id) as any;
+            return { ...updated, isVerified: !!updated.isVerified };
+        } catch (error) {
+            console.error('SQLite: Failed to update user', error);
+            return null;
         }
-        return null;
     },
+
     deleteUser: (id: string) => {
-        const data = readDb();
-        const initialCount = data.users.length;
-        data.users = data.users.filter(u => u.id !== id);
-        // Also clean up tokens for this user
-        data.tokens = data.tokens.filter(t => t.userId !== id);
-        if (data.users.length !== initialCount) {
-            writeDb(data);
-            return true;
+        try {
+            const deleteTokens = sqliteDb.prepare('DELETE FROM tokens WHERE userId = ?');
+            const deleteUser = sqliteDb.prepare('DELETE FROM users WHERE id = ?');
+
+            const transaction = sqliteDb.transaction(() => {
+                deleteTokens.run(id);
+                return deleteUser.run(id);
+            });
+
+            const result = transaction();
+            return result.changes > 0;
+        } catch (error) {
+            console.error('SQLite: Failed to delete user', error);
+            return false;
         }
-        return false;
     },
 
     // Tokens
     addToken: (token: VerificationToken) => {
-        const data = readDb();
-        // Remove existing tokens of same type for user to avoid clutter
-        data.tokens = data.tokens.filter(t => !(t.userId === token.userId && t.type === token.type));
-        data.tokens.push(token);
-        writeDb(data);
-        return token;
+        try {
+            // Remove existing tokens of same type for user
+            sqliteDb.prepare('DELETE FROM tokens WHERE userId = ? AND type = ?').run(token.userId, token.type);
+
+            const stmt = sqliteDb.prepare(`
+                INSERT INTO tokens (id, userId, token, type, expiresAt, createdAt)
+                VALUES (@id, @userId, @token, @type, @expiresAt, @createdAt)
+            `);
+            stmt.run(token);
+            return token;
+        } catch (error) {
+            console.error('SQLite: Failed to add token', error);
+            throw error;
+        }
     },
-    findToken: (tokenString: string) => {
-        const tokens = readDb().tokens;
-        return tokens.find(t => t.token === tokenString);
+
+    findToken: (tokenString: string): VerificationToken | undefined => {
+        try {
+            const token = sqliteDb.prepare('SELECT * FROM tokens WHERE token = ?').get(tokenString) as VerificationToken;
+            return token || undefined;
+        } catch (error) {
+            console.error('SQLite: Failed to find token', error);
+            return undefined;
+        }
     },
+
     deleteToken: (id: string) => {
-        const data = readDb();
-        data.tokens = data.tokens.filter(t => t.id !== id);
-        writeDb(data);
+        try {
+            sqliteDb.prepare('DELETE FROM tokens WHERE id = ?').run(id);
+        } catch (error) {
+            console.error('SQLite: Failed to delete token', error);
+        }
     },
+
     cleanupTokens: () => {
-        const data = readDb();
-        const now = Date.now();
-        data.tokens = data.tokens.filter(t => t.expiresAt > now);
-        writeDb(data);
+        try {
+            const now = Date.now();
+            sqliteDb.prepare('DELETE FROM tokens WHERE expiresAt < ?').run(now);
+        } catch (error) {
+            console.error('SQLite: Failed to cleanup tokens', error);
+        }
     }
 };
