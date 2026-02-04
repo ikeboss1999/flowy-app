@@ -14,9 +14,12 @@ export function OnboardingCheck() {
     useEffect(() => {
         if (settingsLoading || authLoading) return;
 
-        // If no user is logged in, middleware should handle it,
-        // but we double check here to prevent erroneous redirects.
-        if (!user) return;
+        if (!user) {
+            if (pathname === "/onboarding" || pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password') || pathname === "/verify") return;
+            console.log("OnboardingCheck: No user found, redirecting to login...");
+            router.replace("/login");
+            return;
+        }
 
         // Skip check for auth and onboarding pages
         if (pathname === "/onboarding" || pathname === "/settings" || pathname === "/verify" || pathname.startsWith('/login')) return;

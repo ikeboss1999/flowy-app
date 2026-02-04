@@ -8,7 +8,8 @@ export const db = {
     // Users
     getUsers: (): User[] => {
         try {
-            return sqliteDb.prepare('SELECT * FROM users').all() as User[];
+            const users = sqliteDb.prepare('SELECT * FROM users').all() as any[];
+            return users.map(u => ({ ...u, isVerified: !!u.isVerified }));
         } catch (error) {
             console.error('SQLite: Failed to get users', error);
             return [];
