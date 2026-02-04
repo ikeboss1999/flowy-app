@@ -84,9 +84,6 @@
       "createStartMenuShortcut": true,
       "shortcutName": "FlowY"
     },
-    "asar": true,
-    "asarUnpack": [
-      "node_modules/better-sqlite3"
-    ]
+    "asar": false
   }
 }

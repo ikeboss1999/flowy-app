@@ -1749,3 +1749,1341 @@ was compiled against a different Node.js version using
 NODE_MODULE_VERSION 125. This version of Node.js requires
 NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
 the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T17:07:37.985Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[DEBUG] Node Version: v24.12.0, Arch: x64
+[2026-02-04T17:07:37.989Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    customerId TEXT,
+    description TEXT,
+    status TEXT,
+    address TEXT, -- JSON string
+    startDate TEXT,
+    endDate TEXT,
+    budget REAL,
+    paymentPlan TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    address TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    invoiceNumber TEXT NOT NULL,
+    customerId TEXT,
+    projectId TEXT,
+    billingType TEXT,
+    issueDate TEXT,
+    items TEXT, -- JSON string
+    subtotal REAL,
+    taxRate REAL,
+    taxAmount REAL,
+    totalAmount REAL,
+    status TEXT,
+    paymentTerms TEXT,
+    perfFrom TEXT,
+    perfTo TEXT,
+    processor TEXT,
+    subjectExtra TEXT,
+    partialPaymentNumber INTEGER,
+    previousInvoices TEXT, -- JSON string
+    dunningLevel INTEGER DEFAULT 0,
+    lastDunningDate TEXT,
+    dunningHistory TEXT, -- JSON string
+    paidAmount REAL DEFAULT 0,
+    paymentDeviation TEXT, -- JSON string
+    notes TEXT,
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+    userId TEXT PRIMARY KEY,
+    companyData TEXT, -- JSON string
+    accountSettings TEXT, -- JSON string
+    invoiceSettings TEXT -- JSON string
+  );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+    id TEXT PRIMARY KEY,
+    basicInfo TEXT NOT NULL, -- JSON string
+    fleetDetails TEXT NOT NULL, -- JSON string
+    maintenance TEXT NOT NULL, -- JSON string
+    leasing TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+    id TEXT PRIMARY KEY,
+    employeeNumber TEXT NOT NULL,
+    personalData TEXT NOT NULL, -- JSON string
+    bankDetails TEXT NOT NULL, -- JSON string
+    employment TEXT NOT NULL, -- JSON string
+    additionalInfo TEXT, -- JSON string
+    weeklySchedule TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    avatar TEXT, -- Base64
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    date TEXT NOT NULL,
+    startTime TEXT,
+    endTime TEXT,
+    duration INTEGER,
+    type TEXT,
+    projectId TEXT,
+    serviceId TEXT,
+    description TEXT,
+    userId TEXT,
+    createdAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    month TEXT NOT NULL,
+    status TEXT,
+    finalizedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+    id TEXT PRIMARY KEY,
+    task TEXT NOT NULL,
+    completed INTEGER DEFAULT 0,
+    priority TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    startDate TEXT NOT NULL,
+    endDate TEXT NOT NULL,
+    isAllDay INTEGER DEFAULT 0,
+    type TEXT,
+    color TEXT,
+    location TEXT,
+    attendees TEXT, -- JSON string
+    projectId TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    price REAL,
+    unit TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    passwordHash TEXT NOT NULL,
+    name TEXT,
+    role TEXT DEFAULT 'user',
+    isVerified INTEGER DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+    id TEXT PRIMARY KEY,
+    userId TEXT,
+    token TEXT,
+    type TEXT,
+    expiresAt INTEGER,
+    createdAt TEXT
+  );
+[SQL] SELECT * FROM users WHERE id = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM users WHERE id = 'pVS6d40rc8T9XFyx5kbh-'
+[2026-02-04T17:07:38.263Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[DEBUG] Node Version: v24.12.0, Arch: x64
+[2026-02-04T17:07:38.264Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    customerId TEXT,
+    description TEXT,
+    status TEXT,
+    address TEXT, -- JSON string
+    startDate TEXT,
+    endDate TEXT,
+    budget REAL,
+    paymentPlan TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    address TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    invoiceNumber TEXT NOT NULL,
+    customerId TEXT,
+    projectId TEXT,
+    billingType TEXT,
+    issueDate TEXT,
+    items TEXT, -- JSON string
+    subtotal REAL,
+    taxRate REAL,
+    taxAmount REAL,
+    totalAmount REAL,
+    status TEXT,
+    paymentTerms TEXT,
+    perfFrom TEXT,
+    perfTo TEXT,
+    processor TEXT,
+    subjectExtra TEXT,
+    partialPaymentNumber INTEGER,
+    previousInvoices TEXT, -- JSON string
+    dunningLevel INTEGER DEFAULT 0,
+    lastDunningDate TEXT,
+    dunningHistory TEXT, -- JSON string
+    paidAmount REAL DEFAULT 0,
+    paymentDeviation TEXT, -- JSON string
+    notes TEXT,
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+    userId TEXT PRIMARY KEY,
+    companyData TEXT, -- JSON string
+    accountSettings TEXT, -- JSON string
+    invoiceSettings TEXT -- JSON string
+  );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+    id TEXT PRIMARY KEY,
+    basicInfo TEXT NOT NULL, -- JSON string
+    fleetDetails TEXT NOT NULL, -- JSON string
+    maintenance TEXT NOT NULL, -- JSON string
+    leasing TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+    id TEXT PRIMARY KEY,
+    employeeNumber TEXT NOT NULL,
+    personalData TEXT NOT NULL, -- JSON string
+    bankDetails TEXT NOT NULL, -- JSON string
+    employment TEXT NOT NULL, -- JSON string
+    additionalInfo TEXT, -- JSON string
+    weeklySchedule TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    avatar TEXT, -- Base64
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    date TEXT NOT NULL,
+    startTime TEXT,
+    endTime TEXT,
+    duration INTEGER,
+    type TEXT,
+    projectId TEXT,
+    serviceId TEXT,
+    description TEXT,
+    userId TEXT,
+    createdAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    month TEXT NOT NULL,
+    status TEXT,
+    finalizedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+    id TEXT PRIMARY KEY,
+    task TEXT NOT NULL,
+    completed INTEGER DEFAULT 0,
+    priority TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    startDate TEXT NOT NULL,
+    endDate TEXT NOT NULL,
+    isAllDay INTEGER DEFAULT 0,
+    type TEXT,
+    color TEXT,
+    location TEXT,
+    attendees TEXT, -- JSON string
+    projectId TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    price REAL,
+    unit TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    passwordHash TEXT NOT NULL,
+    name TEXT,
+    role TEXT DEFAULT 'user',
+    isVerified INTEGER DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+    id TEXT PRIMARY KEY,
+    userId TEXT,
+    token TEXT,
+    type TEXT,
+    expiresAt INTEGER,
+    createdAt TEXT
+  );
+[SQL] SELECT * FROM settings WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM services WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM services WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM settings WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM settings WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM settings WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[2026-02-04T17:07:41.886Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[DEBUG] Node Version: v24.12.0, Arch: x64
+[2026-02-04T17:07:41.887Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    customerId TEXT,
+    description TEXT,
+    status TEXT,
+    address TEXT, -- JSON string
+    startDate TEXT,
+    endDate TEXT,
+    budget REAL,
+    paymentPlan TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    address TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    invoiceNumber TEXT NOT NULL,
+    customerId TEXT,
+    projectId TEXT,
+    billingType TEXT,
+    issueDate TEXT,
+    items TEXT, -- JSON string
+    subtotal REAL,
+    taxRate REAL,
+    taxAmount REAL,
+    totalAmount REAL,
+    status TEXT,
+    paymentTerms TEXT,
+    perfFrom TEXT,
+    perfTo TEXT,
+    processor TEXT,
+    subjectExtra TEXT,
+    partialPaymentNumber INTEGER,
+    previousInvoices TEXT, -- JSON string
+    dunningLevel INTEGER DEFAULT 0,
+    lastDunningDate TEXT,
+    dunningHistory TEXT, -- JSON string
+    paidAmount REAL DEFAULT 0,
+    paymentDeviation TEXT, -- JSON string
+    notes TEXT,
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+    userId TEXT PRIMARY KEY,
+    companyData TEXT, -- JSON string
+    accountSettings TEXT, -- JSON string
+    invoiceSettings TEXT -- JSON string
+  );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+    id TEXT PRIMARY KEY,
+    basicInfo TEXT NOT NULL, -- JSON string
+    fleetDetails TEXT NOT NULL, -- JSON string
+    maintenance TEXT NOT NULL, -- JSON string
+    leasing TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+    id TEXT PRIMARY KEY,
+    employeeNumber TEXT NOT NULL,
+    personalData TEXT NOT NULL, -- JSON string
+    bankDetails TEXT NOT NULL, -- JSON string
+    employment TEXT NOT NULL, -- JSON string
+    additionalInfo TEXT, -- JSON string
+    weeklySchedule TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    avatar TEXT, -- Base64
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    date TEXT NOT NULL,
+    startTime TEXT,
+    endTime TEXT,
+    duration INTEGER,
+    type TEXT,
+    projectId TEXT,
+    serviceId TEXT,
+    description TEXT,
+    userId TEXT,
+    createdAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    month TEXT NOT NULL,
+    status TEXT,
+    finalizedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+    id TEXT PRIMARY KEY,
+    task TEXT NOT NULL,
+    completed INTEGER DEFAULT 0,
+    priority TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    startDate TEXT NOT NULL,
+    endDate TEXT NOT NULL,
+    isAllDay INTEGER DEFAULT 0,
+    type TEXT,
+    color TEXT,
+    location TEXT,
+    attendees TEXT, -- JSON string
+    projectId TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    price REAL,
+    unit TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    passwordHash TEXT NOT NULL,
+    name TEXT,
+    role TEXT DEFAULT 'user',
+    isVerified INTEGER DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+    id TEXT PRIMARY KEY,
+    userId TEXT,
+    token TEXT,
+    type TEXT,
+    expiresAt INTEGER,
+    createdAt TEXT
+  );
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM calendar_events WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM todos WHERE userId = 'pVS6d40rc8T9XFyx5kbh-' ORDER BY createdAt DESC
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM todos WHERE userId = 'pVS6d40rc8T9XFyx5kbh-' ORDER BY createdAt DESC
+[SQL] SELECT * FROM calendar_events WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[2026-02-04T17:07:43.721Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[DEBUG] Node Version: v24.12.0, Arch: x64
+[2026-02-04T17:07:43.721Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    customerId TEXT,
+    description TEXT,
+    status TEXT,
+    address TEXT, -- JSON string
+    startDate TEXT,
+    endDate TEXT,
+    budget REAL,
+    paymentPlan TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    address TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    invoiceNumber TEXT NOT NULL,
+    customerId TEXT,
+    projectId TEXT,
+    billingType TEXT,
+    issueDate TEXT,
+    items TEXT, -- JSON string
+    subtotal REAL,
+    taxRate REAL,
+    taxAmount REAL,
+    totalAmount REAL,
+    status TEXT,
+    paymentTerms TEXT,
+    perfFrom TEXT,
+    perfTo TEXT,
+    processor TEXT,
+    subjectExtra TEXT,
+    partialPaymentNumber INTEGER,
+    previousInvoices TEXT, -- JSON string
+    dunningLevel INTEGER DEFAULT 0,
+    lastDunningDate TEXT,
+    dunningHistory TEXT, -- JSON string
+    paidAmount REAL DEFAULT 0,
+    paymentDeviation TEXT, -- JSON string
+    notes TEXT,
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+    userId TEXT PRIMARY KEY,
+    companyData TEXT, -- JSON string
+    accountSettings TEXT, -- JSON string
+    invoiceSettings TEXT -- JSON string
+  );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+    id TEXT PRIMARY KEY,
+    basicInfo TEXT NOT NULL, -- JSON string
+    fleetDetails TEXT NOT NULL, -- JSON string
+    maintenance TEXT NOT NULL, -- JSON string
+    leasing TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+    id TEXT PRIMARY KEY,
+    employeeNumber TEXT NOT NULL,
+    personalData TEXT NOT NULL, -- JSON string
+    bankDetails TEXT NOT NULL, -- JSON string
+    employment TEXT NOT NULL, -- JSON string
+    additionalInfo TEXT, -- JSON string
+    weeklySchedule TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    avatar TEXT, -- Base64
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    date TEXT NOT NULL,
+    startTime TEXT,
+    endTime TEXT,
+    duration INTEGER,
+    type TEXT,
+    projectId TEXT,
+    serviceId TEXT,
+    description TEXT,
+    userId TEXT,
+    createdAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    month TEXT NOT NULL,
+    status TEXT,
+    finalizedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+    id TEXT PRIMARY KEY,
+    task TEXT NOT NULL,
+    completed INTEGER DEFAULT 0,
+    priority TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    startDate TEXT NOT NULL,
+    endDate TEXT NOT NULL,
+    isAllDay INTEGER DEFAULT 0,
+    type TEXT,
+    color TEXT,
+    location TEXT,
+    attendees TEXT, -- JSON string
+    projectId TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    price REAL,
+    unit TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    passwordHash TEXT NOT NULL,
+    name TEXT,
+    role TEXT DEFAULT 'user',
+    isVerified INTEGER DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+    id TEXT PRIMARY KEY,
+    userId TEXT,
+    token TEXT,
+    type TEXT,
+    expiresAt INTEGER,
+    createdAt TEXT
+  );
+[SQL] SELECT * FROM settings WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM settings WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[2026-02-04T17:07:47.938Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[DEBUG] Node Version: v24.12.0, Arch: x64
+[2026-02-04T17:07:47.939Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    customerId TEXT,
+    description TEXT,
+    status TEXT,
+    address TEXT, -- JSON string
+    startDate TEXT,
+    endDate TEXT,
+    budget REAL,
+    paymentPlan TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    address TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    invoiceNumber TEXT NOT NULL,
+    customerId TEXT,
+    projectId TEXT,
+    billingType TEXT,
+    issueDate TEXT,
+    items TEXT, -- JSON string
+    subtotal REAL,
+    taxRate REAL,
+    taxAmount REAL,
+    totalAmount REAL,
+    status TEXT,
+    paymentTerms TEXT,
+    perfFrom TEXT,
+    perfTo TEXT,
+    processor TEXT,
+    subjectExtra TEXT,
+    partialPaymentNumber INTEGER,
+    previousInvoices TEXT, -- JSON string
+    dunningLevel INTEGER DEFAULT 0,
+    lastDunningDate TEXT,
+    dunningHistory TEXT, -- JSON string
+    paidAmount REAL DEFAULT 0,
+    paymentDeviation TEXT, -- JSON string
+    notes TEXT,
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+    userId TEXT PRIMARY KEY,
+    companyData TEXT, -- JSON string
+    accountSettings TEXT, -- JSON string
+    invoiceSettings TEXT -- JSON string
+  );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+    id TEXT PRIMARY KEY,
+    basicInfo TEXT NOT NULL, -- JSON string
+    fleetDetails TEXT NOT NULL, -- JSON string
+    maintenance TEXT NOT NULL, -- JSON string
+    leasing TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+    id TEXT PRIMARY KEY,
+    employeeNumber TEXT NOT NULL,
+    personalData TEXT NOT NULL, -- JSON string
+    bankDetails TEXT NOT NULL, -- JSON string
+    employment TEXT NOT NULL, -- JSON string
+    additionalInfo TEXT, -- JSON string
+    weeklySchedule TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    avatar TEXT, -- Base64
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    date TEXT NOT NULL,
+    startTime TEXT,
+    endTime TEXT,
+    duration INTEGER,
+    type TEXT,
+    projectId TEXT,
+    serviceId TEXT,
+    description TEXT,
+    userId TEXT,
+    createdAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    month TEXT NOT NULL,
+    status TEXT,
+    finalizedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+    id TEXT PRIMARY KEY,
+    task TEXT NOT NULL,
+    completed INTEGER DEFAULT 0,
+    priority TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    startDate TEXT NOT NULL,
+    endDate TEXT NOT NULL,
+    isAllDay INTEGER DEFAULT 0,
+    type TEXT,
+    color TEXT,
+    location TEXT,
+    attendees TEXT, -- JSON string
+    projectId TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    price REAL,
+    unit TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    passwordHash TEXT NOT NULL,
+    name TEXT,
+    role TEXT DEFAULT 'user',
+    isVerified INTEGER DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+    id TEXT PRIMARY KEY,
+    userId TEXT,
+    token TEXT,
+    type TEXT,
+    expiresAt INTEGER,
+    createdAt TEXT
+  );
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[2026-02-04T17:07:50.053Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[DEBUG] Node Version: v24.12.0, Arch: x64
+[2026-02-04T17:07:50.054Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    customerId TEXT,
+    description TEXT,
+    status TEXT,
+    address TEXT, -- JSON string
+    startDate TEXT,
+    endDate TEXT,
+    budget REAL,
+    paymentPlan TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    address TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    invoiceNumber TEXT NOT NULL,
+    customerId TEXT,
+    projectId TEXT,
+    billingType TEXT,
+    issueDate TEXT,
+    items TEXT, -- JSON string
+    subtotal REAL,
+    taxRate REAL,
+    taxAmount REAL,
+    totalAmount REAL,
+    status TEXT,
+    paymentTerms TEXT,
+    perfFrom TEXT,
+    perfTo TEXT,
+    processor TEXT,
+    subjectExtra TEXT,
+    partialPaymentNumber INTEGER,
+    previousInvoices TEXT, -- JSON string
+    dunningLevel INTEGER DEFAULT 0,
+    lastDunningDate TEXT,
+    dunningHistory TEXT, -- JSON string
+    paidAmount REAL DEFAULT 0,
+    paymentDeviation TEXT, -- JSON string
+    notes TEXT,
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+    userId TEXT PRIMARY KEY,
+    companyData TEXT, -- JSON string
+    accountSettings TEXT, -- JSON string
+    invoiceSettings TEXT -- JSON string
+  );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+    id TEXT PRIMARY KEY,
+    basicInfo TEXT NOT NULL, -- JSON string
+    fleetDetails TEXT NOT NULL, -- JSON string
+    maintenance TEXT NOT NULL, -- JSON string
+    leasing TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+    id TEXT PRIMARY KEY,
+    employeeNumber TEXT NOT NULL,
+    personalData TEXT NOT NULL, -- JSON string
+    bankDetails TEXT NOT NULL, -- JSON string
+    employment TEXT NOT NULL, -- JSON string
+    additionalInfo TEXT, -- JSON string
+    weeklySchedule TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    avatar TEXT, -- Base64
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    date TEXT NOT NULL,
+    startTime TEXT,
+    endTime TEXT,
+    duration INTEGER,
+    type TEXT,
+    projectId TEXT,
+    serviceId TEXT,
+    description TEXT,
+    userId TEXT,
+    createdAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    month TEXT NOT NULL,
+    status TEXT,
+    finalizedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+    id TEXT PRIMARY KEY,
+    task TEXT NOT NULL,
+    completed INTEGER DEFAULT 0,
+    priority TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    startDate TEXT NOT NULL,
+    endDate TEXT NOT NULL,
+    isAllDay INTEGER DEFAULT 0,
+    type TEXT,
+    color TEXT,
+    location TEXT,
+    attendees TEXT, -- JSON string
+    projectId TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    price REAL,
+    unit TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    passwordHash TEXT NOT NULL,
+    name TEXT,
+    role TEXT DEFAULT 'user',
+    isVerified INTEGER DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+    id TEXT PRIMARY KEY,
+    userId TEXT,
+    token TEXT,
+    type TEXT,
+    expiresAt INTEGER,
+    createdAt TEXT
+  );
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM projects WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM projects WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM calendar_events WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM todos WHERE userId = 'pVS6d40rc8T9XFyx5kbh-' ORDER BY createdAt DESC
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM calendar_events WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM todos WHERE userId = 'pVS6d40rc8T9XFyx5kbh-' ORDER BY createdAt DESC
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT id FROM todos WHERE id = 'bpt938jgn'
+[SQL] INSERT INTO todos (id, task, completed, priority, createdAt, userId) VALUES ('bpt938jgn', 'test test', 0.0, 'medium', '2026-02-04T17:07:58.055Z', 'pVS6d40rc8T9XFyx5kbh-')
+[SQL] SELECT * FROM projects WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM projects WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM todos WHERE userId = 'pVS6d40rc8T9XFyx5kbh-' ORDER BY createdAt DESC
+[SQL] SELECT * FROM calendar_events WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM todos WHERE userId = 'pVS6d40rc8T9XFyx5kbh-' ORDER BY createdAt DESC
+[SQL] SELECT * FROM calendar_events WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[2026-02-04T17:08:03.527Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[DEBUG] Node Version: v24.12.0, Arch: x64
+[2026-02-04T17:08:03.527Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    customerId TEXT,
+    description TEXT,
+    status TEXT,
+    address TEXT, -- JSON string
+    startDate TEXT,
+    endDate TEXT,
+    budget REAL,
+    paymentPlan TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    address TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    invoiceNumber TEXT NOT NULL,
+    customerId TEXT,
+    projectId TEXT,
+    billingType TEXT,
+    issueDate TEXT,
+    items TEXT, -- JSON string
+    subtotal REAL,
+    taxRate REAL,
+    taxAmount REAL,
+    totalAmount REAL,
+    status TEXT,
+    paymentTerms TEXT,
+    perfFrom TEXT,
+    perfTo TEXT,
+    processor TEXT,
+    subjectExtra TEXT,
+    partialPaymentNumber INTEGER,
+    previousInvoices TEXT, -- JSON string
+    dunningLevel INTEGER DEFAULT 0,
+    lastDunningDate TEXT,
+    dunningHistory TEXT, -- JSON string
+    paidAmount REAL DEFAULT 0,
+    paymentDeviation TEXT, -- JSON string
+    notes TEXT,
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+    userId TEXT PRIMARY KEY,
+    companyData TEXT, -- JSON string
+    accountSettings TEXT, -- JSON string
+    invoiceSettings TEXT -- JSON string
+  );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+    id TEXT PRIMARY KEY,
+    basicInfo TEXT NOT NULL, -- JSON string
+    fleetDetails TEXT NOT NULL, -- JSON string
+    maintenance TEXT NOT NULL, -- JSON string
+    leasing TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+    id TEXT PRIMARY KEY,
+    employeeNumber TEXT NOT NULL,
+    personalData TEXT NOT NULL, -- JSON string
+    bankDetails TEXT NOT NULL, -- JSON string
+    employment TEXT NOT NULL, -- JSON string
+    additionalInfo TEXT, -- JSON string
+    weeklySchedule TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    avatar TEXT, -- Base64
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    date TEXT NOT NULL,
+    startTime TEXT,
+    endTime TEXT,
+    duration INTEGER,
+    type TEXT,
+    projectId TEXT,
+    serviceId TEXT,
+    description TEXT,
+    userId TEXT,
+    createdAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    month TEXT NOT NULL,
+    status TEXT,
+    finalizedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+    id TEXT PRIMARY KEY,
+    task TEXT NOT NULL,
+    completed INTEGER DEFAULT 0,
+    priority TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    startDate TEXT NOT NULL,
+    endDate TEXT NOT NULL,
+    isAllDay INTEGER DEFAULT 0,
+    type TEXT,
+    color TEXT,
+    location TEXT,
+    attendees TEXT, -- JSON string
+    projectId TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    price REAL,
+    unit TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    passwordHash TEXT NOT NULL,
+    name TEXT,
+    role TEXT DEFAULT 'user',
+    isVerified INTEGER DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+    id TEXT PRIMARY KEY,
+    userId TEXT,
+    token TEXT,
+    type TEXT,
+    expiresAt INTEGER,
+    createdAt TEXT
+  );
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[2026-02-04T17:08:04.541Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[DEBUG] Node Version: v24.12.0, Arch: x64
+[2026-02-04T17:08:04.542Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    customerId TEXT,
+    description TEXT,
+    status TEXT,
+    address TEXT, -- JSON string
+    startDate TEXT,
+    endDate TEXT,
+    budget REAL,
+    paymentPlan TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    address TEXT, -- JSON string
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    invoiceNumber TEXT NOT NULL,
+    customerId TEXT,
+    projectId TEXT,
+    billingType TEXT,
+    issueDate TEXT,
+    items TEXT, -- JSON string
+    subtotal REAL,
+    taxRate REAL,
+    taxAmount REAL,
+    totalAmount REAL,
+    status TEXT,
+    paymentTerms TEXT,
+    perfFrom TEXT,
+    perfTo TEXT,
+    processor TEXT,
+    subjectExtra TEXT,
+    partialPaymentNumber INTEGER,
+    previousInvoices TEXT, -- JSON string
+    dunningLevel INTEGER DEFAULT 0,
+    lastDunningDate TEXT,
+    dunningHistory TEXT, -- JSON string
+    paidAmount REAL DEFAULT 0,
+    paymentDeviation TEXT, -- JSON string
+    notes TEXT,
+    createdAt TEXT,
+    updatedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+    userId TEXT PRIMARY KEY,
+    companyData TEXT, -- JSON string
+    accountSettings TEXT, -- JSON string
+    invoiceSettings TEXT -- JSON string
+  );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+    id TEXT PRIMARY KEY,
+    basicInfo TEXT NOT NULL, -- JSON string
+    fleetDetails TEXT NOT NULL, -- JSON string
+    maintenance TEXT NOT NULL, -- JSON string
+    leasing TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+    id TEXT PRIMARY KEY,
+    employeeNumber TEXT NOT NULL,
+    personalData TEXT NOT NULL, -- JSON string
+    bankDetails TEXT NOT NULL, -- JSON string
+    employment TEXT NOT NULL, -- JSON string
+    additionalInfo TEXT, -- JSON string
+    weeklySchedule TEXT, -- JSON string
+    documents TEXT, -- JSON string
+    avatar TEXT, -- Base64
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    date TEXT NOT NULL,
+    startTime TEXT,
+    endTime TEXT,
+    duration INTEGER,
+    type TEXT,
+    projectId TEXT,
+    serviceId TEXT,
+    description TEXT,
+    userId TEXT,
+    createdAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+    id TEXT PRIMARY KEY,
+    employeeId TEXT NOT NULL,
+    month TEXT NOT NULL,
+    status TEXT,
+    finalizedAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+    id TEXT PRIMARY KEY,
+    task TEXT NOT NULL,
+    completed INTEGER DEFAULT 0,
+    priority TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    startDate TEXT NOT NULL,
+    endDate TEXT NOT NULL,
+    isAllDay INTEGER DEFAULT 0,
+    type TEXT,
+    color TEXT,
+    location TEXT,
+    attendees TEXT, -- JSON string
+    projectId TEXT,
+    createdAt TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    price REAL,
+    unit TEXT,
+    userId TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    passwordHash TEXT NOT NULL,
+    name TEXT,
+    role TEXT DEFAULT 'user',
+    isVerified INTEGER DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT
+  );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+    id TEXT PRIMARY KEY,
+    userId TEXT,
+    token TEXT,
+    type TEXT,
+    expiresAt INTEGER,
+    createdAt TEXT
+  );
+[SQL] SELECT * FROM vehicles WHERE userId = 'pVS6d40rc8T9XFyx5kbh-' ORDER BY createdAt DESC
+[SQL] SELECT * FROM vehicles WHERE userId = 'pVS6d40rc8T9XFyx5kbh-' ORDER BY createdAt DESC
+[SQL] SELECT * FROM settings WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM settings WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM calendar_events WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM todos WHERE userId = 'pVS6d40rc8T9XFyx5kbh-' ORDER BY createdAt DESC
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM calendar_events WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM invoices WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'
+[SQL] SELECT * FROM todos WHERE userId = 'pVS6d40rc8T9XFyx5kbh-' ORDER BY createdAt DESC
+[SQL] SELECT * FROM customers WHERE userId = 'pVS6d40rc8T9XFyx5kbh-'

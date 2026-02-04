@@ -46,6 +46,8 @@ async function createWindow() {
         try {
             const port = 3000;
             const appPath = app.getAppPath();
+            console.log(`[SERVER] Starting Next.js server from path: ${appPath}`);
+
             const nextApp = next({
                 dev: false,
                 dir: appPath,
@@ -55,19 +57,25 @@ async function createWindow() {
             });
             const handle = nextApp.getRequestHandler();
 
+            console.log('[SERVER] Preparing Next.js app...');
             await nextApp.prepare();
+            console.log('[SERVER] Next.js app prepared.');
 
             createServer((req, res) => {
                 const parsedUrl = parse(req.url, true);
                 handle(req, res, parsedUrl);
             }).listen(port, (err) => {
                 if (err) throw err;
-                console.log(`> Ready on http://localhost:${port}`);
+                console.log(`[SERVER] Ready on http://localhost:${port}`);
             });
 
             mainWindow.loadURL(`http://localhost:${port}`);
         } catch (err) {
-            console.error('Failed to start Next.js server:', err);
+            console.error('[SERVER] CRITICAL: Failed to start Next.js server:', err);
+            // Show error in window if possible
+            if (mainWindow) {
+                mainWindow.loadURL(`data:text/html,<h1>Server Error</h1><pre>${err.stack}</pre>`);
+            }
         }
     }
 
