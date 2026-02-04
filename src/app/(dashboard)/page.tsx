@@ -8,7 +8,8 @@ import {
   Clock,
   Users,
   FileText,
-  Briefcase
+  Briefcase,
+  LifeBuoy
 } from "lucide-react";
 import Link from "next/link";
 import { RealtimeClock } from "@/components/RealtimeClock";
@@ -177,6 +178,9 @@ export default function Home() {
               <Link href="/settings" className="bg-white/15 backdrop-blur-xl text-white border-2 border-white/30 px-10 py-5 rounded-2xl font-bold text-lg flex items-center gap-3 hover:bg-white/25 transition-all hover:scale-105 active:scale-95">
                 <Settings className="h-5 w-5" /> Einstellungen
               </Link>
+              <a href="mailto:elsword.ie@gmail.com" className="bg-orange-500/20 backdrop-blur-xl text-orange-400 border-2 border-orange-500/30 px-10 py-5 rounded-2xl font-bold text-lg flex items-center gap-3 hover:bg-orange-500/30 transition-all hover:scale-105 active:scale-95">
+                <LifeBuoy className="h-5 w-5" /> Support kontaktieren
+              </a>
             </div>
           </div>
         </div>

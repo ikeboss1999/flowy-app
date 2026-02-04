@@ -1,6 +1,6 @@
 {
   "name": "flowy",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "private": true,
   "description": "FlowY Construction Management Desktop Application",
   "main": "electron/main.js",
@@ -12,9 +12,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "fix-dev": "npm rebuild better-sqlite3",
     "electron-dev": "concurrently \"npm run dev -- -p 3001\" \"ping 127.0.0.1 -n 11 > nul && electron .\"",
-    "electron-build": "next build && electron-builder",
-    "electron-publish": "next build && electron-builder --publish always"
+    "electron-build": "npm run rebuild && next build && electron-builder",
+    "electron-publish": "npm run rebuild && next build && electron-builder --publish always"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -43,6 +45,7 @@
     "concurrently": "^9.2.1",
     "electron": "^31.0.0",
     "electron-builder": "^25.1.8",
+    "@electron/rebuild": "^3.6.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.16",
     "postcss": "^8",
@@ -84,6 +87,9 @@
       "createStartMenuShortcut": true,
       "shortcutName": "FlowY"
     },
-    "asar": false
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/better-sqlite3"
+    ]
   }
 }

@@ -31,33 +31,63 @@ interface MenuItem {
     children?: MenuItem[];
 }
 
-const menuItems: MenuItem[] = [
-    { icon: LayoutDashboard, label: "Welcome", href: "/" },
-    { icon: BarChart3, label: "Übersicht", href: "/dashboard" },
+interface MenuGroup {
+    title: string;
+    items: MenuItem[];
+}
+
+const menuGroups: MenuGroup[] = [
     {
-        icon: FileText,
-        label: "Rechnungen",
-        children: [
-            { icon: PlusCircle, label: "Neue Rechnung", href: "/invoices/new" },
-            { icon: FileText, label: "Rechnungsarchiv", href: "/invoices" },
-            { icon: AlertTriangle, label: "Mahnungen", href: "/invoices/dunning" },
+        title: "Übersicht",
+        items: [
+            { icon: LayoutDashboard, label: "Welcome", href: "/" },
+            { icon: BarChart3, label: "Übersicht", href: "/dashboard" },
         ]
     },
-    { icon: Briefcase, label: "Projekte", href: "/projects" },
-    { icon: Wrench, label: "Leistungen", href: "/services" },
-    { icon: Users, label: "Kunden", href: "/customers" },
-    { icon: UserSquare2, label: "Mitarbeiter", href: "/employees" },
     {
-        icon: Clock,
-        label: "Zeiterfassung",
-        children: [
-            { icon: Plus, label: "Zeiten erfassen", href: "/time-tracking" },
-            { icon: FileText, label: "Zeit-Archiv", href: "/time-tracking/archive" },
+        title: "Kerngeschäft",
+        items: [
+            { icon: Wrench, label: "Leistungen", href: "/services" },
+            { icon: Users, label: "Kunden", href: "/customers" },
+            { icon: UserSquare2, label: "Mitarbeiter", href: "/employees" },
+            { icon: Car, label: "Fahrzeuge", href: "/vehicles" },
         ]
     },
-    { icon: BarChart3, label: "Auswertungen", href: "/reports" },
-    { icon: Car, label: "Fahrzeuge", href: "/vehicles" },
-    { icon: Settings, label: "Einstellungen", href: "/settings" },
+    {
+        title: "Ausführung",
+        items: [
+            { icon: Briefcase, label: "Projekte", href: "/projects" },
+            {
+                icon: Clock,
+                label: "Zeiterfassung",
+                children: [
+                    { icon: Plus, label: "Zeiten erfassen", href: "/time-tracking" },
+                    { icon: FileText, label: "Zeit-Archiv", href: "/time-tracking/archive" },
+                ]
+            },
+        ]
+    },
+    {
+        title: "Buchhaltung",
+        items: [
+            {
+                icon: FileText,
+                label: "Rechnungen",
+                children: [
+                    { icon: PlusCircle, label: "Neue Rechnung", href: "/invoices/new" },
+                    { icon: FileText, label: "Rechnungsarchiv", href: "/invoices" },
+                    { icon: AlertTriangle, label: "Mahnungen", href: "/invoices/dunning" },
+                ]
+            },
+            { icon: BarChart3, label: "Auswertungen", href: "/reports" },
+        ]
+    },
+    {
+        title: "System",
+        items: [
+            { icon: Settings, label: "Einstellungen", href: "/settings" },
+        ]
+    }
 ];
 
 export function Sidebar() {
@@ -87,7 +117,7 @@ export function Sidebar() {
                     <button
                         onClick={() => toggleExpand(item.label)}
                         className={cn(
-                            "flex items-center justify-between w-full gap-4 px-5 py-4 rounded-2xl transition-all duration-300 group text-base font-bold",
+                            "flex items-center justify-between w-full gap-4 px-5 py-3 rounded-2xl transition-all duration-300 group text-sm font-bold",
                             isParentActive
                                 ? "bg-white/10 text-white"
                                 : "hover:bg-white/5 text-sidebar-foreground/60 hover:text-white"
@@ -95,13 +125,13 @@ export function Sidebar() {
                     >
                         <div className="flex items-center gap-4">
                             <Icon className={cn(
-                                "h-6 w-6 transition-all duration-300",
+                                "h-5 w-5 transition-all duration-300",
                                 isParentActive ? "text-white scale-110" : "group-hover:text-white group-hover:scale-110"
                             )} />
                             {item.label}
                         </div>
                         <ChevronDown className={cn(
-                            "h-4 w-4 transition-transform duration-300",
+                            "h-3 w-3 transition-transform duration-300",
                             isExpanded ? "rotate-180" : ""
                         )} />
                     </button>
@@ -136,12 +166,12 @@ export function Sidebar() {
     };
 
     return (
-        <aside className="fixed left-0 top-0 h-screen w-80 bg-sidebar text-sidebar-foreground border-r border-white/5 flex flex-col p-6 overflow-y-auto">
+        <aside className="fixed left-0 top-0 h-screen w-80 bg-sidebar text-sidebar-foreground border-r border-white/5 flex flex-col p-6 overflow-y-auto custom-scrollbar">
             <div className="flex flex-col items-center justify-center gap-4 px-3 py-8 mb-8 text-center">
                 <img src="/logo.png" alt="Logo" className="h-16 w-16 object-contain bg-white/10 rounded-2xl p-1" />
                 <div className="flex flex-col items-center">
                     <span className="font-black text-2xl text-white tracking-tight leading-none break-words">
-                        {companySettings.companyName || "FlowY"}
+                        {companySettings?.companyName || "FlowY"}
                     </span>
                     <span className="text-[10px] text-white/40 uppercase font-black tracking-widest mt-1">
                         Professional
@@ -149,8 +179,17 @@ export function Sidebar() {
                 </div>
             </div>
 
-            <nav className="flex-1 space-y-2">
-                {menuItems.map(item => renderMenuItem(item))}
+            <nav className="flex-1 space-y-8">
+                {menuGroups.map((group) => (
+                    <div key={group.title} className="space-y-2">
+                        <div className="px-5 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">
+                            {group.title}
+                        </div>
+                        <div className="space-y-1">
+                            {group.items.map(item => renderMenuItem(item))}
+                        </div>
+                    </div>
+                ))}
             </nav>
 
             <div className="mt-12 border-t border-white/10 pt-8 pb-4">
