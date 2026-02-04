@@ -86,13 +86,45 @@ app.whenReady().then(async () => {
     await createWindow();
 });
 
+// Helper to send status to renderer
+function sendStatusToWindow(status, data = null) {
+    if (mainWindow) {
+        mainWindow.webContents.send('update-status', status, data);
+    }
+}
+
 // Update events
-autoUpdater.on('update-available', () => {
-    console.log('Update available.');
+autoUpdater.on('checking-for-update', () => {
+    console.log('[UPDATER] Checking for updates...');
+    sendStatusToWindow('checking');
 });
 
-autoUpdater.on('update-downloaded', () => {
-    console.log('Update downloaded; will install on quit');
+autoUpdater.on('update-available', (info) => {
+    console.log('[UPDATER] Update available:', info);
+    sendStatusToWindow('available', info);
+});
+
+autoUpdater.on('update-not-available', (info) => {
+    console.log('[UPDATER] Update not available.', info);
+    sendStatusToWindow('not-available', info);
+});
+
+autoUpdater.on('error', (err) => {
+    console.error('[UPDATER] Error in auto-updater:', err);
+    sendStatusToWindow('error', err.toString());
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+    let log_message = "Download speed: " + progressObj.bytesPerSecond;
+    log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
+    log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
+    console.log(log_message);
+    sendStatusToWindow('progress', progressObj);
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+    console.log('[UPDATER] Update downloaded:', info);
+    sendStatusToWindow('downloaded', info);
 });
 
 app.on('window-all-closed', () => {
@@ -110,4 +142,20 @@ app.on('activate', () => {
 // IPC handlers
 ipcMain.handle('get-app-version', () => {
     return app.getVersion();
+});
+
+ipcMain.handle('check-for-updates', () => {
+    if (!isDev) {
+        return autoUpdater.checkForUpdates();
+    } else {
+        // Mock for dev
+        console.log('[UPDATER] Dev mode: Mocking check for updates');
+        sendStatusToWindow('checking');
+        setTimeout(() => sendStatusToWindow('not-available', { version: '1.0.0 (Dev)' }), 2000);
+        return null;
+    }
+});
+
+ipcMain.handle('quit-and-install', () => {
+    autoUpdater.quitAndInstall();
 });

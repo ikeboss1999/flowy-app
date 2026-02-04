@@ -1641,3 +1641,111 @@
 [SQL] SELECT * FROM settings WHERE userId = 'C0Ts8YqyuZaE0Rud2WNun'
 [SQL] SELECT * FROM settings WHERE userId = 'C0Ts8YqyuZaE0Rud2WNun'
 [SQL] SELECT * FROM settings WHERE userId = 'C0Ts8YqyuZaE0Rud2WNun'
+[2026-02-04T13:21:31.859Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:21:31.869Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:21:31.881Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:21:31.883Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:21:31.889Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:21:31.892Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:21:31.897Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:21:31.899Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:21:31.905Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:21:31.906Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:21:33.244Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:21:33.246Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:21:33.252Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:21:33.254Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:21:33.263Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:21:33.264Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:21:33.270Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:21:33.271Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:21:33.287Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:21:33.289Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:21:34.173Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:21:34.175Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:21:34.219Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:21:34.221Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:22:23.316Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:22:23.318Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:22:23.348Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:22:23.350Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:22:23.372Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:22:23.374Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:22:23.395Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:22:23.397Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:22:23.425Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:22:23.427Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+[2026-02-04T13:22:23.450Z] Attempting to open DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-04T13:22:23.452Z] CRITICAL: Failed to open DB: Error: The module '\\?\C:\Users\rbg19\Desktop\FlowY\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
