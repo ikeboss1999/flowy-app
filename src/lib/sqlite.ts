@@ -12,22 +12,37 @@ if (!fs.existsSync(dbDir)) {
 const dbPath = path.join(dbDir, 'flowy.db');
 const logPath = path.join(dbDir, 'sqlite_debug.log');
 
+const errorLogPath = path.join(dbDir, 'SQLITE_CRITICAL_ERROR.txt');
+
 let db: Database.Database;
 
 try {
+  // Clear previous error log if exists
+  if (fs.existsSync(errorLogPath)) {
+    try { fs.unlinkSync(errorLogPath); } catch (e) { /* ignore */ }
+  }
+
+  // Attempt to open DB
   fs.appendFileSync(logPath, `[${new Date().toISOString()}] Attempting to open DB at ${dbPath}\n`);
+  // Log module path/version for debug
+  fs.appendFileSync(logPath, `[DEBUG] Node Version: ${process.version}, Arch: ${process.arch}\n`);
+
   db = new Database(dbPath, { verbose: (msg) => fs.appendFileSync(logPath, `[SQL] ${msg}\n`) });
   fs.appendFileSync(logPath, `[${new Date().toISOString()}] DB Opened Successfully\n`);
-} catch (e) {
-  const errorMsg = `[${new Date().toISOString()}] CRITICAL: Failed to open DB: ${e}\n`;
-  // Try to write to a fallback location if main fails
-  try {
-    if (fs.existsSync(dbDir)) fs.appendFileSync(logPath, errorMsg);
-  } catch (err) {
-    // helplessness
-  }
+
+} catch (e: any) {
+  const errorMsg = `[${new Date().toISOString()}] CRITICAL: Failed to open DB: ${e.message}\nSTACK: ${e.stack}\n`;
   console.error(errorMsg);
-  // Re-throw so app knows it failed, but maybe we want to fallback?
+
+  // Force write to error file
+  try {
+    if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
+    fs.writeFileSync(errorLogPath, errorMsg);
+  } catch (writeErr) {
+    console.error("Failed to write error log:", writeErr);
+  }
+
+  // Re-throw is dangerous if it crashes the main process, but needed for API to fail
   throw e;
 }
 
