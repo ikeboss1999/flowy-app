@@ -147,9 +147,11 @@ export default function RegisterPage() {
                     <div className="flex justify-center gap-8 text-[11px] text-white/20 uppercase font-black tracking-[0.3em]">
                         <span>Secure SSL</span>
                         <span>•</span>
-                        <span>Made in Germany</span>
+                        <span>Made in Austria</span>
                         <span>•</span>
-                        <span>v2.0 Professional</span>
+                        <span>FlowY - Entwickelt von Ilhan Etovic</span>
+                        <span>•</span>
+                        <span>v{process.env.NEXT_PUBLIC_APP_VERSION || "1.0.3"}</span>
                     </div>
                 </div>
             </div>

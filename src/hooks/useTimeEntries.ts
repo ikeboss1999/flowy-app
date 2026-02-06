@@ -73,31 +73,39 @@ export function useTimeEntries() {
     }, [user, authLoading]);
 
     const addEntry = async (entry: TimeEntry) => {
-        if (!user) return;
+        if (!user) throw new Error("User not authenticated");
         const newEntry = { ...entry, userId: user.id };
         try {
-            await fetch('/api/time-entries', {
+            const res = await fetch('/api/time-entries', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, entry: newEntry })
             });
+            if (!res.ok) throw new Error("Failed to save entry");
             setEntries(prev => [newEntry, ...prev]);
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
     };
 
     const updateEntry = async (id: string, updates: Partial<TimeEntry>) => {
-        if (!user) return;
+        if (!user) throw new Error("User not authenticated");
         const entry = entries.find(e => e.id === id);
-        if (!entry) return;
+        if (!entry) throw new Error("Entry not found");
         const updated = { ...entry, ...updates };
         try {
-            await fetch('/api/time-entries', {
+            const res = await fetch('/api/time-entries', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, entry: updated })
             });
+            if (!res.ok) throw new Error("Failed to update entry");
             setEntries(prev => prev.map(e => e.id === id ? updated : e));
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
     };
 
     const deleteEntry = async (id: string) => {

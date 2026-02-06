@@ -30,6 +30,7 @@ interface EmployeeModalProps {
     onClose: () => void;
     onSave: (employee: Employee) => void;
     initialEmployee?: Employee;
+    getNextNumber?: () => string;
 }
 
 const TABS = [
@@ -58,7 +59,7 @@ const EUROPEAN_COUNTRIES = [
     "Spanien", "Tschechien", "Türkei", "Ukraine", "Ungarn", "Vatikanstadt", "Vereinigtes Königreich"
 ];
 
-export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee }: EmployeeModalProps) {
+export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNextNumber }: EmployeeModalProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState("personal");
     const [previewDoc, setPreviewDoc] = useState<EmployeeDocument | null>(null);
@@ -113,9 +114,10 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee }: Empl
         if (initialEmployee) {
             setFormData(initialEmployee);
         } else {
+            const nextNum = getNextNumber ? getNextNumber() : "";
             setFormData({
                 id: Math.random().toString(36).substr(2, 9),
-                employeeNumber: "",
+                employeeNumber: nextNum,
                 personalData: {
                     firstName: "",
                     lastName: "",

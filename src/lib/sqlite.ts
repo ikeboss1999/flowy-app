@@ -144,6 +144,8 @@ function initSchema(db: Database.Database) {
             startTime TEXT,
             endTime TEXT,
             duration INTEGER,
+            overtime REAL,
+            location TEXT,
             type TEXT,
             projectId TEXT,
             serviceId TEXT,
@@ -216,6 +218,21 @@ function initSchema(db: Database.Database) {
             createdAt TEXT
         );
     `);
+
+  // Migrations
+  try {
+    const columns = db.prepare("PRAGMA table_info(time_entries)").all();
+    const columnNames = columns.map((c: any) => c.name);
+
+    if (!columnNames.includes('overtime')) {
+      db.prepare("ALTER TABLE time_entries ADD COLUMN overtime REAL").run();
+    }
+    if (!columnNames.includes('location')) {
+      db.prepare("ALTER TABLE time_entries ADD COLUMN location TEXT").run();
+    }
+  } catch (e) {
+    console.error("Migration failed", e);
+  }
 }
 
 // Proxy wrapper

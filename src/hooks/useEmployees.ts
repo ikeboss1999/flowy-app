@@ -109,5 +109,24 @@ export function useEmployees() {
         }
     };
 
-    return { employees, addEmployee, updateEmployee, deleteEmployee, isLoading: isLoading || authLoading };
+    const getNextEmployeeNumber = () => {
+        const numbers = employees
+            .map(e => {
+                const n = parseInt(e.employeeNumber);
+                return isNaN(n) ? 0 : n;
+            })
+            .filter(n => n > 0);
+
+        const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 1000;
+        return (maxNumber + 1).toString();
+    };
+
+    return {
+        employees,
+        addEmployee,
+        updateEmployee,
+        deleteEmployee,
+        getNextEmployeeNumber,
+        isLoading: isLoading || authLoading
+    };
 }

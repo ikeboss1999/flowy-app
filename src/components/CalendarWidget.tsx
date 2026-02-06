@@ -10,7 +10,11 @@ import {
     Trash2,
     CalendarDays,
     LayoutGrid,
-    Search
+    Search,
+    Maximize2,
+    Minimize2,
+    ChevronUp,
+    ChevronDown as ChevronDownIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
@@ -27,6 +31,8 @@ export function CalendarWidget() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<CalendarEvent | undefined>(undefined);
     const [selectedHour, setSelectedHour] = useState<string | undefined>(undefined);
+    const [isMinimized, setIsMinimized] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     const monthNames = [
         "Januar", "Februar", "März", "April", "Mai", "Juni",
@@ -322,7 +328,11 @@ export function CalendarWidget() {
     };
 
     return (
-        <div className="glass-card p-12 space-y-12 group hover:border-indigo-500/30 transition-all duration-500 flex flex-col animate-in fade-in slide-in-from-bottom-5 duration-700">
+        <div className={cn(
+            "glass-card p-12 space-y-12 group transition-all duration-500 flex flex-col animate-in fade-in slide-in-from-bottom-5 duration-700",
+            isFullscreen ? "fixed inset-0 z-[100] bg-white rounded-none border-0 overflow-y-auto" : "hover:border-indigo-500/30",
+            isMinimized && !isFullscreen && "p-8 space-y-0"
+        )}>
             {/* Header Toolbar */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
                 <div className="flex items-center gap-5">
@@ -341,69 +351,93 @@ export function CalendarWidget() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4">
-                    {/* Navigation */}
+                    {/* View Controls (Minimize/Fullscreen) */}
                     <div className="flex items-center bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
-                        <button onClick={handlePrev} className="p-2.5 hover:bg-white hover:shadow-md rounded-[1rem] transition-all text-slate-600">
-                            <ChevronLeft className="h-5 w-5" />
+                        <button
+                            onClick={() => setIsMinimized(!isMinimized)}
+                            title={isMinimized ? "Maximieren" : "Minimieren"}
+                            className="p-2.5 hover:bg-white hover:shadow-md rounded-[1rem] transition-all text-slate-600"
+                        >
+                            {isMinimized ? <ChevronDownIcon className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
                         </button>
                         <button
-                            onClick={handleToday}
-                            className="px-6 py-2 text-xs font-black text-slate-900 uppercase tracking-widest hover:text-indigo-600 transition-colors"
+                            onClick={() => setIsFullscreen(!isFullscreen)}
+                            title={isFullscreen ? "Fenster verlassen" : "Vollbild"}
+                            className="p-2.5 hover:bg-white hover:shadow-md rounded-[1rem] transition-all text-slate-600"
                         >
-                            Heute
-                        </button>
-                        <button onClick={handleNext} className="p-2.5 hover:bg-white hover:shadow-md rounded-[1rem] transition-all text-slate-600">
-                            <ChevronRight className="h-5 w-5" />
+                            {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
                         </button>
                     </div>
 
-                    {/* View Switcher */}
-                    <div className="flex items-center bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
-                        {[
-                            { id: 'month', label: 'Monat', icon: LayoutGrid },
-                            { id: 'week', label: 'Woche', icon: CalendarDays },
-                            { id: 'day', label: 'Tag', icon: Clock },
-                        ].map((v) => (
+                    {!isMinimized || isFullscreen ? (
+                        <>
+                            {/* Navigation */}
+                            <div className="flex items-center bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+                                <button onClick={handlePrev} className="p-2.5 hover:bg-white hover:shadow-md rounded-[1rem] transition-all text-slate-600">
+                                    <ChevronLeft className="h-5 w-5" />
+                                </button>
+                                <button
+                                    onClick={handleToday}
+                                    className="px-6 py-2 text-xs font-black text-slate-900 uppercase tracking-widest hover:text-indigo-600 transition-colors"
+                                >
+                                    Heute
+                                </button>
+                                <button onClick={handleNext} className="p-2.5 hover:bg-white hover:shadow-md rounded-[1rem] transition-all text-slate-600">
+                                    <ChevronRight className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            {/* View Switcher */}
+                            <div className="flex items-center bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+                                {[
+                                    { id: 'month', label: 'Monat', icon: LayoutGrid },
+                                    { id: 'week', label: 'Woche', icon: CalendarDays },
+                                    { id: 'day', label: 'Tag', icon: Clock },
+                                ].map((v) => (
+                                    <button
+                                        key={v.id}
+                                        onClick={() => setViewType(v.id as ViewType)}
+                                        className={cn(
+                                            "px-6 py-2.5 rounded-[1rem] text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all",
+                                            viewType === v.id
+                                                ? "bg-white text-indigo-600 shadow-xl shadow-indigo-500/10 border border-indigo-100"
+                                                : "text-slate-400 hover:text-slate-600"
+                                        )}
+                                    >
+                                        <v.icon className="h-3.5 w-3.5" />
+                                        {v.label}
+                                    </button>
+                                ))}
+                            </div>
+
                             <button
-                                key={v.id}
-                                onClick={() => setViewType(v.id as ViewType)}
-                                className={cn(
-                                    "px-6 py-2.5 rounded-[1rem] text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all",
-                                    viewType === v.id
-                                        ? "bg-white text-indigo-600 shadow-xl shadow-indigo-500/10 border border-indigo-100"
-                                        : "text-slate-400 hover:text-slate-600"
-                                )}
+                                onClick={() => handleAddEvent()}
+                                className="h-14 px-8 bg-primary-gradient text-white rounded-[1.25rem] flex items-center gap-3 font-black text-sm uppercase tracking-widest shadow-2xl shadow-indigo-500/20 hover:scale-[1.05] active:scale-95 transition-all"
                             >
-                                <v.icon className="h-3.5 w-3.5" />
-                                {v.label}
+                                <Plus className="h-5 w-5" /> Neuer Termin
                             </button>
-                        ))}
-                    </div>
-
-                    <button
-                        onClick={() => handleAddEvent()}
-                        className="h-14 px-8 bg-primary-gradient text-white rounded-[1.25rem] flex items-center gap-3 font-black text-sm uppercase tracking-widest shadow-2xl shadow-indigo-500/20 hover:scale-[1.05] active:scale-95 transition-all"
-                    >
-                        <Plus className="h-5 w-5" /> Neuer Termin
-                    </button>
+                        </>
+                    ) : null}
                 </div>
             </div>
 
             {/* Calendar Content */}
-            <div className="relative">
-                {isLoading && (
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-50 flex items-center justify-center rounded-[3rem]">
-                        <div className="flex flex-col items-center gap-4">
-                            <div className="h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                            <span className="text-sm font-black text-indigo-600 uppercase tracking-widest">Laden...</span>
+            {(!isMinimized || isFullscreen) && (
+                <div className="relative">
+                    {isLoading && (
+                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-50 flex items-center justify-center rounded-[3rem]">
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                                <span className="text-sm font-black text-indigo-600 uppercase tracking-widest">Laden...</span>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {viewType === 'month' && renderMonthView()}
-                {viewType === 'week' && renderWeekView()}
-                {viewType === 'day' && renderDayView()}
-            </div>
+                    {viewType === 'month' && renderMonthView()}
+                    {viewType === 'week' && renderWeekView()}
+                    {viewType === 'day' && renderDayView()}
+                </div>
+            )}
 
             {isModalOpen && (
                 <EventModal

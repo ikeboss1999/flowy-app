@@ -35,7 +35,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 export default function EmployeesPage() {
-    const { employees, addEmployee, updateEmployee, deleteEmployee, isLoading } = useEmployees();
+    const { employees, addEmployee, updateEmployee, deleteEmployee, getNextEmployeeNumber, isLoading } = useEmployees();
     const { data: companySettings } = useCompanySettings();
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState<EmploymentStatus | "all">("all");
@@ -566,6 +566,7 @@ export default function EmployeesPage() {
                 onClose={() => setIsModalOpen(false)}
                 onSave={handleSaveEmployee}
                 initialEmployee={editingEmployee}
+                getNextNumber={getNextEmployeeNumber}
             />
 
             <DocumentPreviewModal

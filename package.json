@@ -1,6 +1,6 @@
 {
   "name": "flowy",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "description": "FlowY Construction Management Desktop Application",
   "main": "electron/main.js",
@@ -67,18 +67,18 @@
       "Logo.png",
       "package.json"
     ],
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "ikeboss1999",
-        "repo": "flowy-app"
-      }
-    ],
     "win": {
       "target": [
         "nsis"
       ],
-      "icon": "Logo.png"
+      "icon": "Logo.png",
+      "publish": [
+        {
+          "provider": "github",
+          "owner": "ikeboss1999",
+          "repo": "flowy-app"
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,

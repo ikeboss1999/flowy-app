@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const { userId, entry } = await request.json();
-        const { id, employeeId, date, startTime, endTime, duration, type, projectId, serviceId, description, createdAt } = entry;
+        const { id, employeeId, date, startTime, endTime, duration, type, projectId, serviceId, description, createdAt, overtime, location } = entry;
 
         const entryId = id || nanoid();
         const existing = db.prepare('SELECT id FROM time_entries WHERE id = ?').get(entryId);
@@ -29,21 +29,22 @@ export async function POST(request: Request) {
             db.prepare(`
                 UPDATE time_entries SET 
                 employeeId = ?, date = ?, startTime = ?, endTime = ?, duration = ?, 
-                type = ?, projectId = ?, serviceId = ?, description = ?
+                type = ?, projectId = ?, serviceId = ?, description = ?, overtime = ?, location = ?
                 WHERE id = ?
             `).run(
-                employeeId, date, startTime, endTime, duration, type, projectId, serviceId, description, entryId
+                employeeId, date, startTime, endTime, duration, type, projectId, serviceId, description, overtime || 0, location || '', entryId
             );
         } else {
             db.prepare(`
-                INSERT INTO time_entries (id, employeeId, date, startTime, endTime, duration, type, projectId, serviceId, description, userId, createdAt)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO time_entries (id, employeeId, date, startTime, endTime, duration, type, projectId, serviceId, description, userId, createdAt, overtime, location)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(
-                entryId, employeeId, date, startTime, endTime, duration, type, projectId, serviceId, description, userId, createdAt || new Date().toISOString()
+                entryId, employeeId, date, startTime, endTime, duration, type, projectId, serviceId, description, userId, createdAt || new Date().toISOString(), overtime || 0, location || ''
             );
         }
         return NextResponse.json({ success: true, id: entryId });
-    } catch (error) {
-        return NextResponse.json({ message: 'Error' }, { status: 500 });
+    } catch (error: any) {
+        console.error("API Error:", error);
+        return NextResponse.json({ message: 'Error saving entry', details: error.message }, { status: 500 });
     }
 }

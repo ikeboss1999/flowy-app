@@ -28,4 +28,5 @@ export interface PaymentPlanItem {
     invoiceId?: string; // Link to actual invoice
     dueDate?: string; // Optional planned date
     description?: string; // Additional details
+    type?: 'partial' | 'final'; // Type of the payment item
 }

@@ -1,0 +1,9 @@
+# Version 1.0.4
+
+**Neuerungen & Verbesserungen:**
+
+*   **Vereinfachte Zeiterfassung:** Das Eingabe-Interface wurde optimiert. Statt Start- und Endzeiten geben Sie nun direkt die Stundenanzahl ein.
+*   **Verbesserte Automatik ("Monat füllen"):** Die Funktion zum automatischen Befüllen des Monats arbeitet nun präziser und ignoriert Pausenzeiten bei der Berechnung, um exakte Stundenwerte (gemäß Ihrer Einstellungen) zu garantieren.
+*   **"Monat leeren"-Funktion:** Ein neuer Button ermöglicht es, alle eingetragenen Stunden eines Monats mit einem Klick zurückzusetzen.
+*   **PDF-Export optimiert:** Der PDF-Export berücksichtigt nun die manuell eingetragenen Stunden korrekt.
+*   **Fehlerbehebungen:** Diverse kleine Anpassungen und Fixes für eine stabilere Nutzung.

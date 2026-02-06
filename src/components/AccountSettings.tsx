@@ -56,9 +56,10 @@ function AccordionSection({ title, icon: Icon, isOpen, onToggle, children }: Acc
 
 export function AccountSettings() {
     const [openSection, setOpenSection] = useState<string | null>("benutzerkonto");
-    const { user } = useAuth();
+    const { user, updateUser } = useAuth();
     const { data: settings, updateSettings, isLoading } = useAccountSettings();
     const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
 
     // PIN State
     const [newPin, setNewPin] = useState("");
@@ -66,6 +67,7 @@ export function AccountSettings() {
 
     // Feedback States
     const [showNameSuccess, setShowNameSuccess] = useState(false);
+    const [showEmailSuccess, setShowEmailSuccess] = useState(false);
     const [showPinSuccess, setShowPinSuccess] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
@@ -76,8 +78,11 @@ export function AccountSettings() {
     React.useEffect(() => {
         if (!isLoading) {
             setName(settings.name);
+            if (user?.email) {
+                setEmail(user.email);
+            }
         }
-    }, [settings, isLoading]);
+    }, [settings, isLoading, user]);
 
     const toggleSection = (section: string) => {
         setOpenSection(openSection === section ? null : section);
@@ -97,6 +102,17 @@ export function AccountSettings() {
         updateSettings({ name });
         setShowNameSuccess(true);
         setTimeout(() => setShowNameSuccess(false), 3000);
+    };
+
+    const handleEmailSave = async () => {
+        try {
+            await updateUser({ email });
+            setShowEmailSuccess(true);
+            setTimeout(() => setShowEmailSuccess(false), 3000);
+        } catch (error) {
+            console.error('Failed to update email', error);
+            alert("Fehler beim Aktualisieren der E-Mail-Adresse.");
+        }
     };
 
     const performDeletion = async () => {
@@ -216,6 +232,32 @@ export function AccountSettings() {
                             >
                                 <CheckCircle2 className={cn("h-5 w-5", showNameSuccess ? "text-emerald-500 animate-in zoom-in duration-300" : "text-emerald-500")} />
                                 {showNameSuccess ? "Gespeichert!" : "Speichern"}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className={labelClasses}>Ihre E-Mail-Adresse</label>
+                        <div className="flex gap-4">
+                            <input
+                                type="email"
+                                name="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="name@firma.com"
+                                className={inputClasses}
+                            />
+                            <button
+                                onClick={handleEmailSave}
+                                className={cn(
+                                    "px-8 py-4 border rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm active:scale-95 whitespace-nowrap",
+                                    showEmailSuccess
+                                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                                )}
+                            >
+                                <CheckCircle2 className={cn("h-5 w-5", showEmailSuccess ? "text-emerald-500 animate-in zoom-in duration-300" : "text-emerald-500")} />
+                                {showEmailSuccess ? "Gespeichert!" : "Speichern"}
                             </button>
                         </div>
                     </div>

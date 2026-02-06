@@ -117,7 +117,7 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                             </div>
                         )}
                     </div>
-                    <div style={{ width: '45%', paddingLeft: '40px' }}>
+                    <div style={{ width: '25%' }}>
                         {[
                             ['Datum:', formatDate(invoice.issueDate)],
                             ['Bearbeiter:', (invoice.processor && invoice.processor !== 'Max Mustermann')
@@ -126,9 +126,9 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                             ['E-Mail:', companySettings.email],
                             ['Telefon:', companySettings.phone]
                         ].map(([label, value]) => (
-                            <div key={label} style={{ display: 'flex', marginBottom: '3px' }}>
-                                <span style={{ fontWeight: 'bold', width: '110px', flexShrink: 0 }}>{label}</span>
-                                <span>{value}</span>
+                            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                                <span style={{ fontWeight: 'bold' }}>{label}</span>
+                                <span style={{ textAlign: 'right' }}>{value}</span>
                             </div>
                         ))}
                     </div>

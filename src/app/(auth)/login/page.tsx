@@ -122,7 +122,13 @@ export default function LoginPage() {
                 </div>
 
                 <div className="mt-12 text-center">
-                    <p className="text-[11px] text-white/20 uppercase font-black tracking-[0.4em]">FlowY Construction Management • Version 2.0</p>
+                    <div className="flex justify-center gap-8 text-[11px] text-white/20 uppercase font-black tracking-[0.3em] opacity-50">
+                        <span>Made in Austria</span>
+                        <span>•</span>
+                        <span>FlowY - Entwickelt von Ilhan Etovic</span>
+                        <span>•</span>
+                        <span>Version {process.env.NEXT_PUBLIC_APP_VERSION || "1.0.3"}</span>
+                    </div>
                 </div>
             </div>
         </div>

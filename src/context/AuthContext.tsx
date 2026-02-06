@@ -15,6 +15,7 @@ interface AuthContextType {
     loading: boolean;
     login: (data: any) => Promise<void>;
     register: (data: any) => Promise<void>;
+    updateUser: (data: Partial<User>) => Promise<User>;
     logout: () => Promise<void>;
     checkSession: () => Promise<void>;
 }
@@ -85,6 +86,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('AuthContext: Registration successful');
     };
 
+    const updateUser = async (data: Partial<User>) => {
+        const res = await fetch('/api/auth/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || 'Update fehlgeschlagen');
+        }
+
+        const resData = await res.json();
+        setUser(prev => prev ? { ...prev, ...resData.user } : resData.user);
+        return resData.user;
+    };
+
     const logout = async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
         setUser(null);
@@ -92,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout, checkSession }}>
+        <AuthContext.Provider value={{ user, loading, login, register, updateUser, logout, checkSession }}>
             {children}
         </AuthContext.Provider>
     );

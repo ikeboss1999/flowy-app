@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Plus, Trash2, Save, Calendar, CheckCircle } from "lucide-react";
+import { X, Plus, Trash2, Save, Calendar, CheckCircle, Flag } from "lucide-react";
 import { PaymentPlanItem, Project } from "@/types/project";
 import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/DatePicker";
@@ -33,6 +33,18 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
         setItems([...items, newItem]);
     };
 
+    const handleAddFinalItem = () => {
+        const newItem: PaymentPlanItem = {
+            id: Math.random().toString(36).substr(2, 9),
+            name: 'Schlussrechnung',
+            amount: remaining,
+            status: 'planned',
+            dueDate: '',
+            type: 'final'
+        };
+        setItems([...items, newItem]);
+    };
+
     const handleUpdateItem = (id: string, field: keyof PaymentPlanItem, value: any) => {
         setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
     };
@@ -49,6 +61,8 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
     const totalPlanned = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const budgetWrapper = project.budget || 0;
     const remaining = Math.max(0, budgetWrapper - totalPlanned);
+
+    const hasFinalInvoice = items.some(item => item.type === 'final');
 
     if (!isOpen) return null;
 
@@ -106,9 +120,20 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
 
                     <div className="space-y-3">
                         {items.map((item, index) => (
-                            <div key={item.id} className="flex gap-4 items-start p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:border-indigo-100 transition-all group">
-                                <div className="h-8 w-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-sm shrink-0 mt-2">
-                                    {index + 1}
+                            <div
+                                key={item.id}
+                                className={cn(
+                                    "flex gap-4 items-start p-4 border rounded-2xl shadow-sm transition-all group",
+                                    item.type === 'final'
+                                        ? "bg-indigo-50/30 border-indigo-200 hover:border-indigo-300"
+                                        : "bg-white border-slate-100 hover:border-indigo-100"
+                                )}
+                            >
+                                <div className={cn(
+                                    "h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 mt-2",
+                                    item.type === 'final' ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-500"
+                                )}>
+                                    {item.type === 'final' ? <Flag className="h-4 w-4" /> : index + 1}
                                 </div>
                                 <div className="flex-1 space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
@@ -182,9 +207,18 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
 
                     <button
                         onClick={handleAddItem}
-                        className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all flex items-center justify-center gap-2"
+                        className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
+                        disabled={hasFinalInvoice}
                     >
                         <Plus className="h-5 w-5" /> Weitere Teilzahlung hinzufügen
+                    </button>
+
+                    <button
+                        onClick={handleAddFinalItem}
+                        disabled={hasFinalInvoice || remaining <= 0}
+                        className="w-full py-4 border-2 border-dashed border-indigo-200 rounded-2xl text-indigo-500 font-bold hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 mt-3 disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                        <Flag className="h-5 w-5" /> Schlussrechnung hinzufügen
                     </button>
                 </div>
 

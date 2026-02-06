@@ -16,7 +16,9 @@ import {
     Download,
     Loader2,
     AlertCircle,
-    Trash2
+    Trash2,
+    ChevronUp,
+    ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -36,6 +38,7 @@ export default function DashboardPage() {
     const { todos, addTodo, toggleTodo, deleteTodo } = useTodos();
     const [newTodo, setNewTodo] = useState("");
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
+    const [isTodoMinimized, setIsTodoMinimized] = useState(false);
 
     // Sorting State
     const [sortBy, setSortBy] = useState<string>("date");
@@ -342,80 +345,92 @@ export default function DashboardPage() {
 
                 {/* To-Do Column */}
                 <div className="space-y-6">
-                    <h3 className="text-2xl font-bold text-slate-900">To-Do Liste</h3>
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-2xl font-bold text-slate-900">To-Do Liste</h3>
+                        <button
+                            onClick={() => setIsTodoMinimized(!isTodoMinimized)}
+                            className="p-2 hover:bg-slate-100 rounded-xl transition-all text-slate-400"
+                        >
+                            {isTodoMinimized ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+                        </button>
+                    </div>
 
-                    <div className="glass-card p-6 space-y-6 flex flex-col h-full">
-                        <form onSubmit={handleAddTodo} className="relative">
-                            <input
-                                type="text"
-                                value={newTodo}
-                                onChange={(e) => setNewTodo(e.target.value)}
-                                placeholder="Aufgabe hinzufügen..."
-                                className="w-full pl-4 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-base font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all placeholder:text-slate-400"
-                            />
-                            <button
-                                type="submit"
-                                className="absolute right-2 top-2 h-10 w-10 bg-primary-gradient text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 hover:scale-[1.05] active:scale-95 transition-all"
-                            >
-                                <Plus className="h-5 w-5" />
-                            </button>
-                        </form>
-
-                        <div className="flex-1 space-y-3">
-                            {todos.map((todo) => (
-                                <div
-                                    key={todo.id}
-                                    className={cn(
-                                        "flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer group",
-                                        todo.completed
-                                            ? "bg-slate-50 border-transparent opacity-60"
-                                            : "bg-white border-slate-100 hover:border-indigo-500/30 hover:shadow-md hover:shadow-indigo-500/5"
-                                    )}
-                                >
+                    <div className={cn("glass-card p-6 flex flex-col transition-all duration-300", isTodoMinimized ? "h-fit space-y-0" : "h-full space-y-6")}>
+                        {!isTodoMinimized && (
+                            <>
+                                <form onSubmit={handleAddTodo} className="relative">
+                                    <input
+                                        type="text"
+                                        value={newTodo}
+                                        onChange={(e) => setNewTodo(e.target.value)}
+                                        placeholder="Aufgabe hinzufügen..."
+                                        className="w-full pl-4 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-base font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all placeholder:text-slate-400"
+                                    />
                                     <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            toggleTodo(todo.id);
-                                        }}
-                                        className={cn(
-                                            "mt-1 h-6 w-6 rounded-lg flex items-center justify-center transition-all",
-                                            todo.completed ? "bg-indigo-500 text-white" : "border-2 border-slate-200 text-transparent group-hover:border-indigo-400"
-                                        )}
+                                        type="submit"
+                                        className="absolute right-2 top-2 h-10 w-10 bg-primary-gradient text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 hover:scale-[1.05] active:scale-95 transition-all"
                                     >
-                                        <CheckCircle2 className="h-4 w-4" />
+                                        <Plus className="h-5 w-5" />
                                     </button>
-                                    <div
-                                        className="flex-1 min-w-0"
-                                        onClick={() => toggleTodo(todo.id)}
-                                    >
-                                        <p className={cn(
-                                            "font-bold text-base leading-tight decoration-2 underline-offset-4",
-                                            todo.completed ? "text-slate-400 line-through" : "text-slate-800"
-                                        )}>
-                                            {todo.task}
-                                        </p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className={cn(
-                                                "text-[9px] font-black uppercase tracking-widest",
-                                                todo.priority === 'high' ? "text-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.1)]" :
-                                                    todo.priority === 'medium' ? "text-amber-500" : "text-slate-400"
-                                            )}>
-                                                {todo.priority === 'high' ? 'Dringend' : todo.priority === 'medium' ? 'Normal' : 'Nachrangig'}
-                                            </span>
+                                </form>
+
+                                <div className="flex-1 space-y-3">
+                                    {todos.map((todo) => (
+                                        <div
+                                            key={todo.id}
+                                            className={cn(
+                                                "flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer group",
+                                                todo.completed
+                                                    ? "bg-slate-50 border-transparent opacity-60"
+                                                    : "bg-white border-slate-100 hover:border-indigo-500/30 hover:shadow-md hover:shadow-indigo-500/5"
+                                            )}
+                                        >
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleTodo(todo.id);
+                                                }}
+                                                className={cn(
+                                                    "mt-1 h-6 w-6 rounded-lg flex items-center justify-center transition-all",
+                                                    todo.completed ? "bg-indigo-500 text-white" : "border-2 border-slate-200 text-transparent group-hover:border-indigo-400"
+                                                )}
+                                            >
+                                                <CheckCircle2 className="h-4 w-4" />
+                                            </button>
+                                            <div
+                                                className="flex-1 min-w-0"
+                                                onClick={() => toggleTodo(todo.id)}
+                                            >
+                                                <p className={cn(
+                                                    "font-bold text-base leading-tight decoration-2 underline-offset-4",
+                                                    todo.completed ? "text-slate-400 line-through" : "text-slate-800"
+                                                )}>
+                                                    {todo.task}
+                                                </p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className={cn(
+                                                        "text-[9px] font-black uppercase tracking-widest",
+                                                        todo.priority === 'high' ? "text-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.1)]" :
+                                                            todo.priority === 'medium' ? "text-amber-500" : "text-slate-400"
+                                                    )}>
+                                                        {todo.priority === 'high' ? 'Dringend' : todo.priority === 'medium' ? 'Normal' : 'Nachrangig'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    deleteTodo(todo.id);
+                                                }}
+                                                className="mt-1 p-2 text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
                                         </div>
-                                    </div>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            deleteTodo(todo.id);
-                                        }}
-                                        className="mt-1 p-2 text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

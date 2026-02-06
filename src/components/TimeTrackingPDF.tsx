@@ -22,10 +22,17 @@ export const TimeTrackingPDF = forwardRef<HTMLDivElement, TimeTrackingPDFProps>(
 
     const calculateHours = (entry: TimeEntry) => {
         if (entry.type !== 'WORK') return 0;
+
+        // Use duration if available (preferred)
+        if (typeof entry.duration === 'number') {
+            return entry.duration / 60;
+        }
+
+        // Fallback to start/end calculation
         const start = new Date(`1970-01-01T${entry.startTime}`);
         const end = new Date(`1970-01-01T${entry.endTime}`);
         const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-        return Math.max(0, diff - (entry.breakDuration / 60));
+        return Math.max(0, diff); // No break subtraction
     };
 
     const totalHours = entries.reduce((acc, entry) => acc + calculateHours(entry), 0);
@@ -57,9 +64,8 @@ export const TimeTrackingPDF = forwardRef<HTMLDivElement, TimeTrackingPDFProps>(
 
     const monthDays = generateMonthDays();
     const totalOvertime = monthDays.reduce((acc, { entry }) => {
-        if (!entry || entry.type !== 'WORK') return acc;
-        const hours = calculateHours(entry);
-        return acc + Math.max(0, hours - 8.5);
+        if (!entry) return acc;
+        return acc + (entry.overtime || 0);
     }, 0);
 
     return (
@@ -127,7 +133,7 @@ export const TimeTrackingPDF = forwardRef<HTMLDivElement, TimeTrackingPDFProps>(
                         const dayName = date.toLocaleDateString('de-DE', { weekday: 'short' });
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                         const hours = entry ? calculateHours(entry) : 0;
-                        const overtime = entry && entry.type === 'WORK' ? Math.max(0, hours - 8.5) : 0;
+                        const overtime = entry?.overtime !== undefined ? entry.overtime : 0;
 
                         return (
                             <tr key={date.toISOString()} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: isWeekend ? '#f8fafc' : 'transparent' }}>
@@ -153,7 +159,7 @@ export const TimeTrackingPDF = forwardRef<HTMLDivElement, TimeTrackingPDFProps>(
                                     {overtime > 0 ? overtime.toFixed(1).replace('.', ',') : '0,0'}
                                 </td>
                                 <td style={{ padding: '3px 4px', fontSize: '8.5pt', color: '#334155', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {entry?.projectId || entry?.notes || '-'}
+                                    {entry?.location || entry?.projectId || entry?.notes || '-'}
                                 </td>
                             </tr>
                         );

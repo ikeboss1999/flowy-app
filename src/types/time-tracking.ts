@@ -9,6 +9,9 @@ export interface TimeEntry {
     breakDuration: number; // in minutes
     type: TimeEntryType;
     projectId?: string;
+    location?: string;
+    overtime?: number; // Manual override or extra hours
+    duration?: number; // Calculated duration in minutes
     notes?: string;
     createdAt: string;
     userId?: string; // Owner of the entry
