@@ -35,6 +35,7 @@ import { useRef } from 'react';
 import { ServiceSelectionModal } from '@/components/ServiceSelectionModal';
 import { ServiceModal } from '@/components/ServiceModal';
 import { Service } from '@/types/service';
+import { CustomerSearchSelect } from '@/components/CustomerSearchSelect';
 
 interface InvoiceFormProps {
     initialData?: Partial<Invoice>;
@@ -84,6 +85,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     const [projectId, setProjectId] = useState('');
     const [billingType, setBillingType] = useState<'standard' | 'partial' | 'final'>('standard');
     const [partialPaymentNumber, setPartialPaymentNumber] = useState<number | undefined>(initialData?.partialPaymentNumber);
+    const [paymentPlanItemId, setPaymentPlanItemId] = useState<string | undefined>(initialData?.paymentPlanItemId);
     const [processor, setProcessor] = useState(initialData?.processor || '');
 
     // Set default processor from company settings
@@ -113,6 +115,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
             const paramCustomerId = searchParams.get('customerId');
             const paramBillingType = searchParams.get('billingType');
             const paramPartialNumber = searchParams.get('partialNumber');
+            const paramPaymentPlanItemId = searchParams.get('paymentPlanItemId');
             const paramSubjectExtra = searchParams.get('subjectExtra');
             const paramAmount = searchParams.get('amount');
 
@@ -127,6 +130,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                 }
             }
 
+            if (paramPaymentPlanItemId) setPaymentPlanItemId(paramPaymentPlanItemId);
             if (paramCustomerId) setCustomerId(paramCustomerId);
             if (paramBillingType) setBillingType(paramBillingType as any);
 
@@ -309,6 +313,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
             isReverseCharge,
             status,
             projectId,
+            paymentPlanItemId,
             billingType,
             partialPaymentNumber: billingType === 'partial' ? (partialPaymentNumber || previousInvoices.length + 1) : undefined,
             previousInvoices: (billingType === 'partial' || billingType === 'final') ? previousInvoices : undefined,
@@ -534,29 +539,14 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                 {/* Section: Customer Data */}
                 <div className="space-y-8">
                     <h3 className="text-xl font-bold text-slate-800 tracking-tight">Kundendaten</h3>
-                    <div className="grid grid-cols-12 gap-4 items-end">
-                        <div className="col-span-9">
-                            <label className={labelClasses}>Kunde auswählen</label>
-                            <select
-                                value={customerId}
-                                onChange={(e) => setCustomerId(e.target.value)}
-                                className={cn(inputClasses, "appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22m19%209-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1.25rem_center] bg-no-repeat")}
-                            >
-                                <option value="">Kunde auswählen...</option>
-                                {customers.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="col-span-3">
-                            <button
-                                type="button"
-                                onClick={() => setIsCustomerModalOpen(true)}
-                                className="w-full bg-emerald-600 text-white px-6 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-500/10"
-                            >
-                                <UserPlus className="h-5 w-5" /> Neuer Kunde
-                            </button>
-                        </div>
+                    <div className="space-y-4">
+                        <label className={labelClasses}>Kunde auswählen</label>
+                        <CustomerSearchSelect
+                            customers={customers}
+                            selectedId={customerId}
+                            onSelect={setCustomerId}
+                            onAddNew={() => setIsCustomerModalOpen(true)}
+                        />
                     </div>
 
                     <div>
@@ -742,6 +732,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                             isReverseCharge,
                             status: 'pending', // Temporary status for preview
                             projectId,
+                            paymentPlanItemId,
                             billingType,
                             partialPaymentNumber: billingType === 'partial' ? (partialPaymentNumber || previousInvoices.length + 1) : undefined,
                             previousInvoices: (billingType === 'partial' || billingType === 'final') ? previousInvoices : undefined,
@@ -785,6 +776,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                                 isReverseCharge,
                                 status: savingStatus,
                                 projectId,
+                                paymentPlanItemId,
                                 billingType,
                                 partialPaymentNumber: billingType === 'partial' ? (partialPaymentNumber || previousInvoices.length + 1) : undefined,
                                 previousInvoices: (billingType === 'partial' || billingType === 'final') ? previousInvoices : undefined,

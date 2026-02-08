@@ -27,9 +27,10 @@ const initialData: CompanyData = {
 };
 
 export function useCompanySettings() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     const [data, setData] = useState<CompanyData>(initialData);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (authLoading || !user) {
@@ -38,8 +39,14 @@ export function useCompanySettings() {
         }
 
         const loadData = async () => {
+            setError(null);
             try {
                 const response = await fetch(`/api/settings?userId=${user.id}`);
+
+                if (!response.ok) {
+                    throw new Error(`Server Error: ${response.status}`);
+                }
+
                 const allSettings = await response.json();
 
                 if (allSettings.companyData) {
@@ -62,10 +69,12 @@ export function useCompanySettings() {
                         }
                     }
                 }
-            } catch (e) {
+            } catch (e: any) {
                 console.error('Failed to load company settings', e);
+                setError(e.message || 'Unknown Error');
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         };
 
         loadData();
@@ -87,5 +96,5 @@ export function useCompanySettings() {
         }
     };
 
-    return { data, updateData, isLoading: isLoading || authLoading };
+    return { data, updateData, isLoading: isLoading || authLoading, error };
 }

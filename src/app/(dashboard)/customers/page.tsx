@@ -23,10 +23,12 @@ import {
 import { Customer, CustomerType } from "@/types/customer";
 import { CustomerModal } from "@/components/CustomerModal";
 import { useCustomers } from "@/hooks/useCustomers";
+import { useNotification } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
 
 export default function CustomersPage() {
     const { customers, addCustomer, updateCustomer, deleteCustomer, isLoading } = useCustomers();
+    const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
     const [filterType, setFilterType] = useState<CustomerType | "all">("all");
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,9 +55,16 @@ export default function CustomersPage() {
     };
 
     const handleDeleteCustomer = (id: string) => {
-        if (confirm("Sind Sie sicher, dass Sie diesen Kunden löschen möchten?")) {
-            deleteCustomer(id);
-        }
+        showConfirm({
+            title: "Kunden löschen?",
+            message: "Möchten Sie diesen Kunden wirklich unwiderruflich löschen?",
+            variant: "danger",
+            confirmLabel: "Jetzt löschen",
+            onConfirm: () => {
+                deleteCustomer(id);
+                showToast("Kunde erfolgreich gelöscht.", "success");
+            }
+        });
     };
 
     const handleEditCustomer = (customer: Customer) => {

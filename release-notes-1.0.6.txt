@@ -1,0 +1,6 @@
+# Release v1.0.6
+
+## Improvements
+- Added new features and UI enhancements.
+- Optimized performance and stability.
+- Fixed minor bugs in the time tracking and dashboard modules.

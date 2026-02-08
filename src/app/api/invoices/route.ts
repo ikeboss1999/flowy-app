@@ -25,7 +25,8 @@ export async function GET(request: Request) {
             },
             previousInvoices: row.previousInvoices ? JSON.parse(row.previousInvoices) : [],
             dunningHistory: row.dunningHistory ? JSON.parse(row.dunningHistory) : [],
-            paymentDeviation: row.paymentDeviation ? JSON.parse(row.paymentDeviation) : null
+            paymentDeviation: row.paymentDeviation ? JSON.parse(row.paymentDeviation) : null,
+            isReverseCharge: row.isReverseCharge === 1
         }));
 
         return NextResponse.json(invoices);
@@ -41,8 +42,8 @@ export async function POST(request: Request) {
 
         const stmt = db.prepare(`
             INSERT OR REPLACE INTO invoices 
-            (id, invoiceNumber, customerId, projectId, billingType, issueDate, items, subtotal, taxRate, taxAmount, totalAmount, status, paymentTerms, perfFrom, perfTo, processor, subjectExtra, partialPaymentNumber, createdAt, updatedAt, userId, previousInvoices, dunningLevel, lastDunningDate, dunningHistory, paidAmount, paymentDeviation, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, invoiceNumber, customerId, projectId, billingType, issueDate, items, subtotal, taxRate, taxAmount, totalAmount, isReverseCharge, status, paymentTerms, perfFrom, perfTo, processor, subjectExtra, partialPaymentNumber, createdAt, updatedAt, userId, previousInvoices, dunningLevel, lastDunningDate, dunningHistory, paidAmount, paymentDeviation, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run(
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
             invoice.taxRate,
             invoice.taxAmount,
             invoice.totalAmount,
+            invoice.isReverseCharge ? 1 : 0,
             invoice.status,
             invoice.paymentTerms,
             invoice.performancePeriod?.from || null,

@@ -81,8 +81,24 @@ async function createWindow() {
 
     mainWindow.setMenuBarVisibility(false);
 
+    // Intercept close event
+    mainWindow.on('close', (e) => {
+        if (!mainWindow.forceClose) {
+            e.preventDefault();
+            mainWindow.webContents.send('app-close-requested');
+        }
+    });
+
     mainWindow.on('closed', () => {
         mainWindow = null;
+    });
+
+    // Handle close confirmation from Renderer
+    ipcMain.on('app-close-confirmed', () => {
+        if (mainWindow) {
+            mainWindow.forceClose = true;
+            mainWindow.close();
+        }
     });
 }
 

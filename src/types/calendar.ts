@@ -5,9 +5,15 @@ export interface CalendarEvent {
     userId: string;
     title: string;
     description?: string;
-    date: string; // YYYY-MM-DD
+    startDate: string; // YYYY-MM-DD
+    endDate: string;   // YYYY-MM-DD
     startTime?: string;
     endTime?: string;
+    isAllDay?: boolean;
     type: CalendarEventType;
+    color?: string;
+    location?: string;
+    attendees?: string[];
+    projectId?: string;
     createdAt: string;
 }

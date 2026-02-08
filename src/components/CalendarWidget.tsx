@@ -20,17 +20,30 @@ import { cn } from '@/lib/utils';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { CalendarEvent } from '@/types/calendar';
 import { EventModal } from '@/components/EventModal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 type ViewType = 'month' | 'week' | 'day';
 
 export function CalendarWidget() {
-    const { events, deleteEvent, isLoading } = useCalendarEvents();
+    const { events, addEvent, updateEvent, deleteEvent, isLoading } = useCalendarEvents();
     const [viewType, setViewType] = useState<ViewType>('week');
     const [viewDate, setViewDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<CalendarEvent | undefined>(undefined);
     const [selectedHour, setSelectedHour] = useState<string | undefined>(undefined);
+    const [selectedEndHour, setSelectedEndHour] = useState<string | undefined>(undefined);
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState<{ date: string, hour: string } | null>(null);
+    const [dragEnd, setDragEnd] = useState<{ date: string, hour: string } | null>(null);
+
+    // Drag to move states
+    const [isMovingEvent, setIsMovingEvent] = useState(false);
+    const [movingEvent, setMovingEvent] = useState<CalendarEvent | null>(null);
+    const [moveTarget, setMoveTarget] = useState<{ date: string, hour: string } | null>(null);
+    const [showMoveConfirm, setShowMoveConfirm] = useState(false);
+    const [pendingMove, setPendingMove] = useState<{ event: CalendarEvent, newDate: string, newStart: string, newEnd: string } | null>(null);
+
     const [isMinimized, setIsMinimized] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -78,17 +91,95 @@ export function CalendarWidget() {
         }
     };
 
-    const handleAddEvent = (date?: string, hour?: string) => {
+    const handleAddEvent = (date?: string, startHour?: string, endHour?: string) => {
         if (date) setSelectedDate(new Date(date));
         setEditingEvent(undefined);
-        setSelectedHour(hour);
+        setSelectedHour(startHour);
+        setSelectedEndHour(endHour);
         setIsModalOpen(true);
     };
 
     const handleEditEvent = (event: CalendarEvent) => {
         setEditingEvent(event);
         setSelectedHour(undefined);
+        setSelectedEndHour(undefined);
         setIsModalOpen(true);
+    };
+
+    const handleMouseDown = (date: string, hour: string) => {
+        setIsDragging(true);
+        setDragStart({ date, hour });
+        setDragEnd({ date, hour });
+    };
+
+    const handleMouseEnter = (date: string, hour: string) => {
+        if (isDragging && dragStart && dragStart.date === date) {
+            setDragEnd({ date, hour });
+        }
+    };
+
+    const handleMouseUp = () => {
+        if (isDragging && dragStart && dragEnd) {
+            const startH = parseInt(dragStart.hour.split(':')[0]);
+            const endH = parseInt(dragEnd.hour.split(':')[0]);
+
+            const actualStartH = Math.min(startH, endH);
+            const actualEndH = Math.max(startH, endH) + 1; // +1 to select the whole slot
+
+            const startHourStr = `${String(actualStartH).padStart(2, '0')}:00`;
+            const endHourStr = `${String(actualEndH).padStart(2, '0')}:00`;
+
+            handleAddEvent(dragStart.date, startHourStr, endHourStr);
+        } else if (isMovingEvent && movingEvent && moveTarget) {
+            // Calculate new end time based on original duration
+            const startH = parseInt(movingEvent.startTime!.split(':')[0]);
+            const startM = parseInt(movingEvent.startTime!.split(':')[1]);
+            const endH = parseInt(movingEvent.endTime!.split(':')[0]);
+            const endM = parseInt(movingEvent.endTime!.split(':')[1]);
+            const durationMins = (endH * 60 + endM) - (startH * 60 + startM);
+
+            const newStartH = parseInt(moveTarget.hour.split(':')[0]);
+            const newStartM = 0; // Snap to slot start
+            const newEndTotalMins = (newStartH * 60 + newStartM) + durationMins;
+            const newEndH = Math.floor(newEndTotalMins / 60);
+            const newEndM = newEndTotalMins % 60;
+
+            const newStartStr = `${String(newStartH).padStart(2, '0')}:00`;
+            const newEndStr = `${String(newEndH).padStart(2, '0')}:${String(newEndM).padStart(2, '0')}`;
+
+            setPendingMove({
+                event: movingEvent,
+                newDate: moveTarget.date,
+                newStart: newStartStr,
+                newEnd: newEndStr
+            });
+            setShowMoveConfirm(true);
+        }
+        setIsDragging(false);
+        setDragStart(null);
+        setDragEnd(null);
+        setIsMovingEvent(false);
+        setMovingEvent(null);
+        setMoveTarget(null);
+    };
+
+    const handleMoveStart = (e: React.MouseEvent, event: CalendarEvent) => {
+        e.stopPropagation();
+        setIsMovingEvent(true);
+        setMovingEvent(event);
+    };
+
+    const handleConfirmMove = () => {
+        if (pendingMove) {
+            updateEvent(pendingMove.event.id, {
+                startDate: pendingMove.newDate,
+                endDate: pendingMove.newDate,
+                startTime: pendingMove.newStart,
+                endTime: pendingMove.newEnd
+            });
+        }
+        setShowMoveConfirm(false);
+        setPendingMove(null);
     };
 
     // --- RENDER HELPERS ---
@@ -120,7 +211,7 @@ export function CalendarWidget() {
                         if (!day) return <div key={`pad-${i}`} />;
                         const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                         const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
-                        const dailyEvents = events.filter(e => e.date === dStr);
+                        const dailyEvents = events.filter(e => e.startDate && e.startDate.startsWith(dStr));
 
                         return (
                             <div
@@ -188,7 +279,7 @@ export function CalendarWidget() {
                 {weekDaysToRender.map(idx => {
                     const current = new Date(startOfWeek);
                     current.setDate(startOfWeek.getDate() + idx);
-                    const dateStr = current.toISOString().split('T')[0];
+                    const dateStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
                     const isToday = new Date().toDateString() === current.toDateString();
 
                     return (
@@ -202,18 +293,52 @@ export function CalendarWidget() {
                                     {current.getDate()}
                                 </span>
                             </div>
-                            <div className="relative">
-                                {hours.map(hour => (
-                                    <div
-                                        key={hour}
-                                        className="h-[80px] border-b border-slate-100/50 last:border-0 hover:bg-slate-50/80 transition-colors cursor-pointer"
-                                        onClick={() => handleAddEvent(dateStr, hour)}
-                                    />
-                                ))}
+                            <div className="relative" onMouseLeave={() => isDragging && handleMouseUp()}>
+                                {hours.map(hour => {
+                                    const isSelected = dragStart && dragEnd && dragStart.date === dateStr && (
+                                        (parseInt(hour.split(':')[0]) >= Math.min(parseInt(dragStart.hour.split(':')[0]), parseInt(dragEnd.hour.split(':')[0]))) &&
+                                        (parseInt(hour.split(':')[0]) <= Math.max(parseInt(dragStart.hour.split(':')[0]), parseInt(dragEnd.hour.split(':')[0])))
+                                    );
+
+                                    const isMovePreview = isMovingEvent && moveTarget && moveTarget.date === dateStr && moveTarget.hour === hour;
+
+                                    return (
+                                        <div
+                                            key={hour}
+                                            className={cn(
+                                                "h-[80px] border-b border-slate-100/50 last:border-0 hover:bg-slate-50/80 transition-colors cursor-pointer relative",
+                                                isSelected && "bg-indigo-50/50"
+                                            )}
+                                            onMouseDown={() => !isMovingEvent && handleMouseDown(dateStr, hour)}
+                                            onMouseEnter={() => {
+                                                if (isDragging) handleMouseEnter(dateStr, hour);
+                                                if (isMovingEvent) setMoveTarget({ date: dateStr, hour });
+                                            }}
+                                            onMouseUp={handleMouseUp}
+                                        >
+                                            {isSelected && (
+                                                <div className="absolute inset-0 bg-indigo-500/10 border-x-2 border-indigo-500/20" />
+                                            )}
+                                            {isMovePreview && movingEvent && (
+                                                <div
+                                                    className={cn(
+                                                        "absolute inset-x-2 rounded-2xl p-3 border-l-4 opacity-40 z-20 pointer-events-none",
+                                                        movingEvent.type === 'important' ? "bg-rose-50 border-rose-500" :
+                                                            movingEvent.type === 'work' ? "bg-indigo-50 border-indigo-500" : "bg-emerald-50 border-emerald-500"
+                                                    )}
+                                                    style={{ height: '60px' }} // Ghost preview is one slot high
+                                                >
+                                                    <p className="text-[10px] font-black truncate">{movingEvent.title}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
 
                                 {/* Absolute events Layer */}
-                                {events.filter(e => e.date === dateStr).map(event => {
+                                {events.filter(e => e.startDate === dateStr).map(event => {
                                     if (!event.startTime) return null;
+                                    const isBeingMoved = isMovingEvent && movingEvent?.id === event.id;
                                     const hourPart = parseInt(event.startTime.split(':')[0]);
                                     const minPart = parseInt(event.startTime.split(':')[1]);
                                     const top = (hourPart - 6) * 80 + (minPart / 60) * 80;
@@ -230,10 +355,12 @@ export function CalendarWidget() {
                                     return (
                                         <div
                                             key={event.id}
+                                            onMouseDown={(e) => handleMoveStart(e, event)}
                                             onClick={(e) => { e.stopPropagation(); handleEditEvent(event); }}
                                             style={{ top: `${top}px`, height: `${height}px` }}
                                             className={cn(
                                                 "absolute inset-x-2 rounded-2xl p-3 shadow-lg border-l-4 transition-all hover:scale-[1.02] cursor-pointer z-10 overflow-hidden",
+                                                isBeingMoved ? "opacity-20 scale-95" : "opacity-100",
                                                 event.type === 'important' ? "bg-rose-50/90 border-rose-500 text-rose-900" :
                                                     event.type === 'work' ? "bg-indigo-50/90 border-indigo-500 text-indigo-900" : "bg-emerald-50/90 border-emerald-500 text-emerald-900"
                                             )}
@@ -254,7 +381,7 @@ export function CalendarWidget() {
     };
 
     const renderDayView = () => {
-        const dateStr = selectedDate.toISOString().split('T')[0];
+        const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
         const isToday = new Date().toDateString() === selectedDate.toDateString();
 
         return (
@@ -276,7 +403,7 @@ export function CalendarWidget() {
                 </div>
                 <div className="p-10 space-y-2">
                     {hours.map(hour => {
-                        const eventAtHour = events.find(e => e.date === dateStr && e.startTime?.startsWith(hour.split(':')[0]));
+                        const eventAtHour = events.find(e => e.startDate === dateStr && e.startTime?.startsWith(hour.split(':')[0]));
                         return (
                             <div key={hour} className="flex gap-10 group">
                                 <span className="w-16 pt-4 text-right text-[11px] font-black text-slate-500 uppercase tracking-widest tabular-nums group-hover:text-indigo-500 transition-colors">
@@ -445,12 +572,27 @@ export function CalendarWidget() {
                     onClose={() => {
                         setIsModalOpen(false);
                         setSelectedHour(undefined);
+                        setSelectedEndHour(undefined);
                     }}
-                    initialDate={selectedDate.toISOString().split('T')[0]}
+                    initialDate={`${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`}
                     initialStartTime={selectedHour}
+                    initialEndTime={selectedEndHour}
                     editingEvent={editingEvent}
+                    onAddEvent={addEvent}
+                    onUpdateEvent={updateEvent}
                 />
             )}
+
+            <ConfirmDialog
+                isOpen={showMoveConfirm}
+                variant="primary"
+                title="Termin verschieben"
+                message={`Möchtest du den Termin "${pendingMove?.event.title}" wirklich auf den ${pendingMove?.newDate} um ${pendingMove?.newStart} verschieben?`}
+                confirmLabel="Verschieben & Speichern"
+                cancelLabel="Abbrechen"
+                onConfirm={handleConfirmMove}
+                onCancel={() => { setShowMoveConfirm(false); setPendingMove(null); }}
+            />
         </div>
     );
 }

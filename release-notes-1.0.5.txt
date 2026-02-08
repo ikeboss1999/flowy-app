@@ -1,0 +1,5 @@
+# Release v1.0.5
+
+## Improvements
+- General performance improvements and bug fixes.
+- Enhanced stability for native modules.

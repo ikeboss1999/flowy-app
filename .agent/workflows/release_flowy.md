@@ -36,5 +36,9 @@ This workflow automates the release process when the user confirms the current s
     npm run electron-publish
     ```
 
-5. **Completion**:
+5. **Release Notes (German)**:
+    When updating the GitHub Release, ensure the release notes are provided in **German**.
+    The `UpdateNotification` component has a fallback translation, but native German notes are preferred.
+
+6. **Completion**:
     Notify the user that the new version is live.

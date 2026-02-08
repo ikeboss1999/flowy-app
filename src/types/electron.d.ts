@@ -7,6 +7,8 @@ declare global {
             checkForUpdates: () => Promise<any>;
             quitAndInstall: () => Promise<void>;
             onUpdateStatus: (callback: (status: string, data: any) => void) => () => void;
+            onAppCloseRequested: (callback: () => void) => () => void;
+            appCloseConfirmed: () => void;
         };
     }
 }

@@ -20,12 +20,14 @@ import {
 import { Vehicle, VehicleStatus } from "@/types/vehicle";
 import { VehicleModal } from "@/components/VehicleModal";
 import { useVehicles } from "@/hooks/useVehicles";
+import { useNotification } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
 
 const MOCK_VEHICLES: Vehicle[] = [];
 
 export default function VehiclesPage() {
     const { vehicles, addVehicle, updateVehicle, deleteVehicle, isLoading: hookLoading } = useVehicles();
+    const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<VehicleStatus | "Alle">("Alle");
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,9 +55,16 @@ export default function VehiclesPage() {
     };
 
     const handleDeleteVehicle = (id: string) => {
-        if (confirm("Möchten Sie dieses Fahrzeug wirklich löschen?")) {
-            deleteVehicle(id);
-        }
+        showConfirm({
+            title: "Fahrzeug löschen?",
+            message: "Möchten Sie dieses Fahrzeug wirklich unwiderruflich aus dem Fuhrpark löschen?",
+            variant: "danger",
+            confirmLabel: "Jetzt löschen",
+            onConfirm: () => {
+                deleteVehicle(id);
+                showToast("Fahrzeug erfolgreich gelöscht.", "success");
+            }
+        });
     };
 
     const handleEditVehicle = (vehicle: Vehicle) => {

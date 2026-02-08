@@ -35,9 +35,28 @@ const TABS = [
     { id: "documents", label: "Dokumente", icon: FileText }
 ];
 
+const VEHICLE_MAKES = [
+    "Mercedes-Benz",
+    "Volkswagen",
+    "Ford",
+    "Renault",
+    "Citroën",
+    "Peugeot",
+    "Fiat",
+    "Iveco",
+    "Opel",
+    "Toyota",
+    "Nissan",
+    "MAN",
+    "Scania",
+    "Volvo",
+    "Sonstige"
+];
+
 export function VehicleModal({ isOpen, onClose, onSave, initialVehicle }: VehicleModalProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState("basic");
+    const [isOtherMake, setIsOtherMake] = useState(false);
     const [formData, setFormData] = useState<Vehicle>(() => initialVehicle || {
         id: Math.random().toString(36).substr(2, 9),
         basicInfo: {
@@ -63,6 +82,12 @@ export function VehicleModal({ isOpen, onClose, onSave, initialVehicle }: Vehicl
     useEffect(() => {
         if (initialVehicle) {
             setFormData(initialVehicle);
+            // Check if it's a known make
+            if (initialVehicle.basicInfo.make && !VEHICLE_MAKES.includes(initialVehicle.basicInfo.make)) {
+                setIsOtherMake(true);
+            } else {
+                setIsOtherMake(false);
+            }
         } else {
             setFormData({
                 id: Math.random().toString(36).substr(2, 9),
@@ -85,6 +110,7 @@ export function VehicleModal({ isOpen, onClose, onSave, initialVehicle }: Vehicl
                 documents: [],
                 createdAt: new Date().toISOString(),
             });
+            setIsOtherMake(false);
         }
     }, [initialVehicle, isOpen]);
 
@@ -94,6 +120,16 @@ export function VehicleModal({ isOpen, onClose, onSave, initialVehicle }: Vehicl
         e.preventDefault();
         onSave(formData);
         onClose();
+    };
+
+    const handleMakeChange = (value: string) => {
+        if (value === "Sonstige") {
+            setIsOtherMake(true);
+            setFormData({ ...formData, basicInfo: { ...formData.basicInfo, make: "" } });
+        } else {
+            setIsOtherMake(false);
+            setFormData({ ...formData, basicInfo: { ...formData.basicInfo, make: value } });
+        }
     };
 
     const addDocument = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,15 +208,33 @@ export function VehicleModal({ isOpen, onClose, onSave, initialVehicle }: Vehicl
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8">
                     {activeTab === "basic" && (
                         <div className="grid grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <div className="space-y-2 col-span-1">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Hersteller</label>
-                                <input
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
-                                    value={formData.basicInfo.make}
-                                    onChange={e => setFormData({ ...formData, basicInfo: { ...formData.basicInfo, make: e.target.value } })}
-                                    placeholder="z.B. VW, Mercedes"
-                                    required
-                                />
+                            <div className="space-y-4 col-span-1">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Hersteller</label>
+                                    <select
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium appearance-none"
+                                        value={isOtherMake ? "Sonstige" : formData.basicInfo.make}
+                                        onChange={e => handleMakeChange(e.target.value)}
+                                        required
+                                    >
+                                        <option value="" disabled>Wählen...</option>
+                                        {VEHICLE_MAKES.map(make => (
+                                            <option key={make} value={make}>{make}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {isOtherMake && (
+                                    <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Anderer Hersteller</label>
+                                        <input
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                                            value={formData.basicInfo.make}
+                                            onChange={e => setFormData({ ...formData, basicInfo: { ...formData.basicInfo, make: e.target.value } })}
+                                            placeholder="Hersteller eingeben..."
+                                            required
+                                        />
+                                    </div>
+                                )}
                             </div>
                             <div className="space-y-2 col-span-1">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Modell</label>

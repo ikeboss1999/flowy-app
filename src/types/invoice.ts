@@ -62,6 +62,7 @@ export interface Invoice {
     };
     // Project & Billing Fields
     projectId?: string;
+    paymentPlanItemId?: string;
     billingType?: 'standard' | 'partial' | 'final';
     partialPaymentNumber?: number; // 1, 2, 3... for partial invoices
 

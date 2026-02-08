@@ -15,8 +15,9 @@ const DEFAULT_SETTINGS: AccountSettings = {
 };
 
 export function useAccountSettings() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     const [settings, setSettings] = useState<AccountSettings>(DEFAULT_SETTINGS);
+    const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     // Load from localStorage on mount
@@ -27,8 +28,14 @@ export function useAccountSettings() {
         }
 
         const loadData = async () => {
+            setError(null);
             try {
                 const response = await fetch(`/api/settings?userId=${user.id}`);
+
+                if (!response.ok) {
+                    throw new Error(`Server Error: ${response.status}`);
+                }
+
                 const allSettings = await response.json();
 
                 if (allSettings.accountSettings) {
@@ -51,10 +58,14 @@ export function useAccountSettings() {
                         }
                     }
                 }
-            } catch (e) {
+            } catch (e: any) {
                 console.error('Failed to load account settings', e);
+                setError(e.message || 'Unknown Error');
+                // IMPORTANT: Do NOT set isLoading to false if it's a critical error?
+                // Actually, we must process 'error' in the consuming component.
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         };
 
         loadData();
@@ -79,6 +90,7 @@ export function useAccountSettings() {
     return {
         data: settings,
         isLoading: isLoading || authLoading,
+        error,
         updateSettings
     };
 }

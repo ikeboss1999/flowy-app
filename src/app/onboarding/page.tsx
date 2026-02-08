@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import {
     ShieldCheck,
     User,
@@ -17,15 +18,18 @@ import {
 import { cn } from "@/lib/utils";
 import { useAccountSettings } from "@/hooks/useAccountSettings";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useAuth } from "@/context/AuthContext";
 
 type Step = "pin" | "username" | "company" | "bank" | "logo" | "success";
 
 export default function OnboardingPage() {
     const router = useRouter();
+    const { user, signOut } = useAuth(); // Get user and signOut
     const { data: accountSettings, updateSettings: updateAccount, isLoading: isAccountLoading } = useAccountSettings();
     const { data: companySettings, updateData: updateCompany, isLoading: isCompanyLoading } = useCompanySettings();
 
     const [currentStep, setCurrentStep] = useState<Step>("pin");
+    const [isSaving, setIsSaving] = useState(false);
     const [pin, setPin] = useState("");
     const [confirmPin, setConfirmPin] = useState("");
     const [username, setUsername] = useState("");
@@ -120,9 +124,26 @@ export default function OnboardingPage() {
     };
 
     const handleFinalize = async () => {
-        await updateCompany(companyData);
-        await updateAccount({ onboardingCompleted: true });
-        router.push("/");
+        setIsSaving(true);
+        try {
+            await updateCompany(companyData);
+            await updateAccount({ onboardingCompleted: true });
+
+            // SYNC TO CLOUD: Update Supabase metadata
+            if (user) {
+                const { error } = await supabase.auth.updateUser({
+                    data: { onboarding_completed: true }
+                });
+                if (error) console.error("Failed to sync onboarding status to cloud:", error);
+                else console.log("Onboarding status synced to cloud.");
+            }
+
+            router.push("/");
+        } catch (e) {
+            console.error("Finalization failed:", e);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (isAccountLoading || isCompanyLoading) {
@@ -432,15 +453,30 @@ export default function OnboardingPage() {
                             <div className="space-y-3">
                                 <button
                                     onClick={handleFinalize}
+                                    disabled={isSaving}
                                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-5 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-900/20 group"
                                 >
-                                    <span>Zum Dashboard</span>
-                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    {isSaving ? (
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <>
+                                            <span>Zum Dashboard</span>
+                                            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                        </>
+                                    )}
                                 </button>
                                 <button
-                                    onClick={() => {
-                                        updateCompany(companyData);
-                                        updateAccount({ onboardingCompleted: true });
+                                    onClick={async () => {
+                                        await updateCompany(companyData);
+                                        await updateAccount({ onboardingCompleted: true });
+
+                                        // SYNC TO CLOUD
+                                        if (user) {
+                                            await supabase.auth.updateUser({
+                                                data: { onboarding_completed: true }
+                                            });
+                                        }
+
                                         router.push("/projects");
                                     }}
                                     className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-5 rounded-2xl transition-all border border-white/5"
@@ -475,6 +511,23 @@ export default function OnboardingPage() {
                     </div>
                 </div>
             </div>
+            {/* Dev/Emergency Logout Button */}
+            <button
+                onClick={async () => {
+                    // Force Wipe Local DB to fix "Loop" state
+                    try {
+                        await fetch('/api/db/clear', { method: 'POST' });
+                        console.log("Emergency Wipe executed.");
+                    } catch (e) {
+                        console.error("Wipe failed", e);
+                    }
+                    await signOut();
+                    window.location.href = '/login';
+                }}
+                className="fixed top-4 right-4 z-[9999] px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold uppercase tracking-wider rounded-lg border border-red-500/20 transition-all"
+            >
+                Not-Ausgang (Wipe & Logout)
+            </button>
         </div>
     );
 }

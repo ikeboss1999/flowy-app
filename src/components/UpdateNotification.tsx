@@ -57,6 +57,41 @@ export function UpdateNotification() {
         }
     };
 
+    const translateReleaseNotes = (notes: string) => {
+        // Common release note keywords translation map
+        const translations: Record<string, string> = {
+            "Improvements": "Verbesserungen",
+            "Bug Fixes": "Fehlerbehebungen",
+            "Bug fixes": "Fehlerbehebungen",
+            "Features": "Neue Funktionen",
+            "New": "Neu",
+            "Fixed": "Behoben",
+            "Changed": "Geändert",
+            "Removed": "Entfernt",
+            "Performance": "Leistung",
+            "Stability": "Stabilität",
+            "Documentation": "Dokumentation",
+            "General performance improvements and bug fixes": "Allgemeine Leistungsverbesserungen und Fehlerbehebungen",
+            "Enhanced stability for native modules": "Verbesserte Stabilität für native Module"
+        };
+
+        let translated = notes;
+        Object.entries(translations).forEach(([en, de]) => {
+            // Match whole words or common headings
+            const regex = new RegExp(`\\b${en}\\b|#{1,6}\\s*${en}`, 'gi');
+            translated = translated.replace(regex, (match) => {
+                // Preserve markdown symbols if matched a heading
+                if (match.startsWith('#')) {
+                    const hashes = match.match(/^#+/)?.[0] || '';
+                    return `${hashes} ${de}`;
+                }
+                return de;
+            });
+        });
+
+        return translated;
+    };
+
     const renderReleaseNotes = (notes: string | Array<any> | undefined) => {
         if (!notes) return <p className="text-slate-500 italic">Keine Details verfügbar.</p>;
 
@@ -64,7 +99,7 @@ export function UpdateNotification() {
             return notes.map((note, i) => (
                 <div key={i} className="mb-2">
                     <p className="font-semibold">{note.version}</p>
-                    <div dangerouslySetInnerHTML={{ __html: note.note || "" }} />
+                    <div dangerouslySetInnerHTML={{ __html: translateReleaseNotes(note.note || "") }} />
                 </div>
             ));
         }
@@ -72,7 +107,7 @@ export function UpdateNotification() {
         return (
             <div
                 className="prose prose-sm max-w-none text-slate-600 space-y-1"
-                dangerouslySetInnerHTML={{ __html: notes }}
+                dangerouslySetInnerHTML={{ __html: translateReleaseNotes(notes) }}
             />
         );
     };

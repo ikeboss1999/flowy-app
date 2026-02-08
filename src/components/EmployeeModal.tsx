@@ -184,17 +184,19 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
     };
 
 
-    const handleSlotUpload = async (e: React.ChangeEvent<HTMLInputElement>, subType: string) => {
+    const handleSlotUpload = async (e: React.ChangeEvent<HTMLInputElement>, subType: string, customName: string) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         const reader = new FileReader();
         reader.onloadend = async () => {
             const base64 = reader.result as string;
+            const extension = file.name.split('.').pop();
+            const fileName = `${customName}.${extension}`;
 
             const newDoc: EmployeeDocument = {
                 id: Math.random().toString(36).substr(2, 9),
-                name: file.name,
+                name: fileName,
                 type: file.type || "application/octet-stream",
                 uploadDate: new Date().toISOString(),
                 fileSize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
@@ -401,17 +403,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
                                     placeholder="+43 664 1234567"
                                 />
                             </div>
-                            <div className="space-y-2 col-span-1">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-2">
-                                    <Calendar className="h-3 w-3" /> Geburtsdatum
-                                </label>
-                                <input
-                                    type="date"
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
-                                    value={formData.personalData.birthday}
-                                    onChange={e => setFormData({ ...formData, personalData: { ...formData.personalData, birthday: e.target.value } })}
-                                />
-                            </div>
+
                             <div className="space-y-2 col-span-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-2">
                                     <MapPin className="h-3 w-3" /> Adresse
@@ -439,7 +431,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
                             </div>
                             <div className="space-y-2 col-span-1">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-2">
-                                    <Shield className="h-3 w-3" /> Rentenversicherungsnr.
+                                    <Shield className="h-3 w-3" /> SVA-Nr.:
                                 </label>
                                 <input
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
@@ -660,7 +652,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
                                     required={!EU_EWR_COUNTRIES.includes(formData.personalData.nationality)}
                                     subType="passport"
                                     documents={formData.documents}
-                                    onUpload={(e) => handleSlotUpload(e, 'passport')}
+                                    onUpload={(e) => handleSlotUpload(e, 'passport', 'Reisepass')}
                                     onRemove={() => handleRemoveSlotDocument('passport')}
                                     onPreview={handlePreview}
                                 />
@@ -671,7 +663,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
                                         label="Personalausweis"
                                         subType="id_card"
                                         documents={formData.documents}
-                                        onUpload={(e) => handleSlotUpload(e, 'id_card')}
+                                        onUpload={(e) => handleSlotUpload(e, 'id_card', 'Personalausweis')}
                                         onRemove={() => handleRemoveSlotDocument('id_card')}
                                         onPreview={handlePreview}
                                     />
@@ -681,7 +673,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
                                         required={true}
                                         subType="residence_permit"
                                         documents={formData.documents}
-                                        onUpload={(e) => handleSlotUpload(e, 'residence_permit')}
+                                        onUpload={(e) => handleSlotUpload(e, 'residence_permit', 'Aufenthaltstitel')}
                                         onRemove={() => handleRemoveSlotDocument('residence_permit')}
                                         onPreview={handlePreview}
                                     />
@@ -695,7 +687,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
                                     label="Meldezettel"
                                     subType="meldezettel"
                                     documents={formData.documents}
-                                    onUpload={(e) => handleSlotUpload(e, 'meldezettel')}
+                                    onUpload={(e) => handleSlotUpload(e, 'meldezettel', 'Meldezettel')}
                                     onRemove={() => handleRemoveSlotDocument('meldezettel')}
                                     onPreview={handlePreview}
                                 />
@@ -703,7 +695,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
                                     label="Bankomatkarte"
                                     subType="bank_card"
                                     documents={formData.documents}
-                                    onUpload={(e) => handleSlotUpload(e, 'bank_card')}
+                                    onUpload={(e) => handleSlotUpload(e, 'bank_card', 'Bankomatkarte')}
                                     onRemove={() => handleRemoveSlotDocument('bank_card')}
                                     onPreview={handlePreview}
                                 />
@@ -711,7 +703,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
                                     label="E-Card"
                                     subType="ecard"
                                     documents={formData.documents}
-                                    onUpload={(e) => handleSlotUpload(e, 'ecard')}
+                                    onUpload={(e) => handleSlotUpload(e, 'ecard', 'E-Card')}
                                     onRemove={() => handleRemoveSlotDocument('ecard')}
                                     onPreview={handlePreview}
                                 />

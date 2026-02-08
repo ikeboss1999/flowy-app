@@ -33,10 +33,12 @@ import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
 import { cn } from "@/lib/utils";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useNotification } from "@/context/NotificationContext";
 
 export default function EmployeesPage() {
     const { employees, addEmployee, updateEmployee, deleteEmployee, getNextEmployeeNumber, isLoading } = useEmployees();
     const { data: companySettings } = useCompanySettings();
+    const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState<EmploymentStatus | "all">("all");
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -74,9 +76,16 @@ export default function EmployeesPage() {
     };
 
     const handleDeleteEmployee = (id: string) => {
-        if (confirm("Sind Sie sicher, dass Sie diesen Mitarbeiter löschen möchten?")) {
-            deleteEmployee(id);
-        }
+        showConfirm({
+            title: "Mitarbeiter löschen?",
+            message: "Möchten Sie diesen Mitarbeiter wirklich unwiderruflich löschen?",
+            variant: "danger",
+            confirmLabel: "Jetzt löschen",
+            onConfirm: () => {
+                deleteEmployee(id);
+                showToast("Mitarbeiter erfolgreich gelöscht.", "success");
+            }
+        });
     };
 
     const handleEditEmployee = (employee: Employee) => {
@@ -92,16 +101,22 @@ export default function EmployeesPage() {
     };
 
     const handleDeleteDocument = (employeeId: string, docId: string) => {
-        if (!confirm("Möchten Sie dieses Dokument wirklich aus dem Archiv entfernen?")) return;
-
-        const employee = employees.find(e => e.id === employeeId);
-        if (employee) {
-            const updatedEmployee = {
-                ...employee,
-                documents: employee.documents.filter(d => d.id !== docId)
-            };
-            updateEmployee(employeeId, updatedEmployee);
-        }
+        showConfirm({
+            title: "Dokument löschen?",
+            message: "Möchten Sie dieses Dokument wirklich aus dem Archiv entfernen?",
+            variant: "danger",
+            onConfirm: () => {
+                const employee = employees.find(e => e.id === employeeId);
+                if (employee) {
+                    const updatedEmployee = {
+                        ...employee,
+                        documents: employee.documents.filter(d => d.id !== docId)
+                    };
+                    updateEmployee(employeeId, updatedEmployee);
+                    showToast("Dokument gelöscht.", "success");
+                }
+            }
+        });
     };
 
     const handlePreview = (doc: EmployeeDocument) => {

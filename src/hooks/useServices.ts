@@ -9,7 +9,7 @@ const STORAGE_KEY = 'flowy_services';
 export function useServices() {
     const [services, setServices] = useState<Service[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const { user, loading: authLoading } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
 
     useEffect(() => {
         if (authLoading || !user) {
@@ -55,20 +55,24 @@ export function useServices() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, service: newService })
             });
-            setServices(prev => [newService, ...prev]);
+            const updated = [newService, ...services];
+            setServices(updated);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         } catch (e) { console.error(e); }
     };
 
     const updateService = async (id: string, service: Service) => {
         if (!user) return;
-        const updated = { ...service, userId: user.id };
+        const updatedService = { ...service, userId: user.id };
         try {
             await fetch('/api/services', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, service: updated })
+                body: JSON.stringify({ userId: user.id, service: updatedService })
             });
-            setServices(prev => prev.map(s => s.id === id ? updated : s));
+            const updated = services.map(s => s.id === id ? updatedService : s);
+            setServices(updated);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         } catch (e) { console.error(e); }
     };
 
@@ -76,7 +80,9 @@ export function useServices() {
         if (!user) return;
         try {
             await fetch(`/api/services/${id}`, { method: 'DELETE' });
-            setServices(prev => prev.filter(s => s.id !== id));
+            const updated = services.filter(s => s.id !== id);
+            setServices(updated);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         } catch (e) { console.error(e); }
     };
 

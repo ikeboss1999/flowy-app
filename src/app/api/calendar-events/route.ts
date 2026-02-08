@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const { userId, event } = await request.json();
-        const { id, title, description, startDate, endDate, isAllDay, type, color, location, attendees, projectId, createdAt } = event;
+        const { id, title, description, startDate, endDate, startTime, endTime, isAllDay, type, color, location, attendees, projectId, createdAt } = event;
 
         const eventId = id || nanoid();
         const existing = db.prepare('SELECT id FROM calendar_events WHERE id = ?').get(eventId);
@@ -32,19 +32,19 @@ export async function POST(request: Request) {
         if (existing) {
             db.prepare(`
                 UPDATE calendar_events SET 
-                title = ?, description = ?, startDate = ?, endDate = ?, isAllDay = ?, 
+                title = ?, description = ?, startDate = ?, endDate = ?, startTime = ?, endTime = ?, isAllDay = ?, 
                 type = ?, color = ?, location = ?, attendees = ?, projectId = ?
                 WHERE id = ?
             `).run(
-                title, description, startDate, endDate, isAllDay ? 1 : 0,
+                title, description, startDate, endDate, startTime, endTime, isAllDay ? 1 : 0,
                 type, color, location, JSON.stringify(attendees), projectId, eventId
             );
         } else {
             db.prepare(`
-                INSERT INTO calendar_events (id, title, description, startDate, endDate, isAllDay, type, color, location, attendees, projectId, createdAt, userId)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO calendar_events (id, title, description, startDate, endDate, startTime, endTime, isAllDay, type, color, location, attendees, projectId, createdAt, userId)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(
-                eventId, title, description, startDate, endDate, isAllDay ? 1 : 0,
+                eventId, title, description, startDate, endDate, startTime, endTime, isAllDay ? 1 : 0,
                 type, color, location, JSON.stringify(attendees), projectId, createdAt || new Date().toISOString(), userId
             );
         }

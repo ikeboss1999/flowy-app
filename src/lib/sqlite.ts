@@ -69,6 +69,13 @@ function initSchema(db: Database.Database) {
             email TEXT,
             phone TEXT,
             address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            notes TEXT,
+            lastActivity TEXT,
             createdAt TEXT,
             updatedAt TEXT,
             userId TEXT
@@ -86,6 +93,7 @@ function initSchema(db: Database.Database) {
             taxRate REAL,
             taxAmount REAL,
             totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
             status TEXT,
             paymentTerms TEXT,
             perfFrom TEXT,
@@ -184,6 +192,8 @@ function initSchema(db: Database.Database) {
             location TEXT,
             attendees TEXT,
             projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
             createdAt TEXT,
             userId TEXT
         );
@@ -229,6 +239,39 @@ function initSchema(db: Database.Database) {
     }
     if (!columnNames.includes('location')) {
       db.prepare("ALTER TABLE time_entries ADD COLUMN location TEXT").run();
+    }
+
+    const calColumns = db.prepare("PRAGMA table_info(calendar_events)").all();
+    const calColumnNames = calColumns.map((c: any) => c.name);
+    if (!calColumnNames.includes('startTime')) {
+      db.prepare("ALTER TABLE calendar_events ADD COLUMN startTime TEXT").run();
+    }
+    if (!calColumnNames.includes('endTime')) {
+      db.prepare("ALTER TABLE calendar_events ADD COLUMN endTime TEXT").run();
+    }
+
+    const custColumns = db.prepare("PRAGMA table_info(customers)").all();
+    const custColumnNames = custColumns.map((c: any) => c.name);
+    const missingCustCols = [
+      ['type', 'TEXT'],
+      ['status', 'TEXT'],
+      ['salutation', 'TEXT'],
+      ['taxId', 'TEXT'],
+      ['reverseChargeEnabled', 'INTEGER DEFAULT 0'],
+      ['notes', 'TEXT'],
+      ['lastActivity', 'TEXT']
+    ];
+
+    for (const [col, type] of missingCustCols) {
+      if (!custColumnNames.includes(col)) {
+        db.prepare(`ALTER TABLE customers ADD COLUMN ${col} ${type}`).run();
+      }
+    }
+
+    const invColumns = db.prepare("PRAGMA table_info(invoices)").all();
+    const invColumnNames = invColumns.map((c: any) => c.name);
+    if (!invColumnNames.includes('isReverseCharge')) {
+      db.prepare("ALTER TABLE invoices ADD COLUMN isReverseCharge INTEGER DEFAULT 0").run();
     }
   } catch (e) {
     console.error("Migration failed", e);

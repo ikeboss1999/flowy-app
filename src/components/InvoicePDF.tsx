@@ -175,9 +175,11 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
 
             {/* Summary and Reverse Charge Notice */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
-                <div style={{ width: '60%', fontSize: '10pt', fontWeight: 'bold', paddingTop: '10px' }}>
-                    {invoice.isReverseCharge && (
-                        <span>Übergang der Steuerschuld für Bauleistungen gem. §19 Abs. 1a UStG</span>
+                <div style={{ width: '60%', fontWeight: 'bold', paddingTop: '10px', color: '#000' }}>
+                    {(invoice.isReverseCharge || (customer?.type === 'business' && customer?.reverseChargeEnabled)) && (
+                        <div style={{ fontSize: '8pt' }}>
+                            Übergang der Steuerschuld für Bauleistungen gem. §19 Abs. 1a UStG
+                        </div>
                     )}
                 </div>
                 <div style={{ width: '250px' }}>
@@ -212,7 +214,7 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
 
             {/* Footer */}
             <div style={{ paddingTop: '10px' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '9pt', textAlign: 'center', marginBottom: '15px' }}>Zahlungskondition: sofort nach Rechnungserhalt</div>
+                <div style={{ fontWeight: 'bold', fontSize: '9pt', textAlign: 'center', marginBottom: '15px' }}>Zahlungskondition: {invoice.paymentTerms || 'sofort nach Rechnungserhalt'}</div>
                 <div style={{ borderTop: '1px solid #000', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', fontSize: '8pt', color: '#444' }}>
                     <div style={{ width: '30%' }}>
                         <span style={{ fontWeight: 'bold', color: '#000' }}>Gericht:</span> {companySettings.commercialCourt || '-'}<br />

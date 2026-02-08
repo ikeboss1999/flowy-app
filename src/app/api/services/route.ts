@@ -11,7 +11,10 @@ export async function GET(request: Request) {
 
     try {
         const rows = db.prepare('SELECT * FROM services WHERE userId = ?').all(userId);
-        return NextResponse.json(rows);
+        return NextResponse.json(rows.map((row: any) => ({
+            ...row,
+            title: row.name // Map DB name back to Frontend title
+        })));
     } catch (error) {
         return NextResponse.json({ message: 'Error' }, { status: 500 });
     }
@@ -20,17 +23,17 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const { userId, service } = await request.json();
-        const { id, name, description, category, price, unit } = service;
+        const { id, title, description, category, price, unit } = service;
 
         const serviceId = id || nanoid();
         const existing = db.prepare('SELECT id FROM services WHERE id = ?').get(serviceId);
 
         if (existing) {
             db.prepare('UPDATE services SET name = ?, description = ?, category = ?, price = ?, unit = ? WHERE id = ?')
-                .run(name, description, category, price, unit, serviceId);
+                .run(title, description, category, price, unit, serviceId);
         } else {
             db.prepare('INSERT INTO services (id, name, description, category, price, unit, userId) VALUES (?, ?, ?, ?, ?, ?, ?)')
-                .run(serviceId, name, description, category, price, unit, userId);
+                .run(serviceId, title, description, category, price, unit, userId);
         }
         return NextResponse.json({ success: true, id: serviceId });
     } catch (error) {

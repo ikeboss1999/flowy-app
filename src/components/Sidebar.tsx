@@ -91,8 +91,13 @@ const menuGroups: MenuGroup[] = [
 ];
 
 export function Sidebar() {
-    const pathname = usePathname();
-    const { logout } = useAuth();
+    const path = usePathname();
+    const { signOut } = useAuth(); // FIX: Was 'logout', but Context provides 'signOut'
+
+    const handleLogout = async () => {
+        // Trigger generic logout request event, caught by CloudSyncModal
+        window.dispatchEvent(new Event('flowy-logout-request'));
+    }
     const { data: companySettings } = useCompanySettings();
     const [expandedItems, setExpandedItems] = useState<string[]>(["Rechnungen"]);
 
@@ -108,8 +113,8 @@ export function Sidebar() {
         const Icon = item.icon;
         const hasChildren = item.children && item.children.length > 0;
         const isExpanded = expandedItems.includes(item.label);
-        const isActive = item.href ? pathname === item.href : false;
-        const isParentActive = hasChildren && item.children?.some(child => child.href === pathname);
+        const isActive = item.href ? path === item.href : false;
+        const isParentActive = hasChildren && item.children?.some(child => child.href === path);
 
         if (hasChildren) {
             return (
@@ -194,7 +199,7 @@ export function Sidebar() {
 
             <div className="mt-12 border-t border-white/10 pt-8 pb-4">
                 <button
-                    onClick={() => logout()}
+                    onClick={handleLogout}
                     className="flex items-center gap-4 px-5 py-4 rounded-2xl w-full text-sidebar-foreground/60 hover:text-white hover:bg-white/5 transition-all duration-300 text-base font-bold group"
                 >
                     <LogOut className="h-6 w-6 group-hover:translate-x-1 transition-transform" />

@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 
 import { UpdateNotification } from "@/components/UpdateNotification";
+import { AuthGuard } from "@/components/AuthGuard";
+import { CloudSyncModal } from "@/components/CloudSyncModal";
+import { AutoRestore } from "@/components/AutoRestore";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -27,8 +31,15 @@ export default function RootLayout({
     <html lang="de">
       <body className={`${inter.variable} ${outfit.variable} antialiased font-sans`}>
         <AuthProvider>
-          {children}
-          <UpdateNotification />
+          <NotificationProvider>
+            <AuthGuard>
+              <AutoRestore>
+                {children}
+              </AutoRestore>
+              <UpdateNotification />
+              <CloudSyncModal />
+            </AuthGuard>
+          </NotificationProvider>
         </AuthProvider>
         <div id="print-portal" />
       </body>

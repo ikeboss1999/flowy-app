@@ -9,7 +9,7 @@ const STORAGE_KEY = 'flowy_calendar_events';
 export function useCalendarEvents() {
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const { user, loading: authLoading } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
 
     useEffect(() => {
         if (authLoading || !user) {
@@ -60,7 +60,9 @@ export function useCalendarEvents() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, event: newEvent })
             });
-            setEvents(prev => [...prev, newEvent]);
+            const updated = [...events, newEvent];
+            setEvents(updated);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         } catch (e) { console.error(e); }
     };
 
@@ -68,14 +70,16 @@ export function useCalendarEvents() {
         if (!user) return;
         const event = events.find(e => e.id === id);
         if (!event) return;
-        const updated = { ...event, ...eventData };
+        const updatedEvent = { ...event, ...eventData };
         try {
             await fetch('/api/calendar-events', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, event: updated })
+                body: JSON.stringify({ userId: user.id, event: updatedEvent })
             });
-            setEvents(prev => prev.map(e => e.id === id ? updated : e));
+            const updated = events.map(e => e.id === id ? updatedEvent : e);
+            setEvents(updated);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         } catch (e) { console.error(e); }
     };
 
@@ -83,7 +87,9 @@ export function useCalendarEvents() {
         if (!user) return;
         try {
             await fetch(`/api/calendar-events/${id}`, { method: 'DELETE' });
-            setEvents(prev => prev.filter(e => e.id !== id));
+            const updated = events.filter(e => e.id !== id);
+            setEvents(updated);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         } catch (e) { console.error(e); }
     };
 

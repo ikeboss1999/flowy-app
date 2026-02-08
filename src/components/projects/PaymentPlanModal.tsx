@@ -174,8 +174,11 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
                                             <div className="relative">
                                                 <input
                                                     type="number"
-                                                    value={item.amount}
-                                                    onChange={(e) => handleUpdateItem(item.id, 'amount', parseFloat(e.target.value))}
+                                                    value={item.amount || ''}
+                                                    onChange={(e) => {
+                                                        const val = parseFloat(e.target.value);
+                                                        handleUpdateItem(item.id, 'amount', isNaN(val) ? 0 : val);
+                                                    }}
                                                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 pl-8"
                                                 />
                                                 <span className="absolute left-3 top-2 text-slate-400 font-bold">€</span>

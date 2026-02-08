@@ -79,7 +79,7 @@ export const EmployeeDataSheetPDF = forwardRef<HTMLDivElement, EmployeeDataSheet
                 <h2 style={{ fontSize: '12pt', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '5px', marginBottom: '15px', color: '#333' }}>2. Sozialversicherung</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                     <div>
-                        <div style={{ marginBottom: '8px' }}><span style={{ fontWeight: 'bold', width: '130px', display: 'inline-block' }}>SV-Nummer:</span> {employee.personalData.socialSecurityNumber || 'nicht angegeben'}</div>
+                        <div style={{ marginBottom: '8px' }}><span style={{ fontWeight: 'bold', width: '130px', display: 'inline-block' }}>SVA-Nr.:</span> {employee.personalData.socialSecurityNumber || 'nicht angegeben'}</div>
                     </div>
                     <div>
                         <div style={{ marginBottom: '8px' }}><span style={{ fontWeight: 'bold', width: '130px', display: 'inline-block' }}>Krankenkasse:</span> {employee.personalData.healthInsurance || 'nicht angegeben'}</div>

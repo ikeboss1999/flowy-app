@@ -32,6 +32,7 @@ export function TimeEntryModal({ isOpen, onClose, onSave, employees, initialEntr
         breakDuration: 60,
         type: "WORK",
         projectId: "",
+        location: "",
         notes: "",
         createdAt: new Date().toISOString(),
     });
@@ -50,6 +51,7 @@ export function TimeEntryModal({ isOpen, onClose, onSave, employees, initialEntr
                 breakDuration: 60,
                 type: "WORK",
                 projectId: "",
+                location: "",
                 notes: "",
                 createdAt: new Date().toISOString(),
             });
@@ -108,7 +110,7 @@ export function TimeEntryModal({ isOpen, onClose, onSave, employees, initialEntr
                                     type="date"
                                     value={formData.date}
                                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium text-slate-900"
                                 />
                             </div>
                         </div>
@@ -120,9 +122,12 @@ export function TimeEntryModal({ isOpen, onClose, onSave, employees, initialEntr
                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium appearance-none"
                             >
                                 <option value="WORK">Arbeit</option>
+                                <option value="BAD_WEATHER">Schlechtwetter</option>
+                                <option value="WORK_BAD_WEATHER">Gearbeitet + Schlechtwetter</option>
                                 <option value="VACATION">Urlaub</option>
-                                <option value="SICK">Krankheit</option>
+                                <option value="SICK">Krank</option>
                                 <option value="HOLIDAY">Feiertag</option>
+                                <option value="OFF">Frei</option>
                             </select>
                         </div>
                     </div>
@@ -157,17 +162,32 @@ export function TimeEntryModal({ isOpen, onClose, onSave, employees, initialEntr
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Projekt / Notiz</label>
-                        <div className="relative">
-                            <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                            <input
-                                type="text"
-                                value={formData.projectId || ""}
-                                onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
-                                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
-                                placeholder="z.B. Baustelle München"
-                            />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Projekt</label>
+                            <div className="relative">
+                                <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={formData.projectId || ""}
+                                    onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
+                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium text-slate-900 placeholder:text-slate-400"
+                                    placeholder="z.B. Projekt #123"
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Arbeitsort</label>
+                            <div className="relative">
+                                <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={formData.location || ""}
+                                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium text-slate-900 placeholder:text-slate-400"
+                                    placeholder="z.B. München"
+                                />
+                            </div>
                         </div>
                     </div>
 

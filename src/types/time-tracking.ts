@@ -1,4 +1,4 @@
-export type TimeEntryType = 'WORK' | 'VACATION' | 'SICK' | 'HOLIDAY';
+export type TimeEntryType = 'WORK' | 'BAD_WEATHER' | 'WORK_BAD_WEATHER' | 'VACATION' | 'SICK' | 'HOLIDAY' | 'OFF';
 
 export interface TimeEntry {
     id: string;
@@ -15,6 +15,7 @@ export interface TimeEntry {
     notes?: string;
     createdAt: string;
     userId?: string; // Owner of the entry
+    badWeatherDuration?: number; // in minutes
 }
 
 export interface TimeTrackingStats {

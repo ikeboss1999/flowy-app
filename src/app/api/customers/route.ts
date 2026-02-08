@@ -18,7 +18,8 @@ export async function GET(request: Request) {
 
         const customers = rows.map((row: any) => ({
             ...row,
-            address: JSON.parse(row.address)
+            address: JSON.parse(row.address),
+            reverseChargeEnabled: row.reverseChargeEnabled === 1
         }));
 
         return NextResponse.json(customers);
@@ -34,8 +35,8 @@ export async function POST(request: Request) {
 
         const stmt = db.prepare(`
             INSERT OR REPLACE INTO customers 
-            (id, name, email, phone, address, createdAt, updatedAt, userId)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (id, name, email, phone, address, type, status, salutation, taxId, reverseChargeEnabled, notes, lastActivity, createdAt, updatedAt, userId)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run(
@@ -44,6 +45,13 @@ export async function POST(request: Request) {
             customer.email,
             customer.phone,
             JSON.stringify(customer.address),
+            customer.type,
+            customer.status,
+            customer.salutation,
+            customer.taxId,
+            customer.reverseChargeEnabled ? 1 : 0,
+            customer.notes,
+            customer.lastActivity,
             customer.createdAt,
             customer.updatedAt,
             customer.userId

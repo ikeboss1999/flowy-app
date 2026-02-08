@@ -11,8 +11,18 @@ contextBridge.exposeInMainWorld('electron', {
 
     // Updater Events
     onUpdateStatus: (callback) => {
-        const listener = (event, status, data) => callback(status, data);
-        ipcRenderer.on('update-status', listener);
-        return () => ipcRenderer.removeListener('update-status', listener);
-    }
+        const subscription = (_event, status, data) => callback(status, data);
+        ipcRenderer.on('update-status', subscription);
+        return () => {
+            ipcRenderer.removeListener('update-status', subscription);
+        }
+    },
+    onAppCloseRequested: (callback) => {
+        const subscription = () => callback();
+        ipcRenderer.on('app-close-requested', subscription);
+        return () => {
+            ipcRenderer.removeListener('app-close-requested', subscription);
+        }
+    },
+    appCloseConfirmed: () => ipcRenderer.send('app-close-confirmed'),
 });

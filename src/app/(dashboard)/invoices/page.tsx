@@ -20,11 +20,13 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { InvoicePreviewModal } from "@/components/InvoicePreviewModal";
 import { cn } from "@/lib/utils";
 import { Invoice, InvoiceStatus } from "@/types/invoice";
+import { useNotification } from "@/context/NotificationContext";
 
 export default function InvoicesPage() {
     const { invoices, updateInvoice, deleteInvoice, isLoading } = useInvoices();
     const { customers } = useCustomers();
     const { data: companySettings } = useCompanySettings();
+    const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState<InvoiceStatus | "all">("all");
     const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
@@ -286,9 +288,16 @@ export default function InvoicesPage() {
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        if (confirm("Möchten Sie diesen Entwurf wirklich löschen?")) {
-                                                            deleteInvoice(invoice.id);
-                                                        }
+                                                        showConfirm({
+                                                            title: "Entwurf löschen?",
+                                                            message: "Möchten Sie diesen Rechnungsentwurf wirklich unwiderruflich löschen?",
+                                                            variant: "danger",
+                                                            confirmLabel: "Jetzt löschen",
+                                                            onConfirm: () => {
+                                                                deleteInvoice(invoice.id);
+                                                                showToast("Entwurf gelöscht.", "success");
+                                                            }
+                                                        });
                                                     }}
                                                     className="p-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all"
                                                     title="Entwurf löschen"

@@ -11,18 +11,44 @@ interface EventModalProps {
     onClose: () => void;
     initialDate: string;
     initialStartTime?: string;
+    initialEndTime?: string;
     editingEvent?: CalendarEvent;
+    onAddEvent: (data: Omit<CalendarEvent, 'id' | 'userId' | 'createdAt'>) => void;
+    onUpdateEvent: (id: string, data: Partial<CalendarEvent>) => void;
 }
 
-export function EventModal({ isOpen, onClose, initialDate, initialStartTime, editingEvent }: EventModalProps) {
-    const { addEvent, updateEvent } = useCalendarEvents();
-
+export function EventModal({
+    isOpen,
+    onClose,
+    initialDate,
+    initialStartTime,
+    initialEndTime,
+    editingEvent,
+    onAddEvent,
+    onUpdateEvent
+}: EventModalProps) {
     const [title, setTitle] = useState(editingEvent?.title || "");
     const [description, setDescription] = useState(editingEvent?.description || "");
-    const [date, setDate] = useState(editingEvent?.date || initialDate);
+    const [startDate, setStartDate] = useState(editingEvent?.startDate || initialDate);
     const [startTime, setStartTime] = useState(editingEvent?.startTime || initialStartTime || "");
-    const [endTime, setEndTime] = useState(editingEvent?.endTime || "");
+    const [endTime, setEndTime] = useState(editingEvent?.endTime || initialEndTime || "");
     const [type, setType] = useState<CalendarEventType>(editingEvent?.type || "work");
+
+    // Helper: Add 1.5 hours to a HH:mm string
+    const calculateDefaultEndTime = (start: string) => {
+        if (!start) return "";
+        const [h, m] = start.split(':').map(Number);
+        const date = new Date();
+        date.setHours(h, m + 90, 0, 0); // 90 mins = 1.5h
+        return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    };
+
+    // Auto-calculate end time for new events
+    useEffect(() => {
+        if (!editingEvent && startTime && !endTime) {
+            setEndTime(calculateDefaultEndTime(startTime));
+        }
+    }, [startTime, editingEvent, endTime]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,16 +57,22 @@ export function EventModal({ isOpen, onClose, initialDate, initialStartTime, edi
         const eventData = {
             title,
             description,
-            date,
+            startDate,
+            endDate: startDate, // For now, single day events
             startTime,
             endTime,
-            type
+            type,
+            isAllDay: !startTime,
+            color: type === 'important' ? '#f43f5e' : (type === 'work' ? '#6366f1' : '#10b981'),
+            location: '',
+            attendees: [],
+            projectId: ''
         };
 
         if (editingEvent) {
-            updateEvent(editingEvent.id, eventData);
+            onUpdateEvent(editingEvent.id, eventData);
         } else {
-            addEvent(eventData);
+            onAddEvent(eventData);
         }
 
         onClose();
@@ -81,7 +113,7 @@ export function EventModal({ isOpen, onClose, initialDate, initialStartTime, edi
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder="Z.B. Besprechung mit Kunde..."
-                            className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-lg font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all"
+                            className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-lg font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all"
                             required
                         />
                     </div>
@@ -94,9 +126,9 @@ export function EventModal({ isOpen, onClose, initialDate, initialStartTime, edi
                             </label>
                             <input
                                 type="date"
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
-                                className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-base font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all flex justify-between"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-base font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all flex justify-between"
                                 required
                             />
                         </div>
@@ -109,7 +141,7 @@ export function EventModal({ isOpen, onClose, initialDate, initialStartTime, edi
                             <select
                                 value={type}
                                 onChange={(e) => setType(e.target.value as CalendarEventType)}
-                                className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-base font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all appearance-none"
+                                className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-base font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all appearance-none"
                             >
                                 <option value="work">Business</option>
                                 <option value="personal">Privat</option>
@@ -128,7 +160,7 @@ export function EventModal({ isOpen, onClose, initialDate, initialStartTime, edi
                                 type="time"
                                 value={startTime}
                                 onChange={(e) => setStartTime(e.target.value)}
-                                className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-base font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all"
+                                className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-base font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all"
                             />
                         </div>
 
@@ -141,7 +173,7 @@ export function EventModal({ isOpen, onClose, initialDate, initialStartTime, edi
                                 type="time"
                                 value={endTime}
                                 onChange={(e) => setEndTime(e.target.value)}
-                                className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-base font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all"
+                                className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-base font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all"
                             />
                         </div>
                     </div>
@@ -156,7 +188,7 @@ export function EventModal({ isOpen, onClose, initialDate, initialStartTime, edi
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="Zusätzliche Infos..."
                             rows={3}
-                            className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-base font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all resize-none"
+                            className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl text-base font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all resize-none"
                         />
                     </div>
 

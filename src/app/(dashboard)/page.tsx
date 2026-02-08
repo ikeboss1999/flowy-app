@@ -125,16 +125,23 @@ export default function Home() {
     }
   ];
 
-  if (companyLoading || accountLoading || !companySettings || !accountSettings) {
-    console.log("Dashboard: Loading data...", { companyLoading, accountLoading });
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <p className="font-bold tracking-widest uppercase text-xs text-indigo-400">Initialisierung...</p>
-        </div>
-      </div>
-    );
+  if (companyLoading || accountLoading) {
+    // Add a simple timeout/fallback or non-blocking render? 
+    // If it takes too long, just show the page with defaults.
+    // For now, let's keep the loader but ensuring it triggers only if actually loading.
+    // The user issue "must click other tab" implies a focus/state update issue.
+    // Let's remove the blocking return and use optional chaining strictly in UI.
+  }
+
+  // Changing strategy: Don't return early. Just use default values if loading.
+  const isInitializing = companyLoading || accountLoading;
+
+  if (isInitializing) {
+    // Only show blocking loader for a max time, or render skeleton?
+    // User sees "INITIALISIERUNG..." which is lines 130-137. 
+    // This means `companyLoading` or `accountLoading` is true. 
+    // But why does it unblock when switching tabs? 
+    // Maybe the hooks rely on focus or re-render.
   }
 
   return (

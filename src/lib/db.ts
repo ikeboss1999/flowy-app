@@ -146,3 +146,5 @@ export const db = {
         }
     }
 };
+
+export const getDb = () => sqliteDb;

@@ -38,35 +38,55 @@ export function ProjectDetails({ project, customer, invoices, onBack, onEdit, on
 
     // Calculate financials
     const financials = useMemo(() => {
-        const projectInvoices = invoices
-            .filter(inv => inv.projectId === project.id && inv.status !== 'canceled')
-            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        // Collect all IDs for payment plan items to match invoices
+        const planItemIds = (project.paymentPlan || []).map(p => String(p.id));
 
-        const totalBilled = projectInvoices.reduce((acc, inv) => acc + inv.totalAmount, 0);
-        const totalNet = projectInvoices.reduce((acc, inv) => acc + inv.subtotal, 0);
-        const totalPaid = projectInvoices
-            .filter(inv => inv.status === 'paid')
-            .reduce((acc, inv) => acc + inv.totalAmount, 0);
+        // Sum of all payment plan items (Net) - often matches project.budget
+        const planTotalNet = (project.paymentPlan || []).reduce((acc, item) => acc + (item.amount || 0), 0);
 
-        // Find partial invoices
-        const partialInvoices = projectInvoices.filter(inv => inv.billingType === 'partial');
-        const finalInvoice = projectInvoices.find(inv => inv.billingType === 'final');
+        // Find all invoices that belong to this project
+        const projectInvoices = invoices.filter(inv => {
+            // Match by project ID
+            if (inv.projectId && String(inv.projectId) === String(project.id)) return true;
+            // Match by payment plan item ID
+            if (inv.paymentPlanItemId && planItemIds.includes(String(inv.paymentPlanItemId))) return true;
+            return false;
+        }).filter(inv => inv.status !== 'canceled');
 
-        const budget = project.budget || 0;
-        const openAmount = Math.max(0, budget - totalPaid);
+        // Net sum of all PAID invoices
+        const totalNetPaid = projectInvoices.reduce((acc, inv) => {
+            if (inv.status === 'paid') {
+                // Determine what portion of the payment was Net
+                const grossAmount = inv.totalAmount || 0;
+                const netAmount = inv.subtotal || 0;
+                const actuallyPaidGross = inv.paidAmount !== undefined ? inv.paidAmount : grossAmount;
+
+                // netPaid = actuallyPaidGross * (netAmount / grossAmount)
+                const ratio = grossAmount > 0 ? (netAmount / grossAmount) : 1;
+                return acc + (actuallyPaidGross * ratio);
+            }
+            return acc;
+        }, 0);
+
+        const budget = project.budget || planTotalNet || 0;
+        const openAmount = Math.max(0, budget - totalNetPaid);
+
+        // Required for button locking logic
+        const activeFinalInvoice = projectInvoices.find(inv => inv.billingType === 'final' && !['draft', 'canceled'].includes(inv.status));
+        const totalBilled = projectInvoices.reduce((acc, inv) => acc + (inv.totalAmount || 0), 0);
+        const totalNet = projectInvoices.reduce((acc, inv) => acc + (inv.subtotal || 0), 0);
 
         return {
             totalBilled,
             totalNet,
-            totalPaid,
+            totalPaid: totalNetPaid,
             budget,
             openAmount,
             invoiceCount: projectInvoices.length,
-            partialCount: partialInvoices.length,
-            hasFinalInvoice: !!finalInvoice,
+            hasActiveFinalInvoice: !!activeFinalInvoice,
             invoices: projectInvoices
         };
-    }, [invoices, project.id, project.budget]);
+    }, [invoices, project.id, project.budget, project.paymentPlan]);
 
     const handleSavePaymentPlan = (plan: PaymentPlanItem[]) => {
         updateProject(project.id, { paymentPlan: plan });
@@ -77,14 +97,14 @@ export function ProjectDetails({ project, customer, invoices, onBack, onEdit, on
         const index = project.paymentPlan?.findIndex(p => p.id === item.id) ?? -1;
         const partialNumber = index !== -1 ? index + 1 : undefined;
 
-        // Determine billing type based on name or order? 
-        // Simple logic: if name contains "Schluss", it's final, otherwise partial.
-        const type = item.name.toLowerCase().includes('schluss') ? 'final' : 'partial';
+        // Determine billing type
+        const type = item.type || (item.name.toLowerCase().includes('schluss') ? 'final' : 'partial');
 
         const params = new URLSearchParams({
             projectId: project.id,
             customerId: project.customerId,
             billingType: type,
+            paymentPlanItemId: item.id,
             amount: item.amount.toString(),
             subjectExtra: item.description || item.name,
             partialNumber: partialNumber?.toString() || ""
@@ -130,20 +150,9 @@ export function ProjectDetails({ project, customer, invoices, onBack, onEdit, on
                     >
                         Bearbeiten
                     </button>
-                    {!financials.hasFinalInvoice && (
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => onCreateInvoice('partial')}
-                                className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold hover:bg-indigo-100 transition-colors flex items-center gap-2"
-                            >
-                                <Plus className="h-4 w-4" /> Teilrechnung
-                            </button>
-                            <button
-                                onClick={() => onCreateInvoice('final')}
-                                className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold hover:bg-emerald-100 transition-colors flex items-center gap-2"
-                            >
-                                <CheckCircle className="h-4 w-4" /> Schlussrechnung
-                            </button>
+                    {financials.hasActiveFinalInvoice && (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold border border-emerald-100">
+                            <CheckCircle className="h-4 w-4" /> Projekt abgerechnet
                         </div>
                     )}
                 </div>
@@ -183,15 +192,15 @@ export function ProjectDetails({ project, customer, invoices, onBack, onEdit, on
                     <div className="flex gap-4">
                         <div className="bg-slate-50 rounded-2xl p-5 min-w-[160px] border border-slate-100">
                             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Projekt Summe (Netto)</p>
-                            <p className="text-2xl font-black text-slate-900">€ {financials.budget.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
+                            <p className="text-2xl font-black text-slate-900">€ {(financials.budget || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
                         </div>
                         <div className="bg-emerald-50 rounded-2xl p-5 min-w-[160px] border border-emerald-100">
-                            <p className="text-emerald-600/70 text-xs font-bold uppercase tracking-widest mb-1">Bereits bezahlt</p>
-                            <p className="text-2xl font-black text-emerald-700">€ {financials.totalPaid.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
+                            <p className="text-emerald-600/70 text-xs font-bold uppercase tracking-widest mb-1">Bereits bezahlt (Netto)</p>
+                            <p className="text-2xl font-black text-emerald-700">€ {(financials.totalPaid || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
                         </div>
                         <div className="bg-indigo-50 rounded-2xl p-5 min-w-[160px] border border-indigo-100">
-                            <p className="text-indigo-600/70 text-xs font-bold uppercase tracking-widest mb-1">Offen</p>
-                            <p className="text-2xl font-black text-indigo-700">€ {financials.openAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
+                            <p className="text-indigo-600/70 text-xs font-bold uppercase tracking-widest mb-1">Offen (Netto)</p>
+                            <p className="text-2xl font-black text-indigo-700">€ {(financials.openAmount || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
                         </div>
                     </div>
                 </div>
@@ -236,45 +245,70 @@ export function ProjectDetails({ project, customer, invoices, onBack, onEdit, on
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {project.paymentPlan.map((item, index) => (
-                                    <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-6 py-4 font-bold text-slate-400">{index + 1}</td>
-                                        <td className="px-6 py-4">
-                                            <div className="font-bold text-slate-700">{item.name}</div>
-                                            {item.description && (
-                                                <div className="text-xs text-slate-400 mt-0.5 font-medium">{item.description}</div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-slate-500">
-                                            {item.dueDate ? new Date(item.dueDate).toLocaleDateString('de-DE') : '-'}
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-mono font-medium text-slate-700">
-                                            € {item.amount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            {item.invoiceId ? (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider border border-emerald-100">
-                                                    <CheckCircle className="h-3 w-3" />
-                                                    Erstellt
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-wider">
-                                                    Geplant
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            {!item.invoiceId && (
-                                                <button
-                                                    onClick={() => handleCreateInvoiceFromPlan(item)}
-                                                    className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1 ml-auto"
-                                                >
-                                                    Rechnung erstellen <ArrowRight className="h-3 w-3" />
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
+                                {project.paymentPlan.map((item, index) => {
+                                    const linkedInvoice = invoices.find(inv =>
+                                        (inv.paymentPlanItemId && String(inv.paymentPlanItemId) === String(item.id)) ||
+                                        (inv.projectId && String(inv.projectId) === String(project.id) &&
+                                            inv.billingType === (item.type || 'partial') &&
+                                            (inv.billingType === 'final' || inv.partialPaymentNumber === (index + 1)))
+                                    );
+
+                                    const isLocked = linkedInvoice && !['draft', 'canceled'].includes(linkedInvoice.status);
+
+                                    return (
+                                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-6 py-4 font-bold text-slate-400">{index + 1}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="font-bold text-slate-700">{item.name}</div>
+                                                {item.description && (
+                                                    <div className="text-xs text-slate-400 mt-0.5 font-medium">{item.description}</div>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-slate-500">
+                                                {item.dueDate ? new Date(item.dueDate).toLocaleDateString('de-DE') : '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-mono font-medium text-slate-700">
+                                                € {(item.amount || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                {linkedInvoice ? (
+                                                    <span className={cn(
+                                                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border",
+                                                        linkedInvoice.status === 'paid' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                                            linkedInvoice.status === 'draft' ? "bg-slate-50 text-slate-600 border-slate-100" :
+                                                                linkedInvoice.status === 'canceled' ? "bg-rose-50 text-rose-600 border-rose-100" :
+                                                                    "bg-amber-50 text-amber-700 border-amber-100"
+                                                    )}>
+                                                        {linkedInvoice.status === 'paid' && <CheckCircle className="h-3 w-3" />}
+                                                        {linkedInvoice.status === 'draft' ? 'Entwurf' :
+                                                            linkedInvoice.status === 'paid' ? 'Bezahlt' :
+                                                                linkedInvoice.status === 'canceled' ? 'Storniert' : 'Erstellt'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-wider">
+                                                        Geplant
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                {(!linkedInvoice || !isLocked) && (
+                                                    <button
+                                                        onClick={() => handleCreateInvoiceFromPlan(item)}
+                                                        className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1 ml-auto"
+                                                    >
+                                                        Rechnung erstellen <ArrowRight className="h-3 w-3" />
+                                                    </button>
+                                                )}
+                                                {isLocked && (
+                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1.5 justify-end">
+                                                        <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                                                        Bereits abgerechnet
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -333,7 +367,7 @@ export function ProjectDetails({ project, customer, invoices, onBack, onEdit, on
                                             {new Date(inv.issueDate).toLocaleDateString('de-DE')}
                                         </td>
                                         <td className="px-6 py-4 text-right font-mono font-medium text-slate-700">
-                                            € {inv.subtotal.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                                            € {(inv.subtotal || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <span className={cn(

@@ -13,6 +13,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useAccountSettings } from "@/hooks/useAccountSettings";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { useNotification } from "@/context/NotificationContext";
 
 interface AccordionSectionProps {
     title: string;
@@ -56,7 +58,8 @@ function AccordionSection({ title, icon: Icon, isOpen, onToggle, children }: Acc
 
 export function AccountSettings() {
     const [openSection, setOpenSection] = useState<string | null>("benutzerkonto");
-    const { user, updateUser } = useAuth();
+    const { user } = useAuth();
+    const { showToast } = useNotification();
     const { data: settings, updateSettings, isLoading } = useAccountSettings();
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
@@ -106,28 +109,34 @@ export function AccountSettings() {
 
     const handleEmailSave = async () => {
         try {
-            await updateUser({ email });
+            const { error } = await supabase.auth.updateUser({ email });
+            if (error) throw error;
             setShowEmailSuccess(true);
             setTimeout(() => setShowEmailSuccess(false), 3000);
         } catch (error) {
             console.error('Failed to update email', error);
-            alert("Fehler beim Aktualisieren der E-Mail-Adresse.");
+            showToast("Fehler beim Aktualisieren der E-Mail-Adresse.", "error");
         }
     };
 
     const performDeletion = async () => {
         setIsDeleting(true);
         try {
-            // Call the API to delete data and account
+            if (!user?.id) throw new Error("Benutzer-ID nicht gefunden.");
+
+            // 1. Call the API to delete data and account
             const response = await fetch('/api/auth/delete-account', {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.id })
             });
 
             if (!response.ok) {
-                throw new Error('Löschvorgang auf dem Server fehlgeschlagen.');
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Löschvorgang auf dem Server fehlgeschlagen.');
             }
 
-            // Targeted Cleanup of LocalStorage
+            // 2. Targeted Cleanup of LocalStorage
             const sharedKeys = [
                 'flowy_services',
                 'flowy_todos',
@@ -153,34 +162,37 @@ export function AccountSettings() {
                 }
             });
 
-            // Specifically remove user-suffixed keys
+            // 3. Specifically remove user-suffixed keys
             const specificKeys = [
                 'account_settings',
                 'flowy_company_data',
                 'flowy_invoice_settings',
-                user?.id ? `account_settings_${user.id}` : '',
+                `account_settings_${user.id}`,
                 `account_settings_${settings.name}`,
                 'current_user_id'
             ].filter(Boolean);
             specificKeys.forEach(key => localStorage.removeItem(key));
 
-            // Final catch-all for any other user-specific items that might start with their ID
-            if (user?.id) {
-                const keysToRemove: string[] = [];
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    if (key && (key.includes(user.id) || key.startsWith(`flowy_user_${user.id}`))) {
-                        keysToRemove.push(key);
-                    }
+            // 4. Final catch-all for any other user-specific items that might start with their ID
+            const keysToRemove: string[] = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes(user.id) || key.startsWith(`flowy_user_${user.id}`))) {
+                    keysToRemove.push(key);
                 }
-                keysToRemove.forEach(key => localStorage.removeItem(key));
             }
+            keysToRemove.forEach(key => localStorage.removeItem(key));
 
-            alert("Ihr Konto und alle Daten wurden erfolgreich gelöscht. Sie werden nun abgemeldet.");
-            window.location.href = '/login';
+            // 5. Full Sign Out
+            await supabase.auth.signOut();
+
+            showToast("Ihr Konto und alle Daten wurden erfolgreich gelöscht.", "success");
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 2000);
         } catch (error: any) {
             console.error('Deletion failed', error);
-            alert(`Ein Fehler ist aufgetreten: ${error.message || 'Unbekannter Fehler'}. Bitte wenden Sie sich an den Support.`);
+            showToast(`Fehler: ${error.message || 'Unbekannter Fehler'}.`, "error");
             setIsDeleting(false);
         }
     };

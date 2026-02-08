@@ -17,10 +17,12 @@ import {
 import { Service } from "@/types/service";
 import { ServiceModal } from "@/components/ServiceModal";
 import { useServices } from "@/hooks/useServices";
+import { useNotification } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
 
 export default function ServicesPage() {
     const { services, addService, updateService, deleteService, isLoading } = useServices();
+    const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
     const [filterCategory, setFilterCategory] = useState<string | "all">("all");
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,9 +49,16 @@ export default function ServicesPage() {
     };
 
     const handleDeleteService = (id: string) => {
-        if (confirm("Sind Sie sicher, dass Sie diese Leistung entfernen möchten?")) {
-            deleteService(id);
-        }
+        showConfirm({
+            title: "Leistung löschen?",
+            message: "Möchten Sie diese Leistung wirklich aus dem Katalog entfernen?",
+            variant: "danger",
+            confirmLabel: "Jetzt löschen",
+            onConfirm: () => {
+                deleteService(id);
+                showToast("Leistung erfolgreich entfernt.", "success");
+            }
+        });
     };
 
     if (isLoading) {
