@@ -115,7 +115,7 @@ export function CustomerSearchSelect({
                     <div className="max-h-[350px] overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-slate-200">
                         {filteredCustomers.length > 0 ? (
                             filteredCustomers.map(customer => {
-                                const info = typeLabels[customer.type];
+                                const info = typeLabels[customer.type] || typeLabels.private;
                                 return (
                                     <button
                                         key={customer.id}
@@ -151,7 +151,7 @@ export function CustomerSearchSelect({
                                                         {info.label}
                                                     </span>
                                                     <span className="text-xs font-bold text-slate-400">
-                                                        {customer.address.city || customer.email}
+                                                        {customer.address?.city || customer.email}
                                                     </span>
                                                 </div>
                                             </div>
