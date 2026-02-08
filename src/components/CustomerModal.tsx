@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, User, Briefcase, Mail, Phone, MapPin, FileText, Save } from "lucide-react";
+import { X, User, Briefcase, Mail, Phone, MapPin, FileText, Save, Clock } from "lucide-react";
 import { Customer, CustomerType, CustomerStatus } from "@/types/customer";
+import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { cn } from "@/lib/utils";
 
 interface CustomerModalProps {
@@ -15,6 +16,7 @@ interface CustomerModalProps {
 export function CustomerModal({ isOpen, onClose, onSave, initialCustomer }: CustomerModalProps) {
     const [type, setType] = useState<CustomerType>('private');
     const [status, setStatus] = useState<CustomerStatus>('active');
+    const { data: invoiceSettings } = useInvoiceSettings();
     const [formData, setFormData] = useState({
         name: "",
         salutation: "",
@@ -24,7 +26,9 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer }: Cust
         city: "",
         zip: "",
         taxId: "",
+        commercialRegisterNumber: "",
         reverseChargeEnabled: false,
+        defaultPaymentTermId: "",
         notes: ""
     });
 
@@ -41,7 +45,9 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer }: Cust
                 city: initialCustomer.address.city,
                 zip: initialCustomer.address.zip,
                 taxId: initialCustomer.taxId || "",
+                commercialRegisterNumber: initialCustomer.commercialRegisterNumber || "",
                 reverseChargeEnabled: initialCustomer.reverseChargeEnabled || false,
+                defaultPaymentTermId: initialCustomer.defaultPaymentTermId || "",
                 notes: initialCustomer.notes || ""
             });
         } else {
@@ -55,7 +61,9 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer }: Cust
                 city: "",
                 zip: "",
                 taxId: "",
+                commercialRegisterNumber: "",
                 reverseChargeEnabled: false,
+                defaultPaymentTermId: "",
                 notes: ""
             });
         }
@@ -79,7 +87,9 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer }: Cust
                 zip: formData.zip
             },
             taxId: type === 'business' ? formData.taxId : undefined,
+            commercialRegisterNumber: type === 'business' ? formData.commercialRegisterNumber : undefined,
             reverseChargeEnabled: type === 'business' ? formData.reverseChargeEnabled : false,
+            defaultPaymentTermId: formData.defaultPaymentTermId || undefined,
             notes: formData.notes,
             createdAt: initialCustomer?.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -289,6 +299,16 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer }: Cust
                                     />
                                 </div>
                                 <div className="space-y-2">
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Firmenbuchnummer</label>
+                                    <input
+                                        name="commercialRegisterNumber"
+                                        value={formData.commercialRegisterNumber}
+                                        onChange={handleChange}
+                                        placeholder="z.B. FN 123456 x"
+                                        className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                                    />
+                                </div>
+                                <div className="space-y-2 mt-4">
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Reverse Charge</label>
                                     <button
                                         type="button"
@@ -314,6 +334,24 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer }: Cust
                                 </div>
                             </div>
                         )}
+                        <div className="col-span-2 space-y-2">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                                <Clock className="h-3 w-3" /> Zahlungskonditionen (Standard)
+                            </label>
+                            <select
+                                name="defaultPaymentTermId"
+                                value={formData.defaultPaymentTermId}
+                                onChange={(e) => setFormData(prev => ({ ...prev, defaultPaymentTermId: e.target.value }))}
+                                className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22m19%209-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1.25rem_center] bg-no-repeat"
+                            >
+                                <option value="">Globaler Standard (Einstellungen)</option>
+                                {invoiceSettings.paymentTerms?.map(term => (
+                                    <option key={term.id} value={term.id}>
+                                        {term.name} ({term.days} Tage)
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                         <div className="col-span-2 space-y-2">
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
                                 <FileText className="h-3 w-3" /> Notizen

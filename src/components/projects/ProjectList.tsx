@@ -104,28 +104,30 @@ export function ProjectList({ projects, customers, onEdit, onDelete, onView }: P
                                     {new Date(project.createdAt).toLocaleDateString('de-DE')}
                                 </td>
                                 <td className="px-8 py-5">
-                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                                    <div className="flex items-center gap-3 justify-end">
                                         <button
                                             onClick={() => onView(project)}
-                                            className="p-2 rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition-colors"
-                                            title="Details öffnen"
+                                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all border border-indigo-100/50 shadow-sm"
                                         >
                                             <ExternalLink className="h-4 w-4" />
+                                            Öffnen
                                         </button>
-                                        <button
-                                            onClick={() => onEdit(project)}
-                                            className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-                                            title="Bearbeiten"
-                                        >
-                                            <Edit2 className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => onDelete(project.id)}
-                                            className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
-                                            title="Löschen"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => onEdit(project)}
+                                                className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                                                title="Bearbeiten"
+                                            >
+                                                <Edit2 className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => onDelete(project.id)}
+                                                className="p-2 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
+                                                title="Löschen"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>

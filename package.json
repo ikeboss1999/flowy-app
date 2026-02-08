@@ -1,6 +1,6 @@
 {
   "name": "flowy",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "private": true,
   "description": "FlowY Construction Management Desktop Application",
   "main": "electron/main.js",
@@ -90,7 +90,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "FlowY"
+      "shortcutName": "FlowY",
+      "include": "build/installer.nsh"
     },
     "asar": true,
     "asarUnpack": [

@@ -3,13 +3,21 @@ export interface DunningLevel {
     period: number;
 }
 
+export interface PaymentTerm {
+    id: string;
+    name: string;
+    text: string;
+    days: number;
+}
+
 export interface InvoiceSettings {
     // Allgemeine Rechnungseinstellungen
     invoicePrefix: string;
     nextInvoiceNumber: number;
     employeePrefix: string;
     nextEmployeeNumber: number;
-    defaultPaymentTerm: string;
+    paymentTerms: PaymentTerm[];
+    defaultPaymentTermId: string;
     defaultTaxRate: number;
     defaultCurrency: string;
 

@@ -1,0 +1,7 @@
+# Release v1.0.8
+
+## Improvements
+- Stability and performance optimizations.
+- Native module compatibility fixes.
+- General UI refinements and bug fixes.
+- Updated authentication and invoice components for better user experience.

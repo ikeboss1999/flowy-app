@@ -17,8 +17,10 @@ export interface Customer {
     phone: string;
     address: Address;
     taxId?: string; // Optional for business customers
+    commercialRegisterNumber?: string; // Optional for business customers (Firmenbuchnummer)
     reverseChargeEnabled?: boolean; // Only for business customers
     notes?: string;
+    defaultPaymentTermId?: string; // Reference to custom payment terms in settings
     createdAt: string;
     updatedAt: string;
     lastActivity?: string; // Added last activity

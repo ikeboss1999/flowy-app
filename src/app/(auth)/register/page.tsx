@@ -2,11 +2,13 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { getAuthErrorMessage } from '@/lib/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function RegisterPage() {
-    const { register } = useAuth();
+    const { } = useAuth(); // or just remove if none needed
     const router = useRouter();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -27,11 +29,22 @@ export default function RegisterPage() {
         }
 
         try {
-            await register({ name, email, password });
+            const { error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: name,
+                    },
+                },
+            });
+
+            if (error) throw error;
+
             // Redirect to login page
-            router.push('/login');
+            router.push('/login?message=Registrierung erfolgreich! Bitte überprüfe deine E-Mails.');
         } catch (err: any) {
-            setError(err.message);
+            setError(getAuthErrorMessage(err));
         } finally {
             setLoading(false);
         }

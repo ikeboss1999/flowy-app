@@ -74,16 +74,16 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     const pdfRef = useRef<HTMLDivElement>(null);
 
     // Form State
-    const [invoiceNumber, setInvoiceNumber] = useState('');
-    const [subjectExtra, setSubjectExtra] = useState('');
-    const [constructionProject, setConstructionProject] = useState('');
-    const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
-    const [paymentTerms, setPaymentTerms] = useState('');
-    const [perfFrom, setPerfFrom] = useState('');
-    const [perfTo, setPerfTo] = useState('');
-    const [customerId, setCustomerId] = useState('');
-    const [projectId, setProjectId] = useState('');
-    const [billingType, setBillingType] = useState<'standard' | 'partial' | 'final'>('standard');
+    const [invoiceNumber, setInvoiceNumber] = useState(initialData?.invoiceNumber || '');
+    const [subjectExtra, setSubjectExtra] = useState(initialData?.subjectExtra || '');
+    const [constructionProject, setConstructionProject] = useState(initialData?.constructionProject || '');
+    const [issueDate, setIssueDate] = useState(initialData?.issueDate || new Date().toISOString().split('T')[0]);
+    const [paymentTerms, setPaymentTerms] = useState(initialData?.paymentTerms || '');
+    const [perfFrom, setPerfFrom] = useState(initialData?.performancePeriod?.from || '');
+    const [perfTo, setPerfTo] = useState(initialData?.performancePeriod?.to || '');
+    const [customerId, setCustomerId] = useState(initialData?.customerId || '');
+    const [projectId, setProjectId] = useState(initialData?.projectId || '');
+    const [billingType, setBillingType] = useState<'standard' | 'partial' | 'final'>(initialData?.billingType || 'standard');
     const [partialPaymentNumber, setPartialPaymentNumber] = useState<number | undefined>(initialData?.partialPaymentNumber);
     const [paymentPlanItemId, setPaymentPlanItemId] = useState<string | undefined>(initialData?.paymentPlanItemId);
     const [processor, setProcessor] = useState(initialData?.processor || '');
@@ -98,19 +98,33 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
         }
     }, [isCompanyLoading, companySettings, initialData]);
 
-    const [items, setItems] = useState<InvoiceItem[]>([
+    const [items, setItems] = useState<InvoiceItem[]>(initialData?.items || [
         { id: '1', description: '', quantity: 1, unit: 'Stk', pricePerUnit: 0, totalPrice: 0 }
     ]);
 
+    // Auto-apply customer-specific payment terms
+    useEffect(() => {
+        if (!customerId || isCustomersLoading || isSettingsLoading || initialData) return;
+
+        const customer = customers.find(c => c.id === customerId);
+        if (customer && customer.defaultPaymentTermId) {
+            const customerTerm = settings.paymentTerms?.find(t => t.id === customer.defaultPaymentTermId);
+            if (customerTerm) {
+                setPaymentTerms(customerTerm.text);
+            }
+        }
+    }, [customerId, customers, isCustomersLoading, settings, isSettingsLoading, initialData]);
+
     // Initialize from settings and params
     useEffect(() => {
-        if (!isSettingsLoading && !initialData) {
-            setInvoiceNumber(`${new Date().getFullYear()}/${String(settings.nextInvoiceNumber).padStart(2, '0')}`);
-            setPaymentTerms(settings.defaultPaymentTerm);
+        if (!isSettingsLoading && !initialData && settings) {
+            setInvoiceNumber(`${new Date().getFullYear()}/${String(settings.nextInvoiceNumber || 1).padStart(2, '0')}`);
+            const defaultTerm = settings.paymentTerms.find(t => t.id === settings.defaultPaymentTermId);
+            if (defaultTerm) setPaymentTerms(defaultTerm.text);
         }
 
         // Prefill from URL Params
-        if (!initialData && searchParams.size > 0 && !isProjectsLoading && !isCustomersLoading && !isInvoicesLoading) {
+        if (!initialData && searchParams && !isProjectsLoading && !isCustomersLoading && !isInvoicesLoading) {
             const paramProjectId = searchParams.get('projectId');
             const paramCustomerId = searchParams.get('customerId');
             const paramBillingType = searchParams.get('billingType');
@@ -142,7 +156,8 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
             } else if (paramBillingType === 'final') {
                 setSubjectExtra('Schlussrechnung');
             } else if (paramBillingType === 'partial') {
-                setSubjectExtra('Teilrechnung');
+                const nextNumber = previousInvoices.length + 1;
+                setSubjectExtra(`${nextNumber}. Teilrechnung`);
             }
 
             if (paramPartialNumber) {
@@ -150,30 +165,31 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                 if (!isNaN(num)) setPartialPaymentNumber(num);
             }
 
-            // Set Amount and Item Description
-            if (paramAmount) {
-                const amount = parseFloat(paramAmount);
-                if (!isNaN(amount)) {
-                    if (paramBillingType === 'final') {
-                        // For Final Invoice: Populate cumulative items
+            // Handle Amount and First Item prefill
+            if (paramAmount || paramSubjectExtra) {
+                const amount = paramAmount ? parseFloat(paramAmount) : 0;
+                const activeBillingType = (paramBillingType as any) || billingType;
+
+                if (!isNaN(amount) && amount > 0) {
+                    if (activeBillingType === 'final') {
+                        // For Final Invoice: 
+                        // 1. Add Total Project Sum (estimate or budget)
                         const proj = projects.find(p => p.id === paramProjectId);
-                        const prevInvs = invoices
-                            .filter(inv => inv.projectId === paramProjectId && inv.billingType === 'partial' && inv.status !== 'canceled')
-                            .sort((a, b) => new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime());
+                        const totalBudget = proj?.budget || 0;
 
-                        const finalItems: InvoiceItem[] = [];
-
-                        // 1. Total Project Sum
-                        finalItems.push({
-                            id: Math.random().toString(36).substr(2, 9),
-                            description: `Gesamtauftragssumme laut Angebot (Netto)`,
+                        const finalItems: InvoiceItem[] = [{
+                            id: 'budget-1',
+                            description: `Gesamtleistung laut Auftrag (${proj?.name || 'Projekt'})`,
                             quantity: 1,
                             unit: 'pauschal',
-                            pricePerUnit: proj?.budget || 0,
-                            totalPrice: proj?.budget || 0
-                        });
+                            pricePerUnit: totalBudget,
+                            totalPrice: totalBudget
+                        }];
 
                         // 2. Subtract Previous Partial Invoices
+                        const prevInvs = (invoices as Invoice[])
+                            .filter(inv => inv.projectId === paramProjectId && inv.billingType === 'partial' && inv.status !== 'canceled' && inv.id !== initialData?.id);
+
                         prevInvs.forEach((inv, idx) => {
                             finalItems.push({
                                 id: Math.random().toString(36).substr(2, 9),
@@ -497,14 +513,17 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                     <div>
                         <label className={labelClasses}>Zahlungskonditionen</label>
                         <select
-                            value={paymentTerms}
-                            onChange={(e) => setPaymentTerms(e.target.value)}
+                            value={settings.paymentTerms.find(t => t.text === paymentTerms)?.id || ''}
+                            onChange={(e) => {
+                                const term = settings.paymentTerms.find(t => t.id === e.target.value);
+                                if (term) setPaymentTerms(term.text);
+                            }}
                             className={cn(inputClasses, "appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22m19%209-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1.25rem_center] bg-no-repeat")}
                         >
-                            <option value="sofort nach Rechnungserhalt">sofort nach Rechnungserhalt</option>
-                            <option value="7 Tage">7 Tage</option>
-                            <option value="14 Tage">14 Tage</option>
-                            <option value="30 Tage">30 Tage</option>
+                            <option value="" disabled>Zahlungskondition wählen...</option>
+                            {settings.paymentTerms.map(term => (
+                                <option key={term.id} value={term.id}>{term.name}</option>
+                            ))}
                         </select>
                     </div>
                 </div>

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useTimeEntries } from '@/hooks/useTimeEntries';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { FileText, Calendar, ArrowRight, CheckCircle, Download } from 'lucide-react';
+import { FileText, Calendar, ArrowRight, CheckCircle, Download, Folder, ChevronRight, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { TimeTrackingPreviewModal } from './TimeTrackingPreviewModal';
 import { Employee } from '@/types/employee';
@@ -18,20 +18,32 @@ export function TimesheetArchiveList() {
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
     const [selectedMonth, setSelectedMonth] = useState<string>('');
+    const [expandedEmployees, setExpandedEmployees] = useState<string[]>([]);
 
     // Filter only finalized
     const finalized = timesheets
         .filter(t => t.status === 'finalized')
         .sort((a, b) => new Date(b.month).getTime() - new Date(a.month).getTime());
 
+    // Group by employee
+    const groupedByEmployee = finalized.reduce((acc, sheet) => {
+        if (!acc[sheet.employeeId]) acc[sheet.employeeId] = [];
+        acc[sheet.employeeId].push(sheet);
+        return acc;
+    }, {} as Record<string, typeof finalized>);
+
     const getEmployeeName = (id: string) => {
         const emp = employees.find(e => e.id === id);
         return emp ? `${emp.personalData.firstName} ${emp.personalData.lastName}` : "Unbekannt";
     };
 
+    const toggleEmployee = (id: string) => {
+        setExpandedEmployees(prev =>
+            prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
+        );
+    };
+
     const handleOpen = (month: string, employeeId: string) => {
-        // Ideally pass filtering params via URL (e.g. /time-tracking?month=...&employee=...)
-        // For now navigation only.
         router.push('/time-tracking');
     };
 
@@ -63,63 +75,88 @@ export function TimesheetArchiveList() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-                <table className="w-full text-left">
-                    <thead className="bg-slate-50 border-b border-slate-100">
-                        <tr>
-                            <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Monat</th>
-                            <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Mitarbeiter</th>
-                            <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Abgeschlossen am</th>
-                            <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
-                            <th className="px-8 py-5 w-40 text-right">Aktionen</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {finalized.map((sheet) => (
-                            <tr key={sheet.id} className="hover:bg-slate-50/50 transition-colors group">
-                                <td className="px-8 py-5 font-bold text-slate-900">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-                                            <Calendar className="h-4 w-4" />
-                                        </div>
-                                        {new Date(sheet.month).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}
-                                    </div>
-                                </td>
-                                <td className="px-8 py-5 font-medium text-slate-700">
-                                    {getEmployeeName(sheet.employeeId)}
-                                </td>
-                                <td className="px-8 py-5 text-slate-500">
-                                    {sheet.finalizedAt ? new Date(sheet.finalizedAt).toLocaleDateString('de-DE') : '-'}
-                                </td>
-                                <td className="px-8 py-5">
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100">
-                                        <CheckCircle className="h-3 w-3" />
-                                        Finalisiert
-                                    </span>
-                                </td>
-                                <td className="px-8 py-5 text-right">
-                                    <div className="flex justify-end gap-2">
-                                        <button
-                                            onClick={() => handleDownload(sheet.month, sheet.employeeId)}
-                                            className="h-10 w-10 flex items-center justify-center bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
-                                            title="PDF Herunterladen"
-                                        >
-                                            <Download className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleOpen(sheet.month, sheet.employeeId)}
-                                            className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-all flex items-center gap-2"
-                                        >
-                                            Öffnen <ArrowRight className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+        <div className="space-y-4">
+            {Object.entries(groupedByEmployee).map(([employeeId, sheets]) => {
+                const isExpanded = expandedEmployees.includes(employeeId);
+                const employeeName = getEmployeeName(employeeId);
+
+                return (
+                    <div key={employeeId} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
+                        {/* Folder Header */}
+                        <button
+                            onClick={() => toggleEmployee(employeeId)}
+                            className="w-full flex items-center justify-between px-8 py-6 hover:bg-slate-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={`p-3 rounded-2xl transition-colors ${isExpanded ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
+                                    <Folder className="h-6 w-6" />
+                                </div>
+                                <div className="text-left">
+                                    <h3 className="text-lg font-black text-slate-900 leading-none mb-1">{employeeName}</h3>
+                                    <p className="text-sm text-slate-500 font-medium">{sheets.length} Stundenzettel im Archiv</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                {isExpanded ? <ChevronDown className="h-5 w-5 text-slate-400" /> : <ChevronRight className="h-5 w-5 text-slate-400" />}
+                            </div>
+                        </button>
+
+                        {/* Folder Content (Table) */}
+                        {isExpanded && (
+                            <div className="border-t border-slate-50 animate-in slide-in-from-top-2 duration-300">
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50/50">
+                                        <tr>
+                                            <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Monat</th>
+                                            <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Abgeschlossen am</th>
+                                            <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
+                                            <th className="px-8 py-4 text-right"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {sheets.map((sheet) => (
+                                            <tr key={sheet.id} className="hover:bg-slate-50/50 transition-colors group">
+                                                <td className="px-8 py-5 font-bold text-slate-900 text-sm">
+                                                    <div className="flex items-center gap-3">
+                                                        <Calendar className="h-4 w-4 text-indigo-500" />
+                                                        {new Date(sheet.month).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-5 text-slate-500 text-sm">
+                                                    {sheet.finalizedAt ? new Date(sheet.finalizedAt).toLocaleDateString('de-DE') : '-'}
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black border border-emerald-100 uppercase tracking-wider">
+                                                        <CheckCircle className="h-3 w-3" />
+                                                        Abgeschlossen
+                                                    </span>
+                                                </td>
+                                                <td className="px-8 py-5 text-right">
+                                                    <div className="flex justify-end gap-2">
+                                                        <button
+                                                            onClick={() => handleDownload(sheet.month, sheet.employeeId)}
+                                                            className="h-10 w-10 flex items-center justify-center bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
+                                                            title="PDF Herunterladen"
+                                                        >
+                                                            <Download className="h-4 w-4" />
+                                                        </button>
+                                                        <input
+                                                            type="button"
+                                                            onClick={() => handleOpen(sheet.month, sheet.employeeId)}
+                                                            value="Öffnen"
+                                                            className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-[11px] hover:bg-indigo-100 transition-all cursor-pointer"
+                                                        />
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
 
             <TimeTrackingPreviewModal
                 isOpen={isPreviewModalOpen}

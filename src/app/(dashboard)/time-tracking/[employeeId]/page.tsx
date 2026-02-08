@@ -314,26 +314,23 @@ export default function EmployeeTimeTrackingPage() {
 
     // Handlers
 
-    const handleSaveChanges = async () => {
+    const performSave = async () => {
+        const changes = Object.values(unsavedChanges);
+        if (changes.length === 0) return true;
+
         setIsSaving(true);
         try {
-            const changes = Object.values(unsavedChanges);
             for (const entry of changes) {
                 let duration = 0;
-
-                // Use existing duration if available (it is the source of truth now)
                 if (typeof entry.duration === 'number') {
                     duration = entry.duration;
-                }
-                // Fallback for legacy data or if duration missing
-                else if (entry.type === 'WORK' && entry.startTime && entry.endTime) {
+                } else if (entry.type === 'WORK' && entry.startTime && entry.endTime) {
                     const start = new Date(`1970-01-01T${entry.startTime}`);
                     const end = new Date(`1970-01-01T${entry.endTime}`);
                     duration = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
                 }
 
                 const entryWithDuration = { ...entry, duration };
-
                 const exists = entries.find(e => e.id === entry.id);
                 if (exists) {
                     await updateEntry(entry.id, entryWithDuration);
@@ -342,13 +339,45 @@ export default function EmployeeTimeTrackingPage() {
                 }
             }
             setUnsavedChanges({});
-            showToast("Erfolgreich gespeichert!", "success");
+            return true;
         } catch (e: any) {
             console.error("Save failed", e);
             showToast("Fehler beim Speichern! Bitte überprüfen Sie Ihre Eingaben.", "error");
+            return false;
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const handleSaveChanges = async () => {
+        const success = await performSave();
+        if (success) {
+            showToast("Erfolgreich gespeichert!", "success");
+        }
+    };
+
+    const handleFinalize = () => {
+        showConfirm({
+            title: "Monat abschließen?",
+            message: "Ungespeicherte Änderungen werden automatisch übernommen. Nach dem Abschließen sind Änderungen nur eingeschränkt möglich.",
+            onConfirm: async () => {
+                setIsSaving(true);
+                try {
+                    // 1. Auto-save if there are changes
+                    const saveSuccess = await performSave();
+                    if (!saveSuccess) return;
+
+                    // 2. Finalize
+                    await finalizeMonth(employeeId, selectedMonth);
+                    showToast("Monat erfolgreich abgeschlossen!", "success");
+                } catch (e) {
+                    console.error("Finalization failed", e);
+                    showToast("Fehler beim Abschließen.", "error");
+                } finally {
+                    setIsSaving(false);
+                }
+            }
+        });
     };
 
     const handleAutoFill = () => {
@@ -566,17 +595,12 @@ export default function EmployeeTimeTrackingPage() {
 
                     {!isFinalized ? (
                         <button
-                            onClick={() => {
-                                showConfirm({
-                                    title: "Monat abschließen?",
-                                    message: "Änderungen sind danach nur eingeschränkt möglich.",
-                                    onConfirm: () => finalizeMonth(employeeId, selectedMonth)
-                                });
-                            }}
-                            className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm bg-emerald-500 text-white hover:bg-emerald-600 transition-all hover:scale-105 shadow-lg shadow-emerald-200"
+                            onClick={handleFinalize}
+                            disabled={isSaving}
+                            className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm bg-emerald-500 text-white hover:bg-emerald-600 transition-all hover:scale-105 shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:pointer-events-none"
                         >
                             <Save className="h-4 w-4" />
-                            Abschließen
+                            {isSaving ? "Wird verarbeitet..." : "Abschließen"}
                         </button>
                     ) : (
                         <button

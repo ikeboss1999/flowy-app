@@ -1,0 +1,6 @@
+# Release v1.0.7
+
+## Improvements
+- Stability and performance optimizations.
+- Native module compatibility fixes.
+- General UI refinements.

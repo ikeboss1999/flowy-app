@@ -3,6 +3,7 @@
 
 import { useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { getAuthErrorMessage } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { AlertCircle, CheckCircle2, Loader2, Lock, Mail, User } from "lucide-react"
@@ -46,7 +47,30 @@ export default function LoginPage() {
                 setMessage("Registrierung erfolgreich! Bitte überprüfe deine E-Mails.")
             }
         } catch (err: any) {
-            setError(err.message)
+            setError(getAuthErrorMessage(err))
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleForgotPassword = async () => {
+        if (!email) {
+            setError("Bitte gib zuerst deine E-Mail-Adresse ein.")
+            return
+        }
+
+        setLoading(true)
+        setError(null)
+        setMessage(null)
+
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/login/reset-password`,
+            })
+            if (error) throw error
+            setMessage("Eine E-Mail zum Zurücksetzen des Passworts wurde gesendet.")
+        } catch (err: any) {
+            setError(getAuthErrorMessage(err))
         } finally {
             setLoading(false)
         }
@@ -118,7 +142,15 @@ export default function LoginPage() {
                         <div className="space-y-3">
                             <div className="flex justify-between items-center px-1">
                                 <label className="text-xs uppercase font-bold tracking-widest text-slate-500">Passwort</label>
-                                {isLogin && <button type="button" className="text-xs font-bold text-indigo-400 hover:text-indigo-300">Vergessen?</button>}
+                                {isLogin && (
+                                    <button
+                                        type="button"
+                                        onClick={handleForgotPassword}
+                                        className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
+                                    >
+                                        Vergessen?
+                                    </button>
+                                )}
                             </div>
                             <input
                                 type="password"
@@ -180,7 +212,7 @@ export default function LoginPage() {
                 <div className="mt-16 flex justify-between w-full max-w-sm px-4 opacity-30 text-[10px] font-black tracking-widest uppercase text-slate-400 select-none">
                     <span>Secure SSL</span>
                     <span>Made in Austria</span>
-                    <span>V 1.0.4</span>
+                    <span>V 1.0.7</span>
                 </div>
             </div>
         </div>

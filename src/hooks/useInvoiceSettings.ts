@@ -11,7 +11,13 @@ const initialData: InvoiceSettings = {
     nextInvoiceNumber: 1,
     employeePrefix: 'MA-',
     nextEmployeeNumber: 1,
-    defaultPaymentTerm: 'sofort nach Rechnungserhalt',
+    paymentTerms: [
+        { id: '1', name: 'Sofort', text: 'sofort nach Rechnungserhalt', days: 0 },
+        { id: '2', name: '7 Tage', text: 'zahlbar innerhalb von 7 Tagen ohne Abzug', days: 7 },
+        { id: '3', name: '14 Tage', text: 'zahlbar innerhalb von 14 Tagen ohne Abzug', days: 14 },
+        { id: '4', name: '30 Tage', text: 'zahlbar innerhalb von 30 Tagen ohne Abzug', days: 30 }
+    ],
+    defaultPaymentTermId: '1',
     defaultTaxRate: 20,
     defaultCurrency: 'EUR (€)',
     dunningLevels: {
@@ -23,7 +29,7 @@ const initialData: InvoiceSettings = {
 };
 
 export function useInvoiceSettings() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     const [data, setData] = useState<InvoiceSettings>(initialData);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -39,7 +45,18 @@ export function useInvoiceSettings() {
                 const allSettings = await response.json();
 
                 if (allSettings.invoiceSettings) {
-                    setData(allSettings.invoiceSettings);
+                    let settings = allSettings.invoiceSettings;
+                    // Migration: Ensure paymentTerms exist
+                    if (!settings.paymentTerms) {
+                        settings = {
+                            ...settings,
+                            paymentTerms: initialData.paymentTerms,
+                            defaultPaymentTermId: initialData.defaultPaymentTermId
+                        };
+                        // Note: We don't necessarily need to POST back immediately, 
+                        // it will be saved on next update.
+                    }
+                    setData(settings);
                 } else {
                     // Migration
                     const storageKey = `${STORAGE_KEY}_${user.id}`;

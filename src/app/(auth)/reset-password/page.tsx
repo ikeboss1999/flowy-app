@@ -2,6 +2,8 @@
 
 import React, { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { getAuthErrorMessage } from '@/lib/auth';
 import Link from 'next/link';
 
 function ResetPasswordForm() {
@@ -33,19 +35,16 @@ function ResetPasswordForm() {
         }
 
         try {
-            const res = await fetch('/api/auth/reset-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token, password }),
+            const { error } = await supabase.auth.updateUser({
+                password: password
             });
 
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message);
+            if (error) throw error;
 
             setSuccess(true);
             setTimeout(() => router.push('/login'), 3000);
         } catch (err: any) {
-            setError(err.message || 'Ein Fehler ist aufgetreten.');
+            setError(getAuthErrorMessage(err));
         } finally {
             setLoading(false);
         }

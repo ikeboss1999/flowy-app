@@ -42,19 +42,19 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '35px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {logoSrc ? (
-                        <img src={logoSrc} alt="Logo" style={{ maxHeight: '60px', maxWidth: '280px', objectFit: 'contain' }} />
+                        <img src={logoSrc} alt="Logo" style={{ maxHeight: '90px', maxWidth: '320px', objectFit: 'contain' }} />
                     ) : (
                         <>
                             <div style={{ fontSize: '28pt', fontWeight: 900, fontStyle: 'italic', color: '#111', letterSpacing: '-1px' }}>
-                                <span style={{ color: '#f43f5e', marginRight: '4px' }}>//</span>{companySettings.companyName.toUpperCase()}
+                                <span style={{ color: '#f43f5e', marginRight: '4px' }}>//</span>{(companySettings?.companyName || 'FLOWY').toUpperCase()}
                             </div>
                             <div style={{ color: '#f43f5e', fontSize: '11pt', fontWeight: 'bold', marginTop: '-4px' }}>Ihr Partner für Bauprojekte</div>
                         </>
                     )}
                 </div>
-                <div style={{ textAlign: 'right', fontSize: '9pt', color: '#444', borderTop: '1px solid #ddd', paddingTop: '8px', minWidth: '320px', lineHeight: '1.5' }}>
-                    {companySettings.street} | {companySettings.zipCode} {companySettings.city}<br />
-                    {companySettings.email} | Tel.: {companySettings.phone}
+                <div style={{ textAlign: 'right', fontSize: '10pt', color: '#444', borderTop: '1px solid #ddd', paddingTop: '8px', minWidth: '320px', lineHeight: '1.5' }}>
+                    {(companySettings?.street || '-')} | {(companySettings?.zipCode || '')} {(companySettings?.city || '')}<br />
+                    {(companySettings?.email || '-')} | Tel.: {(companySettings?.phone || '-')}
                 </div>
             </div>
 
@@ -62,7 +62,7 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '45px', marginTop: '30px' }}>
                 <div style={{ fontSize: '11pt', lineHeight: '1.5' }}>
                     {customer?.type === 'business' ? (
-                        <>{customer.name}<br />z.H. Buchhaltung</>
+                        <>Firma<br />{customer.name}</>
                     ) : (
                         <>{customer?.salutation || 'Herr'}<br />{customer?.name}</>
                     )}
@@ -93,11 +93,11 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                     <div style={{ width: '50%' }}>
                         <div style={{ display: 'flex', marginBottom: '4px' }}>
                             <span style={{ fontWeight: 'bold', width: '135px', flexShrink: 0 }}>Baustelle:</span>
-                            <span>{invoice.constructionProject || customer?.address.street || '-'}</span>
+                            <span style={{ fontWeight: 'normal' }}>{invoice.constructionProject || customer?.address.street || '-'}</span>
                         </div>
                         <div style={{ display: 'flex' }}>
                             <span style={{ fontWeight: 'bold', width: '135px', flexShrink: 0 }}>Leistungszeitraum:</span>
-                            <span>
+                            <span style={{ fontWeight: 'normal' }}>
                                 {invoice.performancePeriod.from
                                     ? `${formatDate(invoice.performancePeriod.from)} - ${formatDate(invoice.performancePeriod.to || '')}`
                                     : '-'
@@ -107,17 +107,17 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                         {customer?.type === 'business' && customer.taxId && (
                             <div style={{ display: 'flex', marginTop: '4px' }}>
                                 <span style={{ fontWeight: 'bold', width: '135px', flexShrink: 0 }}>UID-Nummer:</span>
-                                <span>{customer.taxId}</span>
+                                <span style={{ fontWeight: 'normal' }}>{customer.taxId}</span>
                             </div>
                         )}
                         {invoice.isReverseCharge && companySettings.employerNumber && (
                             <div style={{ display: 'flex', marginTop: '4px' }}>
                                 <span style={{ fontWeight: 'bold', width: '135px', flexShrink: 0 }}>Dienstgebernr.:</span>
-                                <span>{companySettings.employerNumber}</span>
+                                <span style={{ fontWeight: 'normal' }}>{companySettings.employerNumber}</span>
                             </div>
                         )}
                     </div>
-                    <div style={{ width: '25%' }}>
+                    <div style={{ width: '32%' }}>
                         {[
                             ['Datum:', formatDate(invoice.issueDate)],
                             ['Bearbeiter:', (invoice.processor && invoice.processor !== 'Max Mustermann')
@@ -126,9 +126,9 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                             ['E-Mail:', companySettings.email],
                             ['Telefon:', companySettings.phone]
                         ].map(([label, value]) => (
-                            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                                <span style={{ fontWeight: 'bold' }}>{label}</span>
-                                <span style={{ textAlign: 'right' }}>{value}</span>
+                            <div key={label} style={{ display: 'flex', marginBottom: '3px' }}>
+                                <span style={{ fontWeight: 'bold', width: '85px', flexShrink: 0 }}>{label}</span>
+                                <span style={{ fontWeight: 'normal' }}>{value}</span>
                             </div>
                         ))}
                     </div>
@@ -166,8 +166,8 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                             <td style={{ padding: '12px 10px', fontSize: '10pt' }}>{item.description}</td>
                             <td style={{ padding: '12px 5px', fontSize: '10pt', textAlign: 'center' }}>{item.unit === 'pauschal' ? 'PA' : item.unit}</td>
                             <td style={{ padding: '12px 5px', fontSize: '10pt', textAlign: 'center' }}>{item.quantity}</td>
-                            <td style={{ padding: '12px 10px', fontSize: '10pt', textAlign: 'right' }}>€ {Number(item.pricePerUnit).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</td>
-                            <td style={{ padding: '12px 10px', fontSize: '10pt', textAlign: 'right', fontWeight: 'bold' }}>€ {Number(item.totalPrice).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</td>
+                            <td style={{ padding: '12px 10px', fontSize: '10pt', textAlign: 'right' }}>€ {(Number(item.pricePerUnit) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</td>
+                            <td style={{ padding: '12px 10px', fontSize: '10pt', textAlign: 'right', fontWeight: 'bold' }}>€ {(Number(item.totalPrice) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -200,7 +200,7 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
 
             {/* Payment Info */}
             <div style={{ textAlign: 'center', fontSize: '10pt', marginBottom: '60px', lineHeight: '1.6' }}>
-                Bitte überweisen Sie den Betrag von <span style={{ color: '#f43f5e', fontWeight: 'bold' }}>€ {invoice.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</span> an die folgende IBAN:<br />
+                Bitte überweisen Sie den Betrag von <span style={{ color: '#f43f5e', fontWeight: 'bold' }}>€ {invoice.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</span> an die folgende IBAN mit dem angegebenen Verwendungszweck:<br />
                 <div><span style={{ fontWeight: 'bold' }}>IBAN:</span> {companySettings.iban}</div>
                 <div><span style={{ fontWeight: 'bold' }}>Verwendungszweck:</span> Rechnungs-Nr: {invoice.invoiceNumber}</div>
             </div>
@@ -220,7 +220,7 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                         <span style={{ fontWeight: 'bold', color: '#000' }}>Gericht:</span> {companySettings.commercialCourt || '-'}<br />
                         <span style={{ fontWeight: 'bold', color: '#000' }}>FN:</span> {companySettings.commercialRegisterNumber || '-'}
                     </div>
-                    <div style={{ width: '35%' }}>
+                    <div style={{ width: '35%', textAlign: 'center' }}>
                         <span style={{ fontWeight: 'bold', color: '#000' }}>Bank:</span> {companySettings.bankName}<br />
                         <span style={{ fontWeight: 'bold', color: '#000' }}>IBAN:</span> {companySettings.iban}
                     </div>

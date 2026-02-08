@@ -12,7 +12,8 @@ import {
     Euro,
     Trash2,
     ChevronDown,
-    ArrowUpDown
+    ArrowUpDown,
+    Edit2
 } from "lucide-react";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useCustomers } from "@/hooks/useCustomers";
@@ -21,8 +22,12 @@ import { InvoicePreviewModal } from "@/components/InvoicePreviewModal";
 import { cn } from "@/lib/utils";
 import { Invoice, InvoiceStatus } from "@/types/invoice";
 import { useNotification } from "@/context/NotificationContext";
+import { useRouter } from "next/navigation";
+
+export const dynamic = 'force-dynamic';
 
 export default function InvoicesPage() {
+    const router = useRouter();
     const { invoices, updateInvoice, deleteInvoice, isLoading } = useInvoices();
     const { customers } = useCustomers();
     const { data: companySettings } = useCompanySettings();
@@ -32,8 +37,8 @@ export default function InvoicesPage() {
     const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
 
     // Sorting State
-    const [sortBy, setSortBy] = useState<string>("date");
-    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+    const [sortBy, setSortBy] = useState<string>("number");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
     const processedInvoices = useMemo(() => {
         // First filter
@@ -284,6 +289,18 @@ export default function InvoicesPage() {
                                                 <Eye className="h-4 w-4" />
                                                 Vorschau
                                             </button>
+                                            {invoice.status === 'draft' && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        router.push(`/invoices/${invoice.id}/edit`);
+                                                    }}
+                                                    className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-all"
+                                                    title="Entwurf bearbeiten"
+                                                >
+                                                    <Edit2 className="h-4 w-4" />
+                                                </button>
+                                            )}
                                             {invoice.status === 'draft' && (
                                                 <button
                                                     onClick={(e) => {

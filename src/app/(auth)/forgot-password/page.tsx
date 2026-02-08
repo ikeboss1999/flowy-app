@@ -2,12 +2,16 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+import { getAuthErrorMessage } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
+    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -16,18 +20,15 @@ export default function ForgotPasswordPage() {
         setMessage('');
 
         try {
-            const res = await fetch('/api/auth/forgot-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
+            const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/reset-password`,
             });
 
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message);
+            if (resetError) throw resetError;
 
-            setMessage(data.message);
+            setMessage("Wir haben Ihnen einen Link zum Zurücksetzen des Passworts gesendet.");
         } catch (err: any) {
-            setError(err.message || 'Ein Fehler ist aufgetreten.');
+            setError(getAuthErrorMessage(err));
         } finally {
             setLoading(false);
         }

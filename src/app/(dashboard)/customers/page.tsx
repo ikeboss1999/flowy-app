@@ -18,7 +18,8 @@ import {
     MapPin,
     Clock,
     ShieldAlert,
-    CheckCircle2
+    CheckCircle2,
+    Copy
 } from "lucide-react";
 import { Customer, CustomerType } from "@/types/customer";
 import { CustomerModal } from "@/components/CustomerModal";
@@ -70,6 +71,11 @@ export default function CustomersPage() {
     const handleEditCustomer = (customer: Customer) => {
         setEditingCustomer(customer);
         setIsModalOpen(true);
+    };
+
+    const handleCopyEmail = (email: string) => {
+        navigator.clipboard.writeText(email);
+        showToast("E-Mail Adresse in die Zwischenablage kopiert.", "success");
     };
 
     if (isLoading) {
@@ -220,7 +226,12 @@ export default function CustomersPage() {
                                         </span>
                                         {customer.taxId && (
                                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                {customer.taxId}
+                                                UID: {customer.taxId}
+                                            </span>
+                                        )}
+                                        {customer.commercialRegisterNumber && (
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2 border-l border-slate-200">
+                                                FN: {customer.commercialRegisterNumber}
                                             </span>
                                         )}
                                     </div>
@@ -230,9 +241,18 @@ export default function CustomersPage() {
                                 </div>
 
                                 <div className="space-y-2.5 text-sm font-medium text-slate-500">
-                                    <div className="flex items-center gap-3">
-                                        <Mail className="h-4 w-4 text-slate-300" />
-                                        <span className="line-clamp-1">{customer.email}</span>
+                                    <div className="flex items-center justify-between group/mail">
+                                        <div className="flex items-center gap-3">
+                                            <Mail className="h-4 w-4 text-slate-300" />
+                                            <span className="line-clamp-1">{customer.email}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => handleCopyEmail(customer.email)}
+                                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                            title="Email kopieren"
+                                        >
+                                            <Copy className="h-3.5 w-3.5" />
+                                        </button>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <Phone className="h-4 w-4 text-slate-300" />

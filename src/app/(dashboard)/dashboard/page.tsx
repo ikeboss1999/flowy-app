@@ -41,8 +41,8 @@ export default function DashboardPage() {
     const [isTodoMinimized, setIsTodoMinimized] = useState(false);
 
     // Sorting State
-    const [sortBy, setSortBy] = useState<string>("date");
-    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+    const [sortBy, setSortBy] = useState<string>("number");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
     // PDF States
     const [pdfInvoice, setPdfInvoice] = useState<Invoice | null>(null);

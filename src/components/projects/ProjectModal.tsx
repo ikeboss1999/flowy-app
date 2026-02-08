@@ -6,6 +6,7 @@ import { Project, ProjectStatus } from "@/types/project";
 import { Customer } from "@/types/customer";
 import { cn } from "@/lib/utils";
 import { CustomerModal } from "@/components/CustomerModal";
+import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 
 interface ProjectModalProps {
     isOpen: boolean;
@@ -17,6 +18,9 @@ interface ProjectModalProps {
 }
 
 export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers, initialProject }: ProjectModalProps) {
+    const { data: invoiceSettings } = useInvoiceSettings();
+    const taxRate = invoiceSettings?.defaultTaxRate || 20; // Fallback to 20 if not loaded yet
+
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
@@ -26,11 +30,14 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
         city: "",
         zip: "",
         description: "",
-        budget: ""
+        budget: "",
+        budgetGross: ""
     });
 
     useEffect(() => {
         if (initialProject) {
+            const net = initialProject.budget || 0;
+            const gross = net * (1 + taxRate / 100);
             setFormData({
                 name: initialProject.name,
                 customerId: initialProject.customerId,
@@ -39,7 +46,8 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
                 city: initialProject.address.city,
                 zip: initialProject.address.zip,
                 description: initialProject.description || "",
-                budget: initialProject.budget ? initialProject.budget.toString() : ""
+                budget: net > 0 ? net.toString() : "",
+                budgetGross: net > 0 ? gross.toFixed(2) : ""
             });
         } else {
             setFormData({
@@ -50,10 +58,11 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
                 city: "",
                 zip: "",
                 description: "",
-                budget: ""
+                budget: "",
+                budgetGross: ""
             });
         }
-    }, [initialProject, isOpen]);
+    }, [initialProject, isOpen, taxRate]);
 
     if (!isOpen) return null;
 
@@ -86,7 +95,26 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+
+        if (name === 'budget') {
+            const net = parseFloat(value) || 0;
+            const gross = net * (1 + taxRate / 100);
+            setFormData(prev => ({
+                ...prev,
+                budget: value,
+                budgetGross: value === '' ? '' : gross.toFixed(2)
+            }));
+        } else if (name === 'budgetGross') {
+            const gross = parseFloat(value) || 0;
+            const net = gross / (1 + taxRate / 100);
+            setFormData(prev => ({
+                ...prev,
+                budgetGross: value,
+                budget: value === '' ? '' : net.toFixed(2)
+            }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
     };
 
     return (
@@ -155,7 +183,7 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
                             </div>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="col-span-2 space-y-2">
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Status</label>
                             <select
                                 name="status"
@@ -169,8 +197,9 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
                                 <option value="on_hold">Pausiert</option>
                             </select>
                         </div>
+
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Projekt Summe (Netto)</label>
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1 whitespace-nowrap overflow-hidden text-ellipsis">Projekt Summe (Netto)</label>
                             <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                     <Banknote className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -183,6 +212,24 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
                                     placeholder="0.00"
                                     step="0.01"
                                     className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1 whitespace-nowrap overflow-hidden text-ellipsis">Projekt Summe (Brutto)</label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Banknote className="h-5 w-5 text-indigo-400 group-focus-within:text-indigo-600 transition-colors" />
+                                </div>
+                                <input
+                                    type="number"
+                                    name="budgetGross"
+                                    value={formData.budgetGross}
+                                    onChange={handleChange}
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    className="w-full pl-12 pr-4 py-3.5 bg-indigo-50/30 border border-indigo-100/50 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-bold text-indigo-900"
                                 />
                             </div>
                         </div>
