@@ -73,7 +73,9 @@ function initSchema(db: Database.Database) {
             status TEXT,
             salutation TEXT,
             taxId TEXT,
+            commercialRegisterNumber TEXT,
             reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
             notes TEXT,
             lastActivity TEXT,
             createdAt TEXT,
@@ -86,6 +88,8 @@ function initSchema(db: Database.Database) {
             invoiceNumber TEXT NOT NULL,
             customerId TEXT,
             projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
             billingType TEXT,
             issueDate TEXT,
             items TEXT,
@@ -201,11 +205,14 @@ function initSchema(db: Database.Database) {
         CREATE TABLE IF NOT EXISTS services (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
+            title TEXT,
             description TEXT,
             category TEXT,
             price REAL,
             unit TEXT,
-            userId TEXT
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
         );
 
         CREATE TABLE IF NOT EXISTS users (
@@ -257,7 +264,9 @@ function initSchema(db: Database.Database) {
       ['status', 'TEXT'],
       ['salutation', 'TEXT'],
       ['taxId', 'TEXT'],
+      ['commercialRegisterNumber', 'TEXT'],
       ['reverseChargeEnabled', 'INTEGER DEFAULT 0'],
+      ['defaultPaymentTermId', 'TEXT'],
       ['notes', 'TEXT'],
       ['lastActivity', 'TEXT']
     ];
@@ -270,8 +279,30 @@ function initSchema(db: Database.Database) {
 
     const invColumns = db.prepare("PRAGMA table_info(invoices)").all();
     const invColumnNames = invColumns.map((c: any) => c.name);
-    if (!invColumnNames.includes('isReverseCharge')) {
-      db.prepare("ALTER TABLE invoices ADD COLUMN isReverseCharge INTEGER DEFAULT 0").run();
+    const missingInvCols = [
+      ['constructionProject', 'TEXT'],
+      ['paymentPlanItemId', 'TEXT'],
+      ['isReverseCharge', 'INTEGER DEFAULT 0']
+    ];
+
+    for (const [col, type] of missingInvCols) {
+      if (!invColumnNames.includes(col)) {
+        db.prepare(`ALTER TABLE invoices ADD COLUMN ${col} ${type}`).run();
+      }
+    }
+
+    const svcColumns = db.prepare("PRAGMA table_info(services)").all();
+    const svcColumnNames = svcColumns.map((c: any) => c.name);
+    const missingSvcCols = [
+      ['title', 'TEXT'],
+      ['createdAt', 'TEXT'],
+      ['updatedAt', 'TEXT']
+    ];
+
+    for (const [col, type] of missingSvcCols) {
+      if (!svcColumnNames.includes(col)) {
+        db.prepare(`ALTER TABLE services ADD COLUMN ${col} ${type}`).run();
+      }
     }
   } catch (e) {
     console.error("Migration failed", e);

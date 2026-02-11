@@ -4,9 +4,10 @@ import { createPortal } from 'react-dom';
 interface InvoicePrintHandlerProps {
     children: React.ReactNode;
     onAfterPrint?: () => void;
+    documentTitle?: string;
 }
 
-export const InvoicePrintHandler: React.FC<InvoicePrintHandlerProps> = ({ children, onAfterPrint }) => {
+export const InvoicePrintHandler: React.FC<InvoicePrintHandlerProps> = ({ children, onAfterPrint, documentTitle }) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
 
@@ -16,6 +17,11 @@ export const InvoicePrintHandler: React.FC<InvoicePrintHandlerProps> = ({ childr
 
         const doc = iframe.contentDocument;
         if (!doc) return;
+
+        // Set document title for PDF filename
+        if (documentTitle) {
+            doc.title = documentTitle;
+        }
 
         // 1. Copy all styles from the main document
         const styles = document.querySelectorAll('style, link[rel="stylesheet"]');
@@ -35,17 +41,19 @@ export const InvoicePrintHandler: React.FC<InvoicePrintHandlerProps> = ({ childr
         size: A4 portrait;
         margin: 0;
       }
-      /* Ensure full visibility for the content */
       #print-root {
         width: 100%;
-        height: 100%;
       }
     `;
         doc.head.appendChild(styleElement);
 
         // 3. Create a mount node in the iframe body
+        doc.body.innerHTML = ''; // Clear anything that might be there
         const root = doc.createElement('div');
         root.id = 'print-root';
+        root.style.margin = '0';
+        root.style.padding = '0';
+        root.style.width = '100%';
         doc.body.appendChild(root);
         setMountNode(root);
 

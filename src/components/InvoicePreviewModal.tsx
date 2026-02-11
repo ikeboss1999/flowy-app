@@ -109,7 +109,10 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
 
             {/* Hidden Print Handler */}
             {isPrinting && (
-                <InvoicePrintHandler onAfterPrint={() => setIsPrinting(false)}>
+                <InvoicePrintHandler
+                    onAfterPrint={() => setIsPrinting(false)}
+                    documentTitle={`Rechnung_${invoice.invoiceNumber.replace(/\//g, '-')}`}
+                >
                     <InvoicePDF
                         invoice={invoice}
                         customer={customer}

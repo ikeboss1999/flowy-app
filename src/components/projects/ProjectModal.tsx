@@ -6,6 +6,7 @@ import { Project, ProjectStatus } from "@/types/project";
 import { Customer } from "@/types/customer";
 import { cn } from "@/lib/utils";
 import { CustomerModal } from "@/components/CustomerModal";
+import { CustomerSearchSelect } from "@/components/CustomerSearchSelect";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 
 interface ProjectModalProps {
@@ -154,33 +155,13 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
                         </div>
 
                         <div className="col-span-2 space-y-2">
-                            <div className="flex justify-between items-center px-1">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Kunde</label>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsCustomerModalOpen(true)}
-                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 transition-colors"
-                                >
-                                    <Plus className="h-3 w-3" /> Neuer Kunde
-                                </button>
-                            </div>
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Building className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-                                </div>
-                                <select
-                                    required
-                                    name="customerId"
-                                    value={formData.customerId}
-                                    onChange={handleChange}
-                                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium appearance-none"
-                                >
-                                    <option value="">Bitte wählen...</option>
-                                    {customers.map(c => (
-                                        <option key={c.id} value={c.id}>{c.name} ({c.address.city})</option>
-                                    ))}
-                                </select>
-                            </div>
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Kunde</label>
+                            <CustomerSearchSelect
+                                customers={customers}
+                                selectedId={formData.customerId}
+                                onSelect={(id) => setFormData(prev => ({ ...prev, customerId: id }))}
+                                onAddNew={() => setIsCustomerModalOpen(true)}
+                            />
                         </div>
 
                         <div className="col-span-2 space-y-2">

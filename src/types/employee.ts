@@ -41,7 +41,12 @@ export interface Employee {
         status: EmploymentStatus;
         startDate: string;
         endDate?: string;
+        exitReason?: string;
         salary: string;
+        workerType: "Arbeiter" | "Angestellter";
+        classification: string;
+        verwendung: string;
+        annualLeave: number;
     };
     additionalInfo: {
         emergencyContactName?: string;

@@ -23,10 +23,10 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
 
     return (
         <div ref={ref} style={{
-            width: '210mm',
-            height: '297mm',
+            width: '100%',
+            minHeight: '296mm',
             flexShrink: 0,
-            padding: '40px 75px 30px 75px', // Reduced top padding to shift header up
+            padding: '40px 75px 30px 75px',
             backgroundColor: 'white',
             color: '#000',
             fontFamily: 'Arial, Helvetica, sans-serif',
@@ -36,7 +36,7 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',
-            margin: '0 auto',
+            margin: '0',
         }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '35px' }}>
@@ -217,8 +217,8 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                 <div style={{ fontWeight: 'bold', fontSize: '9pt', textAlign: 'center', marginBottom: '15px' }}>Zahlungskondition: {invoice.paymentTerms || 'sofort nach Rechnungserhalt'}</div>
                 <div style={{ borderTop: '1px solid #000', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', fontSize: '8pt', color: '#444' }}>
                     <div style={{ width: '30%' }}>
-                        <span style={{ fontWeight: 'bold', color: '#000' }}>Gericht:</span> {companySettings.commercialCourt || '-'}<br />
-                        <span style={{ fontWeight: 'bold', color: '#000' }}>FN:</span> {companySettings.commercialRegisterNumber || '-'}
+                        <span style={{ fontWeight: 'bold', color: '#000' }}>Firmenbuchgericht:</span> {companySettings.commercialCourt || '-'}<br />
+                        <span style={{ fontWeight: 'bold', color: '#000' }}>Firmenbuch-Nr.:</span> {companySettings.commercialRegisterNumber || '-'}
                     </div>
                     <div style={{ width: '35%', textAlign: 'center' }}>
                         <span style={{ fontWeight: 'bold', color: '#000' }}>Bank:</span> {companySettings.bankName}<br />

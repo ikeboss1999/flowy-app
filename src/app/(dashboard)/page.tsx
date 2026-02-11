@@ -162,7 +162,7 @@ export default function Home() {
               ) : (
                 <div className="flex flex-col items-center">
                   <h2 className="text-3xl font-black bg-clip-text text-transparent bg-primary-gradient uppercase tracking-[0.2em] leading-none mb-1">
-                    //{companyName.toUpperCase()}
+                    {companyName.toUpperCase()}
                   </h2>
                   <p className="text-xs text-slate-400 uppercase font-bold tracking-widest">
                     Ihr Partner für Bauprojekte

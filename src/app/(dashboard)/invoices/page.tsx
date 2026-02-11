@@ -35,6 +35,7 @@ export default function InvoicesPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState<InvoiceStatus | "all">("all");
     const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
     // Sorting State
     const [sortBy, setSortBy] = useState<string>("number");
@@ -49,7 +50,9 @@ export default function InvoicesPage() {
 
             const matchesStatus = filterStatus === "all" || invoice.status === filterStatus;
 
-            return matchesSearch && matchesStatus;
+            const matchesYear = new Date(invoice.issueDate).getFullYear() === selectedYear;
+
+            return matchesSearch && matchesStatus && matchesYear;
         });
 
         // Then sort
@@ -72,15 +75,21 @@ export default function InvoicesPage() {
             }
             return sortOrder === 'asc' ? comparison : -comparison;
         });
-    }, [invoices, searchQuery, filterStatus, sortBy, sortOrder]);
+    }, [invoices, searchQuery, filterStatus, sortBy, sortOrder, selectedYear]);
 
     const stats = useMemo(() => {
         return {
             total: invoices.length,
-            paid: invoices.filter(i => i.status === 'paid').length,
-            pending: invoices.filter(i => i.status === 'pending').length,
-            overdue: invoices.filter(i => i.status === 'overdue').length,
+            paid: invoices.filter(i => i.status === 'paid' && new Date(i.issueDate).getFullYear() === selectedYear).length,
+            pending: invoices.filter(i => i.status === 'pending' && new Date(i.issueDate).getFullYear() === selectedYear).length,
+            overdue: invoices.filter(i => i.status === 'overdue' && new Date(i.issueDate).getFullYear() === selectedYear).length,
         };
+    }, [invoices, selectedYear]);
+
+    const availableYears = useMemo(() => {
+        const years = new Set(invoices.map(inv => new Date(inv.issueDate).getFullYear()));
+        if (years.size === 0) years.add(new Date().getFullYear());
+        return Array.from(years).sort((a, b) => b - a);
     }, [invoices]);
 
     if (isLoading) {
@@ -102,6 +111,20 @@ export default function InvoicesPage() {
                         Rechnungen <span className="text-slate-300 font-light">Verwalten</span>
                     </h1>
                     <p className="text-xl text-slate-500 font-medium">Alle erstellten Rechnungen im Überblick.</p>
+                </div>
+
+                {/* Year Selector */}
+                <div className="flex items-center gap-3">
+                    <Calendar className="h-5 w-5 text-slate-400" />
+                    <select
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                        className="px-6 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    >
+                        {availableYears.map(year => (
+                            <option key={year} value={year}>{year}</option>
+                        ))}
+                    </select>
                 </div>
             </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, User, Briefcase, Mail, Phone, MapPin, FileText, Save, Clock } from "lucide-react";
+import { X, User, Briefcase, Mail, Phone, MapPin, FileText, Save, Clock, ShieldAlert } from "lucide-react";
 import { Customer, CustomerType, CustomerStatus } from "@/types/customer";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { cn } from "@/lib/utils";
@@ -11,12 +11,14 @@ interface CustomerModalProps {
     onClose: () => void;
     onSave: (customer: Customer) => void;
     initialCustomer?: Customer;
+    existingCustomers?: Customer[];
 }
 
-export function CustomerModal({ isOpen, onClose, onSave, initialCustomer }: CustomerModalProps) {
+export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existingCustomers = [] }: CustomerModalProps) {
     const [type, setType] = useState<CustomerType>('private');
     const [status, setStatus] = useState<CustomerStatus>('active');
     const { data: invoiceSettings } = useInvoiceSettings();
+    const [error, setError] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         name: "",
         salutation: "",
@@ -67,12 +69,31 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer }: Cust
                 notes: ""
             });
         }
+        setError(null);
     }, [initialCustomer, isOpen]);
 
     if (!isOpen) return null;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setError(null);
+
+        // Duplicate Check
+        const isDuplicate = existingCustomers.some(c => {
+            const sameId = c.id === initialCustomer?.id;
+            if (sameId) return false;
+
+            const nameMatch = c.name?.trim().toLowerCase() === formData.name.trim().toLowerCase();
+            const emailMatch = formData.email && c.email?.trim().toLowerCase() === formData.email.trim().toLowerCase();
+
+            return nameMatch || emailMatch;
+        });
+
+        if (isDuplicate) {
+            setError("Ein Kunde mit diesem Namen oder dieser E-Mail existiert bereits in Ihrer Liste.");
+            return;
+        }
+
         const customer: Customer = {
             id: initialCustomer?.id || crypto.randomUUID(),
             type,
@@ -121,6 +142,12 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer }: Cust
                 </div>
 
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-8">
+                    {error && (
+                        <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <ShieldAlert className="h-5 w-5 shrink-0" />
+                            <p className="text-sm font-bold">{error}</p>
+                        </div>
+                    )}
                     {/* Customer Type & Status */}
                     <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-3">

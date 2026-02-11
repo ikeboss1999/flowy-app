@@ -8,6 +8,7 @@ import { UpdateNotification } from "@/components/UpdateNotification";
 import { AuthGuard } from "@/components/AuthGuard";
 import { CloudSyncModal } from "@/components/CloudSyncModal";
 import { AutoRestore } from "@/components/AutoRestore";
+import { InputAutoSelect } from "@/components/InputAutoSelect";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -38,6 +39,7 @@ export default function RootLayout({
               </AutoRestore>
               <UpdateNotification />
               <CloudSyncModal />
+              <InputAutoSelect />
             </AuthGuard>
           </NotificationProvider>
         </AuthProvider>

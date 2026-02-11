@@ -24,11 +24,13 @@ import { Employee, EmploymentStatus, EmployeeDocument } from "@/types/employee";
 import { cn } from "@/lib/utils";
 import { useRef } from "react";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
+import { useNotification } from "@/context/NotificationContext";
 
 interface EmployeeModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (employee: Employee) => void;
+    onSave: (employee: Employee, skipContract?: boolean) => void;
+    onGenerateContract?: (employee: Employee) => void;
     initialEmployee?: Employee;
     getNextNumber?: () => string;
 }
@@ -59,11 +61,12 @@ const EUROPEAN_COUNTRIES = [
     "Spanien", "Tschechien", "Türkei", "Ukraine", "Ungarn", "Vatikanstadt", "Vereinigtes Königreich"
 ];
 
-export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNextNumber }: EmployeeModalProps) {
+export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, initialEmployee, getNextNumber }: EmployeeModalProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState("personal");
     const [previewDoc, setPreviewDoc] = useState<EmployeeDocument | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const { showConfirm } = useNotification();
     const [formData, setFormData] = useState<Employee>(() => initialEmployee || {
         id: Math.random().toString(36).substr(2, 9),
         employeeNumber: "",
@@ -93,7 +96,13 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
             position: "",
             status: "Vollzeit",
             startDate: new Date().toISOString().split('T')[0],
+            endDate: "",
+            exitReason: "",
             salary: "",
+            workerType: "Arbeiter",
+            classification: "",
+            verwendung: "",
+            annualLeave: 25,
         },
         additionalInfo: {
         },
@@ -112,7 +121,16 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
 
     useEffect(() => {
         if (initialEmployee) {
-            setFormData(initialEmployee);
+            setFormData({
+                ...initialEmployee,
+                employment: {
+                    ...initialEmployee.employment,
+                    workerType: initialEmployee.employment.workerType || "Arbeiter",
+                    classification: initialEmployee.employment.classification || "",
+                    verwendung: initialEmployee.employment.verwendung || "",
+                    annualLeave: initialEmployee.employment.annualLeave ?? 25,
+                }
+            });
         } else {
             const nextNum = getNextNumber ? getNextNumber() : "";
             setFormData({
@@ -144,7 +162,13 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
                     position: "",
                     status: "Vollzeit",
                     startDate: new Date().toISOString().split('T')[0],
+                    endDate: "",
+                    exitReason: "",
                     salary: "",
+                    workerType: "Arbeiter",
+                    classification: "",
+                    verwendung: "",
+                    annualLeave: 25,
                 },
                 additionalInfo: {
                 },
@@ -173,10 +197,40 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
         if (!isEUEWR) {
             const hasPassport = formData.documents.some(d => d.subType === 'passport');
             if (!hasPassport) {
-                alert("Für Nicht-EU/EWR Staatsbürger muss zwingend ein Reisepass hochgeladen werden.");
-                setActiveTab("documents");
+                showConfirm({
+                    title: "Reisepass erforderlich",
+                    message: "Für Nicht-EU/EWR Staatsbürger muss zwingend ein Reisepass hochgeladen werden.",
+                    confirmLabel: "Zu den Dokumenten",
+                    cancelLabel: "Abbrechen",
+                    onConfirm: () => setActiveTab("documents"),
+                    variant: 'primary'
+                });
                 return;
             }
+        }
+
+        // Dienstzettel Validation (only for new employees or if being generated)
+        const isNew = !initialEmployee;
+        const missingContractFields = !formData.employment.salary ||
+            !formData.employment.classification ||
+            !formData.employment.verwendung ||
+            !formData.employment.startDate ||
+            !formData.employment.position;
+
+        if (isNew && missingContractFields) {
+            showConfirm({
+                title: "Dienstzettel unvollständig",
+                message: "Es fehlen Pflichtangaben für den automatischen Dienstzettel (Gehalt, Verwendung, Einstufung etc.). Möchten Sie die Daten ergänzen oder den Mitarbeiter ohne Dienstzettel anlegen?",
+                confirmLabel: "Daten ergänzen",
+                cancelLabel: "Ohne Dienstzettel anlegen",
+                onConfirm: () => setActiveTab("employment"),
+                onCancel: () => {
+                    onSave(formData, true);
+                    onClose();
+                },
+                variant: 'primary'
+            });
+            return;
         }
 
         onSave(formData);
@@ -207,7 +261,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
 
             setFormData(prev => ({
                 ...prev,
-                documents: [...prev.documents.filter(d => d.subType !== subType || d.category === 'system'), newDoc]
+                documents: [...prev.documents.filter(d => d.subType !== subType), newDoc]
             }));
         };
         reader.readAsDataURL(file);
@@ -216,7 +270,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
     const handleRemoveSlotDocument = (subType: string) => {
         setFormData(prev => ({
             ...prev,
-            documents: prev.documents.filter(d => d.subType !== subType || d.category === 'system')
+            documents: prev.documents.filter(d => d.subType !== subType)
         }));
     };
 
@@ -504,6 +558,73 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
                                     placeholder="z.B. 3.500 € / Monat"
                                 />
                             </div>
+                            <div className="space-y-2 col-span-1">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Verwendung</label>
+                                <input
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                                    value={formData.employment.verwendung}
+                                    onChange={e => setFormData({ ...formData, employment: { ...formData.employment, verwendung: e.target.value } })}
+                                    placeholder="z.B. Baustellenleiter"
+                                />
+                            </div>
+                            <div className="space-y-2 col-span-1">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Arbeitsverhältnis</label>
+                                <select
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium appearance-none"
+                                    value={formData.employment.workerType}
+                                    onChange={e => setFormData({ ...formData, employment: { ...formData.employment, workerType: e.target.value as any } })}
+                                >
+                                    <option value="Arbeiter">Arbeiter</option>
+                                    <option value="Angestellter">Angestellter</option>
+                                </select>
+                            </div>
+                            <div className="space-y-2 col-span-1">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Einstufung (KV)</label>
+                                <input
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                                    value={formData.employment.classification}
+                                    onChange={e => setFormData({ ...formData, employment: { ...formData.employment, classification: e.target.value } })}
+                                    placeholder="z.B. LG 1"
+                                />
+                            </div>
+                            <div className="space-y-2 col-span-1">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Urlaubsausmaß (Tage)</label>
+                                <input
+                                    type="number"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                                    value={formData.employment.annualLeave}
+                                    onChange={e => setFormData({ ...formData, employment: { ...formData.employment, annualLeave: parseInt(e.target.value) || 0 } })}
+                                />
+                            </div>
+                            <div className="space-y-2 col-span-1">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-2">
+                                    <Calendar className="h-3 w-3" /> Austrittsdatum
+                                </label>
+                                <input
+                                    type="date"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                                    value={formData.employment.endDate || ""}
+                                    onChange={e => setFormData({ ...formData, employment: { ...formData.employment, endDate: e.target.value } })}
+                                />
+                            </div>
+                            {formData.employment.endDate && (
+                                <div className="space-y-2 col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Austrittsgrund</label>
+                                    <select
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium appearance-none"
+                                        value={formData.employment.exitReason || ""}
+                                        onChange={e => setFormData({ ...formData, employment: { ...formData.employment, exitReason: e.target.value } })}
+                                    >
+                                        <option value="">Grund wählen...</option>
+                                        <option value="Selbst gekündigt">Selbst gekündigt</option>
+                                        <option value="Wurde gekündigt">Wurde gekündigt</option>
+                                        <option value="Vorübergehend / Winterpause">Vorübergehend / Winterpause</option>
+                                        <option value="Einvernehmliche Lösung">Einvernehmliche Lösung</option>
+                                        <option value="Rente / Pension">Rente / Pension</option>
+                                        <option value="Sonstiges">Sonstiges</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -643,6 +764,42 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
                                         ? "Als EU/EWR-Staatsbürger benötigen wir einen Identitätsnachweis (Pass oder Ausweis) sowie die Standard-Unterlagen."
                                         : "Für Nicht-EU/EWR-Staatsbürger ist ein Reisepass und ein Aufenthaltstitel zwingend erforderlich."}
                                 </p>
+
+                                {initialEmployee && (
+                                    <div className="mt-4 pt-4 border-t border-indigo-100 flex justify-between items-center">
+                                        <div>
+                                            <p className="text-indigo-900 font-bold text-sm">Dienstzettel generieren</p>
+                                            <p className="text-indigo-600/60 text-xs">Erstellt ein aktuelles Dienstzettel-PDF basierend auf den Anstellungsdaten.</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const missingContractFields = !formData.employment.salary ||
+                                                    !formData.employment.classification ||
+                                                    !formData.employment.verwendung ||
+                                                    !formData.employment.startDate ||
+                                                    !formData.employment.position;
+
+                                                if (missingContractFields) {
+                                                    showConfirm({
+                                                        title: "Daten unvollständig",
+                                                        message: "Es fehlen Pflichtangaben für den Dienstzettel. Bitte füllen Sie zuerst alle Felder im Tab 'Anstellung' aus.",
+                                                        confirmLabel: "Zu den Daten",
+                                                        cancelLabel: "Abbrechen",
+                                                        onConfirm: () => setActiveTab("employment"),
+                                                        variant: 'primary'
+                                                    });
+                                                    return;
+                                                }
+                                                onGenerateContract?.(formData);
+                                            }}
+                                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-md shadow-indigo-200"
+                                        >
+                                            <FileText className="h-4 w-4" />
+                                            Jetzt erstellen
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-1 gap-4">
@@ -705,6 +862,18 @@ export function EmployeeModal({ isOpen, onClose, onSave, initialEmployee, getNex
                                     documents={formData.documents}
                                     onUpload={(e) => handleSlotUpload(e, 'ecard', 'E-Card')}
                                     onRemove={() => handleRemoveSlotDocument('ecard')}
+                                    onPreview={handlePreview}
+                                />
+
+                                <div className="h-px bg-slate-100 my-4" />
+                                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 leading-none mb-1">Vertragsunterlagen</h5>
+
+                                <DocumentSlot
+                                    label="Dienstzettel"
+                                    subType="dienstzettel"
+                                    documents={formData.documents}
+                                    onUpload={(e) => handleSlotUpload(e, 'dienstzettel', 'Dienstzettel')}
+                                    onRemove={() => handleRemoveSlotDocument('dienstzettel')}
                                     onPreview={handlePreview}
                                 />
                             </div>

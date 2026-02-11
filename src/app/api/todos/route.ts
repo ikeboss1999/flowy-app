@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/sqlite';
+import sqliteDb from '@/lib/sqlite';
+import { supabase } from '@/lib/supabase';
+import { UnifiedDB, isWeb } from '@/lib/database';
 import { nanoid } from 'nanoid';
 
 export const dynamic = 'force-dynamic';
@@ -10,9 +12,20 @@ export async function GET(request: Request) {
     if (!userId) return NextResponse.json({ message: 'Missing userId' }, { status: 400 });
 
     try {
-        const rows = db.prepare('SELECT * FROM todos WHERE userId = ? ORDER BY createdAt DESC').all(userId);
-        return NextResponse.json(rows.map((r: any) => ({ ...r, completed: r.completed === 1 })));
+        if (isWeb) {
+            const { data: todos, error } = await supabase
+                .from('todos')
+                .select('*')
+                .eq('userId', userId)
+                .order('createdAt', { ascending: false });
+            if (error) throw error;
+            return NextResponse.json(todos);
+        } else {
+            const rows = sqliteDb.prepare('SELECT * FROM todos WHERE userId = ? ORDER BY createdAt DESC').all(userId);
+            return NextResponse.json(rows.map((r: any) => ({ ...r, completed: r.completed === 1 })));
+        }
     } catch (error) {
+        console.error(error);
         return NextResponse.json({ message: 'Error' }, { status: 500 });
     }
 }
@@ -23,17 +36,60 @@ export async function POST(request: Request) {
         const { id, task, completed, priority, createdAt } = todo;
 
         const todoId = id || nanoid();
-        const existing = db.prepare('SELECT id FROM todos WHERE id = ?').get(todoId);
 
-        if (existing) {
-            db.prepare('UPDATE todos SET task = ?, completed = ?, priority = ? WHERE id = ?')
-                .run(task, completed ? 1 : 0, priority, todoId);
+        if (isWeb) {
+            const { error } = await supabase
+                .from('todos')
+                .upsert({
+                    id: todoId,
+                    task,
+                    completed: !!completed,
+                    priority,
+                    createdAt: createdAt || new Date().toISOString(),
+                    userId
+                });
+            if (error) throw error;
         } else {
-            db.prepare('INSERT INTO todos (id, task, completed, priority, createdAt, userId) VALUES (?, ?, ?, ?, ?, ?)')
-                .run(todoId, task, completed ? 1 : 0, priority, createdAt || new Date().toISOString(), userId);
+            const stmt = sqliteDb.prepare(`
+                INSERT OR REPLACE INTO todos (id, task, completed, priority, createdAt, userId)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `);
+            stmt.run(todoId, task, completed ? 1 : 0, priority, createdAt || new Date().toISOString(), userId);
+
+            // Silent Sync
+            UnifiedDB.syncToCloud('todos', { ...todo, id: todoId }, userId);
         }
+
         return NextResponse.json({ success: true, id: todoId });
     } catch (error) {
+        console.error(error);
         return NextResponse.json({ message: 'Error' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const userId = searchParams.get('userId');
+
+    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+
+    try {
+        if (isWeb) {
+            const { error } = await supabase.from('todos').delete().eq('id', id);
+            if (error) throw error;
+        } else {
+            sqliteDb.prepare('DELETE FROM todos WHERE id = ?').run(id);
+
+            if (userId) {
+                supabase.from('todos').delete().eq('id', id).then(({ error }) => {
+                    if (error) console.error('[BackgroundSync] Todo delete failed', error);
+                });
+            }
+        }
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }

@@ -99,7 +99,12 @@ export const EmployeeDataSheetPDF = forwardRef<HTMLDivElement, EmployeeDataSheet
                         <div style={{ marginBottom: '8px' }}><span style={{ fontWeight: 'bold', width: '130px', display: 'inline-block' }}>Status:</span> {employee.employment.status}</div>
                         <div style={{ marginBottom: '8px' }}><span style={{ fontWeight: 'bold', width: '130px', display: 'inline-block' }}>Bruttogehalt:</span> {employee.employment.salary}</div>
                         {employee.employment.endDate && (
-                            <div style={{ marginBottom: '8px' }}><span style={{ fontWeight: 'bold', width: '130px', display: 'inline-block' }}>Austrittsdatum:</span> {formatDate(employee.employment.endDate)}</div>
+                            <>
+                                <div style={{ marginBottom: '8px' }}><span style={{ fontWeight: 'bold', width: '130px', display: 'inline-block' }}>Austrittsdatum:</span> {formatDate(employee.employment.endDate)}</div>
+                                {employee.employment.exitReason && (
+                                    <div style={{ marginBottom: '8px' }}><span style={{ fontWeight: 'bold', width: '130px', display: 'inline-block' }}>Austrittsgrund:</span> {employee.employment.exitReason}</div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>

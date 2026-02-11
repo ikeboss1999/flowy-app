@@ -1,0 +1,7 @@
+# Release v1.1.0
+
+## New Features & Improvements
+- **UI Versioning:** Centralized version display across Login, Registration, and Sidebar.
+- **Enhanced Stability:** Rebuilt native modules for better performance.
+- **UI Refinements:** General polish of dashboard and sidebar components.
+- **Data Sync:** Improved handling of Supabase connections and error reporting.

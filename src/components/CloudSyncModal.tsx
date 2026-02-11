@@ -56,7 +56,7 @@ export function CloudSyncModal() {
         try {
             // 1. Fetch data locally via API re-use or just let the backup lib handle it?
             // The lib expects data. Let's fetch the export API.
-            const response = await fetch('/api/backup/export');
+            const response = await fetch(`/api/backup/export?userId=${user.id}`);
             const data = await response.json();
 
             // 2. Upload
@@ -65,7 +65,7 @@ export function CloudSyncModal() {
 
             // 3. Wipe Local Data (Clean Session)
             try {
-                await fetch('/api/db/clear', { method: 'POST' });
+                await fetch(`/api/db/clear?userId=${user.id}`, { method: 'POST' });
             } catch (wipeError) {
                 console.error("Wipe failed:", wipeError);
             }
@@ -102,23 +102,26 @@ export function CloudSyncModal() {
                 </div>
 
                 {/* Actions */}
-                <div className="space-y-3">
+                <div className="space-y-3 relative">
+                    {isUploading && (
+                        <div className="absolute -inset-2 bg-[#0F0F12]/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-2xl animate-in fade-in duration-300">
+                            <div className="relative mb-4">
+                                <div className="absolute -inset-3 bg-indigo-500/20 rounded-full blur-xl animate-pulse" />
+                                <div className="relative h-12 w-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10">
+                                    <Loader2 className="h-6 w-6 text-indigo-400 animate-spin" />
+                                </div>
+                            </div>
+                            <p className="text-xs font-black tracking-[0.2em] text-indigo-400 uppercase">Wird gesichert...</p>
+                        </div>
+                    )}
+
                     <button
                         onClick={handleBackupAndProceed}
                         disabled={isUploading}
-                        className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-600/20 active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-600/20 active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-0 disabled:cursor-not-allowed transition-all"
                     >
-                        {isUploading ? (
-                            <>
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                                Wird gesichert...
-                            </>
-                        ) : (
-                            <>
-                                <Upload className="h-5 w-5" />
-                                {mode === 'close' ? "Ja, Sichern & Beenden" : "Ja, Sichern & Abmelden"}
-                            </>
-                        )}
+                        <Upload className="h-5 w-5" />
+                        {mode === 'close' ? "Ja, Sichern & Beenden" : "Ja, Sichern & Abmelden"}
                     </button>
 
                     <button

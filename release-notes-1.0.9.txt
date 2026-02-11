@@ -1,0 +1,7 @@
+# Release v1.0.9
+
+## Improvements
+- Enhanced application stability and performance.
+- Optimization of native module handling for smoother updates.
+- General UI refinements and final polish for this release series.
+- Bug fixes in backend data synchronization.

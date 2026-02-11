@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/sqlite';
+import sqliteDb from '@/lib/sqlite';
+import { supabase } from '@/lib/supabase';
+import { UnifiedDB, isWeb } from '@/lib/database';
 import { nanoid } from 'nanoid';
 
 export const dynamic = 'force-dynamic';
@@ -11,18 +13,28 @@ export async function GET(request: Request) {
     if (!userId) return NextResponse.json({ message: 'Missing userId' }, { status: 400 });
 
     try {
-        const rows = db.prepare('SELECT * FROM employees WHERE userId = ?').all(userId);
-        const data = rows.map((r: any) => ({
-            ...r,
-            personalData: JSON.parse(r.personalData),
-            bankDetails: JSON.parse(r.bankDetails),
-            employment: JSON.parse(r.employment),
-            additionalInfo: r.additionalInfo ? JSON.parse(r.additionalInfo) : null,
-            weeklySchedule: r.weeklySchedule ? JSON.parse(r.weeklySchedule) : null,
-            documents: r.documents ? JSON.parse(r.documents) : []
-        }));
-        return NextResponse.json(data);
+        if (isWeb) {
+            const { data: employees, error } = await supabase
+                .from('employees')
+                .select('*')
+                .eq('userId', userId);
+            if (error) throw error;
+            return NextResponse.json(employees);
+        } else {
+            const rows = sqliteDb.prepare('SELECT * FROM employees WHERE userId = ?').all(userId);
+            const data = rows.map((r: any) => ({
+                ...r,
+                personalData: JSON.parse(r.personalData),
+                bankDetails: JSON.parse(r.bankDetails),
+                employment: JSON.parse(r.employment),
+                additionalInfo: r.additionalInfo ? JSON.parse(r.additionalInfo) : null,
+                weeklySchedule: r.weeklySchedule ? JSON.parse(r.weeklySchedule) : null,
+                documents: r.documents ? JSON.parse(r.documents) : []
+            }));
+            return NextResponse.json(data);
+        }
     } catch (error) {
+        console.error(error);
         return NextResponse.json({ message: 'Error' }, { status: 500 });
     }
 }
@@ -34,29 +46,69 @@ export async function POST(request: Request) {
 
         const empId = id || nanoid();
 
-        const existing = db.prepare('SELECT id FROM employees WHERE id = ?').get(empId);
-
-        if (existing) {
-            db.prepare(`
-                UPDATE employees SET 
-                employeeNumber = ?, personalData = ?, bankDetails = ?, employment = ?, 
-                additionalInfo = ?, weeklySchedule = ?, documents = ?, avatar = ?
-                WHERE id = ?
-            `).run(
-                employeeNumber, JSON.stringify(personalData), JSON.stringify(bankDetails), JSON.stringify(employment),
-                JSON.stringify(additionalInfo), JSON.stringify(weeklySchedule), JSON.stringify(documents), avatar, empId
-            );
+        if (isWeb) {
+            const { error } = await supabase
+                .from('employees')
+                .upsert({
+                    id: empId,
+                    employeeNumber,
+                    personalData,
+                    bankDetails,
+                    employment,
+                    additionalInfo,
+                    weeklySchedule,
+                    documents,
+                    avatar,
+                    createdAt: createdAt || new Date().toISOString(),
+                    userId
+                });
+            if (error) throw error;
         } else {
-            db.prepare(`
-                INSERT INTO employees (id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, createdAt, userId)
+            const stmt = sqliteDb.prepare(`
+                INSERT OR REPLACE INTO employees 
+                (id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, createdAt, userId)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(
+            `);
+
+            stmt.run(
                 empId, employeeNumber, JSON.stringify(personalData), JSON.stringify(bankDetails), JSON.stringify(employment),
                 JSON.stringify(additionalInfo), JSON.stringify(weeklySchedule), JSON.stringify(documents), avatar, createdAt || new Date().toISOString(), userId
             );
+
+            // Silent Sync
+            UnifiedDB.syncToCloud('employees', { ...employee, id: empId }, userId);
         }
+
         return NextResponse.json({ success: true, id: empId });
     } catch (error) {
+        console.error(error);
         return NextResponse.json({ message: 'Error' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const userId = searchParams.get('userId');
+
+    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+
+    try {
+        if (isWeb) {
+            const { error } = await supabase.from('employees').delete().eq('id', id);
+            if (error) throw error;
+        } else {
+            sqliteDb.prepare('DELETE FROM employees WHERE id = ?').run(id);
+
+            if (userId) {
+                supabase.from('employees').delete().eq('id', id).then(({ error }) => {
+                    if (error) console.error('[BackgroundSync] Employee delete failed', error);
+                });
+            }
+        }
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }

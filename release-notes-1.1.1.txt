@@ -1,0 +1,7 @@
+# Release v1.1.1
+
+## Improvements
+- **Sync Stability:** Improved source synchronization for Vercel integration.
+- **Native Modules:** Optimized internal native module handling.
+- **Maintenance:** General bug fixes and stability improvements.
+- **Version Tracking:** Verified dynamic version display in all UI components.

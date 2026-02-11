@@ -212,7 +212,7 @@ export default function LoginPage() {
                 <div className="mt-16 flex justify-between w-full max-w-sm px-4 opacity-30 text-[10px] font-black tracking-widest uppercase text-slate-400 select-none">
                     <span>Secure SSL</span>
                     <span>Made in Austria</span>
-                    <span>V 1.0.7</span>
+                    <span>V {process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0"}</span>
                 </div>
             </div>
         </div>

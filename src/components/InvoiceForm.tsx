@@ -645,7 +645,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                                                 type="number"
                                                 value={item.quantity}
                                                 onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
-                                                className={cn(inputClasses, "py-3 px-4 border-slate-100 text-center")}
+                                                className={cn(inputClasses, "py-3 px-4 border-slate-100 text-center no-spinner")}
                                             />
                                         </td>
                                         <td className="px-4 py-2">
@@ -670,7 +670,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                                                     type="number"
                                                     value={item.pricePerUnit}
                                                     onChange={(e) => updateItem(item.id, 'pricePerUnit', e.target.value)}
-                                                    className={cn(inputClasses, "py-3 px-4 border-slate-100 text-right pr-4")}
+                                                    className={cn(inputClasses, "py-3 px-4 border-slate-100 text-right pr-4 no-spinner")}
                                                 />
                                             </div>
                                         </td>
@@ -767,6 +767,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                     isOpen={isCustomerModalOpen}
                     onClose={() => setIsCustomerModalOpen(false)}
                     onSave={handleSaveNewCustomer}
+                    existingCustomers={customers}
                 />
 
                 {/* Hidden Print Handler */}

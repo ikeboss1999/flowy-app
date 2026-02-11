@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     BarChart3,
     Users,
@@ -14,7 +14,6 @@ import {
     Clock,
     MoreVertical,
     Download,
-    Loader2,
     AlertCircle,
     Trash2,
     ChevronUp,
@@ -26,9 +25,11 @@ import { useAuth } from '@/context/AuthContext';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useTodos } from '@/hooks/useTodos';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useAccountSettings } from '@/hooks/useAccountSettings';
 import { Invoice } from '@/types/invoice';
 import { Customer } from '@/types/customer';
-import { InvoicePDF } from '@/components/InvoicePDF';
+import { InvoicePreviewModal } from '@/components/InvoicePreviewModal';
 import { CalendarWidget } from '@/components/CalendarWidget';
 
 export default function DashboardPage() {
@@ -36,41 +37,39 @@ export default function DashboardPage() {
     const { invoices, updateInvoice, isLoading } = useInvoices();
     const { customers } = useCustomers();
     const { todos, addTodo, toggleTodo, deleteTodo } = useTodos();
+    const { data: companySettings } = useCompanySettings();
+    const { data: accountSettings } = useAccountSettings();
     const [newTodo, setNewTodo] = useState("");
-    const [downloadingId, setDownloadingId] = useState<string | null>(null);
+    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [isTodoMinimized, setIsTodoMinimized] = useState(false);
 
     // Sorting State
     const [sortBy, setSortBy] = useState<string>("number");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
-    // PDF States
-    const [pdfInvoice, setPdfInvoice] = useState<Invoice | null>(null);
-    const [pdfCustomer, setPdfCustomer] = useState<Customer | null>(null);
-    const pdfContainerRef = useRef<HTMLDivElement>(null);
 
-    const companySettings = user?.companySettings || {
-        name: user?.name || "Deine Firma",
-        address: "",
-        email: user?.email || "",
-        phone: "",
-        logo: "",
-        taxId: "",
-        bankName: "",
-        iban: "",
-        bic: "",
-    };
+    const currentYear = new Date().getFullYear();
 
     const stats = useMemo(() => {
-        const totalRevenue = invoices.reduce((sum, inv) => inv.status === 'paid' ? sum + inv.totalAmount : sum, 0);
-        const openInvoicesCount = invoices.filter(inv => inv.status === 'pending' || inv.status === 'overdue').length;
-        const openAmount = invoices.reduce((sum, inv) => inv.status !== 'paid' ? sum + inv.totalAmount : sum, 0);
+        const currentYearInvoices = invoices.filter(inv => {
+            const invYear = new Date(inv.issueDate).getFullYear();
+            return invYear === currentYear;
+        });
+
+        const totalRevenue = currentYearInvoices.reduce((sum, inv) => inv.status === 'paid' ? sum + inv.totalAmount : sum, 0);
+        const openInvoicesCount = currentYearInvoices.filter(inv => inv.status === 'pending' || inv.status === 'overdue').length;
+        const openAmount = currentYearInvoices.reduce((sum, inv) => inv.status !== 'paid' ? sum + inv.totalAmount : sum, 0);
 
         return { totalRevenue, openInvoicesCount, openAmount };
-    }, [invoices]);
+    }, [invoices, currentYear]);
 
     const sortedInvoices = useMemo(() => {
-        return [...invoices].sort((a, b) => {
+        const currentYearInvoices = invoices.filter(inv => {
+            const invYear = new Date(inv.issueDate).getFullYear();
+            return invYear === currentYear;
+        });
+
+        return [...currentYearInvoices].sort((a, b) => {
             let comparison = 0;
             switch (sortBy) {
                 case 'number':
@@ -89,7 +88,7 @@ export default function DashboardPage() {
             }
             return sortOrder === 'asc' ? comparison : -comparison;
         });
-    }, [invoices, sortBy, sortOrder]);
+    }, [invoices, currentYear, sortBy, sortOrder]);
 
     const handleAddTodo = (e: React.FormEvent) => {
         e.preventDefault();
@@ -98,41 +97,9 @@ export default function DashboardPage() {
         setNewTodo("");
     };
 
-    const handleDownload = async (invoice: Invoice) => {
-        const customer = customers.find(c => c.id === invoice.customerId);
-        if (!customer) return;
-
-        setPdfInvoice(invoice);
-        setPdfCustomer(customer);
-        setDownloadingId(invoice.id);
+    const handleDownload = (invoice: Invoice) => {
+        setSelectedInvoice(invoice);
     };
-
-    useEffect(() => {
-        if (pdfInvoice && pdfCustomer && pdfContainerRef.current) {
-            const generatePDF = async () => {
-                const html2pdf = (await import('html2pdf.js')).default;
-                const element = pdfContainerRef.current;
-                const opt = {
-                    margin: 0,
-                    filename: `Rechnung_${pdfInvoice.invoiceNumber}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-
-                try {
-                    await html2pdf().from(element).set(opt).save();
-                } catch (error) {
-                    console.error("PDF generation failed:", error);
-                } finally {
-                    setPdfInvoice(null);
-                    setPdfCustomer(null);
-                    setDownloadingId(null);
-                }
-            };
-            generatePDF();
-        }
-    }, [pdfInvoice, pdfCustomer]);
 
     return (
         <div className="p-10 space-y-10">
@@ -140,7 +107,7 @@ export default function DashboardPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
                     <span className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-2 block">Dashboard</span>
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tight font-outfit">Willkommen zurück, {user?.name}!</h2>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight font-outfit">Willkommen zurück, {accountSettings?.name || "Benutzer"}!</h2>
                     <p className="text-slate-500 text-lg font-medium mt-1">Hier ist eine Übersicht deines Unternehmens.</p>
                 </div>
                 <div className="flex items-center gap-4">
@@ -321,14 +288,9 @@ export default function DashboardPage() {
                                                             e.stopPropagation();
                                                             handleDownload(invoice);
                                                         }}
-                                                        disabled={downloadingId === invoice.id}
-                                                        className="p-2 text-slate-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
+                                                        className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
                                                     >
-                                                        {downloadingId === invoice.id ? (
-                                                            <Loader2 className="h-5 w-5 animate-spin" />
-                                                        ) : (
-                                                            <Download className="h-5 w-5" />
-                                                        )}
+                                                        <Download className="h-5 w-5" />
                                                     </button>
                                                 </td>
                                             </tr>
@@ -433,19 +395,15 @@ export default function DashboardPage() {
                         )}
                     </div>
                 </div>
-            </div>
 
-            {/* Hidden Invoice Template for PDF Generation */}
-            {pdfInvoice && pdfCustomer && (
-                <div style={{ position: 'absolute', top: -9999, left: -9999 }}>
-                    <InvoicePDF
-                        ref={pdfContainerRef}
-                        invoice={pdfInvoice}
-                        customer={pdfCustomer}
-                        companySettings={companySettings}
-                    />
-                </div>
-            )}
+                <InvoicePreviewModal
+                    isOpen={!!selectedInvoice}
+                    onClose={() => setSelectedInvoice(null)}
+                    invoice={selectedInvoice}
+                    customer={customers.find(c => c.id === selectedInvoice?.customerId)}
+                    companySettings={companySettings}
+                />
+            </div>
         </div>
     );
 }

@@ -1,44 +1,51 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/sqlite';
+import sqliteDb from '@/lib/sqlite';
+import { supabase } from '@/lib/supabase';
+import { isWeb } from '@/lib/database';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+
     try {
-        console.log('--- BACKUP EXPORT START ---');
+        if (!userId) return NextResponse.json({ error: 'User ID required' }, { status: 400 });
 
-        // Helper function to safely fetch table data
-        const getTableData = (table: string) => {
-            try {
-                return db.prepare(`SELECT * FROM ${table}`).all();
-            } catch (e) {
-                console.warn(`Table ${table} not found or inaccessible.`);
-                return [];
-            }
-        };
-
-        const data = {
-            projects: getTableData('projects'),
-            customers: getTableData('customers'),
-            invoices: getTableData('invoices'),
-            settings: getTableData('settings'),
-            vehicles: getTableData('vehicles'),
-            employees: getTableData('employees'),
-            time_entries: getTableData('time_entries'),
-            timesheets: getTableData('timesheets'),
-            todos: getTableData('todos'),
-            calendar_events: getTableData('calendar_events'),
-            services: getTableData('services'),
+        const tables = ['projects', 'customers', 'invoices', 'settings', 'vehicles', 'employees', 'time_entries', 'timesheets', 'todos', 'calendar_events', 'services'];
+        const data: any = {
             exportDate: new Date().toISOString(),
-            version: '2.2'
+            version: '2.5', // Incremented version for hybrid support
+            currentUserId: userId
         };
 
-        const totalRows = Object.values(data)
-            .filter(val => Array.isArray(val))
-            .reduce((acc, val: any) => acc + val.length, 0);
+        if (isWeb) {
+            for (const table of tables) {
+                const { data: rows, error } = await supabase
+                    .from(table)
+                    .select('*')
+                    .eq('userId', userId);
 
-        console.log(`Export successful: ${totalRows} rows collected.`);
-        console.log('--- BACKUP EXPORT END ---');
+                if (error) {
+                    console.warn(`[Export] Table ${table} fetch failed:`, error);
+                    data[table] = [];
+                } else {
+                    data[table] = rows;
+                }
+            }
+        } else {
+            for (const table of tables) {
+                try {
+                    data[table] = sqliteDb.prepare(`SELECT * FROM ${table} WHERE userId = ?`).all(userId);
+                } catch (e) {
+                    console.warn(`[Export] Local Table ${table} fetch failed:`, e);
+                    data[table] = [];
+                }
+            }
+        }
+
+        const totalRows = tables.reduce((acc, table) => acc + (data[table]?.length || 0), 0);
+        console.log(`[Export] Successful: ${totalRows} rows collected.`);
 
         return NextResponse.json(data);
     } catch (error) {

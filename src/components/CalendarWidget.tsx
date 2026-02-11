@@ -259,10 +259,10 @@ export function CalendarWidget() {
 
     const renderWeekView = () => {
         const startOfWeek = getStartOfWeek(viewDate);
-        const weekDaysToRender = [0, 1, 2, 3, 4]; // Mo - Fr (requested)
+        const weekDaysToRender = [0, 1, 2, 3, 4, 5, 6]; // Mo - So (Full 7 days now)
 
         return (
-            <div className="grid grid-cols-6 gap-0 border border-slate-100 rounded-[2.5rem] bg-white overflow-hidden">
+            <div className="grid grid-cols-[80px_repeat(7,1fr)] gap-0 border border-slate-100 rounded-[2.5rem] bg-white overflow-hidden">
                 {/* Time Axis Column */}
                 <div className="border-r border-slate-100 bg-slate-50/50">
                     <div className="h-20 border-b border-slate-100 flex items-center justify-center p-4">
@@ -283,7 +283,7 @@ export function CalendarWidget() {
                     const isToday = new Date().toDateString() === current.toDateString();
 
                     return (
-                        <div key={idx} className={cn("flex-1", idx < 4 ? "border-r border-slate-100" : "")}>
+                        <div key={idx} className={cn("flex-1", idx < 6 ? "border-r border-slate-100" : "")}>
                             <div className={cn(
                                 "h-20 border-b border-slate-100 flex flex-col items-center justify-center p-4 transition-colors",
                                 isToday ? "bg-indigo-50/30" : "bg-white"
@@ -292,6 +292,23 @@ export function CalendarWidget() {
                                 <span className={cn("text-xl font-black", isToday ? "text-indigo-600" : "text-slate-900")}>
                                     {current.getDate()}
                                 </span>
+                            </div>
+
+                            {/* All Day Events Area */}
+                            <div className="min-h-[40px] border-b border-slate-100 bg-slate-50/30 p-1 space-y-1">
+                                {events.filter(e => e.startDate?.startsWith(dateStr) && (!e.startTime || e.isAllDay)).map(event => (
+                                    <div
+                                        key={event.id}
+                                        onClick={(e) => { e.stopPropagation(); handleEditEvent(event); }}
+                                        className={cn(
+                                            "px-2 py-1 rounded-lg border-l-2 text-[10px] font-bold truncate cursor-pointer",
+                                            event.type === 'important' ? "bg-rose-50 border-rose-500 text-rose-700" :
+                                                event.type === 'work' ? "bg-indigo-50 border-indigo-500 text-indigo-700" : "bg-emerald-50 border-emerald-500 text-emerald-700"
+                                        )}
+                                    >
+                                        {event.title}
+                                    </div>
+                                ))}
                             </div>
                             <div className="relative" onMouseLeave={() => isDragging && handleMouseUp()}>
                                 {hours.map(hour => {
@@ -336,11 +353,10 @@ export function CalendarWidget() {
                                 })}
 
                                 {/* Absolute events Layer */}
-                                {events.filter(e => e.startDate === dateStr).map(event => {
-                                    if (!event.startTime) return null;
+                                {events.filter(e => e.startDate?.startsWith(dateStr) && e.startTime).map(event => {
                                     const isBeingMoved = isMovingEvent && movingEvent?.id === event.id;
-                                    const hourPart = parseInt(event.startTime.split(':')[0]);
-                                    const minPart = parseInt(event.startTime.split(':')[1]);
+                                    const hourPart = parseInt(event.startTime!.split(':')[0]);
+                                    const minPart = parseInt(event.startTime!.split(':')[1]);
                                     const top = (hourPart - 6) * 80 + (minPart / 60) * 80;
 
                                     // Calculate duration for height
@@ -401,9 +417,37 @@ export function CalendarWidget() {
                         </div>
                     </div>
                 </div>
+                {/* All Day Events Section for Day View */}
+                <div className="px-10 py-6 border-b border-slate-100 bg-slate-50/20">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Ganztägig</h4>
+                    <div className="space-y-2">
+                        {events.filter(e => e.startDate?.startsWith(dateStr) && (!e.startTime || e.isAllDay)).map(event => (
+                            <div
+                                key={event.id}
+                                onClick={() => handleEditEvent(event)}
+                                className={cn(
+                                    "p-4 rounded-2xl border-l-4 cursor-pointer flex justify-between items-center group",
+                                    event.type === 'important' ? "bg-rose-50 border-rose-500 text-rose-900" :
+                                        event.type === 'work' ? "bg-indigo-50 border-indigo-500 text-indigo-900" : "bg-emerald-50 border-emerald-500 text-emerald-900"
+                                )}
+                            >
+                                <span className="font-bold">{event.title}</span>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); deleteEvent(event.id); }}
+                                    className="p-2 opacity-0 group-hover:opacity-100 hover:text-rose-500 transition-all"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </div>
+                        ))}
+                        {events.filter(e => e.startDate?.startsWith(dateStr) && (!e.startTime || e.isAllDay)).length === 0 && (
+                            <p className="text-xs text-slate-400 italic">Keine ganztägigen Termine</p>
+                        )}
+                    </div>
+                </div>
                 <div className="p-10 space-y-2">
                     {hours.map(hour => {
-                        const eventAtHour = events.find(e => e.startDate === dateStr && e.startTime?.startsWith(hour.split(':')[0]));
+                        const eventAtHour = events.find(e => e.startDate?.startsWith(dateStr) && e.startTime && e.startTime.startsWith(hour.split(':')[0]));
                         return (
                             <div key={hour} className="flex gap-10 group">
                                 <span className="w-16 pt-4 text-right text-[11px] font-black text-slate-500 uppercase tracking-widest tabular-nums group-hover:text-indigo-500 transition-colors">

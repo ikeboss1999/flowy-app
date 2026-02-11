@@ -29,6 +29,7 @@ import {
 import { Employee, EmploymentStatus, EmployeeDocument } from "@/types/employee";
 import { EmployeeModal } from "@/components/EmployeeModal";
 import { EmployeeDataSheetPDF } from "@/components/EmployeeDataSheetPDF";
+import { DienstzettelPDF } from "@/components/DienstzettelPDF";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
 import { cn } from "@/lib/utils";
 import { useEmployees } from "@/hooks/useEmployees";
@@ -48,8 +49,10 @@ export default function EmployeesPage() {
 
     // PDF States
     const [pdfEmployee, setPdfEmployee] = useState<Employee | null>(null);
+    const [contractEmployee, setContractEmployee] = useState<Employee | null>(null);
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
     const pdfContainerRef = useRef<HTMLDivElement>(null);
+    const contractContainerRef = useRef<HTMLDivElement>(null);
 
     // Preview States
     const [previewDoc, setPreviewDoc] = useState<EmployeeDocument | null>(null);
@@ -67,12 +70,134 @@ export default function EmployeesPage() {
         });
     }, [employees, searchQuery, filterStatus]);
 
-    const handleSaveEmployee = (employee: Employee) => {
+    const handleSaveEmployee = async (employee: Employee, skipContract?: boolean) => {
         if (editingEmployee) {
             updateEmployee(employee.id, employee);
+            setIsModalOpen(false);
+            setEditingEmployee(undefined);
         } else {
-            addEmployee(employee);
+            if (skipContract) {
+                addEmployee(employee);
+                showToast("Mitarbeiter erfolgreich angelegt.", "success");
+                setIsModalOpen(false);
+                return;
+            }
+
+            // Automatic Dienstzettel generation for new employees
+            showToast("Mitarbeiter wird angelegt und Dienstzettel erstellt...", "info");
+            setContractEmployee(employee);
+
+            // Wait for render
+            setTimeout(async () => {
+                if (contractContainerRef.current) {
+                    try {
+                        const html2pdf = (await import('html2pdf.js')).default;
+                        const element = contractContainerRef.current;
+                        const opt = {
+                            margin: 0,
+                            filename: `Dienstzettel_${employee.personalData.lastName}.pdf`,
+                            image: { type: 'jpeg' as any, quality: 0.98 },
+                            html2canvas: { scale: 2, useCORS: true },
+                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as any }
+                        };
+
+                        const worker = html2pdf().from(element).set(opt);
+                        const pdfBlob = await worker.output('blob');
+
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const base64data = reader.result as string;
+                            const newDoc: EmployeeDocument = {
+                                id: Math.random().toString(36).substr(2, 9),
+                                name: `Dienstzettel_${employee.personalData.lastName}.pdf`,
+                                type: 'application/pdf',
+                                uploadDate: new Date().toISOString(),
+                                fileSize: `${(pdfBlob.size / 1024).toFixed(1)} KB`,
+                                content: base64data,
+                                category: 'system',
+                                subType: 'dienstzettel'
+                            };
+
+                            const employeeWithContract = {
+                                ...employee,
+                                documents: [...employee.documents, newDoc]
+                            };
+
+                            addEmployee(employeeWithContract);
+                            showToast("Mitarbeiter mit Dienstzettel erfolgreich angelegt.", "success");
+                            setContractEmployee(null);
+                            setIsModalOpen(false);
+                        };
+                        reader.readAsDataURL(pdfBlob);
+                    } catch (error) {
+                        console.error("Dienstzettel generation failed:", error);
+                        addEmployee(employee); // Save anyway even if PDF fails
+                        setIsModalOpen(false);
+                    }
+                }
+            }, 800);
         }
+    };
+
+    const handleManualGenerateContract = async (employee: Employee) => {
+        showToast("Dienstzettel wird generiert...", "info");
+        setContractEmployee(employee);
+
+        setTimeout(async () => {
+            if (contractContainerRef.current) {
+                try {
+                    const html2pdf = (await import('html2pdf.js')).default;
+                    const element = contractContainerRef.current;
+                    const opt = {
+                        margin: 0,
+                        filename: `Dienstzettel_${employee.personalData.lastName}.pdf`,
+                        image: { type: 'jpeg' as any, quality: 0.98 },
+                        html2canvas: { scale: 2, useCORS: true },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as any }
+                    };
+
+                    const worker = html2pdf().from(element).set(opt);
+                    const pdfBlob = await worker.output('blob');
+
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const base64data = reader.result as string;
+                        const newDoc: EmployeeDocument = {
+                            id: Math.random().toString(36).substr(2, 9),
+                            name: `Dienstzettel_${employee.personalData.lastName}.pdf`,
+                            type: 'application/pdf',
+                            uploadDate: new Date().toISOString(),
+                            fileSize: `${(pdfBlob.size / 1024).toFixed(1)} KB`,
+                            content: base64data,
+                            category: 'system',
+                            subType: 'dienstzettel'
+                        };
+
+                        const updatedEmployee = {
+                            ...employee,
+                            documents: [...employee.documents, newDoc]
+                        };
+
+                        updateEmployee(employee.id, updatedEmployee);
+                        showToast("Dienstzettel wurde generiert und im Archiv gespeichert.", "success");
+                        setContractEmployee(null);
+
+                        // If modal is open, update the form data so the new document appears
+                        if (editingEmployee && editingEmployee.id === employee.id) {
+                            setEditingEmployee(updatedEmployee);
+                        }
+
+                        // Save the file for user download
+                        worker.save();
+                    };
+                    reader.readAsDataURL(pdfBlob);
+                } catch (error) {
+                    console.error("Manual contract generation failed:", error);
+                    showToast("Fehler bei der PDF-Erstellung.", "error");
+                    setContractEmployee(null);
+                }
+            }
+        }, 800);
     };
 
     const handleDeleteEmployee = (id: string) => {
@@ -379,6 +504,11 @@ export default function EmployeesPage() {
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                                     {emp.employment.position}
                                                 </span>
+                                                {emp.employment.endDate && new Date(emp.employment.endDate) <= new Date() && (
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 border border-rose-200">
+                                                        Ausgetreten
+                                                    </span>
+                                                )}
                                             </div>
                                             <h3 className="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
                                                 {emp.personalData.firstName} {emp.personalData.lastName}
@@ -398,6 +528,18 @@ export default function EmployeesPage() {
                                                 <Briefcase className="h-4 w-4 text-slate-300" />
                                                 <span>Eintritt: {new Date(emp.employment.startDate).toLocaleDateString()}</span>
                                             </div>
+                                            {emp.employment.endDate && (
+                                                <div className="flex items-center gap-3 text-rose-500 font-bold">
+                                                    <CalendarDays className="h-4 w-4" />
+                                                    <span>Austritt: {new Date(emp.employment.endDate).toLocaleDateString()}</span>
+                                                </div>
+                                            )}
+                                            {emp.employment.exitReason && (
+                                                <div className="flex items-center gap-3 text-slate-400 italic">
+                                                    <FileText className="h-4 w-4" />
+                                                    <span className="line-clamp-1">{emp.employment.exitReason}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -578,8 +720,12 @@ export default function EmployeesPage() {
 
             <EmployeeModal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setEditingEmployee(undefined);
+                }}
                 onSave={handleSaveEmployee}
+                onGenerateContract={handleManualGenerateContract}
                 initialEmployee={editingEmployee}
                 getNextNumber={getNextEmployeeNumber}
             />
@@ -596,6 +742,16 @@ export default function EmployeesPage() {
                     <EmployeeDataSheetPDF
                         ref={pdfContainerRef}
                         employee={pdfEmployee}
+                        companySettings={companySettings}
+                    />
+                )}
+            </div>
+
+            <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', overflow: 'hidden', height: 0 }}>
+                {contractEmployee && (
+                    <DienstzettelPDF
+                        ref={contractContainerRef}
+                        employee={contractEmployee}
                         companySettings={companySettings}
                     />
                 )}
