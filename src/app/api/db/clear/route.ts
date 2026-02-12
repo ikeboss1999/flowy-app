@@ -4,13 +4,32 @@ import { supabase } from '@/lib/supabase';
 import { isWeb } from '@/lib/database';
 
 export async function POST(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    let userId = new URL(request.url).searchParams.get('userId');
+
+    // Also check body for userId
+    if (!userId) {
+        try {
+            const body = await request.clone().json();
+            userId = body.userId;
+        } catch (e) { /* ignore */ }
+    }
 
     try {
-        if (isWeb) {
-            if (!userId) return NextResponse.json({ success: false, error: 'User ID required for cloud wipe' }, { status: 400 });
+        // ALWAYS wipe local if not strictly web
+        if (!isWeb) {
+            console.log("[DB Clear] Wiping ALL local SQLite tables...");
+            const wipe = sqliteDb.transaction(() => {
+                const tables = ['projects', 'customers', 'invoices', 'settings', 'vehicles', 'employees', 'time_entries', 'timesheets', 'todos', 'calendar_events', 'services'];
+                for (const t of tables) {
+                    try { sqliteDb.prepare(`DELETE FROM ${t}`).run(); } catch (e) { }
+                }
+            });
+            wipe();
+        }
 
+        // If userId is known, also wipe Cloud tables
+        if (userId) {
+            console.log(`[DB Clear] Wiping cloud tables for user ${userId}...`);
             const tables = ['invoices', 'customers', 'projects', 'employees', 'vehicles', 'settings', 'services', 'todos', 'calendar_events', 'time_entries', 'timesheets'];
 
             for (const table of tables) {
@@ -19,30 +38,14 @@ export async function POST(request: Request) {
                     .delete()
                     .eq('userId', userId);
 
-                if (error) console.error(`[DB Clear] Failed to clear ${table}:`, error);
+                if (error) console.error(`[DB Clear] Failed to clear cloud table ${table}:`, error);
             }
-
-            return NextResponse.json({ success: true, message: "Cloud data wiped successfully" });
-        } else {
-            // Transaction to wipe all local data
-            const wipe = sqliteDb.transaction(() => {
-                sqliteDb.prepare("DELETE FROM projects").run();
-                sqliteDb.prepare("DELETE FROM customers").run();
-                sqliteDb.prepare("DELETE FROM invoices").run();
-                sqliteDb.prepare("DELETE FROM settings").run();
-                sqliteDb.prepare("DELETE FROM vehicles").run();
-                sqliteDb.prepare("DELETE FROM employees").run();
-                sqliteDb.prepare("DELETE FROM time_entries").run();
-                sqliteDb.prepare("DELETE FROM timesheets").run();
-                sqliteDb.prepare("DELETE FROM todos").run();
-                sqliteDb.prepare("DELETE FROM calendar_events").run();
-                sqliteDb.prepare("DELETE FROM services").run();
-            });
-
-            wipe();
-
-            return NextResponse.json({ success: true, message: "Local database wiped successfully" });
         }
+
+        return NextResponse.json({
+            success: true,
+            message: userId ? "Lokale und Cloud-Daten gelöscht." : "Lokale Daten gelöscht. (Cloud wurde übersprungen da keine UserID)"
+        });
     } catch (error) {
         console.error("Wipe failed:", error);
         return NextResponse.json({ success: false, error: "Failed to wipe database" }, { status: 500 });

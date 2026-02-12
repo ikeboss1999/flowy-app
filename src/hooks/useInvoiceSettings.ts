@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { InvoiceSettings } from '@/types/invoice';
+import { useSync } from '@/context/SyncContext';
 
 const STORAGE_KEY = 'flowy_invoice_settings';
 
@@ -32,6 +33,7 @@ export function useInvoiceSettings() {
     const { user, isLoading: authLoading } = useAuth();
     const [data, setData] = useState<InvoiceSettings>(initialData);
     const [isLoading, setIsLoading] = useState(true);
+    const { markDirty } = useSync();
 
     useEffect(() => {
         if (authLoading || !user) {
@@ -95,6 +97,7 @@ export function useInvoiceSettings() {
                 body: JSON.stringify({ userId: user.id, type: 'invoice', data: updated })
             });
             setData(updated);
+            markDirty();
         } catch (e) {
             console.error('Failed to update invoice settings', e);
         }
@@ -116,6 +119,7 @@ export function useInvoiceSettings() {
                 body: JSON.stringify({ userId: user.id, type: 'invoice', data: updated })
             });
             setData(updated);
+            markDirty();
         } catch (e) {
             console.error('Failed to update dunning levels', e);
         }

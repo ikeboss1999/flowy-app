@@ -121,7 +121,8 @@ function initSchema(db: Database.Database) {
             userId TEXT PRIMARY KEY,
             companyData TEXT,
             accountSettings TEXT,
-            invoiceSettings TEXT
+            invoiceSettings TEXT,
+            updatedAt TEXT
         );
 
         CREATE TABLE IF NOT EXISTS vehicles (
@@ -132,6 +133,7 @@ function initSchema(db: Database.Database) {
             leasing TEXT,
             documents TEXT,
             createdAt TEXT,
+            updatedAt TEXT,
             userId TEXT
         );
 
@@ -146,6 +148,7 @@ function initSchema(db: Database.Database) {
             documents TEXT,
             avatar TEXT,
             createdAt TEXT,
+            updatedAt TEXT,
             userId TEXT
         );
 
@@ -163,7 +166,8 @@ function initSchema(db: Database.Database) {
             serviceId TEXT,
             description TEXT,
             userId TEXT,
-            createdAt TEXT
+            createdAt TEXT,
+            updatedAt TEXT
         );
 
         CREATE TABLE IF NOT EXISTS timesheets (
@@ -172,7 +176,8 @@ function initSchema(db: Database.Database) {
             month TEXT NOT NULL,
             status TEXT,
             finalizedAt TEXT,
-            userId TEXT
+            userId TEXT,
+            updatedAt TEXT
         );
 
         CREATE TABLE IF NOT EXISTS todos (
@@ -181,6 +186,7 @@ function initSchema(db: Database.Database) {
             completed INTEGER DEFAULT 0,
             priority TEXT,
             createdAt TEXT,
+            updatedAt TEXT,
             userId TEXT
         );
 
@@ -199,6 +205,7 @@ function initSchema(db: Database.Database) {
             startTime TEXT,
             endTime TEXT,
             createdAt TEXT,
+            updatedAt TEXT,
             userId TEXT
         );
 
@@ -302,6 +309,22 @@ function initSchema(db: Database.Database) {
     for (const [col, type] of missingSvcCols) {
       if (!svcColumnNames.includes(col)) {
         db.prepare(`ALTER TABLE services ADD COLUMN ${col} ${type}`).run();
+      }
+    }
+    const setColumns = db.prepare("PRAGMA table_info(settings)").all();
+    const setColumnNames = setColumns.map((c: any) => c.name);
+    if (!setColumnNames.includes('updatedAt')) {
+      db.prepare("ALTER TABLE settings ADD COLUMN updatedAt TEXT").run();
+    }
+
+    // New Migrations for updatedAt
+    const tablesToMigrate = ['vehicles', 'employees', 'time_entries', 'timesheets', 'todos', 'calendar_events'];
+    for (const table of tablesToMigrate) {
+      const tableColumns = db.prepare(`PRAGMA table_info(${table})`).all();
+      const tableColumnNames = tableColumns.map((c: any) => c.name);
+      if (!tableColumnNames.includes('updatedAt')) {
+        db.prepare(`ALTER TABLE ${table} ADD COLUMN updatedAt TEXT`).run();
+        console.log(`[Migration] Added updatedAt to ${table}`);
       }
     }
   } catch (e) {

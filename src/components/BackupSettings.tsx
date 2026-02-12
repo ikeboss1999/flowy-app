@@ -12,7 +12,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { uploadToCloud, downloadFromCloud, getLastBackupInfo } from "@/lib/cloudBackup";
-import { Cloud, Radio } from "lucide-react"; // Import Cloud icon
+import { Cloud, Radio, Zap } from "lucide-react"; // Import Zap icon
+import { isWeb } from '@/lib/database';
 
 export function BackupSettings() {
     const { user } = useAuth();
@@ -34,18 +35,20 @@ export function BackupSettings() {
         setIsLoading(true);
         try {
             // Re-use api endpoint to get full JSON dump
-            const response = await fetch('/api/backup/export');
+            const response = await fetch(`/api/backup/export?userId=${user.id}`);
             const data = await response.json();
+
+            if (!response.ok || data.error) throw new Error(data.error || "Export fehlgeschlagen.");
 
             const { error } = await uploadToCloud(data, user.id);
             if (error) throw error;
 
-            setMessage({ text: 'Daten erfolgreich in die Cloud hochgeladen!', type: 'success' });
+            setMessage({ text: 'Cloud-Backup (Snapshot) erfolgreich erstellt!', type: 'success' });
             // Refresh info
             getLastBackupInfo(user.id).then(info => info && setLastBackupTime(info.updated_at));
         } catch (error: any) {
             console.error(error);
-            setMessage({ text: 'Cloud-Upload fehlgeschlagen: ' + error.message, type: 'error' });
+            setMessage({ text: 'Cloud-Backup fehlgeschlagen: ' + error.message, type: 'error' });
         }
         setIsLoading(false);
         setTimeout(() => setMessage({ text: '', type: null }), 5000);
@@ -59,13 +62,22 @@ export function BackupSettings() {
         try {
             const { data, error } = await downloadFromCloud(user.id);
             if (error) throw error;
-            if (!data) throw new Error("Keine Daten gefunden.");
+            if (!data || !data.version) {
+                // Better diagnostic for why it fails
+                if (data && data.error) throw new Error(`Die Cloud-Datei enthält einen Fehler: ${data.error}. Bitte erstelle lokal ein neues Backup.`);
+                throw new Error("Die Cloud-Datei ist ungültig oder beschädigt (Version fehlt).");
+            }
 
             // Import via API
+            const importPayload = {
+                ...data,
+                currentUserId: user.id
+            };
+
             const response = await fetch('/api/backup/import', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...data, currentUserId: user.id })
+                body: JSON.stringify(importPayload)
             });
 
             if (response.ok) {
@@ -91,10 +103,13 @@ export function BackupSettings() {
     };
 
     const handleExport = async () => {
+        if (!user) return;
         setIsLoading(true);
         try {
-            const response = await fetch('/api/backup/export');
+            const response = await fetch(`/api/backup/export?userId=${user.id}`);
             const data = await response.json();
+
+            if (!response.ok || data.error) throw new Error(data.error || "Export fehlgeschlagen.");
 
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = window.URL.createObjectURL(blob);
@@ -258,12 +273,13 @@ export function BackupSettings() {
                             <button
                                 onClick={handleCloudExport}
                                 disabled={isLoading || !user}
-                                className="w-full py-3 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="w-full py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold transition-all border border-white/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {isLoading ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                                Jetzt hochladen
+                                Backup erstellen
                             </button>
                         </div>
+
 
                         {/* Cloud Download */}
                         <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-white/10 hover:bg-white/10 transition-colors">
@@ -308,6 +324,13 @@ export function BackupSettings() {
                     <p className="font-bold text-lg">{message.text}</p>
                 </div>
             )}
+
+            {/* Diagnostic Footer */}
+            <div className="pt-10 flex justify-center opacity-30">
+                <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-slate-500">
+                    System-Modus: <span className="text-indigo-600 font-black">{isWeb ? "Cloud / Web" : "Lokal / App (Sync Aktiv)"}</span>
+                </p>
+            </div>
         </div>
     );
 }

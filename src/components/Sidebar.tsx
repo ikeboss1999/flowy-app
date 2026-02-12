@@ -23,6 +23,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/context/AuthContext";
+import { useSync } from "@/context/SyncContext";
+import { Cloud, CheckCircle2, RefreshCcw } from "lucide-react";
 
 interface MenuItem {
     icon: any;
@@ -92,12 +94,25 @@ const menuGroups: MenuGroup[] = [
 
 export function Sidebar() {
     const path = usePathname();
-    const { signOut } = useAuth(); // FIX: Was 'logout', but Context provides 'signOut'
+    const { signOut } = useAuth();
+    const { status, triggerSync } = useSync();
 
     const handleLogout = async () => {
-        // Trigger generic logout request event, caught by CloudSyncModal
-        window.dispatchEvent(new Event('flowy-logout-request'));
-    }
+        try {
+            if (status === 'pending' || status === 'error') {
+                await triggerSync({ blocking: true });
+            }
+            // Clear local data before logout to ensure privacy on shared machines
+            await fetch('/api/db/clear', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ localOnly: true })
+            });
+        } catch (e) {
+            console.error("Logout sync/clear failed:", e);
+        }
+        await signOut();
+    };
     const { data: companySettings } = useCompanySettings();
     const [expandedItems, setExpandedItems] = useState<string[]>(["Rechnungen"]);
 
@@ -181,6 +196,25 @@ export function Sidebar() {
                     <span className="text-[10px] text-white/40 uppercase font-black tracking-widest mt-1">
                         Professional
                     </span>
+
+                    {/* Sync Status Indicator */}
+                    <div className={cn(
+                        "mt-4 flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-500",
+                        status === 'idle' && "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+                        status === 'syncing' && "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30",
+                        status === 'pending' && "bg-amber-500/10 text-amber-400 border border-amber-500/20",
+                        status === 'error' && "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                    )}>
+                        {status === 'idle' && <CheckCircle2 className="h-3 w-3" />}
+                        {status === 'syncing' && <RefreshCcw className="h-3 w-3 animate-spin" />}
+                        {(status === 'pending' || status === 'error') && <Cloud className="h-3 w-3" />}
+                        <span>
+                            {status === 'idle' && "Cloud Synchron"}
+                            {status === 'syncing' && "Wird gesichert..."}
+                            {status === 'pending' && "Wartet auf Sync"}
+                            {status === 'error' && "Sync Fehler"}
+                        </span>
+                    </div>
                 </div>
             </div>
 

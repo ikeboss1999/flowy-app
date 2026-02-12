@@ -3,13 +3,15 @@
 import { useState, useEffect } from 'react';
 import { Todo } from '@/types/todo';
 import { useAuth } from '@/context/AuthContext';
+import { useSync } from '@/context/SyncContext';
 
 const STORAGE_KEY = 'flowy_todos';
 
 export function useTodos() {
     const [todos, setTodos] = useState<Todo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const { user, loading: authLoading } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
+    const { markDirty } = useSync();
 
     useEffect(() => {
         if (authLoading || !user) {
@@ -63,6 +65,7 @@ export function useTodos() {
                 body: JSON.stringify({ userId: user.id, todo: newTodo })
             });
             setTodos(prev => [newTodo, ...prev]);
+            markDirty();
         } catch (e) { console.error(e); }
     };
 
@@ -78,6 +81,7 @@ export function useTodos() {
                 body: JSON.stringify({ userId: user.id, todo: updated })
             });
             setTodos(prev => prev.map(t => t.id === id ? updated : t));
+            markDirty();
         } catch (e) { console.error(e); }
     };
 
@@ -86,6 +90,7 @@ export function useTodos() {
         try {
             await fetch(`/api/todos/${id}`, { method: 'DELETE' });
             setTodos(prev => prev.filter(t => t.id !== id));
+            markDirty();
         } catch (e) { console.error(e); }
     };
 

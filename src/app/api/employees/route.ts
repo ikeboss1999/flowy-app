@@ -64,19 +64,23 @@ export async function POST(request: Request) {
                 });
             if (error) throw error;
         } else {
+            const now = new Date().toISOString();
+            const updatedAt = employee.updatedAt || now;
+
             const stmt = sqliteDb.prepare(`
                 INSERT OR REPLACE INTO employees 
-                (id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, createdAt, userId)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, createdAt, updatedAt, userId)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             stmt.run(
                 empId, employeeNumber, JSON.stringify(personalData), JSON.stringify(bankDetails), JSON.stringify(employment),
-                JSON.stringify(additionalInfo), JSON.stringify(weeklySchedule), JSON.stringify(documents), avatar, createdAt || new Date().toISOString(), userId
+                JSON.stringify(additionalInfo), JSON.stringify(weeklySchedule), JSON.stringify(documents), avatar,
+                createdAt || now, updatedAt, userId
             );
 
             // Silent Sync
-            UnifiedDB.syncToCloud('employees', { ...employee, id: empId }, userId);
+            UnifiedDB.syncToCloud('employees', { ...employee, id: empId, updatedAt }, userId);
         }
 
         return NextResponse.json({ success: true, id: empId });

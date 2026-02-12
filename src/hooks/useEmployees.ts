@@ -3,13 +3,15 @@
 import { useState, useEffect } from 'react';
 import { Employee } from '@/types/employee';
 import { useAuth } from '@/context/AuthContext';
+import { useSync } from '@/context/SyncContext';
 
 const STORAGE_KEY = 'flowy_employees';
 
 export function useEmployees() {
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const { user, loading: authLoading } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
+    const { markDirty } = useSync();
 
     useEffect(() => {
         if (authLoading || !user) {
@@ -78,6 +80,7 @@ export function useEmployees() {
                 body: JSON.stringify({ userId: user.id, employee: newEmployee })
             });
             setEmployees(prev => [newEmployee, ...prev]);
+            markDirty();
         } catch (e) {
             console.error('Failed to add employee', e);
         }
@@ -94,6 +97,7 @@ export function useEmployees() {
                 body: JSON.stringify({ userId: user.id, employee: updated })
             });
             setEmployees(prev => prev.map(e => e.id === id ? updated : e));
+            markDirty();
         } catch (e) {
             console.error('Failed to update employee', e);
         }
@@ -104,6 +108,7 @@ export function useEmployees() {
         try {
             await fetch(`/api/employees/${id}`, { method: 'DELETE' });
             setEmployees(prev => prev.filter(e => e.id !== id));
+            markDirty();
         } catch (e) {
             console.error('Failed to delete employee', e);
         }

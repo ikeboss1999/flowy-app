@@ -4,9 +4,28 @@ import { supabase } from './supabase';
 
 /**
  * Detection: Is this running in a Web environment (Vercel/Browser) 
- * or in the local Electron app?
+ * or in the local Electron app (SQLite available)?
  */
-export const isWeb = typeof window !== 'undefined' || !!process.env.VERCEL;
+export const isWeb = typeof window === 'undefined'
+    ? (!!process.env.VERCEL || !!process.env.NEXT_PUBLIC_VERCEL)
+    : !((window as any).electron ||
+        (window as any).process?.versions?.electron ||
+        window.location.protocol === 'file:' ||
+        window.location.hostname === 'localhost' && !window.location.port); // Fallback for local dev
+
+const SCHEMA_KEYS: Record<string, string[]> = {
+    customers: ['id', 'name', 'email', 'phone', 'address', 'type', 'status', 'salutation', 'taxId', 'commercialRegisterNumber', 'reverseChargeEnabled', 'defaultPaymentTermId', 'notes', 'lastActivity', 'createdAt', 'updatedAt', 'userId'],
+    invoices: ['id', 'invoiceNumber', 'customerId', 'projectId', 'constructionProject', 'paymentPlanItemId', 'billingType', 'issueDate', 'items', 'subtotal', 'taxRate', 'taxAmount', 'totalAmount', 'isReverseCharge', 'status', 'paymentTerms', 'perfFrom', 'perfTo', 'processor', 'subjectExtra', 'partialPaymentNumber', 'previousInvoices', 'dunningLevel', 'lastDunningDate', 'dunningHistory', 'paidAmount', 'paymentDeviation', 'notes', 'createdAt', 'updatedAt', 'userId'],
+    projects: ['id', 'name', 'customerId', 'description', 'status', 'address', 'startDate', 'endDate', 'budget', 'paymentPlan', 'createdAt', 'updatedAt', 'userId'],
+    employees: ['id', 'employeeNumber', 'personalData', 'bankDetails', 'employment', 'additionalInfo', 'weeklySchedule', 'documents', 'avatar', 'createdAt', 'updatedAt', 'userId'],
+    vehicles: ['id', 'basicInfo', 'fleetDetails', 'maintenance', 'leasing', 'documents', 'createdAt', 'updatedAt', 'userId'],
+    settings: ['userId', 'companyData', 'accountSettings', 'invoiceSettings', 'updatedAt'],
+    services: ['id', 'name', 'title', 'description', 'category', 'price', 'unit', 'userId', 'createdAt', 'updatedAt'],
+    time_entries: ['id', 'employeeId', 'date', 'startTime', 'endTime', 'duration', 'overtime', 'location', 'type', 'projectId', 'serviceId', 'description', 'userId', 'createdAt'],
+    todos: ['id', 'task', 'completed', 'priority', 'createdAt', 'userId'],
+    calendar_events: ['id', 'title', 'description', 'startDate', 'endDate', 'isAllDay', 'type', 'color', 'location', 'attendees', 'projectId', 'startTime', 'endTime', 'createdAt', 'userId'],
+    timesheets: ['id', 'employeeId', 'month', 'status', 'finalizedAt', 'userId']
+};
 
 export class UnifiedDB {
     static isWeb = isWeb;
@@ -22,7 +41,7 @@ export class UnifiedDB {
             console.log(`[BackgroundSync] Syncing ${table} to Supabase...`);
 
             // Format data for Supabase (e.g. ensure booleans, ensure JSON is object not string)
-            const syncData = this.prepareForCloud(data, userId);
+            const syncData = this.prepareForCloud(table, data, userId);
 
             const { error } = await supabase
                 .from(table)
@@ -38,9 +57,11 @@ export class UnifiedDB {
     /**
      * Prepares local (SQLite style) data for Supabase.
      */
-    private static prepareForCloud(data: any, userId: string) {
+    static prepareForCloud(table: string, data: any, userId: string) {
+        const validKeys = SCHEMA_KEYS[table];
+
         const prepare = (item: any) => {
-            const refined = { ...item, userId };
+            const refined: any = { ...item, userId };
 
             // Convert common SQLite numeric booleans back to real booleans for Postgres
             if (refined.reverseChargeEnabled !== undefined) refined.reverseChargeEnabled = !!refined.reverseChargeEnabled;
@@ -55,6 +76,17 @@ export class UnifiedDB {
                         refined[key] = JSON.parse(refined[key]);
                     } catch (e) { /* ignore */ }
                 }
+            }
+
+            // Remove keys not present in Supabase schema to avoid "column not found" errors
+            if (validKeys) {
+                const sanitized: any = {};
+                for (const key of validKeys) {
+                    if (refined[key] !== undefined) {
+                        sanitized[key] = refined[key];
+                    }
+                }
+                return sanitized;
             }
 
             return refined;

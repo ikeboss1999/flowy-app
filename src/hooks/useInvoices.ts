@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Invoice } from '@/types/invoice';
 import { useAuth } from '@/context/AuthContext';
+import { useSync } from '@/context/SyncContext';
 
 const STORAGE_KEY = 'flowy_invoices';
 
@@ -12,6 +13,7 @@ export function useInvoices() {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { user } = useAuth();
+    const { markDirty } = useSync();
 
     useEffect(() => {
         const loadInvoices = async () => {
@@ -71,6 +73,7 @@ export function useInvoices() {
                 body: JSON.stringify(newInvoice)
             });
             setInvoices(prev => [newInvoice, ...prev]);
+            markDirty();
         } catch (e) {
             console.error("Failed to add invoice", e);
         }
@@ -91,6 +94,7 @@ export function useInvoices() {
                 body: JSON.stringify(updated)
             });
             setInvoices(prev => prev.map(inv => inv.id === id ? updated : inv));
+            markDirty();
         } catch (e) {
             console.error("Failed to update invoice", e);
         }
@@ -100,6 +104,7 @@ export function useInvoices() {
         try {
             await fetch(`/api/invoices?id=${id}`, { method: 'DELETE' });
             setInvoices(prev => prev.filter(inv => inv.id !== id));
+            markDirty();
         } catch (e) {
             console.error("Failed to delete invoice", e);
         }

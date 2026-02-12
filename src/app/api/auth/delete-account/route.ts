@@ -48,10 +48,27 @@ export async function POST(req: Request) {
 
         for (const table of tables) {
             try {
-                const stmt = sqliteDb.prepare(`DELETE FROM ${table} WHERE ${table === 'settings' ? 'userId' : 'userId'} = ?`);
+                const stmt = sqliteDb.prepare(`DELETE FROM ${table} WHERE userId = ?`);
                 stmt.run(userId);
             } catch (e) {
-                console.warn(`Table ${table} deletion failed or does not exist:`, e);
+                console.warn(`Table ${table} deletion failed or does not exist locally:`, e);
+            }
+        }
+
+        // 1.5 Delete data from Supabase Tables
+        const { supabase } = await import('@/lib/supabase'); // Regular client is fine since RLS is disabled
+        console.log(`[AccountDeletion] Wiping data from Supabase tables for user ${userId}...`);
+        for (const table of tables) {
+            try {
+                const { error } = await supabase
+                    .from(table)
+                    .delete()
+                    .eq('userId', userId);
+
+                if (error) console.error(`[AccountDeletion] Failed to wipe Supabase table ${table}:`, error);
+                else console.log(`[AccountDeletion] Wiped table ${table}`);
+            } catch (e) {
+                console.error(`[AccountDeletion] Exception wiping Supabase table ${table}:`, e);
             }
         }
 
@@ -69,6 +86,7 @@ export async function POST(req: Request) {
 
                 // Helper to recursively list and delete everything in a folder
                 const deleteRecursive = async (path: string) => {
+                    if (!supabaseAdmin) return;
                     const { data: items, error: listError } = await supabaseAdmin.storage
                         .from(bucket)
                         .list(path);
@@ -76,8 +94,6 @@ export async function POST(req: Request) {
                     if (listError) throw listError;
 
                     if (items && items.length > 0) {
-                        // Separate files and folders (folders have no metadata or specific properties in list)
-                        // In Supabase, if metadata is null, it's often a folder, but better check properties
                         const filesToDelete = items
                             .filter(item => item.id !== undefined && item.metadata !== undefined)
                             .map(item => `${path}/${item.name}`);
@@ -86,16 +102,13 @@ export async function POST(req: Request) {
                             .filter(item => item.id === undefined || item.metadata === undefined)
                             .map(item => item.name);
 
-                        // Delete files in current folder
                         if (filesToDelete.length > 0) {
                             const { error: delError } = await supabaseAdmin.storage
                                 .from(bucket)
                                 .remove(filesToDelete);
                             if (delError) console.error(`Failed to delete files in ${path}:`, delError);
-                            else console.log(`Deleted ${filesToDelete.length} files from ${path}`);
                         }
 
-                        // Recursively delete subfolders
                         for (const folder of subFolders) {
                             await deleteRecursive(`${path}/${folder}`);
                         }
@@ -105,20 +118,20 @@ export async function POST(req: Request) {
                 console.log(`Starting recursive storage cleanup for user ${userId}...`);
                 await deleteRecursive(userId);
 
-                // Final check: Some systems leave the folder 'object' if it was explicitly created
                 await supabaseAdmin.storage.from(bucket).remove([userId]);
 
             } catch (storageError) {
                 console.error('Supabase Storage cleanup error:', storageError);
-                // Continue anyway
             }
 
             // 4. Delete user from Supabase Auth
-            const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-            if (authError) {
-                console.error('Supabase Auth deletion error:', authError);
-            } else {
-                console.log(`User ${userId} successfully deleted from Supabase Auth.`);
+            if (supabaseAdmin) {
+                const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+                if (authError) {
+                    console.error('Supabase Auth deletion error:', authError);
+                } else {
+                    console.log(`User ${userId} successfully deleted from Supabase Auth.`);
+                }
             }
         } else {
             console.warn('Supabase Admin client not configured. Skipping Storage and Auth cleanup.');

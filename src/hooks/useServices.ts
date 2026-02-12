@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Service } from '@/types/service';
 import { useAuth } from '@/context/AuthContext';
+import { useSync } from '@/context/SyncContext';
 
 const STORAGE_KEY = 'flowy_services';
 
@@ -10,6 +11,7 @@ export function useServices() {
     const [services, setServices] = useState<Service[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { user, isLoading: authLoading } = useAuth();
+    const { markDirty } = useSync();
 
     useEffect(() => {
         if (authLoading || !user) {
@@ -58,6 +60,7 @@ export function useServices() {
             const updated = [newService, ...services];
             setServices(updated);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            markDirty();
         } catch (e) { console.error(e); }
     };
 
@@ -73,6 +76,7 @@ export function useServices() {
             const updated = services.map(s => s.id === id ? updatedService : s);
             setServices(updated);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            markDirty();
         } catch (e) { console.error(e); }
     };
 
@@ -83,6 +87,7 @@ export function useServices() {
             const updated = services.filter(s => s.id !== id);
             setServices(updated);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            markDirty();
         } catch (e) { console.error(e); }
     };
 

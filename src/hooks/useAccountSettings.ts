@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useSync } from '@/context/SyncContext';
 
 export interface AccountSettings {
     name: string;
@@ -19,6 +20,7 @@ export function useAccountSettings() {
     const [settings, setSettings] = useState<AccountSettings>(DEFAULT_SETTINGS);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const { markDirty } = useSync();
 
     // Load from localStorage on mount
     useEffect(() => {
@@ -82,6 +84,7 @@ export function useAccountSettings() {
                 body: JSON.stringify({ userId: user.id, type: 'account', data: updated })
             });
             setSettings(updated);
+            markDirty();
         } catch (e) {
             console.error('Failed to update account settings', e);
         }

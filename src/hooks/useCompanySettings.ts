@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { CompanyData } from '@/types/company';
+import { useSync } from '@/context/SyncContext';
 
 const STORAGE_KEY = 'flowy_company_data';
 
@@ -31,6 +32,7 @@ export function useCompanySettings() {
     const [data, setData] = useState<CompanyData>(initialData);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { markDirty } = useSync();
 
     useEffect(() => {
         if (authLoading || !user) {
@@ -91,6 +93,7 @@ export function useCompanySettings() {
                 body: JSON.stringify({ userId: user.id, type: 'company', data: updated })
             });
             setData(updated);
+            markDirty();
         } catch (e) {
             console.error('Failed to update company settings', e);
         }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Customer } from '@/types/customer';
 import { useAuth } from '@/context/AuthContext';
+import { useSync } from '@/context/SyncContext';
 
 const STORAGE_KEY = 'flowy_customers';
 
@@ -12,6 +13,7 @@ export function useCustomers() {
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { user } = useAuth();
+    const { markDirty } = useSync();
 
     useEffect(() => {
         const loadCustomers = async () => {
@@ -71,6 +73,7 @@ export function useCustomers() {
                 body: JSON.stringify(newCustomer)
             });
             setCustomers(prev => [newCustomer, ...prev]);
+            markDirty();
         } catch (e) {
             console.error("Failed to add customer", e);
         }
@@ -87,6 +90,7 @@ export function useCustomers() {
                 body: JSON.stringify(updated)
             });
             setCustomers(prev => prev.map(c => c.id === id ? updated : c));
+            markDirty();
         } catch (e) {
             console.error("Failed to update customer", e);
         }
@@ -96,6 +100,7 @@ export function useCustomers() {
         try {
             await fetch(`/api/customers?id=${id}`, { method: 'DELETE' });
             setCustomers(prev => prev.filter(c => c.id !== id));
+            markDirty();
         } catch (e) {
             console.error("Failed to delete customer", e);
         }

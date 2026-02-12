@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { CalendarEvent } from '@/types/calendar';
 import { useAuth } from '@/context/AuthContext';
+import { useSync } from '@/context/SyncContext';
 
 const STORAGE_KEY = 'flowy_calendar_events';
 
@@ -10,6 +11,7 @@ export function useCalendarEvents() {
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { user, isLoading: authLoading } = useAuth();
+    const { markDirty } = useSync();
 
     useEffect(() => {
         if (authLoading || !user) {
@@ -63,6 +65,7 @@ export function useCalendarEvents() {
             const updated = [...events, newEvent];
             setEvents(updated);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            markDirty();
         } catch (e) { console.error(e); }
     };
 
@@ -80,6 +83,7 @@ export function useCalendarEvents() {
             const updated = events.map(e => e.id === id ? updatedEvent : e);
             setEvents(updated);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            markDirty();
         } catch (e) { console.error(e); }
     };
 
@@ -90,6 +94,7 @@ export function useCalendarEvents() {
             const updated = events.filter(e => e.id !== id);
             setEvents(updated);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            markDirty();
         } catch (e) { console.error(e); }
     };
 

@@ -3,13 +3,15 @@
 import { useState, useEffect } from 'react';
 import { Vehicle } from '@/types/vehicle';
 import { useAuth } from '@/context/AuthContext';
+import { useSync } from '@/context/SyncContext';
 
 const STORAGE_KEY = 'flowy_vehicles';
 
 export function useVehicles() {
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const { user, loading: authLoading } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
+    const { markDirty } = useSync();
 
     useEffect(() => {
         if (authLoading || !user) {
@@ -73,6 +75,7 @@ export function useVehicles() {
                 body: JSON.stringify({ userId: user.id, vehicle: newVehicle })
             });
             setVehicles(prev => [newVehicle, ...prev]);
+            markDirty();
             return newVehicle;
         } catch (e) {
             console.error('Failed to add vehicle', e);
@@ -94,6 +97,7 @@ export function useVehicles() {
                 body: JSON.stringify({ userId: user.id, vehicle: updated })
             });
             setVehicles(prev => prev.map(v => v.id === id ? updated : v));
+            markDirty();
         } catch (e) {
             console.error('Failed to update vehicle', e);
         }
@@ -105,6 +109,7 @@ export function useVehicles() {
         try {
             await fetch(`/api/vehicles/${id}`, { method: 'DELETE' });
             setVehicles(prev => prev.filter(v => v.id !== id));
+            markDirty();
         } catch (e) {
             console.error('Failed to delete vehicle', e);
         }

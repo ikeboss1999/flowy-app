@@ -1,0 +1,8 @@
+# Release v1.1.2
+
+## Improvements
+- **Security:** Added account deletion functionality for better user control.
+- **Data Management:** Enhanced backup and import synchronization.
+- **Syncing:** Improved real-time sync context for multi-device stability.
+- **Versions:** Verified UI version consistency across all entry points.
+- **Maintenance:** Internal optimizations for cloud-native API routes.

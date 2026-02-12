@@ -70,9 +70,10 @@ export async function POST(request: Request) {
             if (error) throw error;
         } else {
             const stmt = sqliteDb.prepare(`
-                INSERT OR REPLACE INTO vehicles (id, basicInfo, fleetDetails, maintenance, leasing, documents, createdAt, userId)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO vehicles (id, basicInfo, fleetDetails, maintenance, leasing, documents, createdAt, updatedAt, userId)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
+            const updatedAt = vehicle.updatedAt || now;
 
             stmt.run(
                 vehicleId,
@@ -82,11 +83,12 @@ export async function POST(request: Request) {
                 JSON.stringify(leasing),
                 JSON.stringify(documents),
                 createdAt || now,
+                updatedAt,
                 userId
             );
 
             // Silent Sync
-            UnifiedDB.syncToCloud('vehicles', { ...vehicle, id: vehicleId }, userId);
+            UnifiedDB.syncToCloud('vehicles', { ...vehicle, id: vehicleId, updatedAt }, userId);
         }
 
         return NextResponse.json({ message: 'Vehicle saved successfully', id: vehicleId });

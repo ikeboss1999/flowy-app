@@ -23,6 +23,9 @@ export const metadata: Metadata = {
   },
 };
 
+import { SyncProvider } from "@/context/SyncContext";
+import { SyncNotice } from "@/components/SyncNotice";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,14 +36,17 @@ export default function RootLayout({
       <body className={`${inter.variable} ${outfit.variable} antialiased font-sans`}>
         <AuthProvider>
           <NotificationProvider>
-            <AuthGuard>
-              <AutoRestore>
-                {children}
-              </AutoRestore>
-              <UpdateNotification />
-              <CloudSyncModal />
-              <InputAutoSelect />
-            </AuthGuard>
+            <SyncProvider>
+              <AuthGuard>
+                <AutoRestore>
+                  {children}
+                </AutoRestore>
+                <UpdateNotification />
+                <CloudSyncModal />
+                <InputAutoSelect />
+                <SyncNotice />
+              </AuthGuard>
+            </SyncProvider>
           </NotificationProvider>
         </AuthProvider>
         <div id="print-portal" />

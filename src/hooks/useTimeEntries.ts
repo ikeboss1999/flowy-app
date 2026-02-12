@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { TimeEntry, TimesheetMeta } from '@/types/time-tracking';
 import { useAuth } from '@/context/AuthContext';
+import { useSync } from '@/context/SyncContext';
 
 const ENTRIES_KEY = 'flowy_time_entries';
 const SHEETS_KEY = 'flowy_timesheets';
@@ -11,7 +12,8 @@ export function useTimeEntries() {
     const [entries, setEntries] = useState<TimeEntry[]>([]);
     const [timesheets, setTimesheets] = useState<TimesheetMeta[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const { user, loading: authLoading } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
+    const { markDirty } = useSync();
 
     useEffect(() => {
         if (authLoading || !user) {
@@ -83,6 +85,7 @@ export function useTimeEntries() {
             });
             if (!res.ok) throw new Error("Failed to save entry");
             setEntries(prev => [newEntry, ...prev]);
+            markDirty();
         } catch (e) {
             console.error(e);
             throw e;
@@ -102,6 +105,7 @@ export function useTimeEntries() {
             });
             if (!res.ok) throw new Error("Failed to update entry");
             setEntries(prev => prev.map(e => e.id === id ? updated : e));
+            markDirty();
         } catch (e) {
             console.error(e);
             throw e;
@@ -113,6 +117,7 @@ export function useTimeEntries() {
         try {
             await fetch(`/api/time-entries/${id}`, { method: 'DELETE' });
             setEntries(prev => prev.filter(e => e.id !== id));
+            markDirty();
         } catch (e) { console.error(e); }
     };
 
@@ -144,6 +149,7 @@ export function useTimeEntries() {
                 const others = prev.filter(t => t.id !== id);
                 return [...others, newTimesheet];
             });
+            markDirty();
         } catch (e) { console.error(e); }
     };
 
@@ -163,6 +169,7 @@ export function useTimeEntries() {
                 body: JSON.stringify({ userId: user.id, timesheet: updated })
             });
             setTimesheets(prev => prev.filter(t => t.id !== id));
+            markDirty();
         } catch (e) { console.error(e); }
     };
 

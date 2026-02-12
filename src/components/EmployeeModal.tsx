@@ -129,7 +129,8 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     classification: initialEmployee.employment.classification || "",
                     verwendung: initialEmployee.employment.verwendung || "",
                     annualLeave: initialEmployee.employment.annualLeave ?? 25,
-                }
+                },
+                documents: initialEmployee.documents || [],
             });
         } else {
             const nextNum = getNextNumber ? getNextNumber() : "";
@@ -920,8 +921,8 @@ interface DocumentSlotProps {
     onPreview: (doc: EmployeeDocument) => void;
 }
 
-function DocumentSlot({ label, required, subType, documents, onUpload, onRemove, onPreview }: DocumentSlotProps) {
-    const doc = documents.find(d => d.subType === subType);
+function DocumentSlot({ label, required, subType, documents = [], onUpload, onRemove, onPreview }: DocumentSlotProps) {
+    const doc = documents?.find(d => d.subType === subType);
     const inputRef = useRef<HTMLInputElement>(null);
 
     return (

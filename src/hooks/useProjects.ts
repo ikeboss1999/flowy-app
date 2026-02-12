@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import { Project } from "@/types/project";
 import { useAuth } from "@/context/AuthContext";
+import { useSync } from "@/context/SyncContext";
 
 export function useProjects() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { user } = useAuth();
+    const { markDirty } = useSync();
 
     const STORAGE_KEY = 'flowy_projects';
 
@@ -73,6 +75,7 @@ export function useProjects() {
                 body: JSON.stringify(newProject)
             });
             setProjects(prev => [newProject, ...prev]);
+            markDirty();
         } catch (e) {
             console.error("Failed to add project", e);
         }
@@ -93,6 +96,7 @@ export function useProjects() {
                 body: JSON.stringify(updated)
             });
             setProjects(prev => prev.map(p => p.id === id ? updated : p));
+            markDirty();
         } catch (e) {
             console.error("Failed to update project", e);
         }
@@ -102,6 +106,7 @@ export function useProjects() {
         try {
             await fetch(`/api/projects?id=${id}`, { method: 'DELETE' });
             setProjects(prev => prev.filter(p => p.id !== id));
+            markDirty();
         } catch (e) {
             console.error("Failed to delete project", e);
         }
