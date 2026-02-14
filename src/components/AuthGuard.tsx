@@ -4,14 +4,16 @@ import { useAuth } from "@/context/AuthContext"
 import { useRouter, usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
+import { isWeb } from "@/lib/database"
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password"]
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/welcome"]
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { user, isLoading } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
     const [forceShow, setForceShow] = useState(false)
+    const [isRedirecting, setIsRedirecting] = useState(false)
 
     // Failsafe timer: If Auth takes > 1.5s, force show content to avoid permanent white screen
     useEffect(() => {
@@ -28,25 +30,31 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
         const isPublic = PUBLIC_ROUTES.includes(pathname)
 
-        if (isPublic) {
-            // On public route (e.g. Login):
-            // If user IS logged in, redirect to Dashboard
-            if (user) {
-                router.push("/")
-            }
-        } else {
-            // On protected route (e.g. Dashboard):
-            // If user is NOT logged in, redirect to Login
-            if (!user) {
+        if (isPublic && user) {
+            // Logged in user on a public page -> Redirect to app
+            setIsRedirecting(true)
+            router.push("/")
+        } else if (!isPublic && !user) {
+            // Guest on a protected page -> Redirect to welcome/login
+            setIsRedirecting(true)
+            if (isWeb && pathname === "/") {
+                router.push("/welcome")
+            } else {
                 router.push("/login")
             }
+        } else {
+            // User is on a valid page for their auth state
+            setIsRedirecting(false)
         }
     }, [user, isLoading, forceShow, pathname, router])
 
+    // Render Logic helper
+    const showLoader = (isLoading || isRedirecting) && !forceShow;
+
     // Blocking Render State: Only show loader blocking if:
-    // 1. We are still loading
-    // 2. AND failsafe hasn't triggered yet
-    if (isLoading && !forceShow) {
+    // 1. In production (prevents dev frustration)
+    // 2. We are still loading or redirecting
+    if (process.env.NODE_ENV === 'production' && showLoader) {
         return (
             <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#020205] overflow-hidden">
                 {/* Modern Background Accents */}
@@ -76,11 +84,5 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         )
     }
 
-    // Unblocking Render:
-    // If we reach here, we either:
-    // - Finished loading
-    // - OR timed out (failsafe)
-    // - OR are redirecting (useEffect above handling it)
-    // In all cases, render children so we never get a "white screen".
     return <>{children}</>
 }

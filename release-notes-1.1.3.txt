@@ -1,0 +1,8 @@
+# Release v1.1.3
+
+## Improvements
+- **UI Refinements:** Optimized the welcome page and dashboard layout.
+- **Vercel Integration:** Fixed minor synchronization issues for cloud deployment.
+- **Stability:** General bug fixes and performance optimizations in the core application.
+- **Version Control:** Centralized versioning verified for all components.
+- **Data Safety:** Enhanced local database handling for more robust startups.

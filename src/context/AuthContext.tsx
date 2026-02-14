@@ -18,7 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
     const [session, setSession] = useState<Session | null>(null)
-    const [isLoading, setIsLoading] = useState(false) // FAIL-SAFE: Start unblocked
+    const [isLoading, setIsLoading] = useState(process.env.NODE_ENV !== 'development'); // Skip loading screen in dev mode
 
     useEffect(() => {
         let mounted = true

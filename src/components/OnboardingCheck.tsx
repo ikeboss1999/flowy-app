@@ -30,11 +30,7 @@ export function OnboardingCheck() {
             return;
         }
 
-        if (!user) {
-            console.log("OnboardingCheck: No user found, redirecting to login...");
-            router.replace("/login");
-            return;
-        }
+        if (!user) return; // AuthGuard handles login redirection
 
         // CLOUD CHECK: If Supabase metadata says onboarded, do NOT redirect to onboarding
         // even if local settings are empty (likely new install/device).

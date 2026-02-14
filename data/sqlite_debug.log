@@ -43399,3 +43399,3187 @@
 [SQL] DELETE FROM calendar_events
 [SQL] DELETE FROM services
 [SQL] COMMIT
+[2026-02-14T16:13:34.268Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:13:34.274Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] 
+                SELECT 
+                    (SELECT COUNT(*) FROM invoices) +
+                    (SELECT COUNT(*) FROM customers) +
+                    (SELECT COUNT(*) FROM projects) +
+                    (SELECT COUNT(*) FROM employees) +
+                    (SELECT COUNT(*) FROM vehicles) +
+                    (SELECT COUNT(*) FROM settings) +
+                    (SELECT COUNT(*) FROM services) +
+                    (SELECT COUNT(*) FROM todos) +
+                    (SELECT COUNT(*) FROM calendar_events) +
+                    (SELECT COUNT(*) FROM time_entries) +
+                    (SELECT COUNT(*) FROM timesheets) as total_records
+            
+[2026-02-14T16:17:37.600Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:17:37.602Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[2026-02-14T16:17:39.457Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:17:39.458Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[2026-02-14T16:17:49.184Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:17:49.185Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] BEGIN
+[SQL] DELETE FROM projects
+[SQL] DELETE FROM customers
+[SQL] DELETE FROM invoices
+[SQL] DELETE FROM settings
+[SQL] DELETE FROM vehicles
+[SQL] DELETE FROM employees
+[SQL] DELETE FROM time_entries
+[SQL] DELETE FROM timesheets
+[SQL] DELETE FROM todos
+[SQL] DELETE FROM calendar_events
+[SQL] DELETE FROM services
+[SQL] COMMIT
+[SQL] BEGIN
+[SQL] DELETE FROM projects
+[SQL] DELETE FROM customers
+[SQL] DELETE FROM invoices
+[SQL] DELETE FROM settings
+[SQL] DELETE FROM vehicles
+[SQL] DELETE FROM employees
+[SQL] DELETE FROM time_entries
+[SQL] DELETE FROM timesheets
+[SQL] DELETE FROM todos
+[SQL] DELETE FROM calendar_events
+[SQL] DELETE FROM services
+[SQL] COMMIT
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT userId FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] INSERT INTO settings (userId) VALUES ('d6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/)
+[SQL] UPDATE settings SET accountSettings = '{"name":"Benutzer","onboardingCo'/*+32 bytes*/, updatedAt = '2026-02-14T16:18:44.005Z' WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT userId FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] UPDATE settings SET accountSettings = '{"name":"Ike Bosch","onboardingC'/*+33 bytes*/, updatedAt = '2026-02-14T16:18:48.932Z' WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT userId FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] UPDATE settings SET companyData = '{"companyName":"BOSCH GmbH","ema'/*+269 bytes*/, updatedAt = '2026-02-14T16:19:05.689Z' WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT userId FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] UPDATE settings SET accountSettings = '{"name":"Ike Bosch","onboardingC'/*+32 bytes*/, updatedAt = '2026-02-14T16:19:05.723Z' WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[2026-02-14T16:19:10.731Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:19:10.733Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM calendar_events WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM customers WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM todos WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/ ORDER BY createdAt DESC
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM calendar_events WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM customers WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM todos WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/ ORDER BY createdAt DESC
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM calendar_events WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM customers WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM todos WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/ ORDER BY createdAt DESC
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM calendar_events WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM customers WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM todos WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/ ORDER BY createdAt DESC
+[SQL] SELECT * FROM calendar_events WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM customers WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM todos WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/ ORDER BY createdAt DESC
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[2026-02-14T16:19:36.200Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:19:36.201Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] SELECT * FROM services WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM services WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[2026-02-14T16:19:38.373Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:19:38.374Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] BEGIN
+[SQL] DELETE FROM projects
+[SQL] DELETE FROM customers
+[SQL] DELETE FROM invoices
+[SQL] DELETE FROM settings
+[SQL] DELETE FROM vehicles
+[SQL] DELETE FROM employees
+[SQL] DELETE FROM time_entries
+[SQL] DELETE FROM timesheets
+[SQL] DELETE FROM todos
+[SQL] DELETE FROM calendar_events
+[SQL] DELETE FROM services
+[SQL] COMMIT
+[2026-02-14T16:59:05.899Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:59:05.905Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] 
+                SELECT 
+                    (SELECT COUNT(*) FROM invoices) +
+                    (SELECT COUNT(*) FROM customers) +
+                    (SELECT COUNT(*) FROM projects) +
+                    (SELECT COUNT(*) FROM employees) +
+                    (SELECT COUNT(*) FROM vehicles) +
+                    (SELECT COUNT(*) FROM settings) +
+                    (SELECT COUNT(*) FROM services) +
+                    (SELECT COUNT(*) FROM todos) +
+                    (SELECT COUNT(*) FROM calendar_events) +
+                    (SELECT COUNT(*) FROM time_entries) +
+                    (SELECT COUNT(*) FROM timesheets) as total_records
+            
+[2026-02-14T16:59:06.459Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:59:06.460Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[2026-02-14T16:59:07.645Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:59:07.646Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] SELECT userId FROM settings LIMIT 1
+[SQL] SELECT userId FROM customers LIMIT 1
+[2026-02-14T16:59:09.178Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:59:09.179Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] 
+                            INSERT OR REPLACE INTO settings (userId,companyData,accountSettings,invoiceSettings,updatedAt)
+                            VALUES ('d6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/,'{"bic":"","city":"graz","iban":"'/*+269 bytes*/,'{"name":"Ike Bosch","pinCode":"5'/*+32 bytes*/,NULL,'2026-02-14T16:19:05.723+00:00')
+                        
+[2026-02-14T16:59:09.744Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:59:09.745Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM calendar_events WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM customers WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM todos WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/ ORDER BY createdAt DESC
+[SQL] SELECT userId FROM settings LIMIT 1
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM calendar_events WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM customers WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM todos WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/ ORDER BY createdAt DESC
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[2026-02-14T16:59:11.928Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:59:11.929Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT userId FROM settings LIMIT 1
+[SQL] 
+                            INSERT OR REPLACE INTO settings (userId,companyData,accountSettings,invoiceSettings,updatedAt)
+                            VALUES ('d6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/,'{"bic":"","city":"graz","iban":"'/*+269 bytes*/,'{"name":"Ike Bosch","pinCode":"5'/*+32 bytes*/,NULL,'2026-02-14T16:19:05.723+00:00')
+                        
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT * FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT userId FROM settings LIMIT 1
+[SQL] 
+                            INSERT OR REPLACE INTO settings (userId,companyData,accountSettings,invoiceSettings,updatedAt)
+                            VALUES ('d6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/,'{"bic":"","city":"graz","iban":"'/*+269 bytes*/,'{"name":"Ike Bosch","pinCode":"5'/*+32 bytes*/,NULL,'2026-02-14T16:19:05.723+00:00')
+                        
+[SQL] SELECT userId FROM settings LIMIT 1
+[SQL] 
+                            INSERT OR REPLACE INTO settings (userId,companyData,accountSettings,invoiceSettings,updatedAt)
+                            VALUES ('d6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/,'{"bic":"","city":"graz","iban":"'/*+269 bytes*/,'{"name":"Ike Bosch","pinCode":"5'/*+32 bytes*/,NULL,'2026-02-14T16:19:05.723+00:00')
+                        
+[2026-02-14T16:59:21.577Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:59:21.578Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] DELETE FROM customers WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] DELETE FROM invoices WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] DELETE FROM projects WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] DELETE FROM settings WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] DELETE FROM todos WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] DELETE FROM vehicles WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] DELETE FROM employees WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] DELETE FROM time_entries WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] DELETE FROM timesheets WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] DELETE FROM calendar_events WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] DELETE FROM services WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] SELECT userId FROM settings LIMIT 1
+[SQL] SELECT userId FROM customers LIMIT 1
+[SQL] BEGIN
+[SQL] DELETE FROM tokens WHERE userId = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] DELETE FROM users WHERE id = 'd6d1344f-6686-4229-9120-6d861f12'/*+4 bytes*/
+[SQL] COMMIT
+[2026-02-14T16:59:22.926Z] Opening DB at C:\Users\rbg19\Desktop\FlowY\data\flowy.db
+[2026-02-14T16:59:22.927Z] DB Opened Successfully
+[SQL] CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            customerId TEXT,
+            description TEXT,
+            status TEXT,
+            address TEXT,
+            startDate TEXT,
+            endDate TEXT,
+            budget REAL,
+            paymentPlan TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            type TEXT,
+            status TEXT,
+            salutation TEXT,
+            taxId TEXT,
+            commercialRegisterNumber TEXT,
+            reverseChargeEnabled INTEGER DEFAULT 0,
+            defaultPaymentTermId TEXT,
+            notes TEXT,
+            lastActivity TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY,
+            invoiceNumber TEXT NOT NULL,
+            customerId TEXT,
+            projectId TEXT,
+            constructionProject TEXT,
+            paymentPlanItemId TEXT,
+            billingType TEXT,
+            issueDate TEXT,
+            items TEXT,
+            subtotal REAL,
+            taxRate REAL,
+            taxAmount REAL,
+            totalAmount REAL,
+            isReverseCharge INTEGER DEFAULT 0,
+            status TEXT,
+            paymentTerms TEXT,
+            perfFrom TEXT,
+            perfTo TEXT,
+            processor TEXT,
+            subjectExtra TEXT,
+            partialPaymentNumber INTEGER,
+            previousInvoices TEXT,
+            dunningLevel INTEGER DEFAULT 0,
+            lastDunningDate TEXT,
+            dunningHistory TEXT,
+            paidAmount REAL DEFAULT 0,
+            paymentDeviation TEXT,
+            notes TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS settings (
+            userId TEXT PRIMARY KEY,
+            companyData TEXT,
+            accountSettings TEXT,
+            invoiceSettings TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS vehicles (
+            id TEXT PRIMARY KEY,
+            basicInfo TEXT NOT NULL,
+            fleetDetails TEXT NOT NULL,
+            maintenance TEXT NOT NULL,
+            leasing TEXT,
+            documents TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS employees (
+            id TEXT PRIMARY KEY,
+            employeeNumber TEXT NOT NULL,
+            personalData TEXT NOT NULL,
+            bankDetails TEXT NOT NULL,
+            employment TEXT NOT NULL,
+            additionalInfo TEXT,
+            weeklySchedule TEXT,
+            documents TEXT,
+            avatar TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            startTime TEXT,
+            endTime TEXT,
+            duration INTEGER,
+            overtime REAL,
+            location TEXT,
+            type TEXT,
+            projectId TEXT,
+            serviceId TEXT,
+            description TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS timesheets (
+            id TEXT PRIMARY KEY,
+            employeeId TEXT NOT NULL,
+            month TEXT NOT NULL,
+            status TEXT,
+            finalizedAt TEXT,
+            userId TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            priority TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS calendar_events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            startDate TEXT NOT NULL,
+            endDate TEXT NOT NULL,
+            isAllDay INTEGER DEFAULT 0,
+            type TEXT,
+            color TEXT,
+            location TEXT,
+            attendees TEXT,
+            projectId TEXT,
+            startTime TEXT,
+            endTime TEXT,
+            createdAt TEXT,
+            updatedAt TEXT,
+            userId TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            title TEXT,
+            description TEXT,
+            category TEXT,
+            price REAL,
+            unit TEXT,
+            userId TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            passwordHash TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            isVerified INTEGER DEFAULT 0,
+            createdAt TEXT,
+            updatedAt TEXT
+        );
+[SQL] CREATE TABLE IF NOT EXISTS tokens (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            token TEXT,
+            type TEXT,
+            expiresAt INTEGER,
+            createdAt TEXT
+        );
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] PRAGMA table_info(customers)
+[SQL] PRAGMA table_info(invoices)
+[SQL] PRAGMA table_info(services)
+[SQL] PRAGMA table_info(settings)
+[SQL] PRAGMA table_info(vehicles)
+[SQL] PRAGMA table_info(employees)
+[SQL] PRAGMA table_info(time_entries)
+[SQL] PRAGMA table_info(timesheets)
+[SQL] PRAGMA table_info(todos)
+[SQL] PRAGMA table_info(calendar_events)
+[SQL] SELECT * FROM projects
+[SQL] SELECT * FROM customers
+[SQL] SELECT * FROM invoices
+[SQL] SELECT * FROM settings
+[SQL] SELECT * FROM vehicles
+[SQL] SELECT * FROM employees
+[SQL] SELECT * FROM time_entries
+[SQL] SELECT * FROM timesheets
+[SQL] SELECT * FROM todos
+[SQL] SELECT * FROM calendar_events
+[SQL] SELECT * FROM services
