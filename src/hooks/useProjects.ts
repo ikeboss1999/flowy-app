@@ -5,30 +5,32 @@ import { Project } from "@/types/project";
 import { useAuth } from "@/context/AuthContext";
 import { useSync } from "@/context/SyncContext";
 
+const STORAGE_KEY = 'flowy_projects';
+
 export function useProjects() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const { user } = useAuth();
+    const { user, currentEmployee } = useAuth();
     const { markDirty } = useSync();
 
-    const STORAGE_KEY = 'flowy_projects';
+    const activeUserId = user?.id || currentEmployee?.userId;
 
     useEffect(() => {
         const loadProjects = async () => {
-            if (!user) {
+            if (!activeUserId) {
                 setIsLoading(false);
                 return;
             }
 
             try {
                 // 1. Try to load from SQLite API
-                const response = await fetch(`/api/projects?userId=${user.id}`);
+                const response = await fetch(`/api/projects?userId=${activeUserId}`);
                 const data = await response.json();
 
                 if (Array.isArray(data) && data.length > 0) {
                     setProjects(data);
-                } else {
-                    // 2. Migration: If SQLite is empty, check localStorage
+                } else if (user) {
+                    // 2. Migration: Only for admin
                     const saved = localStorage.getItem(STORAGE_KEY);
                     if (saved) {
                         try {
@@ -36,7 +38,6 @@ export function useProjects() {
                             const userProjects = localProjects.filter(p => p.userId === user.id || !p.userId);
 
                             if (userProjects.length > 0) {
-                                // Push to SQLite
                                 for (const p of userProjects) {
                                     await fetch('/api/projects', {
                                         method: 'POST',
@@ -45,10 +46,6 @@ export function useProjects() {
                                     });
                                 }
                                 setProjects(userProjects.map(p => ({ ...p, userId: user.id })));
-
-                                // Optional: Clear localStorage after migration? 
-                                // For safety, let's keep it but mark it as migrated in another key if needed.
-                                // localStorage.removeItem(STORAGE_KEY);
                             }
                         } catch (e) {
                             console.error("Migration failed", e);
@@ -62,7 +59,7 @@ export function useProjects() {
         };
 
         loadProjects();
-    }, [user]);
+    }, [activeUserId, user]);
 
     const addProject = async (project: Project) => {
         if (!user) return;

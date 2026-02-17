@@ -7,8 +7,21 @@ export interface EmployeeDocument {
     uploadDate: string;
     fileSize?: string;
     content?: string; // Base64 string for system-generated files
-    category?: 'system' | 'upload';
+    category?: 'system' | 'upload' | 'hr_shared';
     subType?: string; // e.g., 'passport', 'id_card', 'meldezettel', etc.
+    folder?: string; // For grouping in shared documents
+}
+
+export interface EmployeeAppAccess {
+    staffId: string;
+    accessPIN: string; // Will store a hashed version or simple PIN for now as per requirements
+    isAccessEnabled: boolean;
+    permissions: {
+        timeTracking: boolean;
+        documents: boolean;
+        personalData: boolean;
+    };
+    lastLogin?: string;
 }
 
 export interface Employee {
@@ -66,4 +79,7 @@ export interface Employee {
     createdAt: string;
     avatar?: string; // Base64 string for profile picture
     userId?: string; // Owner of the employee data
+    appAccess?: EmployeeAppAccess;
+    pendingChanges?: Partial<Employee>;
+    sharedFolders?: string[];
 }

@@ -17,7 +17,7 @@ const SCHEMA_KEYS: Record<string, string[]> = {
     customers: ['id', 'name', 'email', 'phone', 'address', 'type', 'status', 'salutation', 'taxId', 'commercialRegisterNumber', 'reverseChargeEnabled', 'defaultPaymentTermId', 'notes', 'lastActivity', 'createdAt', 'updatedAt', 'userId'],
     invoices: ['id', 'invoiceNumber', 'customerId', 'projectId', 'constructionProject', 'paymentPlanItemId', 'billingType', 'issueDate', 'items', 'subtotal', 'taxRate', 'taxAmount', 'totalAmount', 'isReverseCharge', 'status', 'paymentTerms', 'perfFrom', 'perfTo', 'processor', 'subjectExtra', 'partialPaymentNumber', 'previousInvoices', 'dunningLevel', 'lastDunningDate', 'dunningHistory', 'paidAmount', 'paymentDeviation', 'notes', 'createdAt', 'updatedAt', 'userId'],
     projects: ['id', 'name', 'customerId', 'description', 'status', 'address', 'startDate', 'endDate', 'budget', 'paymentPlan', 'createdAt', 'updatedAt', 'userId'],
-    employees: ['id', 'employeeNumber', 'personalData', 'bankDetails', 'employment', 'additionalInfo', 'weeklySchedule', 'documents', 'avatar', 'createdAt', 'updatedAt', 'userId'],
+    employees: ['id', 'employeeNumber', 'personalData', 'bankDetails', 'employment', 'additionalInfo', 'weeklySchedule', 'documents', 'avatar', 'appAccess', 'pendingChanges', 'sharedFolders', 'createdAt', 'updatedAt', 'userId'],
     vehicles: ['id', 'basicInfo', 'fleetDetails', 'maintenance', 'leasing', 'documents', 'createdAt', 'updatedAt', 'userId'],
     settings: ['userId', 'companyData', 'accountSettings', 'invoiceSettings', 'updatedAt'],
     services: ['id', 'name', 'title', 'description', 'category', 'price', 'unit', 'userId', 'createdAt', 'updatedAt'],

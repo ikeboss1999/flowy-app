@@ -147,6 +147,9 @@ function initSchema(db: Database.Database) {
             weeklySchedule TEXT,
             documents TEXT,
             avatar TEXT,
+            appAccess TEXT,
+            pendingChanges TEXT,
+            sharedFolders TEXT,
             createdAt TEXT,
             updatedAt TEXT,
             userId TEXT
@@ -326,6 +329,18 @@ function initSchema(db: Database.Database) {
         db.prepare(`ALTER TABLE ${table} ADD COLUMN updatedAt TEXT`).run();
         console.log(`[Migration] Added updatedAt to ${table}`);
       }
+    }
+
+    const empColumns = db.prepare("PRAGMA table_info(employees)").all();
+    const empColumnNames = empColumns.map((c: any) => c.name);
+    if (!empColumnNames.includes('appAccess')) {
+      db.prepare("ALTER TABLE employees ADD COLUMN appAccess TEXT").run();
+    }
+    if (!empColumnNames.includes('pendingChanges')) {
+      db.prepare("ALTER TABLE employees ADD COLUMN pendingChanges TEXT").run();
+    }
+    if (!empColumnNames.includes('sharedFolders')) {
+      db.prepare("ALTER TABLE employees ADD COLUMN sharedFolders TEXT").run();
     }
   } catch (e) {
     console.error("Migration failed", e);

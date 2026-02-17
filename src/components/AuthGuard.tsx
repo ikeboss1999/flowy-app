@@ -9,7 +9,7 @@ import { isWeb } from "@/lib/database"
 const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/welcome"]
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-    const { user, isLoading } = useAuth()
+    const { user, currentEmployee, isLoading } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
     const [forceShow, setForceShow] = useState(false)
@@ -29,24 +29,43 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         if (isLoading && !forceShow) return
 
         const isPublic = PUBLIC_ROUTES.includes(pathname)
+        const isMobileRoute = pathname.startsWith('/mobile')
 
-        if (isPublic && user) {
-            // Logged in user on a public page -> Redirect to app
-            setIsRedirecting(true)
-            router.push("/")
-        } else if (!isPublic && !user) {
-            // Guest on a protected page -> Redirect to welcome/login
-            setIsRedirecting(true)
-            if (isWeb && pathname === "/") {
-                router.push("/welcome")
+        if (isPublic) {
+            if (user) {
+                // Logged in user (admin) on a public page -> Redirect to app
+                setIsRedirecting(true)
+                router.push("/")
+            } else if (currentEmployee) {
+                // Logged in employee on a public page -> Redirect to mobile app
+                setIsRedirecting(true)
+                router.push("/mobile/dashboard")
             } else {
-                router.push("/login")
+                setIsRedirecting(false)
             }
         } else {
-            // User is on a valid page for their auth state
-            setIsRedirecting(false)
+            // Protected routes
+            if (!user && !currentEmployee) {
+                // Not logged in at all -> Welcome/Login
+                setIsRedirecting(true)
+                if (isWeb && pathname === "/") {
+                    router.push("/welcome")
+                } else {
+                    router.push("/login")
+                }
+            } else if (isMobileRoute && !currentEmployee && user) {
+                // Admin trying to access mobile route - ALLOW
+                setIsRedirecting(false)
+            } else if (!isMobileRoute && !user && currentEmployee) {
+                // Employee trying to access admin route - REDIRECT TO MOBILE
+                setIsRedirecting(true)
+                router.push("/mobile/dashboard")
+            } else {
+                // Valid state
+                setIsRedirecting(false)
+            }
         }
-    }, [user, isLoading, forceShow, pathname, router])
+    }, [user, currentEmployee, isLoading, forceShow, pathname, router])
 
     // Render Logic helper
     const showLoader = (isLoading || isRedirecting) && !forceShow;

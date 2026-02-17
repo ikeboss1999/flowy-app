@@ -63,14 +63,7 @@ export function CloudSyncModal() {
             const { error } = await uploadToCloud(data, user.id);
             if (error) throw error;
 
-            // 3. Wipe Local Data (Clean Session)
-            try {
-                await fetch(`/api/db/clear?userId=${user.id}`, { method: 'POST' });
-            } catch (wipeError) {
-                console.error("Wipe failed:", wipeError);
-            }
-
-            // 4. Quit
+            // 3. Quit (No longer wiping local data here)
             handleProceed();
         } catch (error) {
             console.error(error);

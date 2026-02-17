@@ -1,0 +1,9 @@
+# Release v1.1.4
+
+## New Features & Improvements
+- **Mobile Access:** Implemented first version of mobile profile and navigation routes.
+- **Improved Notifications:** Refactored NotificationContext for better reliability and UI consistency.
+- **Employee Portal:** Initial backend routes for employee-specific login and authentication.
+- **UI & UX:** Refined EmployeeModal and various dashboard components for smoother interaction.
+- **Performance:** Optimized data fetching for mobile-first views.
+- **Sync:** Verified Vercel and source synchronization consistency.

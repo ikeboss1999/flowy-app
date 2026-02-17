@@ -28,22 +28,24 @@ const initialData: CompanyData = {
 };
 
 export function useCompanySettings() {
-    const { user, isLoading: authLoading } = useAuth();
+    const { user, currentEmployee, isLoading: authLoading } = useAuth();
     const [data, setData] = useState<CompanyData>(initialData);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { markDirty } = useSync();
 
+    const activeUserId = user?.id || currentEmployee?.userId;
+
     useEffect(() => {
-        if (authLoading || !user) {
-            if (!authLoading && !user) setIsLoading(false);
+        if (authLoading || !activeUserId) {
+            if (!authLoading && !activeUserId) setIsLoading(false);
             return;
         }
 
         const loadData = async () => {
             setError(null);
             try {
-                const response = await fetch(`/api/settings?userId=${user.id}`);
+                const response = await fetch(`/api/settings?userId=${activeUserId}`);
 
                 if (!response.ok) {
                     throw new Error(`Server Error: ${response.status}`);
@@ -53,8 +55,8 @@ export function useCompanySettings() {
 
                 if (allSettings.companyData) {
                     setData(allSettings.companyData);
-                } else {
-                    // Migration
+                } else if (user) {
+                    // Migration (Admin only)
                     const storageKey = `${STORAGE_KEY}_${user.id}`;
                     const savedData = localStorage.getItem(storageKey);
                     if (savedData) {
@@ -80,17 +82,19 @@ export function useCompanySettings() {
         };
 
         loadData();
-    }, [user, authLoading]);
+    }, [activeUserId, authLoading, user]);
 
     const updateData = async (newData: Partial<CompanyData>) => {
-        if (!user) return;
+        const targetUserId = user?.id || currentEmployee?.userId;
+        if (!targetUserId) return;
+
         const updated = { ...data, ...newData };
 
         try {
             await fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, type: 'company', data: updated })
+                body: JSON.stringify({ userId: targetUserId, type: 'company', data: updated })
             });
             setData(updated);
             markDirty();

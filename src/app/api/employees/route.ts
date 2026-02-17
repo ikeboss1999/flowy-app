@@ -29,7 +29,10 @@ export async function GET(request: Request) {
                 employment: JSON.parse(r.employment),
                 additionalInfo: r.additionalInfo ? JSON.parse(r.additionalInfo) : null,
                 weeklySchedule: r.weeklySchedule ? JSON.parse(r.weeklySchedule) : null,
-                documents: r.documents ? JSON.parse(r.documents) : []
+                documents: r.documents ? JSON.parse(r.documents) : [],
+                appAccess: r.appAccess ? JSON.parse(r.appAccess) : null,
+                pendingChanges: r.pendingChanges ? JSON.parse(r.pendingChanges) : null,
+                sharedFolders: r.sharedFolders ? JSON.parse(r.sharedFolders) : []
             }));
             return NextResponse.json(data);
         }
@@ -42,7 +45,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const { userId, employee } = await request.json();
-        const { id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, createdAt } = employee;
+        const { id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, appAccess, pendingChanges, sharedFolders, createdAt } = employee;
 
         const empId = id || nanoid();
 
@@ -59,6 +62,9 @@ export async function POST(request: Request) {
                     weeklySchedule,
                     documents,
                     avatar,
+                    appAccess,
+                    pendingChanges,
+                    sharedFolders,
                     createdAt: createdAt || new Date().toISOString(),
                     userId
                 });
@@ -69,13 +75,14 @@ export async function POST(request: Request) {
 
             const stmt = sqliteDb.prepare(`
                 INSERT OR REPLACE INTO employees 
-                (id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, createdAt, updatedAt, userId)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, appAccess, pendingChanges, sharedFolders, createdAt, updatedAt, userId)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             stmt.run(
                 empId, employeeNumber, JSON.stringify(personalData), JSON.stringify(bankDetails), JSON.stringify(employment),
                 JSON.stringify(additionalInfo), JSON.stringify(weeklySchedule), JSON.stringify(documents), avatar,
+                JSON.stringify(appAccess), JSON.stringify(pendingChanges), JSON.stringify(sharedFolders),
                 createdAt || now, updatedAt, userId
             );
 

@@ -65,14 +65,27 @@ export async function POST(request: Request) {
                     const values = columns.map(k => prepared[k]);
 
                     try {
-                        sqliteDb.prepare(`
-                            INSERT OR REPLACE INTO ${table} (${columns.join(',')})
-                            VALUES (${placeholders})
-                        `).run(...values);
-                        totalPulled++;
+                        // Conflict resolution: only overwrite if cloud record is newer or local record doesn't exist
+                        const pkColumn = table === 'settings' ? 'userId' : 'id';
+                        const pkValue = record[pkColumn];
+
+                        const localRecord = sqliteDb.prepare(`SELECT updatedAt FROM ${table} WHERE ${pkColumn} = ?`).get(pkValue) as { updatedAt?: string } | undefined;
+
+                        const isCloudNewer = !localRecord || !localRecord.updatedAt || !record.updatedAt ||
+                            new Date(record.updatedAt) > new Date(localRecord.updatedAt);
+
+                        if (isCloudNewer) {
+                            sqliteDb.prepare(`
+                                INSERT OR REPLACE INTO ${table} (${columns.join(',')})
+                                VALUES (${placeholders})
+                            `).run(...values);
+                            totalPulled++;
+                        } else {
+                            console.log(`[SyncPull] Skipping ${table} record ${pkValue} - Local version is newer.`);
+                        }
                     } catch (dbErr: any) {
                         console.error(`[SyncPull] DB Error during insert into ${table}:`, dbErr.message);
-                        console.error(`[SyncPull] Record ID: ${record.id || 'N/A'}`);
+                        console.error(`[SyncPull] Record PK: ${record.id || record.userId || 'N/A'}`);
                     }
                 }
 

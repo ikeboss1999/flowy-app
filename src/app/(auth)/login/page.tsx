@@ -6,6 +6,9 @@ import { getAuthErrorMessage } from "@/lib/auth"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { AlertCircle, CheckCircle2, Loader2, Lock, Mail, User, Eye, EyeOff } from "lucide-react"
+import { useAuth } from "@/context/AuthContext"
+import { useDevice } from "@/hooks/useDevice"
+import { cn } from "@/lib/utils"
 
 export default function LoginPage() {
     const searchParams = useSearchParams()
@@ -18,6 +21,11 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null)
     const [message, setMessage] = useState<string | null>(null)
     const [showPassword, setShowPassword] = useState(false)
+    const [loginType, setLoginType] = useState<'admin' | 'employee'>('admin')
+    const [staffId, setStaffId] = useState("")
+    const [pin, setPin] = useState("")
+    const { loginAsEmployee } = useAuth()
+    const { isMobile, isDesktop, isIPhone } = useDevice()
     const router = useRouter()
 
     // Sync state with query param if it changes
@@ -26,6 +34,15 @@ export default function LoginPage() {
         if (mode === 'register') setIsLogin(false)
         else if (mode === 'login') setIsLogin(true)
     }, [searchParams])
+
+    // Adaptive login type based on device
+    useEffect(() => {
+        if (isMobile || isIPhone) {
+            setLoginType('employee')
+        } else {
+            setLoginType('admin')
+        }
+    }, [isMobile, isIPhone])
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -40,7 +57,15 @@ export default function LoginPage() {
         }
 
         try {
-            if (isLogin) {
+            if (loginType === 'employee') {
+                const result = await loginAsEmployee(staffId, pin);
+                if (result.success) {
+                    router.push("/mobile/dashboard");
+                    router.refresh();
+                } else {
+                    setError(result.error || "Login fehlgeschlagen");
+                }
+            } else if (isLogin) {
                 const { error } = await supabase.auth.signInWithPassword({
                     email,
                     password,
@@ -62,7 +87,7 @@ export default function LoginPage() {
                 setMessage("Registrierung erfolgreich! Bitte überprüfe deine E-Mails.")
             }
         } catch (err: any) {
-            setError(getAuthErrorMessage(err))
+            setError(err.message || getAuthErrorMessage(err))
         } finally {
             setLoading(false)
         }
@@ -112,103 +137,183 @@ export default function LoginPage() {
                 {/* Header Text */}
                 <div className="text-center mb-10 space-y-3">
                     <h1 className="text-5xl font-black tracking-tight">
-                        {isLogin ? (
+                        {loginType === 'employee' ? (
+                            <>Mitarbeiter <span className="bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">Login</span></>
+                        ) : isLogin ? (
                             <>Willkommen <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">zurück</span></>
                         ) : (
                             <>Konto <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">erstellen</span></>
                         )}
                     </h1>
                     <p className="text-slate-400 text-lg font-medium">
-                        {isLogin
-                            ? "Melden Sie sich an, um fortzufahren."
-                            : "Starten Sie jetzt mit FlowY Professional."}
+                        {loginType === 'employee'
+                            ? "Geben Sie Ihre Personalnummer und PIN ein."
+                            : isLogin
+                                ? "Melden Sie sich an, um fortzufahren."
+                                : "Starten Sie jetzt mit FlowY Professional."}
                     </p>
                 </div>
 
                 {/* Auth Card */}
                 <div className="w-full bg-[#0F0F1A]/60 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] p-10 md:p-12 shadow-2xl ring-1 ring-white/10">
+
+                    {/* Login Type Switcher - Only visible on non-mobile touch devices or if manually requested? No, user wants it hidden on mobile and removed on desktop */}
+                    {!isIPhone && !isMobile && !isDesktop && (
+                        <div className="flex bg-black/40 p-1.5 rounded-2xl mb-10 border border-white/5">
+                            <button
+                                onClick={() => {
+                                    setLoginType('admin');
+                                    setPassword("");
+                                }}
+                                className={cn(
+                                    "flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                                    loginType === 'admin' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"
+                                )}
+                            >
+                                Verwaltung
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setLoginType('employee');
+                                    setIsLogin(true);
+                                    setStaffId("");
+                                    setPin("");
+                                }}
+                                className={cn(
+                                    "flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                                    loginType === 'employee' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"
+                                )}
+                            >
+                                Mitarbeiter App
+                            </button>
+                        </div>
+                    )}
+
                     <form onSubmit={handleAuth} className="space-y-6">
 
-                        {!isLogin && (
-                            <div className="space-y-2">
-                                <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500 ml-1">Vollständiger Name</label>
-                                <div className="relative">
-                                    <User className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="Max Mustermann"
-                                        value={fullName}
-                                        onChange={(e) => setFullName(e.target.value)}
-                                        className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-6 py-4 text-base font-medium text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
-                                    />
+                        {loginType === 'employee' ? (
+                            <>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500 ml-1">Personalnummer</label>
+                                    <div className="relative">
+                                        <User className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="z.B. 1001"
+                                            value={staffId}
+                                            onChange={(e) => setStaffId(e.target.value)}
+                                            className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-6 py-4 text-base font-medium text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                        )}
 
-                        <div className="space-y-2">
-                            <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500 ml-1">E-Mail Adresse</label>
-                            <div className="relative">
-                                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
-                                <input
-                                    type="email"
-                                    required
-                                    placeholder="name@firma.at"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-6 py-4 text-base font-medium text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center px-1">
-                                <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Passwort</label>
-                                {isLogin && (
-                                    <button
-                                        type="button"
-                                        onClick={handleForgotPassword}
-                                        className="text-[10px] font-black uppercase tracking-wider text-indigo-400 hover:text-indigo-300 transition-colors"
-                                    >
-                                        Vergessen?
-                                    </button>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500 ml-1">App PIN</label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
+                                        <input
+                                            type={showPassword ? "text" : "password"}
+                                            required
+                                            placeholder="6-stellige Nummer"
+                                            value={pin}
+                                            onChange={(e) => setPin(e.target.value)}
+                                            className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-14 py-4 text-base font-medium text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition-colors"
+                                        >
+                                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                {!isLogin && (
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500 ml-1">Vollständiger Name</label>
+                                        <div className="relative">
+                                            <User className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
+                                            <input
+                                                type="text"
+                                                required
+                                                placeholder="Max Mustermann"
+                                                value={fullName}
+                                                onChange={(e) => setFullName(e.target.value)}
+                                                className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-6 py-4 text-base font-medium text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
+                                            />
+                                        </div>
+                                    </div>
                                 )}
-                            </div>
-                            <div className="relative">
-                                <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    required
-                                    placeholder="••••••••"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-14 py-4 text-base font-medium text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition-colors"
-                                >
-                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                                </button>
-                            </div>
-                        </div>
 
-                        {!isLogin && (
-                            <div className="space-y-2">
-                                <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500 ml-1">Passwort bestätigen</label>
-                                <div className="relative">
-                                    <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
-                                    <input
-                                        type={showPassword ? "text" : "password"}
-                                        required
-                                        placeholder="••••••••"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-6 py-4 text-base font-medium text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
-                                    />
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500 ml-1">E-Mail Adresse</label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
+                                        <input
+                                            type="email"
+                                            required
+                                            placeholder="name@firma.at"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-6 py-4 text-base font-medium text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center px-1">
+                                        <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Passwort</label>
+                                        {isLogin && (
+                                            <button
+                                                type="button"
+                                                onClick={handleForgotPassword}
+                                                className="text-[10px] font-black uppercase tracking-wider text-indigo-400 hover:text-indigo-300 transition-colors"
+                                            >
+                                                Vergessen?
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="relative">
+                                        <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
+                                        <input
+                                            type={showPassword ? "text" : "password"}
+                                            required
+                                            placeholder="••••••••"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-14 py-4 text-base font-medium text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition-colors"
+                                        >
+                                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {!isLogin && (
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500 ml-1">Passwort bestätigen</label>
+                                        <div className="relative">
+                                            <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
+                                            <input
+                                                type={showPassword ? "text" : "password"}
+                                                required
+                                                placeholder="••••••••"
+                                                value={confirmPassword}
+                                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                                className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-6 py-4 text-base font-medium text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </>
                         )}
 
                         {error && (
@@ -232,6 +337,8 @@ export default function LoginPage() {
                         >
                             {loading ? (
                                 <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                            ) : loginType === 'employee' ? (
+                                "In App einloggen"
                             ) : isLogin ? (
                                 "Jetzt anmelden"
                             ) : (
@@ -240,24 +347,50 @@ export default function LoginPage() {
                         </button>
                     </form>
 
-                    <div className="mt-8 text-center">
-                        <p className="text-sm text-slate-500 font-medium">
-                            {isLogin ? "Noch kein FlowY Konto? " : "Bereits ein FlowY Mitglied? "}
+                    {loginType === 'admin' && (
+                        <div className="mt-8 text-center">
+                            <p className="text-sm text-slate-500 font-medium">
+                                {isLogin ? "Noch kein FlowY Konto? " : "Bereits ein FlowY Mitglied? "}
+                                <button
+                                    onClick={() => {
+                                        setIsLogin(!isLogin)
+                                        setError(null)
+                                        setMessage(null)
+                                        // Update URL without full refresh to preserve context
+                                        const newUrl = isLogin ? '/login?mode=register' : '/login?mode=login'
+                                        window.history.pushState({}, '', newUrl)
+                                    }}
+                                    className="text-white hover:text-indigo-400 font-black transition-colors ml-1"
+                                >
+                                    {isLogin ? "Jetzt registrieren" : "Hier einloggen"}
+                                </button>
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Discrete Admin Login for Mobile */}
+                    {(isIPhone || isMobile) && loginType === 'employee' && (
+                        <div className="mt-8 text-center border-t border-white/5 pt-6">
                             <button
-                                onClick={() => {
-                                    setIsLogin(!isLogin)
-                                    setError(null)
-                                    setMessage(null)
-                                    // Update URL without full refresh to preserve context
-                                    const newUrl = isLogin ? '/login?mode=register' : '/login?mode=login'
-                                    window.history.pushState({}, '', newUrl)
-                                }}
-                                className="text-white hover:text-indigo-400 font-black transition-colors ml-1"
+                                onClick={() => setLoginType('admin')}
+                                className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 hover:text-indigo-400 transition-colors"
                             >
-                                {isLogin ? "Jetzt registrieren" : "Hier einloggen"}
+                                Verwaltung Login
                             </button>
-                        </p>
-                    </div>
+                        </div>
+                    )}
+
+                    {/* Back to Employee Login for Mobile */}
+                    {(isIPhone || isMobile) && loginType === 'admin' && (
+                        <div className="mt-8 text-center border-t border-white/5 pt-6">
+                            <button
+                                onClick={() => setLoginType('employee')}
+                                className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 hover:text-indigo-400 transition-colors"
+                            >
+                                Zurück zur Mitarbeiter App
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer Credits */}
