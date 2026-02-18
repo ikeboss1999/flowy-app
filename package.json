@@ -1,6 +1,6 @@
 {
   "name": "flowy",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "private": true,
   "description": "FlowY Construction Management Desktop Application",
   "main": "electron/main.js",
@@ -77,6 +77,7 @@
         "nsis"
       ],
       "icon": "Logo.png",
+      "artifactName": "FlowY-Setup.${ext}",
       "publish": [
         {
           "provider": "github",

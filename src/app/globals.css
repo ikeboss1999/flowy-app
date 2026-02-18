@@ -18,6 +18,17 @@
   --card-glass-blur: blur(16px);
 }
 
+/* MacBook Pro 13" / Medium Screen Optimizations */
+@media screen and (min-width: 1024px) and (max-width: 1440px) {
+  :root {
+    --sidebar-width: 17rem; /* 272px instead of 320px */
+  }
+
+  body {
+    font-size: 15px !important;
+  }
+}
+
 @layer base {
   body {
     @apply antialiased text-foreground bg-[#f8fafc] min-h-screen text-[16px];

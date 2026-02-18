@@ -187,9 +187,9 @@ export default function MobileDashboard() {
                                             <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center text-slate-400 shadow-sm">
                                                 <User className="h-4 w-4" />
                                             </div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Personalnummer</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Verfügernummer</p>
                                         </div>
-                                        <p className="text-lg font-black text-indigo-600 ml-1">#{currentEmployee.employeeNumber}</p>
+                                        <p className="text-lg font-black text-indigo-600 ml-1">#{currentEmployee.appAccess?.staffId || currentEmployee.employeeNumber}</p>
                                     </div>
 
                                     <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">

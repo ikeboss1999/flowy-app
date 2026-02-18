@@ -187,8 +187,8 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                         }];
 
                         // 2. Subtract Previous Partial Invoices
-                        const prevInvs = (invoices as Invoice[])
-                            .filter(inv => inv.projectId === paramProjectId && inv.billingType === 'partial' && inv.status !== 'canceled' && inv.id !== initialData?.id);
+                        const prevInvs = (invoices as any[])
+                            .filter((inv: any) => inv.projectId === paramProjectId && inv.billingType === 'partial' && inv.status !== 'canceled' && inv.id !== initialData?.id);
 
                         prevInvs.forEach((inv, idx) => {
                             finalItems.push({
@@ -400,22 +400,22 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                         <ArrowLeft className="h-4 w-4 cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => router.back()} />
                         Rechnungserstellung
                     </div>
-                    <h1 className="text-5xl font-black text-slate-900 tracking-tight font-outfit">Neue Rechnung</h1>
+                    <h1 className="text-3xl xl:text-5xl font-black text-slate-900 tracking-tight font-outfit">Neue Rechnung</h1>
                     <p className="text-slate-500 font-medium">Erstellen Sie eine neue Rechnung für Ihre Kunden</p>
                 </div>
             </div>
 
-            <div className="glass-card p-12 space-y-12">
+            <div className="glass-card p-6 xl:p-12 space-y-8 xl:space-y-12">
                 {/* Section: Basic Data */}
-                <div className="space-y-8">
+                <div className="space-y-6 xl:space-y-8">
                     <h2 className={sectionTitleClasses}>
-                        <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
-                            <Calculator className="h-5 w-5 text-indigo-600" />
+                        <div className="h-8 xl:h-10 w-8 xl:w-10 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
+                            <Calculator className="h-4 xl:h-5 w-4 xl:w-5 text-indigo-600" />
                         </div>
                         Rechnung erstellen
                     </h2>
 
-                    <div className="grid grid-cols-2 gap-8">
+                    <div className="grid grid-cols-2 gap-6 xl:gap-8">
                         <div>
                             <label className={labelClasses}>Projekt (Optional)</label>
                             <select
@@ -466,7 +466,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8">
+                    <div className="grid grid-cols-2 gap-6 xl:gap-8">
                         <div>
                             <label className={labelClasses}>Rechnungsnummer</label>
                             <input
@@ -489,7 +489,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8">
+                    <div className="grid grid-cols-2 gap-6 xl:gap-8">
                         <div>
                             <label className={labelClasses}>Bauvorhaben</label>
                             <input
@@ -530,10 +530,9 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
 
                 <hr className="border-slate-100" />
 
-                {/* Section: Service Period */}
-                <div className="space-y-8">
+                <div className="space-y-6 xl:space-y-8">
                     <h3 className="text-xl font-bold text-slate-800 tracking-tight">Leistungszeitraum</h3>
-                    <div className="grid grid-cols-2 gap-8">
+                    <div className="grid grid-cols-2 gap-6 xl:gap-8">
                         <div>
                             <label className={labelClasses}>Von</label>
                             <DatePicker

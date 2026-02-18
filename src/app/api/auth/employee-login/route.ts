@@ -11,7 +11,7 @@ export async function POST(request: Request) {
         const { staffId, pin } = await request.json();
 
         if (!staffId || !pin) {
-            return NextResponse.json({ message: 'Personalnummer und PIN sind erforderlich' }, { status: 400 });
+            return NextResponse.json({ message: 'Verfügernummer und PIN sind erforderlich' }, { status: 400 });
         }
 
         let employee: Employee | null = null;

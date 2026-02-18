@@ -21,7 +21,7 @@ export default function DashboardLayout({
             <ReloadButton />
             <main className={cn(
                 "flex-1 min-h-screen text-lg transition-all duration-300",
-                isDrawerMode ? "ml-0 pt-20 px-4" : "ml-80"
+                isDrawerMode ? "ml-0 pt-20 px-4" : "ml-64 xl:ml-80"
             )}>
                 {children}
             </main>

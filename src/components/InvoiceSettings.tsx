@@ -164,17 +164,7 @@ export function InvoiceSettings() {
                 onToggle={() => toggleSection("general")}
             >
                 <div className="space-y-8">
-                    <div className="grid grid-cols-2 gap-8">
-                        <div>
-                            <label className={labelClasses}>Rechnungsnummer Präfix</label>
-                            <input
-                                type="text"
-                                name="invoicePrefix"
-                                value={data.invoicePrefix}
-                                onChange={handleChange}
-                                className={inputClasses}
-                            />
-                        </div>
+                    <div className="grid grid-cols-1 gap-8">
                         <div>
                             <label className={labelClasses}>Nächste Rechnungsnummer</label>
                             <input
@@ -187,28 +177,6 @@ export function InvoiceSettings() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8">
-                        <div>
-                            <label className={labelClasses}>Mitarbeiternummer Präfix</label>
-                            <input
-                                type="text"
-                                name="employeePrefix"
-                                value={data.employeePrefix}
-                                onChange={handleChange}
-                                className={inputClasses}
-                            />
-                        </div>
-                        <div>
-                            <label className={labelClasses}>Nächste Mitarbeiternummer</label>
-                            <input
-                                type="number"
-                                name="nextEmployeeNumber"
-                                value={data.nextEmployeeNumber}
-                                onChange={handleChange}
-                                className={inputClasses}
-                            />
-                        </div>
-                    </div>
 
                     <div className="grid grid-cols-2 gap-8">
                         <div>

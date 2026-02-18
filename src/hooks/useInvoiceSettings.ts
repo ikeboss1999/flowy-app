@@ -8,10 +8,7 @@ import { useSync } from '@/context/SyncContext';
 const STORAGE_KEY = 'flowy_invoice_settings';
 
 const initialData: InvoiceSettings = {
-    invoicePrefix: '',
     nextInvoiceNumber: 1,
-    employeePrefix: 'MA-',
-    nextEmployeeNumber: 1,
     paymentTerms: [
         { id: '1', name: 'Sofort', text: 'sofort nach Rechnungserhalt', days: 0 },
         { id: '2', name: '7 Tage', text: 'zahlbar innerhalb von 7 Tagen ohne Abzug', days: 7 },

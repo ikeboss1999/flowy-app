@@ -61,9 +61,23 @@ export function useEmployees() {
     }, [activeUserId, authLoading, user]);
 
     const addEmployee = async (employee: Employee) => {
-        if (!user) return;
-        // ... (rest of addEmployee remains same)
-    }
+        const targetUserId = user?.id || currentEmployee?.userId;
+        if (!targetUserId) return;
+
+        const newEmployee = { ...employee, userId: targetUserId };
+
+        try {
+            await fetch('/api/employees', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: targetUserId, employee: newEmployee })
+            });
+            setEmployees(prev => [...prev, newEmployee]);
+            markDirty();
+        } catch (e) {
+            console.error('Failed to add employee', e);
+        }
+    };
 
     const updateEmployee = async (id: string, employee: Employee) => {
         const targetUserId = user?.id || employee.userId || currentEmployee?.userId;

@@ -202,7 +202,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 documents: [],
                 createdAt: new Date().toISOString(),
                 appAccess: {
-                    staffId: nextNum,
+                    staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
                     accessPIN: "",
                     isAccessEnabled: false,
                     permissions: {
@@ -215,13 +215,28 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
         }
     }, [initialEmployee, isOpen]);
 
+    const generateStaffId = () => {
+        const id = Math.floor(10000000 + Math.random() * 90000000).toString();
+        setFormData(prev => ({
+            ...prev,
+            appAccess: {
+                ...(prev.appAccess || {
+                    accessPIN: "",
+                    isAccessEnabled: false,
+                    permissions: { timeTracking: true, documents: false, personalData: true }
+                }),
+                staffId: id
+            }
+        }));
+    };
+
     const generatePIN = () => {
         const pin = Math.floor(100000 + Math.random() * 900000).toString();
         setFormData(prev => ({
             ...prev,
             appAccess: {
                 ...(prev.appAccess || {
-                    staffId: prev.employeeNumber,
+                    staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
                     isAccessEnabled: false,
                     permissions: { timeTracking: true, documents: false, personalData: true }
                 }),
@@ -1166,7 +1181,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                     ...prev,
                                                     appAccess: {
                                                         ...(prev.appAccess || {
-                                                            staffId: prev.employeeNumber,
+                                                            staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
                                                             accessPIN: "",
                                                             isAccessEnabled: false,
                                                             permissions: { timeTracking: true, documents: false, personalData: true }
@@ -1192,10 +1207,19 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                         </div>
 
                                         <div className="md:col-span-2 space-y-3">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Personalnummer (Login-ID)</label>
+                                            <div className="flex justify-between items-center px-1">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Verfügernummer (Login-ID)</label>
+                                                <button
+                                                    type="button"
+                                                    onClick={generateStaffId}
+                                                    className="text-indigo-600 font-bold text-xs hover:text-indigo-700 transition-colors"
+                                                >
+                                                    Neu generieren
+                                                </button>
+                                            </div>
                                             <div className="p-8 bg-slate-50 border border-slate-100 rounded-[2.5rem] flex items-center justify-center">
                                                 <span className="text-4xl font-black text-slate-800 tracking-[0.2em]">
-                                                    {formData.employeeNumber || "----"}
+                                                    {formData.appAccess?.staffId || "--------"}
                                                 </span>
                                             </div>
                                         </div>
@@ -1258,7 +1282,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                             ...formData,
                                                             appAccess: {
                                                                 ...(formData.appAccess || {
-                                                                    staffId: formData.employeeNumber,
+                                                                    staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
                                                                     accessPIN: "",
                                                                     isAccessEnabled: false,
                                                                     permissions: { timeTracking: true, documents: false, personalData: true }

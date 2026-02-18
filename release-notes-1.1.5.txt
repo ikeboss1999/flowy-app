@@ -1,0 +1,9 @@
+# Release v1.1.5
+
+## New Features & Improvements
+- **Mobile Experience:** Optimized authentication flow for mobile devices.
+- **Invoice Refinements:** Enhanced InvoiceForm with better validation and UI elements.
+- **Profile Management:** Improved employee profile interactions and mobile-specific views.
+- **Vercel Sync:** Verified and stabilized repository synchronization for cloud deployments.
+- **System Stability:** General bug fixes and performance improvements in the core Electron app.
+- **Version Tracking:** Consistent versioning verified across all UI entry points.

@@ -223,13 +223,13 @@ export function Sidebar() {
             )}
 
             <aside className={cn(
-                "fixed left-0 top-0 h-screen w-80 bg-sidebar text-sidebar-foreground border-r border-white/5 flex flex-col p-6 overflow-y-auto custom-scrollbar transition-transform duration-300 z-[90]",
+                "fixed left-0 top-0 h-screen w-64 xl:w-80 bg-sidebar text-sidebar-foreground border-r border-white/5 flex flex-col p-4 xl:p-6 overflow-y-auto custom-scrollbar transition-transform duration-300 z-[90]",
                 isDrawerMode ? (isOpen ? "translate-x-0 overflow-y-auto" : "-translate-x-full") : "translate-x-0"
             )}>
-                <div className="flex flex-col items-center justify-center gap-4 px-3 py-8 mb-8 text-center">
-                    <img src="/logo.png" alt="Logo" className="h-16 w-16 object-contain bg-white/10 rounded-2xl p-1" />
+                <div className="flex flex-col items-center justify-center gap-3 xl:gap-4 px-3 py-6 xl:py-8 mb-6 xl:mb-8 text-center">
+                    <img src="/logo.png" alt="Logo" className="h-12 w-12 xl:h-16 xl:w-16 object-contain bg-white/10 rounded-2xl p-1" />
                     <div className="flex flex-col items-center">
-                        <span className="font-black text-2xl text-white tracking-tight leading-none break-words">
+                        <span className="font-black text-xl xl:text-2xl text-white tracking-tight leading-none break-words">
                             {companySettings?.companyName || "FlowY"}
                         </span>
                         <span className="text-[10px] text-white/40 uppercase font-black tracking-widest mt-1">

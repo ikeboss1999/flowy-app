@@ -147,7 +147,7 @@ export default function LoginPage() {
                     </h1>
                     <p className="text-slate-400 text-lg font-medium">
                         {loginType === 'employee'
-                            ? "Geben Sie Ihre Personalnummer und PIN ein."
+                            ? "Geben Sie Ihre Verfügernummer und PIN ein."
                             : isLogin
                                 ? "Melden Sie sich an, um fortzufahren."
                                 : "Starten Sie jetzt mit FlowY Professional."}
@@ -194,13 +194,13 @@ export default function LoginPage() {
                         {loginType === 'employee' ? (
                             <>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500 ml-1">Personalnummer</label>
+                                    <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500 ml-1">Verfügernummer</label>
                                     <div className="relative">
                                         <User className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
                                         <input
                                             type="text"
                                             required
-                                            placeholder="z.B. 1001"
+                                            placeholder="8-stellige Nummer"
                                             value={staffId}
                                             onChange={(e) => setStaffId(e.target.value)}
                                             className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-6 py-4 text-base font-medium text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
