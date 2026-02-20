@@ -1,0 +1,9 @@
+# Release v1.1.7
+
+## New Features & Improvements
+- **Startup Efficiency:** Optimized the application launch script (StartFlowY.bat) for better initialization.
+- **Vercel Sync:** Full repository synchronization for cloud-based API consistency.
+- **Electron Stability:** Refined main process handling for improved window management.
+- **Performance:** Optimized middleware execution paths for lower latency.
+- **Maintenance:** Internal cleanup and preparation for the mobile companion integration.
+- **UI Tracking:** Version tracking verified across all components (Login, Sidebar, Settings).

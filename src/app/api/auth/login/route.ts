@@ -83,7 +83,7 @@ export async function POST(req: Request) {
         // Set Cookie
         cookies().set('session_token', token, {
             httpOnly: true,
-            secure: false, // Ensure it works on http://localhost
+            secure: false,
             sameSite: 'lax',
             maxAge: 60 * 60 * 24, // 1 day
             path: '/',

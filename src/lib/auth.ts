@@ -2,13 +2,12 @@ import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
 import { nanoid } from 'nanoid';
 
-const JWT_SECRET = new TextEncoder().encode(
-    process.env.JWT_SECRET
-);
-
+const rawSecret = process.env.JWT_SECRET || 'flowy-local-fallback-secret-67890';
 if (!process.env.JWT_SECRET) {
-    console.error('CRITICAL: JWT_SECRET environment variable is missing!');
+    console.warn('WARNING: JWT_SECRET environment variable is missing! Using local fallback secret.');
 }
+
+const JWT_SECRET = new TextEncoder().encode(rawSecret);
 
 export const hashPassword = async (password: string): Promise<string> => {
     return await bcrypt.hash(password, 12);

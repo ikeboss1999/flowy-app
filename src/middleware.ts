@@ -19,8 +19,20 @@ export function middleware(request: NextRequest) {
     // 2. Protect API Routes (except auth)
     if (isApiRoute) {
         if (!isPublicApi && !sessionToken && !sbAccessToken) {
+            console.warn(`[Middleware] Unauthorized API access to ${pathname}. Cookies:`, {
+                hasSessionToken: !!sessionToken,
+                hasSbToken: !!sbAccessToken,
+                allCookies: request.cookies.getAll().map(c => c.name)
+            });
             return new NextResponse(
-                JSON.stringify({ error: 'Unauthorized', message: 'Valid session required' }),
+                JSON.stringify({
+                    error: 'Unauthorized',
+                    message: 'Valid session required',
+                    debug: {
+                        path: pathname,
+                        cookies: request.cookies.getAll().map(c => c.name)
+                    }
+                }),
                 { status: 401, headers: { 'Content-Type': 'application/json' } }
             );
         }

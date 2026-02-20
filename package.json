@@ -1,11 +1,15 @@
 {
   "name": "flowy",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "private": true,
   "description": "FlowY Construction Management Desktop Application",
   "main": "electron/main.js",
   "author": {
     "name": "FlowY Team"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ikeboss1999/flowy-app.git"
   },
   "scripts": {
     "dev": "npm rebuild better-sqlite3 && next dev",

@@ -40,7 +40,8 @@ export function UpdateNotification() {
             }
 
             if (newStatus === 'error') {
-                // Optional: handle error silently or show toast
+                setStatus('error');
+                setUpdateInfo(prev => ({ ...prev!, errorMessage: data }));
                 console.error("Update error:", data);
             }
         });
@@ -181,6 +182,22 @@ export function UpdateNotification() {
                             <Download className="h-5 w-5" />
                             Jetzt neu starten & installieren
                         </button>
+                    ) : status === 'error' ? (
+                        <div className="bg-rose-50 border border-rose-100 p-4 rounded-xl space-y-3">
+                            <div className="flex items-center gap-2 text-rose-600 font-bold">
+                                <X className="h-5 w-5" />
+                                <span>Download fehlgeschlagen</span>
+                            </div>
+                            <p className="text-xs text-rose-500 break-words font-mono">
+                                {(updateInfo as any)?.errorMessage || "Ein unbekannter Fehler ist aufgetreten."}
+                            </p>
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="w-full bg-rose-500 hover:bg-rose-600 text-white py-2 rounded-lg font-bold text-sm transition-colors"
+                            >
+                                Erneut versuchen
+                            </button>
+                        </div>
                     ) : (
                         // Initial state (checking or available before progress starts)
                         <div className="w-full bg-indigo-50 text-indigo-600 py-3 rounded-xl font-bold flex items-center justify-center gap-2 animate-pulse">

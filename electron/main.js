@@ -9,6 +9,17 @@ const next = require('next');
 // Configure auto-updater
 autoUpdater.autoDownload = true;
 autoUpdater.allowPrerelease = false;
+autoUpdater.disableDifferentialDownload = true; // More reliable than differential updates
+
+// Better logging for updater
+autoUpdater.logger = console;
+autoUpdater.logger.info('--- UPDATER INITIALIZED ---');
+
+if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) {
+    autoUpdater.logger.info('GitHub Token found in environment.');
+} else {
+    autoUpdater.logger.warn('No GitHub Token found. Private repositories might fail to download.');
+}
 
 console.log('--- ENVIRONMENT CHECK ---');
 console.log('isDev:', isDev);
