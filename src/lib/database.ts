@@ -1,19 +1,15 @@
 
 import sqliteDb from './sqlite';
 import { supabase } from './supabase';
+import { supabaseAdmin } from './supabase-admin';
+import { isWeb } from './is-web';
 
 /**
- * Detection: Is this running in a Web environment (Vercel/Browser) 
- * or in the local Electron app (SQLite available)?
+ * Re-export isWeb for backward compatibility where database.ts is used in server code.
  */
-export const isWeb = typeof window === 'undefined'
-    ? (!!process.env.VERCEL || !!process.env.NEXT_PUBLIC_VERCEL)
-    : !((window as any).electron ||
-        (window as any).process?.versions?.electron ||
-        window.location.protocol === 'file:' ||
-        window.location.hostname === 'localhost' && !window.location.port); // Fallback for local dev
+export { isWeb };
 
-const SCHEMA_KEYS: Record<string, string[]> = {
+export const SCHEMA_KEYS: Record<string, string[]> = {
     customers: ['id', 'name', 'email', 'phone', 'address', 'type', 'status', 'salutation', 'taxId', 'commercialRegisterNumber', 'reverseChargeEnabled', 'defaultPaymentTermId', 'notes', 'lastActivity', 'createdAt', 'updatedAt', 'userId'],
     invoices: ['id', 'invoiceNumber', 'customerId', 'projectId', 'constructionProject', 'paymentPlanItemId', 'billingType', 'issueDate', 'items', 'subtotal', 'taxRate', 'taxAmount', 'totalAmount', 'isReverseCharge', 'status', 'paymentTerms', 'perfFrom', 'perfTo', 'processor', 'subjectExtra', 'partialPaymentNumber', 'previousInvoices', 'dunningLevel', 'lastDunningDate', 'dunningHistory', 'paidAmount', 'paymentDeviation', 'notes', 'createdAt', 'updatedAt', 'userId'],
     projects: ['id', 'name', 'customerId', 'description', 'status', 'address', 'startDate', 'endDate', 'budget', 'paymentPlan', 'createdAt', 'updatedAt', 'userId'],
@@ -43,7 +39,8 @@ export class UnifiedDB {
             // Format data for Supabase (e.g. ensure booleans, ensure JSON is object not string)
             const syncData = this.prepareForCloud(table, data, userId);
 
-            const { error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { error } = await client
                 .from(table)
                 .upsert(syncData);
 

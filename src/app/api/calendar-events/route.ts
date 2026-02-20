@@ -1,19 +1,25 @@
 import { NextResponse } from 'next/server';
 import sqliteDb from '@/lib/sqlite';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { UnifiedDB, isWeb } from '@/lib/database';
 import { nanoid } from 'nanoid';
+import { getUserSession } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    if (!userId) return NextResponse.json({ message: 'Missing userId' }, { status: 400 });
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     try {
         if (isWeb) {
-            const { data: events, error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { data: events, error } = await client
                 .from('calendar_events')
                 .select('*')
                 .eq('userId', userId);
@@ -21,91 +27,125 @@ export async function GET(request: Request) {
             return NextResponse.json(events);
         } else {
             const rows = sqliteDb.prepare('SELECT * FROM calendar_events WHERE userId = ?').all(userId);
-            return NextResponse.json(rows.map((r: any) => ({
-                ...r,
-                isAllDay: r.isAllDay === 1,
-                attendees: r.attendees ? JSON.parse(r.attendees) : []
-            })));
+            return NextResponse.json(rows);
         }
-    } catch (error) {
-        console.error(error);
-        return NextResponse.json({ message: 'Error' }, { status: 500 });
+    } catch (e) {
+        console.error(e);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }
 
 export async function POST(request: Request) {
-    try {
-        const { userId, event } = await request.json();
-        const { id, title, description, startDate, endDate, startTime, endTime, isAllDay, type, color, location, attendees, projectId, createdAt } = event;
+    const session = await getUserSession();
+    const userId = session?.userId;
 
-        const eventId = id || nanoid();
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+        const payload = await request.json();
+        // Support both { event: { ... } } and { ... }
+        const event = payload.event || payload;
+        const eventId = event.id || nanoid();
         const now = new Date().toISOString();
 
         if (isWeb) {
-            const { error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { error } = await client
                 .from('calendar_events')
                 .upsert({
+                    ...event,
                     id: eventId,
-                    title,
-                    description,
-                    startDate,
-                    endDate,
-                    startTime,
-                    endTime,
-                    isAllDay: !!isAllDay,
-                    type,
-                    color,
-                    location,
-                    attendees,
-                    projectId,
-                    createdAt: createdAt || now,
-                    userId
+                    userId, // Force userId
+                    updatedAt: now
                 });
             if (error) throw error;
         } else {
             const stmt = sqliteDb.prepare(`
-                INSERT OR REPLACE INTO calendar_events (id, title, description, startDate, endDate, startTime, endTime, isAllDay, type, color, location, attendees, projectId, createdAt, userId)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO calendar_events 
+                (id, title, startDate, endDate, isAllDay, type, color, projectId, description, location, attendees, startTime, endTime, createdAt, updatedAt, userId)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
+
             stmt.run(
-                eventId, title, description, startDate, endDate, startTime, endTime, isAllDay ? 1 : 0,
-                type, color, location, JSON.stringify(attendees || []), projectId, createdAt || now, userId
+                eventId,
+                event.title,
+                event.startDate || event.start,
+                event.endDate || event.end,
+                (event.isAllDay || event.allDay) ? 1 : 0,
+                event.type,
+                event.color,
+                event.projectId,
+                event.description,
+                event.location,
+                JSON.stringify(event.attendees || []),
+                event.startTime,
+                event.endTime,
+                event.createdAt || now,
+                now,
+                userId
             );
 
+            // Prepare data for Cloud Sync
+            const syncData = {
+                ...event,
+                id: eventId,
+                userId,
+                updatedAt: now,
+                startDate: event.startDate || event.start,
+                endDate: event.endDate || event.end,
+                isAllDay: !!(event.isAllDay || event.allDay)
+            };
+
             // Silent Sync
-            UnifiedDB.syncToCloud('calendar_events', { ...event, id: eventId }, userId);
+            UnifiedDB.syncToCloud('calendar_events', syncData, userId);
         }
 
         return NextResponse.json({ success: true, id: eventId });
-    } catch (error) {
-        console.error(error);
-        return NextResponse.json({ message: 'Error' }, { status: 500 });
+    } catch (e) {
+        console.error(e);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }
 
 export async function DELETE(request: Request) {
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const userId = searchParams.get('userId');
 
-    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    if (!id) {
+        return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    }
 
     try {
         if (isWeb) {
-            const { error } = await supabase.from('calendar_events').delete().eq('id', id);
+            const client = supabaseAdmin || supabase;
+            const { error } = await client.from('calendar_events').delete().eq('id', id).eq('userId', userId);
             if (error) throw error;
         } else {
-            sqliteDb.prepare('DELETE FROM calendar_events WHERE id = ?').run(id);
-
-            if (userId) {
-                supabase.from('calendar_events').delete().eq('id', id).then(({ error }) => {
-                    if (error) console.error('[BackgroundSync] Calendar event delete failed', error);
-                });
+            const existing = sqliteDb.prepare('SELECT userId FROM calendar_events WHERE id = ?').get(id) as any;
+            if (existing && existing.userId !== userId) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
+
+            sqliteDb.prepare('DELETE FROM calendar_events WHERE id = ? AND userId = ?').run(id, userId);
+
+            // Silent Sync
+            const client = supabaseAdmin || supabase;
+            client.from('calendar_events').delete().eq('id', id).eq('userId', userId).then(({ error }) => {
+                if (error) console.error('[BackgroundSync] Calendar event delete failed', error);
+            });
         }
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error(error);
+    } catch (e) {
+        console.error(e);
         return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }

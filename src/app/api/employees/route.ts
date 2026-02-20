@@ -1,20 +1,23 @@
 import { NextResponse } from 'next/server';
 import sqliteDb from '@/lib/sqlite';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { UnifiedDB, isWeb } from '@/lib/database';
 import { nanoid } from 'nanoid';
+import { getUserSession } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const session = await getUserSession();
+    const userId = session?.userId;
 
-    if (!userId) return NextResponse.json({ message: 'Missing userId' }, { status: 400 });
+    if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     try {
         if (isWeb) {
-            const { data: employees, error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { data: employees, error } = await client
                 .from('employees')
                 .select('*')
                 .eq('userId', userId);
@@ -43,14 +46,22 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+
     try {
-        const { userId, employee } = await request.json();
+        const payload = await request.json();
+        // Support both { employee: { ... } } and { ... }
+        const employee = payload.employee || payload;
         const { id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, appAccess, pendingChanges, sharedFolders, createdAt } = employee;
 
         const empId = id || nanoid();
 
         if (isWeb) {
-            const { error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { error } = await client
                 .from('employees')
                 .upsert({
                     id: empId,
@@ -66,7 +77,7 @@ export async function POST(request: Request) {
                     pendingChanges,
                     sharedFolders,
                     createdAt: createdAt || new Date().toISOString(),
-                    userId
+                    userId // Force userId from session
                 });
             if (error) throw error;
         } else {
@@ -98,24 +109,36 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const userId = searchParams.get('userId');
 
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
     try {
         if (isWeb) {
-            const { error } = await supabase.from('employees').delete().eq('id', id);
+            // Ensure user owns the record they are deleting
+            const client = supabaseAdmin || supabase;
+            const { error } = await client.from('employees').delete().eq('id', id).eq('userId', userId);
             if (error) throw error;
         } else {
-            sqliteDb.prepare('DELETE FROM employees WHERE id = ?').run(id);
-
-            if (userId) {
-                supabase.from('employees').delete().eq('id', id).then(({ error }) => {
-                    if (error) console.error('[BackgroundSync] Employee delete failed', error);
-                });
+            // Check ownership for local delete (extra safety)
+            const existing = sqliteDb.prepare('SELECT userId FROM employees WHERE id = ?').get(id) as any;
+            if (existing && existing.userId !== userId) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
+
+            sqliteDb.prepare('DELETE FROM employees WHERE id = ? AND userId = ?').run(id, userId);
+
+            // Silent Sync
+            const client = supabaseAdmin || supabase;
+            client.from('employees').delete().eq('id', id).eq('userId', userId).then(({ error }) => {
+                if (error) console.error('[BackgroundSync] Employee delete failed', error);
+            });
         }
         return NextResponse.json({ success: true });
     } catch (error) {

@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import sqliteDb from '@/lib/sqlite';
 import { supabase } from '@/lib/supabase';
-import { isWeb } from '@/lib/database';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { isWeb, SCHEMA_KEYS } from '@/lib/database';
+import { getUserSession } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +18,13 @@ export async function POST(request: Request) {
 
     try {
         const { userId } = await request.json();
+
+        // SECURITY: Verify that the request comes from the authenticated user
+        const session = await getUserSession();
+        if (!session || session.userId !== userId) {
+            return NextResponse.json({ message: 'Unauthorized: Session mismatch.' }, { status: 401 });
+        }
+
         if (!userId) {
             return NextResponse.json({ message: 'User ID erforderlich.' }, { status: 400 });
         }
@@ -28,11 +37,12 @@ export async function POST(request: Request) {
         ];
 
         let totalPulled = 0;
+        const client = supabaseAdmin || supabase;
 
         for (const table of tables) {
             try {
                 // 1. Fetch from Cloud
-                const { data: cloudRecords, error } = await supabase
+                const { data: cloudRecords, error } = await client
                     .from(table)
                     .select('*')
                     .eq('userId', userId);
@@ -42,30 +52,44 @@ export async function POST(request: Request) {
 
                 console.log(`[SyncPull] Found ${cloudRecords.length} records in cloud for ${table}.`);
 
-                // 2. Insert into Local SQLite
-                // Note: We need to handle the conversion back from JSON objects to JSON strings for SQLite
-                for (const record of cloudRecords) {
-                    const keys = Object.keys(record).filter(k => k !== 'userId'); // userId is often handled differently or implicit
+                const validKeys = SCHEMA_KEYS[table];
 
-                    // Simple logic: we only care about tables where we have schema.
-                    // To be safe, we'll try to insert and ignore conflicts.
-                    // But first, let's prepare the object.
-                    const prepared: any = { ...record };
-                    for (const key in prepared) {
-                        if (typeof prepared[key] === 'object' && prepared[key] !== null) {
-                            prepared[key] = JSON.stringify(prepared[key]);
+                // 2. Insert into Local SQLite
+                for (const record of cloudRecords) {
+                    const prepared: any = {};
+
+                    // Only include keys that exist in our local schema
+                    const columnsToSync = validKeys || Object.keys(record);
+
+                    for (const key of columnsToSync) {
+                        // Check for key, snake_case key, or lowercase key
+                        const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+                        const lowerKey = key.toLowerCase();
+
+                        let val = record[key];
+
+                        if (val === undefined) val = record[snakeKey];
+                        if (val === undefined) val = record[lowerKey];
+
+                        if (val === undefined) continue;
+
+                        // Convert objects to JSON strings for SQLite
+                        if (typeof val === 'object' && val !== null) {
+                            val = JSON.stringify(val);
                         }
-                        if (typeof prepared[key] === 'boolean') {
-                            prepared[key] = prepared[key] ? 1 : 0;
+                        // Convert booleans to 0/1 for SQLite
+                        if (typeof val === 'boolean') {
+                            val = val ? 1 : 0;
                         }
+                        prepared[key] = val;
                     }
 
-                    const columns = Object.keys(prepared);
-                    const placeholders = columns.map(() => '?').join(',');
-                    const values = columns.map(k => prepared[k]);
+                    // Ensure userId is present if table has it
+                    if (validKeys?.includes('userId') && !prepared.userId) {
+                        prepared.userId = userId;
+                    }
 
                     try {
-                        // Conflict resolution: only overwrite if cloud record is newer or local record doesn't exist
                         const pkColumn = table === 'settings' ? 'userId' : 'id';
                         const pkValue = record[pkColumn];
 
@@ -75,17 +99,18 @@ export async function POST(request: Request) {
                             new Date(record.updatedAt) > new Date(localRecord.updatedAt);
 
                         if (isCloudNewer) {
+                            const columns = Object.keys(prepared);
+                            const placeholders = columns.map(() => '?').join(',');
+                            const values = columns.map(k => prepared[k]);
+
                             sqliteDb.prepare(`
                                 INSERT OR REPLACE INTO ${table} (${columns.join(',')})
                                 VALUES (${placeholders})
                             `).run(...values);
                             totalPulled++;
-                        } else {
-                            console.log(`[SyncPull] Skipping ${table} record ${pkValue} - Local version is newer.`);
                         }
                     } catch (dbErr: any) {
                         console.error(`[SyncPull] DB Error during insert into ${table}:`, dbErr.message);
-                        console.error(`[SyncPull] Record PK: ${record.id || record.userId || 'N/A'}`);
                     }
                 }
 

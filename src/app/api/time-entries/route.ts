@@ -1,19 +1,25 @@
 import { NextResponse } from 'next/server';
 import sqliteDb from '@/lib/sqlite';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { UnifiedDB, isWeb } from '@/lib/database';
 import { nanoid } from 'nanoid';
+import { getUserSession } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    if (!userId) return NextResponse.json({ message: 'Missing userId' }, { status: 400 });
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     try {
         if (isWeb) {
-            const { data: entries, error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { data: entries, error } = await client
                 .from('time_entries')
                 .select('*')
                 .eq('userId', userId);
@@ -23,83 +29,99 @@ export async function GET(request: Request) {
             const rows = sqliteDb.prepare('SELECT * FROM time_entries WHERE userId = ?').all(userId);
             return NextResponse.json(rows);
         }
-    } catch (error) {
-        console.error(error);
-        return NextResponse.json({ message: 'Error' }, { status: 500 });
+    } catch (e) {
+        console.error(e);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }
 
 export async function POST(request: Request) {
-    try {
-        const { userId, entry } = await request.json();
-        const { id, employeeId, date, startTime, endTime, duration, type, projectId, serviceId, description, createdAt, overtime, location } = entry;
+    const session = await getUserSession();
+    const userId = session?.userId;
 
-        const entryId = id || nanoid();
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+        const payload = await request.json();
+        // Support both { entry: { ... } } and { ... }
+        const entry = payload.entry || payload;
+        const entryId = entry.id || nanoid();
         const now = new Date().toISOString();
 
         if (isWeb) {
-            const { error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { error } = await client
                 .from('time_entries')
                 .upsert({
+                    ...entry,
                     id: entryId,
-                    employeeId,
-                    date,
-                    startTime,
-                    endTime,
-                    duration,
-                    type,
-                    projectId,
-                    serviceId,
-                    description,
-                    overtime: overtime || 0,
-                    location: location || '',
-                    createdAt: createdAt || now,
-                    userId
+                    userId, // Force userId
+                    createdAt: entry.createdAt || now
                 });
             if (error) throw error;
         } else {
             const stmt = sqliteDb.prepare(`
-                INSERT OR REPLACE INTO time_entries (id, employeeId, date, startTime, endTime, duration, type, projectId, serviceId, description, userId, createdAt, overtime, location)
+                INSERT OR REPLACE INTO time_entries 
+                (id, employeeId, date, startTime, endTime, duration, overtime, location, type, projectId, serviceId, description, userId, createdAt)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
+
             stmt.run(
-                entryId, employeeId, date, startTime, endTime, duration, type, projectId, serviceId, description, userId, createdAt || now, overtime || 0, location || ''
+                entryId, entry.employeeId, entry.date, entry.startTime, entry.endTime,
+                entry.duration, entry.overtime, entry.location, entry.type,
+                entry.projectId, entry.serviceId, entry.description, userId, entry.createdAt || now
             );
 
             // Silent Sync
-            UnifiedDB.syncToCloud('time_entries', { ...entry, id: entryId }, userId);
+            UnifiedDB.syncToCloud('time_entries', { ...entry, id: entryId, userId }, userId);
         }
 
         return NextResponse.json({ success: true, id: entryId });
-    } catch (error: any) {
-        console.error("API Error:", error);
-        return NextResponse.json({ message: 'Error saving entry', details: error.message }, { status: 500 });
+    } catch (e) {
+        console.error(e);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }
 
 export async function DELETE(request: Request) {
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const userId = searchParams.get('userId');
 
-    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    if (!id) {
+        return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    }
 
     try {
         if (isWeb) {
-            const { error } = await supabase.from('time_entries').delete().eq('id', id);
+            const client = supabaseAdmin || supabase;
+            const { error } = await client.from('time_entries').delete().eq('id', id).eq('userId', userId);
             if (error) throw error;
         } else {
-            sqliteDb.prepare('DELETE FROM time_entries WHERE id = ?').run(id);
-
-            if (userId) {
-                supabase.from('time_entries').delete().eq('id', id).then(({ error }) => {
-                    if (error) console.error('[BackgroundSync] Time entry delete failed', error);
-                });
+            const existing = sqliteDb.prepare('SELECT userId FROM time_entries WHERE id = ?').get(id) as any;
+            if (existing && existing.userId !== userId) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
+
+            sqliteDb.prepare('DELETE FROM time_entries WHERE id = ? AND userId = ?').run(id, userId);
+
+            // Silent Sync
+            const client = supabaseAdmin || supabase;
+            client.from('time_entries').delete().eq('id', id).eq('userId', userId).then(({ error }) => {
+                if (error) console.error('[BackgroundSync] Time entry delete failed', error);
+            });
         }
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error(error);
+    } catch (e) {
+        console.error(e);
         return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }

@@ -1,126 +1,135 @@
 import { NextResponse } from 'next/server';
 import sqliteDb from '@/lib/sqlite';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { UnifiedDB, isWeb } from '@/lib/database';
 import { nanoid } from 'nanoid';
+import { getUserSession } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const session = await getUserSession();
+    const userId = session?.userId;
 
     if (!userId) {
-        return NextResponse.json({ message: 'Missing userId' }, { status: 400 });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
         if (isWeb) {
-            const { data: vehicles, error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { data: vehicles, error } = await client
                 .from('vehicles')
                 .select('*')
                 .eq('userId', userId);
             if (error) throw error;
             return NextResponse.json(vehicles);
         } else {
-            const vehicles = sqliteDb.prepare('SELECT * FROM vehicles WHERE userId = ? ORDER BY createdAt DESC').all(userId);
-
-            const parsedVehicles = vehicles.map((v: any) => ({
-                ...v,
-                basicInfo: JSON.parse(v.basicInfo),
-                fleetDetails: JSON.parse(v.fleetDetails),
-                maintenance: JSON.parse(v.maintenance),
-                leasing: v.leasing ? JSON.parse(v.leasing) : null,
-                documents: v.documents ? JSON.parse(v.documents) : []
+            const rows = sqliteDb.prepare('SELECT * FROM vehicles WHERE userId = ?').all(userId);
+            const data = rows.map((r: any) => ({
+                ...r,
+                basicInfo: JSON.parse(r.basicInfo),
+                fleetDetails: JSON.parse(r.fleetDetails),
+                maintenance: JSON.parse(r.maintenance),
+                leasing: JSON.parse(r.leasing),
+                documents: JSON.parse(r.documents)
             }));
-
-            return NextResponse.json(parsedVehicles);
+            return NextResponse.json(data);
         }
-    } catch (error) {
-        console.error('Failed to fetch vehicles:', error);
-        return NextResponse.json({ message: 'Failed to fetch vehicles' }, { status: 500 });
+    } catch (e) {
+        console.error(e);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }
 
 export async function POST(request: Request) {
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
-        const { userId, vehicle } = await request.json();
-
-        if (!userId || !vehicle) {
-            return NextResponse.json({ message: 'Missing userId or vehicle' }, { status: 400 });
-        }
-
-        const { id, basicInfo, fleetDetails, maintenance, leasing, documents, createdAt } = vehicle;
-        const vehicleId = id || nanoid();
+        const payload = await request.json();
+        // Support both { vehicle: { ... } } and { ... }
+        const vehicle = payload.vehicle || payload;
+        const vehicleId = vehicle.id || nanoid();
         const now = new Date().toISOString();
 
         if (isWeb) {
-            const { error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { error } = await client
                 .from('vehicles')
                 .upsert({
+                    ...vehicle,
                     id: vehicleId,
-                    basicInfo,
-                    fleetDetails,
-                    maintenance,
-                    leasing,
-                    documents,
-                    createdAt: createdAt || now,
-                    userId
+                    userId, // Force userId
+                    updatedAt: now
                 });
             if (error) throw error;
         } else {
             const stmt = sqliteDb.prepare(`
-                INSERT OR REPLACE INTO vehicles (id, basicInfo, fleetDetails, maintenance, leasing, documents, createdAt, updatedAt, userId)
+                INSERT OR REPLACE INTO vehicles 
+                (id, basicInfo, fleetDetails, maintenance, leasing, documents, createdAt, updatedAt, userId)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
-            const updatedAt = vehicle.updatedAt || now;
 
             stmt.run(
-                vehicleId,
-                JSON.stringify(basicInfo),
-                JSON.stringify(fleetDetails),
-                JSON.stringify(maintenance),
-                JSON.stringify(leasing),
-                JSON.stringify(documents),
-                createdAt || now,
-                updatedAt,
-                userId
+                vehicleId, JSON.stringify(vehicle.basicInfo), JSON.stringify(vehicle.fleetDetails),
+                JSON.stringify(vehicle.maintenance), JSON.stringify(vehicle.leasing),
+                JSON.stringify(vehicle.documents), vehicle.createdAt || now, now, userId
             );
 
             // Silent Sync
-            UnifiedDB.syncToCloud('vehicles', { ...vehicle, id: vehicleId, updatedAt }, userId);
+            UnifiedDB.syncToCloud('vehicles', { ...vehicle, id: vehicleId, userId, updatedAt: now }, userId);
         }
 
-        return NextResponse.json({ message: 'Vehicle saved successfully', id: vehicleId });
-    } catch (error) {
-        console.error('Failed to save vehicle:', error);
-        return NextResponse.json({ message: 'Failed to save vehicle' }, { status: 500 });
+        return NextResponse.json({ success: true, id: vehicleId });
+    } catch (e) {
+        console.error(e);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }
 
 export async function DELETE(request: Request) {
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const userId = searchParams.get('userId');
 
-    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    if (!id) {
+        return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    }
 
     try {
         if (isWeb) {
-            const { error } = await supabase.from('vehicles').delete().eq('id', id);
+            const client = supabaseAdmin || supabase;
+            const { error } = await client.from('vehicles').delete().eq('id', id).eq('userId', userId);
             if (error) throw error;
         } else {
-            sqliteDb.prepare('DELETE FROM vehicles WHERE id = ?').run(id);
-
-            if (userId) {
-                supabase.from('vehicles').delete().eq('id', id).then(({ error }) => {
-                    if (error) console.error('[BackgroundSync] Vehicle delete failed', error);
-                });
+            const existing = sqliteDb.prepare('SELECT userId FROM vehicles WHERE id = ?').get(id) as any;
+            if (existing && existing.userId !== userId) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
+
+            sqliteDb.prepare('DELETE FROM vehicles WHERE id = ? AND userId = ?').run(id, userId);
+
+            // Silent Sync
+            const client = supabaseAdmin || supabase;
+            client.from('vehicles').delete().eq('id', id).eq('userId', userId).then(({ error }) => {
+                if (error) console.error('[BackgroundSync] Vehicle delete failed', error);
+            });
         }
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error(error);
+    } catch (e) {
+        console.error(e);
         return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }

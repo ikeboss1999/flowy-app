@@ -130,16 +130,16 @@ export default function ReportsPage() {
             </div>
 
             {/* Year Summary */}
-            <div className="glass-card p-8 bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100">
-                <h3 className="text-lg font-black text-indigo-900 mb-6 flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
+            <div className="glass-card p-8 bg-white border-slate-200 shadow-sm">
+                <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-slate-400" />
                     Jahresübersicht {selectedYear}
                 </h3>
                 <div className="grid grid-cols-5 gap-6">
                     {[
                         { label: "Netto", value: yearTotal.subtotal, color: "text-slate-600" },
-                        { label: "Steuer", value: yearTotal.taxAmount, color: "text-amber-600" },
-                        { label: "Brutto", value: yearTotal.totalAmount, color: "text-indigo-600" },
+                        { label: "Steuer", value: yearTotal.taxAmount, color: "text-slate-600" },
+                        { label: "Brutto", value: yearTotal.totalAmount, color: "text-slate-900" },
                         { label: "Bezahlt", value: yearTotal.paidAmount, color: "text-emerald-600" },
                         { label: "Abweichung", value: yearTotal.deviation, color: yearTotal.deviation >= 0 ? "text-emerald-600" : "text-rose-600" },
                     ].map((stat) => (
@@ -161,15 +161,15 @@ export default function ReportsPage() {
                     const hasInvoices = quarterData.invoices.length > 0;
 
                     return (
-                        <div key={quarterId} className="glass-card overflow-hidden">
+                        <div key={quarterId} className="glass-card overflow-hidden border border-slate-200 shadow-sm">
                             {/* Quarter Header */}
                             <button
                                 onClick={() => toggleQuarter(quarterId)}
-                                className="w-full px-8 py-6 flex justify-between items-center bg-slate-50 hover:bg-slate-100 transition-colors"
+                                className="w-full px-8 py-6 flex justify-between items-center bg-white hover:bg-slate-50 transition-colors"
                             >
                                 <div className="flex items-center gap-4">
-                                    <div className="h-12 w-12 rounded-xl bg-indigo-100 flex items-center justify-center">
-                                        <FileText className="h-6 w-6 text-indigo-600" />
+                                    <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center">
+                                        <FileText className="h-6 w-6 text-slate-500" />
                                     </div>
                                     <div className="text-left">
                                         <h3 className="text-xl font-black text-slate-900">
@@ -184,19 +184,19 @@ export default function ReportsPage() {
                                     <div className="grid grid-cols-5 gap-10 text-base">
                                         <div className="text-right min-w-[120px]">
                                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1.5 ">Netto</p>
-                                            <p className="text-xl font-black text-slate-900 tabular-nums">
+                                            <p className="text-xl font-black text-slate-600 tabular-nums">
                                                 € {quarterData.subtotal.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                                             </p>
                                         </div>
                                         <div className="text-right min-w-[120px]">
                                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1.5">Steuer</p>
-                                            <p className="text-xl font-black text-amber-600 tabular-nums">
+                                            <p className="text-xl font-black text-slate-600 tabular-nums">
                                                 € {quarterData.taxAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                                             </p>
                                         </div>
                                         <div className="text-right min-w-[120px]">
                                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1.5">Brutto</p>
-                                            <p className="text-xl font-black text-indigo-600 tabular-nums">
+                                            <p className="text-xl font-black text-slate-900 tabular-nums">
                                                 € {quarterData.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                                             </p>
                                         </div>
@@ -221,7 +221,7 @@ export default function ReportsPage() {
                             {isExpanded && hasInvoices && (
                                 <div className="border-t border-slate-100">
                                     <table className="w-full">
-                                        <thead className="bg-slate-50 border-b border-slate-100">
+                                        <thead className="bg-slate-50/50 border-b border-slate-100">
                                             <tr>
                                                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Rechnung</th>
                                                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Kunde</th>
@@ -239,19 +239,19 @@ export default function ReportsPage() {
                                                 const hasDeviation = Math.abs(deviation) > 0.01;
 
                                                 return (
-                                                    <tr key={invoice.id} className="hover:bg-slate-50/50 transition-colors">
+                                                    <tr key={invoice.id} className="hover:bg-slate-50 transition-colors">
                                                         <td className="px-6 py-4">
                                                             <p className="font-bold text-slate-900">#{invoice.invoiceNumber}</p>
                                                             <p className="text-xs text-slate-400">{new Date(invoice.issueDate).toLocaleDateString('de-DE')}</p>
                                                         </td>
                                                         <td className="px-6 py-4 text-sm font-medium text-slate-700">{invoice.customerName}</td>
-                                                        <td className="px-6 py-4 text-right font-bold text-slate-900">
+                                                        <td className="px-6 py-4 text-right font-bold text-slate-600">
                                                             € {invoice.subtotal.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                                                         </td>
-                                                        <td className="px-6 py-4 text-right font-bold text-amber-600">
+                                                        <td className="px-6 py-4 text-right font-bold text-slate-600">
                                                             € {invoice.taxAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                                                         </td>
-                                                        <td className="px-6 py-4 text-right font-bold text-indigo-600">
+                                                        <td className="px-6 py-4 text-right font-bold text-slate-900">
                                                             € {invoice.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                                                         </td>
                                                         <td className="px-6 py-4 text-right font-bold text-emerald-600">
@@ -277,7 +277,7 @@ export default function ReportsPage() {
                                                         <td className="px-6 py-4 text-center">
                                                             <button
                                                                 onClick={() => setDeviationModalInvoice(invoice)}
-                                                                className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-all"
+                                                                className="inline-flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition-all shadow-sm"
                                                             >
                                                                 <Edit2 className="h-3 w-3" />
                                                                 Zahlung
@@ -292,8 +292,8 @@ export default function ReportsPage() {
                             )}
 
                             {isExpanded && !hasInvoices && (
-                                <div className="p-12 text-center text-slate-400">
-                                    <FileText className="h-12 w-12 mx-auto mb-3 text-slate-200" />
+                                <div className="p-12 text-center text-slate-400 bg-slate-50/50">
+                                    <FileText className="h-12 w-12 mx-auto mb-3 text-slate-300" />
                                     <p className="font-medium">Keine Rechnungen in diesem Quartal</p>
                                 </div>
                             )}

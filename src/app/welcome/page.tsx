@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDevice } from '@/hooks/useDevice';
+import { PartnerLogos } from '@/components/PartnerLogos';
 
 export default function WelcomePage() {
     const { isIPad, isMobile } = useDevice();
@@ -212,6 +213,8 @@ export default function WelcomePage() {
                             <span className="text-xl font-bold">Professional Tools</span>
                         </div>
                     </div>
+
+                    <PartnerLogos />
                 </div>
             </section>
 

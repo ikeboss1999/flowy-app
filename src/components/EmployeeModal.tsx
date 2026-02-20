@@ -392,12 +392,12 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
 
-            <div className="relative bg-white w-full max-w-6xl rounded-[32px] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="relative bg-white w-full max-w-4xl xl:max-w-6xl rounded-[32px] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white">
+                <div className="px-6 xl:px-8 py-4 xl:py-6 border-b border-slate-100 flex justify-between items-center bg-white">
                     <div className="flex items-center gap-5">
                         {formData.avatar ? (
                             <div className="h-16 w-16 rounded-2xl overflow-hidden shadow-md ring-4 ring-indigo-50 border-2 border-white">
@@ -454,7 +454,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
 
                     {/* Right side: Form + Footer */}
                     <div className="flex-1 flex flex-col overflow-hidden bg-white">
-                        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 md:p-10">
+                        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 xl:p-10">
                             {activeTab === "personal" && (
                                 <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-10">
                                     {/* Group: Basisinformationen */}
@@ -510,8 +510,13 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 <input
                                                     className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium shadow-sm"
                                                     value={formData.personalData.phone}
-                                                    onChange={e => setFormData({ ...formData, personalData: { ...formData.personalData, phone: e.target.value } })}
-                                                    placeholder="+43 664 1234567"
+                                                    onChange={e => {
+                                                        const value = e.target.value.replace(/[^0-9]/g, '');
+                                                        setFormData({ ...formData, personalData: { ...formData.personalData, phone: value } });
+                                                    }}
+                                                    placeholder="06641234567"
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
                                                 />
                                             </div>
                                         </div>
@@ -607,8 +612,13 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                     <input
                                                         className="col-span-1 px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium shadow-sm"
                                                         value={formData.personalData.zip}
-                                                        onChange={e => setFormData({ ...formData, personalData: { ...formData.personalData, zip: e.target.value } })}
+                                                        onChange={e => {
+                                                            const value = e.target.value.replace(/[^0-9]/g, '');
+                                                            setFormData({ ...formData, personalData: { ...formData.personalData, zip: value } });
+                                                        }}
                                                         placeholder="PLZ"
+                                                        inputMode="numeric"
+                                                        pattern="[0-9]*"
                                                     />
                                                     <input
                                                         className="col-span-3 px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium shadow-sm"
@@ -623,8 +633,13 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 <input
                                                     className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium shadow-sm"
                                                     value={formData.personalData.socialSecurityNumber}
-                                                    onChange={e => setFormData({ ...formData, personalData: { ...formData.personalData, socialSecurityNumber: e.target.value } })}
-                                                    placeholder="z.B. 1234 010185"
+                                                    onChange={e => {
+                                                        const value = e.target.value.replace(/[^0-9]/g, '');
+                                                        setFormData({ ...formData, personalData: { ...formData.personalData, socialSecurityNumber: value } });
+                                                    }}
+                                                    placeholder="1234010185"
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
                                                 />
                                             </div>
                                             <div className="space-y-2">
@@ -1209,13 +1224,15 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                         <div className="md:col-span-2 space-y-3">
                                             <div className="flex justify-between items-center px-1">
                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Verfügernummer (Login-ID)</label>
-                                                <button
-                                                    type="button"
-                                                    onClick={generateStaffId}
-                                                    className="text-indigo-600 font-bold text-xs hover:text-indigo-700 transition-colors"
-                                                >
-                                                    Neu generieren
-                                                </button>
+                                                {!initialEmployee && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={generateStaffId}
+                                                        className="text-indigo-600 font-bold text-xs hover:text-indigo-700 transition-colors"
+                                                    >
+                                                        Neu generieren
+                                                    </button>
+                                                )}
                                             </div>
                                             <div className="p-8 bg-slate-50 border border-slate-100 rounded-[2.5rem] flex items-center justify-center">
                                                 <span className="text-4xl font-black text-slate-800 tracking-[0.2em]">

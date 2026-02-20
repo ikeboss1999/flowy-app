@@ -26,10 +26,13 @@ export const TimeTrackingPrintHandler: React.FC<TimeTrackingPrintHandlerProps> =
         // 2. Add base print styles to the iframe
         const styleElement = doc.createElement('style');
         styleElement.textContent = `
-      body {
-        margin: 0;
-        padding: 0;
-        background: white;
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        height: auto !important;
+        min-height: 0 !important;
+        display: block !important;
       }
       @page {
         size: A4 portrait;
@@ -38,7 +41,8 @@ export const TimeTrackingPrintHandler: React.FC<TimeTrackingPrintHandlerProps> =
       /* Ensure full visibility for the content */
       #print-root {
         width: 100%;
-        height: 100%;
+        margin: 0 !important;
+        padding: 0 !important;
       }
     `;
         doc.head.appendChild(styleElement);

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import sqliteDb from '@/lib/sqlite';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { isWeb } from '@/lib/database';
 import { Employee } from '@/types/employee';
 
@@ -20,7 +21,9 @@ export async function POST(request: Request) {
             // In web mode, we search Supabase. 
             // Note: We need a way to filter by the current company if multiple companies exist,
             // but for now we search globally across employees.
-            const { data, error } = await supabase
+            // SECURITY: Use supabaseAdmin to bypass RLS policies and find the employee
+            const client = supabaseAdmin || supabase;
+            const { data, error } = await client
                 .from('employees')
                 .select('*')
                 .filter('appAccess->staffId', 'eq', staffId)
@@ -83,10 +86,31 @@ export async function POST(request: Request) {
             }
         };
 
-        return NextResponse.json({
+        // Create a legacy session token for the employee
+        // This allows them to pass through the middleware and API BOLA checks
+        // We use the BOSS's userId so they see the boss's data
+        const { createSessionToken } = await import('@/lib/auth');
+        const sessionToken = await createSessionToken({
+            userId: employee.userId!,
+            email: employee.personalData.email || 'employee@flowy.local',
+            role: 'employee'
+        });
+
+        const response = NextResponse.json({
             success: true,
             employee: responseEmployee
         });
+
+        // Set the session cookie
+        response.cookies.set('session_token', sessionToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+            path: '/'
+        });
+
+        return response;
 
     } catch (error) {
         console.error('Employee Login Error:', error);

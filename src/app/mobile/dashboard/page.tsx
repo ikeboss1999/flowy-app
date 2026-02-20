@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { useAuth } from "@/context/AuthContext"
 import {
     Clock,
@@ -18,6 +19,11 @@ import { cn } from "@/lib/utils"
 export default function MobileDashboard() {
     const { currentEmployee } = useAuth()
     const [showDetails, setShowDetails] = useState(false)
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     // Lock body scroll when modal is open
     useEffect(() => {
@@ -144,10 +150,14 @@ export default function MobileDashboard() {
             </div>
 
             {/* Contract Details Modal */}
-            {showDetails && (
-                <div className="fixed inset-0 z-[100] flex items-end justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+            {showDetails && mounted && createPortal(
+                <div className="fixed inset-0 z-[150] flex items-end justify-center p-0 sm:p-4">
                     <div
-                        className="w-full max-w-lg bg-white rounded-t-[3rem] shadow-2xl animate-in slide-in-from-bottom-full duration-500 overflow-hidden flex flex-col max-h-[90vh] relative"
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300"
+                        onClick={() => setShowDetails(false)}
+                    />
+                    <div
+                        className="w-full max-w-lg bg-white rounded-t-[3rem] sm:rounded-[3rem] shadow-2xl animate-in slide-in-from-bottom-full duration-500 overflow-hidden flex flex-col max-h-[90vh] relative z-10"
                     >
                         {/* Drag Handle for mobile feel */}
                         <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-slate-200 rounded-full" />
@@ -218,7 +228,7 @@ export default function MobileDashboard() {
                             <div className="h-4" />
                         </div>
 
-                        <div className="p-8 pt-4 bg-white border-t border-slate-50 shrink-0">
+                        <div className="p-8 pt-4 pb-[calc(2rem+env(safe-area-inset-bottom))] bg-white border-t border-slate-50 shrink-0">
                             <button
                                 onClick={() => setShowDetails(false)}
                                 className="w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black tracking-widest uppercase text-sm hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-200"
@@ -227,7 +237,8 @@ export default function MobileDashboard() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     )

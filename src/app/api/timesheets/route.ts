@@ -1,18 +1,25 @@
 import { NextResponse } from 'next/server';
 import sqliteDb from '@/lib/sqlite';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { UnifiedDB, isWeb } from '@/lib/database';
+import { nanoid } from 'nanoid';
+import { getUserSession } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    if (!userId) return NextResponse.json({ message: 'Missing userId' }, { status: 400 });
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     try {
         if (isWeb) {
-            const { data: timesheets, error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { data: timesheets, error } = await client
                 .from('timesheets')
                 .select('*')
                 .eq('userId', userId);
@@ -22,27 +29,36 @@ export async function GET(request: Request) {
             const rows = sqliteDb.prepare('SELECT * FROM timesheets WHERE userId = ?').all(userId);
             return NextResponse.json(rows);
         }
-    } catch (error) {
-        console.error(error);
-        return NextResponse.json({ message: 'Error' }, { status: 500 });
+    } catch (e) {
+        console.error(e);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }
 
 export async function POST(request: Request) {
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
-        const { userId, timesheet } = await request.json();
-        const { id, employeeId, month, status, finalizedAt } = timesheet;
+        const payload = await request.json();
+        // Support both { timesheet: { ... } } and { ... }
+        const timesheet = payload.timesheet || payload;
+        const timesheetId = timesheet.id || nanoid();
+        const now = new Date().toISOString();
 
         if (isWeb) {
-            const { error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { error } = await client
                 .from('timesheets')
                 .upsert({
-                    id,
-                    employeeId,
-                    month,
-                    status,
-                    finalizedAt,
-                    userId
+                    ...timesheet,
+                    id: timesheetId,
+                    userId, // Force userId
+                    finalizedAt: timesheet.finalizedAt || now
                 });
             if (error) throw error;
         } else {
@@ -50,42 +66,60 @@ export async function POST(request: Request) {
                 INSERT OR REPLACE INTO timesheets (id, employeeId, month, status, finalizedAt, userId)
                 VALUES (?, ?, ?, ?, ?, ?)
             `);
-            stmt.run(id, employeeId, month, status, finalizedAt, userId);
+
+            stmt.run(
+                timesheetId, timesheet.employeeId, timesheet.month, timesheet.status,
+                timesheet.finalizedAt || now, userId
+            );
 
             // Silent Sync
-            UnifiedDB.syncToCloud('timesheets', timesheet, userId);
+            UnifiedDB.syncToCloud('timesheets', { ...timesheet, id: timesheetId, userId }, userId);
         }
 
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error(error);
-        return NextResponse.json({ message: 'Error' }, { status: 500 });
+        return NextResponse.json({ success: true, id: timesheetId });
+    } catch (e) {
+        console.error(e);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }
 
 export async function DELETE(request: Request) {
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const userId = searchParams.get('userId');
 
-    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    if (!id) {
+        return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    }
 
     try {
         if (isWeb) {
-            const { error } = await supabase.from('timesheets').delete().eq('id', id);
+            const client = supabaseAdmin || supabase;
+            const { error } = await client.from('timesheets').delete().eq('id', id).eq('userId', userId);
             if (error) throw error;
         } else {
-            sqliteDb.prepare('DELETE FROM timesheets WHERE id = ?').run(id);
-
-            if (userId) {
-                supabase.from('timesheets').delete().eq('id', id).then(({ error }) => {
-                    if (error) console.error('[BackgroundSync] Timesheet delete failed', error);
-                });
+            const existing = sqliteDb.prepare('SELECT userId FROM timesheets WHERE id = ?').get(id) as any;
+            if (existing && existing.userId !== userId) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
+
+            sqliteDb.prepare('DELETE FROM timesheets WHERE id = ? AND userId = ?').run(id, userId);
+
+            // Silent Sync
+            const client = supabaseAdmin || supabase;
+            client.from('timesheets').delete().eq('id', id).eq('userId', userId).then(({ error }) => {
+                if (error) console.error('[BackgroundSync] Timesheet delete failed', error);
+            });
         }
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error(error);
+    } catch (e) {
+        console.error(e);
         return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }

@@ -18,10 +18,11 @@ import {
 import { cn } from "@/lib/utils"
 import { TimeEntry } from "@/types/time-tracking"
 import { MobileTimeEntryModal } from "@/components/mobile/MobileTimeEntryModal"
+import { toLocalISOString, toLocalMonthString } from "@/lib/date-utils"
 
 export default function MobileTimeTracking() {
     const { currentEmployee } = useAuth()
-    const { entries, addEntry, updateEntry, deleteEntry, isLoading: entriesLoading } = useTimeEntries()
+    const { entries, addEntry, updateEntry, deleteEntry, isLoading: entriesLoading, timesheets } = useTimeEntries()
     const { projects, isLoading: projectsLoading } = useProjects()
     const { showToast } = useNotification()
 
@@ -31,6 +32,12 @@ export default function MobileTimeTracking() {
         return new Date(now.getFullYear(), now.getMonth(), 1);
     });
 
+    const isFinalized = useMemo(() => {
+        if (!currentEmployee) return false;
+        const monthISO = toLocalMonthString(currentMonth);
+        return timesheets.some(t => t.employeeId === currentEmployee.id && t.month === monthISO && t.status === 'finalized');
+    }, [timesheets, currentEmployee, currentMonth]);
+
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<string>("");
@@ -38,8 +45,8 @@ export default function MobileTimeTracking() {
 
     if (!currentEmployee) return null
 
-    const permissions = currentEmployee.appAccess?.permissions
-    if (permissions?.timeTracking === false) {
+    const permissions = currentEmployee.appAccess?.permissions || { timeTracking: true }; // Default to true if undefined for safety
+    if (permissions.timeTracking === false) {
         return (
             <div className="p-6 flex flex-col items-center justify-center h-[70vh] text-center gap-6">
                 <div className="h-20 w-20 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
@@ -69,7 +76,7 @@ export default function MobileTimeTracking() {
         return Array.from({ length: numDays }, (_, i) => {
             const date = new Date(year, month, i + 1);
             return {
-                date: date.toISOString().split('T')[0], // YYYY-MM-DD
+                date: toLocalISOString(date), // YYYY-MM-DD
                 dayName: date.toLocaleDateString('de-DE', { weekday: 'short' }),
                 dayNum: date.getDate()
             };
@@ -89,12 +96,20 @@ export default function MobileTimeTracking() {
     }, [entries, currentEmployee.id]);
 
     const handleAddClick = (date: string) => {
+        if (isFinalized) {
+            showToast("Dieser Monat ist abgeschlossen.", "info");
+            return;
+        }
         setSelectedDate(date);
         setEditingEntry(undefined);
         setIsModalOpen(true);
     };
 
     const handleEditClick = (entry: TimeEntry) => {
+        if (isFinalized) {
+            showToast("Dieser Monat ist abgeschlossen.", "info");
+            return;
+        }
         setSelectedDate(entry.date);
         setEditingEntry(entry);
         setIsModalOpen(true);
@@ -147,25 +162,34 @@ export default function MobileTimeTracking() {
                     </div>
                 </div>
 
-                <div className="bg-slate-900 rounded-[2.5rem] p-4 flex items-center justify-between text-white shadow-2xl shadow-indigo-900/20">
-                    <button
-                        onClick={() => changeMonth(-1)}
-                        className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all"
-                    >
-                        <ChevronLeft className="h-6 w-6" />
-                    </button>
+                <div className="bg-slate-900 rounded-[2.5rem] p-4 flex flex-col gap-4 text-white shadow-2xl shadow-indigo-900/20">
+                    <div className="flex items-center justify-between w-full">
+                        <button
+                            onClick={() => changeMonth(-1)}
+                            className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all"
+                        >
+                            <ChevronLeft className="h-6 w-6" />
+                        </button>
 
-                    <div className="flex flex-col items-center">
-                        <span className="text-xs font-black uppercase tracking-[0.2em] text-indigo-400">Übersicht</span>
-                        <span className="text-lg font-black tracking-tight">{monthLabel}</span>
+                        <div className="flex flex-col items-center">
+                            <span className="text-xs font-black uppercase tracking-[0.2em] text-indigo-400">Übersicht</span>
+                            <span className="text-lg font-black tracking-tight">{monthLabel}</span>
+                        </div>
+
+                        <button
+                            onClick={() => changeMonth(1)}
+                            className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all"
+                        >
+                            <ChevronRight className="h-6 w-6" />
+                        </button>
                     </div>
 
-                    <button
-                        onClick={() => changeMonth(1)}
-                        className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all"
-                    >
-                        <ChevronRight className="h-6 w-6" />
-                    </button>
+                    {isFinalized && (
+                        <div className="flex items-center justify-center gap-2 py-2 bg-white/10 rounded-xl">
+                            <AlertCircle className="h-4 w-4 text-amber-400" />
+                            <span className="text-xs font-bold text-amber-100 uppercase tracking-widest">Monat abgeschlossen</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -178,13 +202,14 @@ export default function MobileTimeTracking() {
                         const dayEntries = entriesByDate[day.date] || [];
                         const totalMins = dayEntries.reduce((acc, e) => acc + (e.duration || 0), 0);
                         const hasEntries = dayEntries.length > 0;
-                        const isToday = day.date === new Date().toISOString().split('T')[0];
+                        const isToday = day.date === toLocalISOString(new Date());
 
                         return (
                             <div key={day.date} className="relative group">
                                 <div className={cn(
                                     "bg-white rounded-3xl border transition-all duration-300 overflow-hidden",
-                                    isToday ? "border-indigo-100 shadow-xl shadow-indigo-500/5 ring-1 ring-indigo-500/10" : "border-slate-100 shadow-sm"
+                                    isToday ? "border-indigo-100 shadow-xl shadow-indigo-500/5 ring-1 ring-indigo-500/10" : "border-slate-100 shadow-sm",
+                                    isFinalized && "opacity-80 grayscale-[0.3]"
                                 )}>
                                     <div className="p-5 flex items-center justify-between">
                                         <div className="flex items-center gap-5">
@@ -206,7 +231,10 @@ export default function MobileTimeTracking() {
                                                             <button
                                                                 key={e.id}
                                                                 onClick={() => handleEditClick(e)}
-                                                                className="block text-left group/entry"
+                                                                className={cn(
+                                                                    "block text-left group/entry",
+                                                                    isFinalized && "cursor-default"
+                                                                )}
                                                             >
                                                                 <p className="text-sm font-black text-slate-800 group-hover/entry:text-indigo-600 transition-colors">
                                                                     {e.startTime} - {e.endTime}
@@ -236,9 +264,15 @@ export default function MobileTimeTracking() {
                                             )}
                                             <button
                                                 onClick={() => handleAddClick(day.date)}
-                                                className="h-9 w-9 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 active:scale-90 transition-all"
+                                                disabled={isFinalized}
+                                                className={cn(
+                                                    "h-9 w-9 rounded-xl flex items-center justify-center transition-all",
+                                                    isFinalized
+                                                        ? "bg-slate-50 text-slate-300 cursor-not-allowed"
+                                                        : "bg-slate-50 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 active:scale-90"
+                                                )}
                                             >
-                                                <Plus className="h-5 w-5" />
+                                                {isFinalized ? <Clock className="h-4 w-4" /> : <Plus className="h-5 w-5" />}
                                             </button>
                                         </div>
                                     </div>

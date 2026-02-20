@@ -126,8 +126,8 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-2xl xl:max-w-4xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
                     <div>
@@ -268,8 +268,13 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                                     required
                                     name="phone"
                                     value={formData.phone}
-                                    onChange={handleChange}
-                                    placeholder="+43 664 1234567"
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/[^0-9]/g, '');
+                                        setFormData(prev => ({ ...prev, phone: value }));
+                                    }}
+                                    placeholder="06641234567"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
                                     className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
                                 />
                             </div>
@@ -296,8 +301,13 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                                 required
                                 name="zip"
                                 value={formData.zip}
-                                onChange={handleChange}
+                                onChange={(e) => {
+                                    const value = e.target.value.replace(/[^0-9]/g, '');
+                                    setFormData(prev => ({ ...prev, zip: value }));
+                                }}
                                 placeholder="PLZ"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 className="px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
                             />
                             <input

@@ -1,19 +1,25 @@
 import { NextResponse } from 'next/server';
 import sqliteDb from '@/lib/sqlite';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { UnifiedDB, isWeb } from '@/lib/database';
 import { nanoid } from 'nanoid';
+import { getUserSession } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    if (!userId) return NextResponse.json({ message: 'Missing userId' }, { status: 400 });
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     try {
         if (isWeb) {
-            const { data: services, error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { data: services, error } = await client
                 .from('services')
                 .select('*')
                 .eq('userId', userId);
@@ -21,38 +27,37 @@ export async function GET(request: Request) {
             return NextResponse.json(services);
         } else {
             const rows = sqliteDb.prepare('SELECT * FROM services WHERE userId = ?').all(userId);
-            return NextResponse.json(rows.map((row: any) => ({
-                ...row,
-                title: row.name // Map DB name back to Frontend title
-            })));
+            return NextResponse.json(rows);
         }
-    } catch (error) {
-        console.error(error);
-        return NextResponse.json({ message: 'Error' }, { status: 500 });
+    } catch (e) {
+        console.error(e);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }
 
 export async function POST(request: Request) {
-    try {
-        const { userId, service } = await request.json();
-        const { id, title, description, category, price, unit } = service;
+    const session = await getUserSession();
+    const userId = session?.userId;
 
-        const serviceId = id || nanoid();
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+        const payload = await request.json();
+        // Support both { service: { ... } } and { ... }
+        const service = payload.service || payload;
+        const serviceId = service.id || nanoid();
         const now = new Date().toISOString();
 
         if (isWeb) {
-            const { error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { error } = await client
                 .from('services')
                 .upsert({
+                    ...service,
                     id: serviceId,
-                    name: title,
-                    title: title,
-                    description,
-                    category,
-                    price,
-                    unit,
-                    userId,
-                    createdAt: service.createdAt || now,
+                    userId, // Force userId
                     updatedAt: now
                 });
             if (error) throw error;
@@ -63,45 +68,62 @@ export async function POST(request: Request) {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
+            const serviceName = service.name || service.title;
+
             stmt.run(
-                serviceId, title, title, description, category, price, unit,
-                userId, service.createdAt || now, now
+                serviceId, serviceName, service.title, service.description,
+                service.category, service.price, service.unit, userId,
+                service.createdAt || now, now
             );
 
             // Silent Sync
-            UnifiedDB.syncToCloud('services', { ...service, id: serviceId, name: title }, userId);
+            UnifiedDB.syncToCloud('services', { ...service, name: serviceName, id: serviceId, userId, updatedAt: now }, userId);
         }
 
         return NextResponse.json({ success: true, id: serviceId });
-    } catch (error) {
-        console.error(error);
-        return NextResponse.json({ message: 'Error' }, { status: 500 });
+    } catch (e) {
+        console.error(e);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }
 
 export async function DELETE(request: Request) {
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const userId = searchParams.get('userId');
 
-    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    if (!id) {
+        return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    }
 
     try {
         if (isWeb) {
-            const { error } = await supabase.from('services').delete().eq('id', id);
+            const client = supabaseAdmin || supabase;
+            const { error } = await client.from('services').delete().eq('id', id).eq('userId', userId);
             if (error) throw error;
         } else {
-            sqliteDb.prepare('DELETE FROM services WHERE id = ?').run(id);
-
-            if (userId) {
-                supabase.from('services').delete().eq('id', id).then(({ error }) => {
-                    if (error) console.error('[BackgroundSync] Service delete failed', error);
-                });
+            const existing = sqliteDb.prepare('SELECT userId FROM services WHERE id = ?').get(id) as any;
+            if (existing && existing.userId !== userId) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
+
+            sqliteDb.prepare('DELETE FROM services WHERE id = ? AND userId = ?').run(id, userId);
+
+            // Silent Sync
+            const client = supabaseAdmin || supabase;
+            client.from('services').delete().eq('id', id).eq('userId', userId).then(({ error }) => {
+                if (error) console.error('[BackgroundSync] Service delete failed', error);
+            });
         }
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error(error);
+    } catch (e) {
+        console.error(e);
         return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }

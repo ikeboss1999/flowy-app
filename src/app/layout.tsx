@@ -9,6 +9,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { CloudSyncModal } from "@/components/CloudSyncModal";
 import { AutoRestore } from "@/components/AutoRestore";
 import { InputAutoSelect } from "@/components/InputAutoSelect";
+import { DisableZoom } from "@/components/DisableZoom";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -20,6 +21,19 @@ export const metadata: Metadata = {
     icon: "/logo.png",
     shortcut: "/logo.png",
     apple: "/logo.png",
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: 'cover',
+  },
+  themeColor: '#f8fafc',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: "FlowY",
   },
 };
 
@@ -45,6 +59,7 @@ export default function RootLayout({
                 <CloudSyncModal />
                 <InputAutoSelect />
                 <SyncNotice />
+                <DisableZoom />
               </AuthGuard>
             </SyncProvider>
           </NotificationProvider>

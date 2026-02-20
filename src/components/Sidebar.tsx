@@ -19,7 +19,8 @@ import {
     Car,
     ChevronDown,
     AlertTriangle,
-    Shield
+    Shield,
+    Megaphone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
@@ -92,6 +93,7 @@ const menuGroups: MenuGroup[] = [
         title: "System",
         items: [
             { icon: Shield, label: "Admin Bereich", href: "/admin", adminOnly: true },
+            { icon: Megaphone, label: "Werbung", href: "/admin/partners", adminOnly: true },
             { icon: Settings, label: "Einstellungen", href: "/settings" },
         ]
     }
@@ -99,7 +101,7 @@ const menuGroups: MenuGroup[] = [
 
 export function Sidebar() {
     const path = usePathname();
-    const { signOut } = useAuth();
+    const { signOut, currentEmployee, logoutEmployee } = useAuth();
     const { status, triggerSync } = useSync();
     const { isIPad, isTouchDevice } = useDevice();
     const [isOpen, setIsOpen] = useState(false);
@@ -121,7 +123,12 @@ export function Sidebar() {
         } catch (e) {
             console.error("Logout sync failed:", e);
         }
-        await signOut();
+
+        if (currentEmployee) {
+            await logoutEmployee();
+        } else {
+            await signOut();
+        }
     };
     const { data: companySettings } = useCompanySettings();
     const [expandedItems, setExpandedItems] = useState<string[]>(["Rechnungen"]);
@@ -223,7 +230,7 @@ export function Sidebar() {
             )}
 
             <aside className={cn(
-                "fixed left-0 top-0 h-screen w-64 xl:w-80 bg-sidebar text-sidebar-foreground border-r border-white/5 flex flex-col p-4 xl:p-6 overflow-y-auto custom-scrollbar transition-transform duration-300 z-[90]",
+                "fixed left-0 top-0 h-screen w-[var(--sidebar-width)] bg-sidebar text-sidebar-foreground border-r border-white/5 flex flex-col p-4 xl:p-6 overflow-y-auto custom-scrollbar transition-transform duration-300 z-[90]",
                 isDrawerMode ? (isOpen ? "translate-x-0 overflow-y-auto" : "-translate-x-full") : "translate-x-0"
             )}>
                 <div className="flex flex-col items-center justify-center gap-3 xl:gap-4 px-3 py-6 xl:py-8 mb-6 xl:mb-8 text-center">

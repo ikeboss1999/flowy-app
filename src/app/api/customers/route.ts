@@ -1,41 +1,37 @@
 import { NextResponse } from 'next/server';
 import sqliteDb from '@/lib/sqlite';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { UnifiedDB, isWeb } from '@/lib/database';
-import { Customer } from '@/types/customer';
+import { nanoid } from 'nanoid';
+import { getUserSession } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const session = await getUserSession();
+    const userId = session?.userId;
 
     if (!userId) {
-        return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
         if (isWeb) {
-            // Direct Cloud Read
-            const { data: customers, error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { data: customers, error } = await client
                 .from('customers')
                 .select('*')
                 .eq('userId', userId);
-
             if (error) throw error;
             return NextResponse.json(customers);
         } else {
-            // Fast Local Read
-            const stmt = sqliteDb.prepare('SELECT * FROM customers WHERE userId = ?');
-            const rows = stmt.all(userId);
-
-            const customers = rows.map((row: any) => ({
-                ...row,
-                address: JSON.parse(row.address),
-                reverseChargeEnabled: row.reverseChargeEnabled === 1
+            const rows = sqliteDb.prepare('SELECT * FROM customers WHERE userId = ?').all(userId);
+            const data = rows.map((r: any) => ({
+                ...r,
+                address: JSON.parse(r.address)
             }));
-
-            return NextResponse.json(customers);
+            return NextResponse.json(data);
         }
     } catch (e) {
         console.error(e);
@@ -44,21 +40,32 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
-        const customer: Customer = await request.json();
-        const userId = customer.userId;
+        const payload = await request.json();
+        // Support both { customer: { ... } } and { ... }
+        const customer = payload.customer || payload;
+        const customerId = customer.id || nanoid();
+        const now = new Date().toISOString();
 
         if (isWeb) {
-            // Direct Cloud Write
-            const { error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { error } = await client
                 .from('customers')
                 .upsert({
                     ...customer,
-                    address: customer.address // Supabase handles JSONB objects
+                    id: customerId,
+                    userId, // Force userId from session
+                    updatedAt: now
                 });
             if (error) throw error;
         } else {
-            // Fast Local Write
             const stmt = sqliteDb.prepare(`
                 INSERT OR REPLACE INTO customers 
                 (id, name, email, phone, address, type, status, salutation, taxId, commercialRegisterNumber, reverseChargeEnabled, defaultPaymentTermId, notes, lastActivity, createdAt, updatedAt, userId)
@@ -66,30 +73,17 @@ export async function POST(request: Request) {
             `);
 
             stmt.run(
-                customer.id,
-                customer.name,
-                customer.email,
-                customer.phone,
-                JSON.stringify(customer.address),
-                customer.type,
-                customer.status,
-                customer.salutation,
-                customer.taxId,
-                customer.commercialRegisterNumber,
-                customer.reverseChargeEnabled ? 1 : 0,
-                customer.defaultPaymentTermId,
-                customer.notes,
-                customer.lastActivity,
-                customer.createdAt,
-                customer.updatedAt,
-                customer.userId
+                customerId, customer.name, customer.email, customer.phone, JSON.stringify(customer.address),
+                customer.type, customer.status, customer.salutation, customer.taxId, customer.commercialRegisterNumber,
+                customer.reverseChargeEnabled ? 1 : 0, customer.defaultPaymentTermId, customer.notes,
+                customer.lastActivity, customer.createdAt || now, now, userId
             );
 
-            // Stiller Hintergrund-Sync
-            UnifiedDB.syncToCloud('customers', customer, userId);
+            // Silent Sync
+            UnifiedDB.syncToCloud('customers', { ...customer, id: customerId, userId, updatedAt: now }, userId);
         }
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true, id: customerId });
     } catch (e) {
         console.error(e);
         return NextResponse.json({ error: 'Failed to save customer' }, { status: 500 });
@@ -97,9 +91,15 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+    const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const userId = searchParams.get('userId'); // Added for cloud delete
 
     if (!id) {
         return NextResponse.json({ error: 'ID required' }, { status: 400 });
@@ -107,22 +107,24 @@ export async function DELETE(request: Request) {
 
     try {
         if (isWeb) {
-            const { error } = await supabase
-                .from('customers')
-                .delete()
-                .eq('id', id as string);
+            // Ensure ownership
+            const client = supabaseAdmin || supabase;
+            const { error } = await client.from('customers').delete().eq('id', id).eq('userId', userId);
             if (error) throw error;
         } else {
-            const stmt = sqliteDb.prepare('DELETE FROM customers WHERE id = ?');
-            stmt.run(id);
-
-            // Silent cloud sync for delete
-            if (userId) {
-                // Execute and catch error
-                supabase.from('customers').delete().eq('id', id as string).then(({ error }) => {
-                    if (error) console.error('[BackgroundSync] Delete failed', error);
-                });
+            // Check ownership for local delete
+            const existing = sqliteDb.prepare('SELECT userId FROM customers WHERE id = ?').get(id) as any;
+            if (existing && existing.userId !== userId) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
+
+            sqliteDb.prepare('DELETE FROM customers WHERE id = ? AND userId = ?').run(id, userId);
+
+            // Silent Sync
+            const client = supabaseAdmin || supabase;
+            client.from('customers').delete().eq('id', id).eq('userId', userId).then(({ error }) => {
+                if (error) console.error('[BackgroundSync] Customer delete failed', error);
+            });
         }
         return NextResponse.json({ success: true });
     } catch (e) {

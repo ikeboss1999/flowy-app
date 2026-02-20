@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { uploadToCloud, downloadFromCloud, getLastBackupInfo } from "@/lib/cloudBackup";
 import { Cloud, Radio, Zap } from "lucide-react"; // Import Zap icon
-import { isWeb } from '@/lib/database';
+import { isWeb } from '@/lib/is-web';
 
 export function BackupSettings() {
     const { user } = useAuth();

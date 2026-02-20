@@ -98,7 +98,7 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                         <div style={{ display: 'flex' }}>
                             <span style={{ fontWeight: 'bold', width: '135px', flexShrink: 0 }}>Leistungszeitraum:</span>
                             <span style={{ fontWeight: 'normal' }}>
-                                {invoice.performancePeriod.from
+                                {(invoice.performancePeriod && invoice.performancePeriod.from)
                                     ? `${formatDate(invoice.performancePeriod.from)} - ${formatDate(invoice.performancePeriod.to || '')}`
                                     : '-'
                                 }

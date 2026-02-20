@@ -38,7 +38,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     return createPortal(
         <div
             className={cn(
-                "fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300",
+                "fixed inset-0 z-[150] flex items-center justify-center p-4 transition-all duration-300",
                 isOpen ? "bg-black/60 backdrop-blur-sm opacity-100" : "bg-black/0 backdrop-blur-none opacity-0"
             )}
             onClick={onClose}

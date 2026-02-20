@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
-import { getAuthErrorMessage } from "@/lib/auth"
+import { getAuthErrorMessage } from "@/lib/auth-utils"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { AlertCircle, CheckCircle2, Loader2, Lock, Mail, User, Eye, EyeOff } from "lucide-react"

@@ -16,12 +16,15 @@
   --card-glass: rgba(255, 255, 255, 0.85);
   --card-glass-border: rgba(255, 255, 255, 0.5);
   --card-glass-blur: blur(16px);
+  --sidebar-width: 20rem;
+  /* Default 320px */
 }
 
 /* MacBook Pro 13" / Medium Screen Optimizations */
 @media screen and (min-width: 1024px) and (max-width: 1440px) {
   :root {
-    --sidebar-width: 17rem; /* 272px instead of 320px */
+    --sidebar-width: 17rem;
+    /* 272px instead of 320px */
   }
 
   body {
@@ -30,8 +33,15 @@
 }
 
 @layer base {
+
+  html,
   body {
-    @apply antialiased text-foreground bg-[#f8fafc] min-h-screen text-[16px];
+    overscroll-behavior-y: none;
+    touch-action: pan-x pan-y;
+  }
+
+  body {
+    @apply antialiased text-foreground bg-[#050510] min-h-screen text-[16px];
     font-family: var(--font-inter), sans-serif;
   }
 }
@@ -83,6 +93,7 @@
   .custom-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   .custom-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
-import { isWeb } from '@/lib/database';
+import { isWeb } from '@/lib/is-web';
 
 type SyncStatus = 'idle' | 'syncing' | 'error' | 'pending';
 

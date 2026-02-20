@@ -70,13 +70,16 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
                     </div>
                     <div className="flex items-center gap-2">
                         {/* Dunning Button */}
-                        <button
-                            onClick={() => setIsDunningModalOpen(true)}
-                            className="px-4 py-3 bg-orange-50 text-orange-600 rounded-xl font-bold hover:bg-orange-100 transition-all flex items-center gap-2 mr-2"
-                        >
-                            <AlertTriangle className="h-4 w-4" />
-                            Mahnung
-                        </button>
+                        {/* Dunning Button */}
+                        {invoice.status !== 'paid' && (
+                            <button
+                                onClick={() => setIsDunningModalOpen(true)}
+                                className="px-4 py-3 bg-orange-50 text-orange-600 rounded-xl font-bold hover:bg-orange-100 transition-all flex items-center gap-2 mr-2"
+                            >
+                                <AlertTriangle className="h-4 w-4" />
+                                Mahnung
+                            </button>
+                        )}
 
                         <button
                             onClick={handlePrint}

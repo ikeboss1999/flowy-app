@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import sqliteDb from '@/lib/sqlite';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { isWeb, UnifiedDB } from '@/lib/database';
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
 
         if (isWeb) {
             console.log('[Import] Web Mode: Restoring to Supabase...');
+            const client = supabaseAdmin || supabase;
 
             // Web Mode: Direct Supabase Upsert
             for (const table of tables) {
@@ -39,12 +41,12 @@ export async function POST(request: Request) {
 
                 console.log(`[Import] Clearing ${table} for user...`);
                 // Clear existing data for this user to avoid staleness (Clean Restore)
-                await supabase.from(table).delete().eq('userId', currentUserId);
+                await client.from(table).delete().eq('userId', currentUserId);
 
                 console.log(`[Import] Upserting ${tableData.length} records to ${table}...`);
                 const formattedData = UnifiedDB.prepareForCloud(table, tableData, currentUserId);
 
-                const { error } = await supabase.from(table).upsert(formattedData);
+                const { error } = await client.from(table).upsert(formattedData);
                 if (error) {
                     console.error(`[Import] Error importing ${table}:`, error);
                     throw error;

@@ -1,0 +1,9 @@
+# Release v1.1.6
+
+## New Features & Improvements
+- **Middleware Optimization:** Refactored middleware logic for faster routing and enhanced security.
+- **Vercel Deployment:** Stabilized cloud-native API interactions for improved Vercel performance.
+- **Mobile Pathing:** Finalized secondary routes for the upcoming mobile companion app.
+- **Sync Reliability:** Enhanced background synchronization for multi-user environments.
+- **Bug Fixes:** Resolved minor UI glitches in the dashboard and login flows.
+- **Documentation:** Updated internal release checklist for consistent deployment.

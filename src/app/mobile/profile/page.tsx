@@ -155,14 +155,43 @@ export default function MobileProfile() {
         setIsPreviewOpen(true)
     }
 
-    const handleDownload = (doc: EmployeeDocument) => {
+    const handleDownload = async (doc: EmployeeDocument) => {
         if (!doc.content) return
-        const link = document.createElement('a')
-        link.href = doc.content
-        link.download = doc.name
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+
+        try {
+            // Check if it's a remote URL (Supabase Storage)
+            if (doc.content.startsWith('http')) {
+                showToast("Download gestartet...", "info");
+
+                const response = await fetch(doc.content);
+                if (!response.ok) throw new Error('Download failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = doc.name;
+                document.body.appendChild(link);
+                link.click();
+
+                // Cleanup
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(link);
+                showToast("Download erfolgreich", "success");
+            } else {
+                // Base64 or other immediate content
+                const link = document.createElement('a')
+                link.href = doc.content
+                link.download = doc.name
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+            }
+        } catch (e) {
+            console.error("Download error:", e);
+            showToast("Fehler beim Download", "error");
+        }
     }
 
     const fieldGroups = [
@@ -233,8 +262,12 @@ export default function MobileProfile() {
 
                     <div className="relative z-10 flex flex-col gap-6">
                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-500">
-                                <Building2 className="h-6 w-6 text-indigo-400" />
+                            <div className="h-16 w-16 bg-white rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-500 overflow-hidden p-2">
+                                {companyData?.logo ? (
+                                    <img src={companyData.logo} alt="Company Logo" className="h-full w-full object-contain" />
+                                ) : (
+                                    <Building2 className="h-8 w-8 text-indigo-400" />
+                                )}
                             </div>
                             <div>
                                 <h3 className="text-xl font-black tracking-tight">{companyData?.companyName || "FlowY Construction"}</h3>

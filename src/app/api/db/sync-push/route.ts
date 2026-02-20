@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import sqliteDb from '@/lib/sqlite';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { UnifiedDB, isWeb } from '@/lib/database';
 
 export const dynamic = 'force-dynamic';
@@ -37,13 +38,15 @@ export async function POST(request: Request) {
 
                 console.log(`[SyncPush] Found ${records.length} records for ${table}. Syncing...`);
 
+                const client = supabaseAdmin || supabase;
+
                 // 2. Prepare and Upsert in batches of 100
                 const batchSize = 100;
                 for (let i = 0; i < records.length; i += batchSize) {
                     const batch = records.slice(i, i + batchSize);
                     const syncData = UnifiedDB.prepareForCloud(table, batch, userId);
 
-                    const { error } = await supabase
+                    const { error } = await client
                         .from(table)
                         .upsert(syncData);
 
@@ -56,7 +59,6 @@ export async function POST(request: Request) {
                 totalSynced += records.length;
             } catch (err) {
                 console.error(`[SyncPush] Failed to sync table ${table}:`, err);
-                // Continue with other tables, but report partial failure if needed
             }
         }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
     X,
     Clock,
@@ -38,6 +39,7 @@ export function MobileTimeEntryModal({
     userId,
     employeeId
 }: MobileTimeEntryModalProps) {
+    const [mounted, setMounted] = useState(false);
     const [formData, setFormData] = useState<Partial<TimeEntry>>({
         startTime: "08:00",
         endTime: "17:00",
@@ -46,6 +48,10 @@ export function MobileTimeEntryModal({
         type: "WORK",
         breakDuration: 0
     });
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         if (isOpen) {
@@ -61,10 +67,14 @@ export function MobileTimeEntryModal({
                     breakDuration: 0
                 });
             }
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
         }
+        return () => { document.body.style.overflow = 'unset'; }
     }, [isOpen, initialEntry]);
 
-    if (!isOpen) return null;
+    if (!isOpen || !mounted) return null;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -100,21 +110,21 @@ export function MobileTimeEntryModal({
         month: "long"
     });
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-4">
+    return createPortal(
+        <div className="fixed inset-0 z-[150] flex items-end justify-center sm:items-center p-0 sm:p-4">
             <div
                 className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300"
                 onClick={onClose}
             />
 
-            <div className="relative bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500">
+            <div className="relative bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-500 max-h-[90vh]">
                 {/* Drag Handle for Mobile */}
-                <div className="sm:hidden w-full flex justify-center pt-4 pb-2">
+                <div className="sm:hidden w-full flex justify-center pt-4 pb-2 shrink-0">
                     <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
                 </div>
 
                 {/* Header */}
-                <div className="px-8 py-6 flex justify-between items-center">
+                <div className="px-8 py-6 flex justify-between items-center shrink-0">
                     <div className="space-y-1">
                         <h2 className="text-2xl font-black text-slate-800 tracking-tight">
                             {initialEntry?.id ? "Eintrag bearbeiten" : "Zeit eintragen"}
@@ -132,7 +142,7 @@ export function MobileTimeEntryModal({
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="px-8 pb-10 space-y-8 overflow-y-auto max-h-[70vh]">
+                <form onSubmit={handleSubmit} className="px-8 pb-[calc(2.5rem+env(safe-area-inset-bottom))] space-y-8 overflow-y-auto">
                     {/* Time Selectors */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -221,6 +231,7 @@ export function MobileTimeEntryModal({
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

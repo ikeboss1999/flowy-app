@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useRouter, usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
-import { isWeb } from "@/lib/database"
+import { isWeb } from "@/lib/is-web"
 
 const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/welcome"]
 
@@ -31,40 +31,51 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         const isPublic = PUBLIC_ROUTES.includes(pathname)
         const isMobileRoute = pathname.startsWith('/mobile')
 
-        if (isPublic) {
-            if (user) {
-                // Logged in user (admin) on a public page -> Redirect to app
-                setIsRedirecting(true)
-                router.push("/")
-            } else if (currentEmployee) {
-                // Logged in employee on a public page -> Redirect to mobile app
-                setIsRedirecting(true)
-                router.push("/mobile/dashboard")
-            } else {
-                setIsRedirecting(false)
-            }
-        } else {
-            // Protected routes
-            if (!user && !currentEmployee) {
-                // Not logged in at all -> Welcome/Login
-                setIsRedirecting(true)
-                if (isWeb && pathname === "/") {
-                    router.push("/welcome")
+        const handleRouting = async () => {
+            if (isPublic) {
+                if (user) {
+                    // Logged in user (admin) on a public page -> Redirect to app
+                    setIsRedirecting(true)
+                    router.push("/")
+                } else if (currentEmployee) {
+                    // Logged in employee on a public page -> Redirect to mobile app
+                    setIsRedirecting(true)
+                    router.push("/mobile/dashboard")
                 } else {
-                    router.push("/login")
+                    setIsRedirecting(false)
                 }
-            } else if (isMobileRoute && !currentEmployee && user) {
-                // Admin trying to access mobile route - ALLOW
-                setIsRedirecting(false)
-            } else if (!isMobileRoute && !user && currentEmployee) {
-                // Employee trying to access admin route - REDIRECT TO MOBILE
-                setIsRedirecting(true)
-                router.push("/mobile/dashboard")
             } else {
-                // Valid state
-                setIsRedirecting(false)
+                // Protected routes
+                if (!user && !currentEmployee) {
+                    // Not logged in at all -> Welcome/Login
+                    setIsRedirecting(true)
+
+                    // ZOMBIE COOKIE KILLER: Ensure server session is dead before redirecting to login
+                    try {
+                        await fetch('/api/auth/logout', { method: 'POST' });
+                    } catch (e) { console.error("Auto-logout failed", e); }
+
+                    if (isWeb && pathname === "/") {
+                        router.push("/welcome")
+                    } else {
+                        router.push("/login")
+                    }
+                } else if (isMobileRoute && !currentEmployee && user) {
+                    // Admin trying to access mobile route - ALLOW
+                    setIsRedirecting(false)
+                } else if (!isMobileRoute && !user && currentEmployee) {
+                    // Employee trying to access admin route - REDIRECT TO MOBILE
+                    setIsRedirecting(true)
+                    router.push("/mobile/dashboard")
+                } else {
+                    // Valid state
+                    setIsRedirecting(false)
+                }
             }
-        }
+        };
+
+        handleRouting();
+
     }, [user, currentEmployee, isLoading, forceShow, pathname, router])
 
     // Render Logic helper
