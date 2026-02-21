@@ -1,0 +1,9 @@
+# Release v1.1.9
+
+## New Features & Improvements
+- **API Optimization:** Refactored various API routes (To-Dos, Timesheets, Vehicles, Invoices) for better performance and consistency.
+- **Vercel Sync:** Full source code synchronization for consistent cloud deployment and Vercel dependency management.
+- **Data Integrity:** Enhanced error handling in backend routes to prevent stale data states.
+- **Build stability:** Further stabilization of the packaging process to avoid file locking during rebuilds.
+- **UI Performance:** Minor optimizations for dashboard widget responsiveness.
+- **Maintenance:** Updated internal dependencies and security patches.

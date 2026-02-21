@@ -1,7 +1,7 @@
 
-import sqliteDb from './sqlite';
 import { supabase } from './supabase';
 import { supabaseAdmin } from './supabase-admin';
+import { createClient } from '@supabase/supabase-js';
 import { isWeb } from './is-web';
 
 /**
@@ -27,10 +27,31 @@ export class UnifiedDB {
     static isWeb = isWeb;
 
     /**
+     * Creates an authenticated Supabase client using the user's access token.
+     */
+    static getAuthenticatedClient(session: any) {
+        if (session?.accessToken) {
+            return createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                {
+                    global: {
+                        headers: {
+                            Authorization: `Bearer ${session.accessToken}`
+                        }
+                    }
+                }
+            );
+        }
+        return supabaseAdmin || supabase;
+    }
+
+    /**
      * Silent background synchronization.
      * Call this in Electron app after a local write.
      */
-    static async syncToCloud(table: string, data: any, userId: string) {
+    static async syncToCloud(table: string, data: any, session: any) {
+        const userId = session?.userId;
         if (!userId || isWeb) return;
 
         try {
@@ -39,7 +60,7 @@ export class UnifiedDB {
             // Format data for Supabase (e.g. ensure booleans, ensure JSON is object not string)
             const syncData = this.prepareForCloud(table, data, userId);
 
-            const client = supabaseAdmin || supabase;
+            const client = this.getAuthenticatedClient(session);
             const { error } = await client
                 .from(table)
                 .upsert(syncData);

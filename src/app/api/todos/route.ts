@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { UnifiedDB, isWeb } from '@/lib/database';
 import { nanoid } from 'nanoid';
 import { getUserSession } from '@/lib/auth-server';
+import { writeLog } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
             );
 
             // Silent Sync
-            UnifiedDB.syncToCloud('todos', { ...todo, id: todoId, userId, updatedAt: now }, userId);
+            UnifiedDB.syncToCloud('todos', { ...todo, id: todoId, userId, updatedAt: now }, session);
         }
 
         return NextResponse.json({ success: true, id: todoId });
@@ -114,11 +115,17 @@ export async function DELETE(request: Request) {
             }
 
             sqliteDb.prepare('DELETE FROM todos WHERE id = ? AND userId = ?').run(id, userId);
+            writeLog('TodoAPI', `Local delete successful for ID: ${id}`);
 
             // Silent Sync
-            const client = supabaseAdmin || supabase;
+            const client = UnifiedDB.getAuthenticatedClient(session);
             client.from('todos').delete().eq('id', id).eq('userId', userId).then(({ error }) => {
-                if (error) console.error('[BackgroundSync] Todo delete failed', error);
+                if (error) {
+                    writeLog('TodoAPI', `Cloud delete failed for ID: ${id}. Error: ${error.message}`);
+                    console.error('[BackgroundSync] Todo delete failed', error);
+                } else {
+                    writeLog('TodoAPI', `Cloud delete successful for ID: ${id}`);
+                }
             });
         }
         return NextResponse.json({ success: true });

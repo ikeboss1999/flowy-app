@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { UnifiedDB, isWeb } from '@/lib/database';
 import { nanoid } from 'nanoid';
 import { getUserSession } from '@/lib/auth-server';
+import { writeLog } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
             );
 
             // Silent Sync
-            UnifiedDB.syncToCloud('customers', { ...customer, id: customerId, userId, updatedAt: now }, userId);
+            UnifiedDB.syncToCloud('customers', { ...customer, id: customerId, userId, updatedAt: now }, session);
         }
 
         return NextResponse.json({ success: true, id: customerId });
@@ -119,11 +120,17 @@ export async function DELETE(request: Request) {
             }
 
             sqliteDb.prepare('DELETE FROM customers WHERE id = ? AND userId = ?').run(id, userId);
+            writeLog('CustomerAPI', `Local delete successful for ID: ${id}`);
 
-            // Silent Sync
-            const client = supabaseAdmin || supabase;
+            // Silent Sync: Use authenticated client for cloud delete
+            const client = UnifiedDB.getAuthenticatedClient(session);
             client.from('customers').delete().eq('id', id).eq('userId', userId).then(({ error }) => {
-                if (error) console.error('[BackgroundSync] Customer delete failed', error);
+                if (error) {
+                    writeLog('CustomerAPI', `Cloud delete failed for ID: ${id}. Error: ${error.message}`);
+                    console.error('[BackgroundSync] Customer delete failed', error);
+                } else {
+                    writeLog('CustomerAPI', `Cloud delete successful for ID: ${id}`);
+                }
             });
         }
         return NextResponse.json({ success: true });

@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { UnifiedDB, isWeb } from '@/lib/database';
 import { nanoid } from 'nanoid';
 import { getUserSession } from '@/lib/auth-server';
+import { writeLog } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
             );
 
             // Silent Sync
-            UnifiedDB.syncToCloud('projects', { ...project, id: projectId, userId, updatedAt: now }, userId);
+            UnifiedDB.syncToCloud('projects', { ...project, id: projectId, userId, updatedAt: now }, session);
         }
 
         return NextResponse.json({ success: true, id: projectId });
@@ -118,11 +119,17 @@ export async function DELETE(request: Request) {
             }
 
             sqliteDb.prepare('DELETE FROM projects WHERE id = ? AND userId = ?').run(id, userId);
+            writeLog('ProjectAPI', `Local delete successful for ID: ${id}`);
 
             // Silent Sync
-            const client = supabaseAdmin || supabase;
+            const client = UnifiedDB.getAuthenticatedClient(session);
             client.from('projects').delete().eq('id', id).eq('userId', userId).then(({ error }) => {
-                if (error) console.error('[BackgroundSync] Project delete failed', error);
+                if (error) {
+                    writeLog('ProjectAPI', `Cloud delete failed for ID: ${id}. Error: ${error.message}`);
+                    console.error('[BackgroundSync] Project delete failed', error);
+                } else {
+                    writeLog('ProjectAPI', `Cloud delete successful for ID: ${id}`);
+                }
             });
         }
         return NextResponse.json({ success: true });

@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { UnifiedDB, isWeb } from '@/lib/database';
 import { nanoid } from 'nanoid';
 import { getUserSession } from '@/lib/auth-server';
+import { writeLog } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,7 +100,7 @@ export async function POST(request: Request) {
             };
 
             // Silent Sync
-            UnifiedDB.syncToCloud('calendar_events', syncData, userId);
+            UnifiedDB.syncToCloud('calendar_events', syncData, session);
         }
 
         return NextResponse.json({ success: true, id: eventId });
@@ -136,11 +137,17 @@ export async function DELETE(request: Request) {
             }
 
             sqliteDb.prepare('DELETE FROM calendar_events WHERE id = ? AND userId = ?').run(id, userId);
+            writeLog('CalendarAPI', `Local delete successful for ID: ${id}`);
 
             // Silent Sync
-            const client = supabaseAdmin || supabase;
+            const client = UnifiedDB.getAuthenticatedClient(session);
             client.from('calendar_events').delete().eq('id', id).eq('userId', userId).then(({ error }) => {
-                if (error) console.error('[BackgroundSync] Calendar event delete failed', error);
+                if (error) {
+                    writeLog('CalendarAPI', `Cloud delete failed for ID: ${id}. Error: ${error.message}`);
+                    console.error('[BackgroundSync] Calendar event delete failed', error);
+                } else {
+                    writeLog('CalendarAPI', `Cloud delete successful for ID: ${id}`);
+                }
             });
         }
         return NextResponse.json({ success: true });

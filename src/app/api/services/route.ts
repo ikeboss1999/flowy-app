@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { UnifiedDB, isWeb } from '@/lib/database';
 import { nanoid } from 'nanoid';
 import { getUserSession } from '@/lib/auth-server';
+import { writeLog } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
             );
 
             // Silent Sync
-            UnifiedDB.syncToCloud('services', { ...service, name: serviceName, id: serviceId, userId, updatedAt: now }, userId);
+            UnifiedDB.syncToCloud('services', { ...service, name: serviceName, id: serviceId, userId, updatedAt: now }, session);
         }
 
         return NextResponse.json({ success: true, id: serviceId });
@@ -114,11 +115,17 @@ export async function DELETE(request: Request) {
             }
 
             sqliteDb.prepare('DELETE FROM services WHERE id = ? AND userId = ?').run(id, userId);
+            writeLog('ServiceAPI', `Local delete successful for ID: ${id}`);
 
             // Silent Sync
-            const client = supabaseAdmin || supabase;
+            const client = UnifiedDB.getAuthenticatedClient(session);
             client.from('services').delete().eq('id', id).eq('userId', userId).then(({ error }) => {
-                if (error) console.error('[BackgroundSync] Service delete failed', error);
+                if (error) {
+                    writeLog('ServiceAPI', `Cloud delete failed for ID: ${id}. Error: ${error.message}`);
+                    console.error('[BackgroundSync] Service delete failed', error);
+                } else {
+                    writeLog('ServiceAPI', `Cloud delete successful for ID: ${id}`);
+                }
             });
         }
         return NextResponse.json({ success: true });

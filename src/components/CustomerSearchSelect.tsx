@@ -33,11 +33,11 @@ export function CustomerSearchSelect({
     const filteredCustomers = useMemo(() => {
         if (!search) return customers;
         const lowSearch = search.toLowerCase();
-        return customers.filter(c =>
-            c.name.toLowerCase().includes(lowSearch) ||
-            c.email.toLowerCase().includes(lowSearch) ||
-            (c.type === 'business' && c.name.toLowerCase().includes(lowSearch))
-        );
+        return customers.filter(c => {
+            const nameMatch = (c.name || '').toLowerCase().includes(lowSearch);
+            const emailMatch = (c.email || '').toLowerCase().includes(lowSearch);
+            return nameMatch || emailMatch;
+        });
     }, [customers, search]);
 
     useEffect(() => {
@@ -151,7 +151,7 @@ export function CustomerSearchSelect({
                                                         {info.label}
                                                     </span>
                                                     <span className="text-xs font-bold text-slate-400">
-                                                        {customer.address?.city || customer.email}
+                                                        {customer.address?.city || customer.email || 'Keine Kontaktinfo'}
                                                     </span>
                                                 </div>
                                             </div>
