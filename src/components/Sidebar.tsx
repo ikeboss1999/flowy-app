@@ -102,7 +102,7 @@ const menuGroups: MenuGroup[] = [
 export function Sidebar() {
     const path = usePathname();
     const { signOut, currentEmployee, logoutEmployee } = useAuth();
-    const { status, triggerSync } = useSync();
+    const { status, triggerSync, triggerPull } = useSync();
     const { isIPad, isTouchDevice } = useDevice();
     const [isOpen, setIsOpen] = useState(false);
 
@@ -243,14 +243,19 @@ export function Sidebar() {
                             Professional
                         </span>
 
-                        {/* Sync Status Indicator */}
-                        <div className={cn(
-                            "mt-4 flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-500",
-                            status === 'idle' && "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
-                            status === 'syncing' && "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30",
-                            status === 'pending' && "bg-amber-500/10 text-amber-400 border border-amber-500/20",
-                            status === 'error' && "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                        )}>
+                        {/* Sync Status Indicator (Clickable Cloud Pull) */}
+                        <button
+                            onClick={() => status !== 'syncing' && triggerPull()}
+                            disabled={status === 'syncing'}
+                            title="Cloud-Daten jetzt abrufen"
+                            className={cn(
+                                "mt-4 flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-300 active:scale-95 disabled:opacity-50",
+                                status === 'idle' && "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20",
+                                status === 'syncing' && "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30",
+                                status === 'pending' && "bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20",
+                                status === 'error' && "bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20"
+                            )}
+                        >
                             {status === 'idle' && <CheckCircle2 className="h-3 w-3" />}
                             {status === 'syncing' && <RefreshCcw className="h-3 w-3 animate-spin" />}
                             {(status === 'pending' || status === 'error') && <Cloud className="h-3 w-3" />}
@@ -260,7 +265,7 @@ export function Sidebar() {
                                 {status === 'pending' && "Wartet auf Sync"}
                                 {status === 'error' && "Sync Fehler"}
                             </span>
-                        </div>
+                        </button>
                     </div>
                 </div>
 

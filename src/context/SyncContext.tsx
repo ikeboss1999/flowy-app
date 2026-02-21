@@ -11,6 +11,7 @@ interface SyncContextType {
     isBlocking: boolean;
     lastSyncTime: Date | null;
     triggerSync: (options?: { blocking?: boolean }) => Promise<void>;
+    triggerPull: () => Promise<number>;
     markDirty: () => void;
 }
 
@@ -135,7 +136,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     }, [user, triggerSync, triggerPull]);
 
     return (
-        <SyncContext.Provider value={{ status, isBlocking, lastSyncTime, triggerSync, markDirty }}>
+        <SyncContext.Provider value={{ status, isBlocking, lastSyncTime, triggerSync, triggerPull, markDirty }}>
             {children}
         </SyncContext.Provider>
     );

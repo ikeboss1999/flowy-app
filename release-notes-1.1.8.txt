@@ -1,0 +1,9 @@
+# Release v1.1.8
+
+## New Features & Improvements
+- **UI Enhancements:** Introduced a new CalendarWidget component for better date visualization.
+- **Workflow Stability:** Improved build process reliability by handling concurrent file locks.
+- **Vercel Integration:** Full source code synchronization for consistent cloud deployment.
+- **Performance:** Optimized background data fetching for various dashboard widgets.
+- **Bug Fixes:** Resolved minor layout shifts and CSS inconsistencies.
+- **System Maintenance:** Internal optimizations for future feature modules.

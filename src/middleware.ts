@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { verifySessionToken } from './lib/auth';
 
 export function middleware(request: NextRequest) {
     const sessionToken = request.cookies.get('session_token')?.value;
@@ -10,7 +11,10 @@ export function middleware(request: NextRequest) {
     const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
     const isWelcomePage = pathname === '/welcome' || pathname === '/';
     const isApiRoute = pathname.startsWith('/api');
-    const isPublicApi = pathname.startsWith('/api/auth') || (pathname.startsWith('/api/partners') && request.method === 'GET');
+    const isPublicApi =
+        pathname.startsWith('/api/auth') ||
+        pathname.startsWith('/api/db/diag') || // Allow diag for debugging
+        (pathname.startsWith('/api/partners') && request.method === 'GET');
     const isStaticFile = pathname.includes('.') || pathname.startsWith('/_next');
 
     // 1. Skip static files
@@ -19,11 +23,16 @@ export function middleware(request: NextRequest) {
     // 2. Protect API Routes (except auth)
     if (isApiRoute) {
         if (!isPublicApi && !sessionToken && !sbAccessToken) {
-            console.warn(`[Middleware] Unauthorized API access to ${pathname}. Cookies:`, {
+            const debugInfo = {
+                path: pathname,
                 hasSessionToken: !!sessionToken,
                 hasSbToken: !!sbAccessToken,
                 allCookies: request.cookies.getAll().map(c => c.name)
-            });
+            };
+
+            // writeLog('Middleware', `Unauthorized API access to ${pathname}. Debug: ${JSON.stringify(debugInfo)}`);
+
+            console.warn(`[Middleware] Unauthorized API access to ${pathname}. Cookies:`, debugInfo);
             return new NextResponse(
                 JSON.stringify({
                     error: 'Unauthorized',

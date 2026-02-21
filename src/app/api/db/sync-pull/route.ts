@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import sqliteDb from '@/lib/sqlite';
+import { writeLog } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { isWeb, SCHEMA_KEYS } from '@/lib/database';
 import { getUserSession } from '@/lib/auth-server';
@@ -18,10 +20,17 @@ export async function POST(request: Request) {
 
     try {
         const { userId } = await request.json();
+        writeLog('SyncPull', `POST request received. userId from body: ${userId}`);
 
         // SECURITY: Verify that the request comes from the authenticated user
         const session = await getUserSession();
-        if (!session || session.userId !== userId) {
+        if (!session) {
+            writeLog('SyncPull', 'Unauthorized: No session found.');
+            return NextResponse.json({ message: 'Unauthorized: No session found.' }, { status: 401 });
+        }
+
+        if (session.userId !== userId) {
+            writeLog('SyncPull', `Unauthorized: Session mismatch. Session UID: ${session.userId}, Body UID: ${userId}`);
             return NextResponse.json({ message: 'Unauthorized: Session mismatch.' }, { status: 401 });
         }
 
@@ -29,27 +38,49 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'User ID erforderlich.' }, { status: 400 });
         }
 
-        console.log(`[SyncPull] Starting full data pull from Cloud for user: ${userId}`);
+        writeLog('SyncPull', `Starting full data pull from Cloud for user: ${userId}`);
+        let totalPulled = 0;
+
+        // 3. Create authenticated client with user's token
+        // This ensures RLS is bypassed OR respected correctly according to the user's rights
+        // without requiring the sensitive service_role key in the packaged app.
+        const client = session.accessToken
+            ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+                global: { headers: { Authorization: `Bearer ${session.accessToken}` } }
+            })
+            : (supabaseAdmin || supabase);
+
+        if (session.accessToken) {
+            writeLog('SyncPull', 'Using authenticated client with user token.');
+        } else {
+            writeLog('SyncPull', 'WARNING: No access token in session. Falling back to admin/anon client.');
+        }
 
         const tables = [
             'projects', 'customers', 'invoices', 'settings', 'vehicles',
             'employees', 'time_entries', 'timesheets', 'todos', 'calendar_events', 'services'
         ];
 
-        let totalPulled = 0;
-        const client = supabaseAdmin || supabase;
-
         for (const table of tables) {
             try {
+                writeLog('SyncPull', `Fetching table: ${table}...`);
                 // 1. Fetch from Cloud
                 const { data: cloudRecords, error } = await client
                     .from(table)
                     .select('*')
                     .eq('userId', userId);
 
-                if (error) throw error;
-                if (!cloudRecords || cloudRecords.length === 0) continue;
+                if (error) {
+                    writeLog('SyncPull', `Error fetching ${table}: ${error.message}`);
+                    throw error;
+                }
 
+                if (!cloudRecords || cloudRecords.length === 0) {
+                    writeLog('SyncPull', `No records found in cloud for ${table}.`);
+                    continue;
+                }
+
+                writeLog('SyncPull', `Found ${cloudRecords.length} records in cloud for ${table}.`);
                 console.log(`[SyncPull] Found ${cloudRecords.length} records in cloud for ${table}.`);
 
                 const validKeys = SCHEMA_KEYS[table];

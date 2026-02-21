@@ -20,7 +20,8 @@ export async function getUserSession() {
                     userId: user.id,
                     email: user.email,
                     role: user.user_metadata?.role || 'user',
-                    name: user.user_metadata?.full_name || user.email?.split('@')[0]
+                    name: user.user_metadata?.full_name || user.email?.split('@')[0],
+                    accessToken: sbAccessToken
                 };
             }
         } catch (e) {
