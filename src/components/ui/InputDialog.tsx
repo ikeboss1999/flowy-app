@@ -64,7 +64,7 @@ export function InputDialog({
     return createPortal(
         <div
             className={cn(
-                "fixed inset-0 z-[110] flex items-center justify-center p-4 transition-all duration-300",
+                "fixed inset-0 z-[200] flex items-center justify-center p-4 transition-all duration-300",
                 isOpen ? "bg-slate-900/60 backdrop-blur-sm opacity-100" : "bg-slate-900/0 backdrop-blur-none opacity-0"
             )}
             onClick={onCancel}

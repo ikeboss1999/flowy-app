@@ -1,14 +1,41 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { LayoutDashboard, Clock, User, LogOut, Layers } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
+import { useEmployees } from "@/hooks/useEmployees"
+import { SelfieCaptureModal } from "@/components/mobile/SelfieCaptureModal"
 
 export default function MobileLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
-    const { logoutEmployee, currentEmployee } = useAuth()
+    const { logoutEmployee, currentEmployee, refreshEmployee } = useAuth()
+    const { updateEmployee } = useEmployees()
+    const [showSelfiePrompt, setShowSelfiePrompt] = useState(false)
+
+    useEffect(() => {
+        if (currentEmployee && !currentEmployee.avatar) {
+            const hasDismissed = sessionStorage.getItem(`selfie_prompt_dismissed_${currentEmployee.id}`)
+            if (!hasDismissed) {
+                setShowSelfiePrompt(true)
+            }
+        }
+    }, [currentEmployee])
+
+    const handleSaveSelfie = async (base64: string) => {
+        if (!currentEmployee) return;
+
+        const updatedEmployee = {
+            ...currentEmployee,
+            avatar: base64,
+            updatedAt: new Date().toISOString()
+        };
+
+        await updateEmployee(currentEmployee.id, updatedEmployee);
+        await refreshEmployee();
+    };
 
     const permissions = currentEmployee?.appAccess?.permissions;
     const navItems = [
@@ -71,6 +98,17 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
                     )
                 })}
             </nav>
+
+            <SelfieCaptureModal
+                isOpen={showSelfiePrompt}
+                onClose={() => {
+                    setShowSelfiePrompt(false);
+                    if (currentEmployee) {
+                        sessionStorage.setItem(`selfie_prompt_dismissed_${currentEmployee.id}`, 'true');
+                    }
+                }}
+                onSave={handleSaveSelfie}
+            />
         </div>
     )
 }

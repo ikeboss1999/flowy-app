@@ -1,0 +1,10 @@
+# Release v1.2.0
+
+## New Features & Improvements
+- **Major Minor Update:** Transitioning to the 1.2.x branch with enhanced core stability.
+- **UI Refinement:** Optimized ConfirmDialog and ServiceModal for better user feedback and consistency.
+- **Mobile Foundation:** Finalized critical mobile profile components for upcoming employee app.
+- **Vercel Sync:** Full repository synchronization verified for cloud deployment and CI/CD consistency.
+- **Next.js config:** Optimized build configuration for faster static generation.
+- **Bug Fixes:** Resolved edge cases in employee management and service selection flows.
+- **Performance:** Reduced main process overhead for a snappier experience.

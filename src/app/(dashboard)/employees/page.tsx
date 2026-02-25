@@ -400,11 +400,10 @@ export default function EmployeesPage() {
             {viewMode === 'list' ? (
                 <>
                     {/* Quick Stats */}
-                    <div className="grid grid-cols-4 gap-6">
+                    <div className="grid grid-cols-3 gap-6">
                         {[
                             { label: "Gesamt", count: employees.length, color: "text-slate-600", bg: "bg-slate-100", icon: UserSquare2 },
                             { label: "Vollzeit", count: employees.filter(e => e.employment.status === 'Vollzeit').length, color: "text-emerald-600", bg: "bg-emerald-50", icon: Briefcase },
-                            { label: "Minijob", count: employees.filter(e => e.employment.status === 'Minijob').length, color: "text-amber-600", bg: "bg-amber-50", icon: CreditCard },
                             { label: "Freelance", count: employees.filter(e => e.employment.status === 'Freelancer').length, color: "text-rose-600", bg: "bg-rose-50", icon: Search },
                         ].map((stat) => {
                             const Icon = stat.icon;
@@ -440,8 +439,7 @@ export default function EmployeesPage() {
                         <div className="bg-white/50 backdrop-blur-md p-1 rounded-2xl border border-slate-100 shadow-sm flex gap-1">
                             {[
                                 { id: "all", label: "Alle", icon: Filter },
-                                { id: "Vollzeit", label: "Vollzeit", icon: Briefcase },
-                                { id: "Minijob", label: "Minijob", icon: CreditCard }
+                                { id: "Vollzeit", label: "Vollzeit", icon: Briefcase }
                             ].map((btn) => {
                                 const Icon = btn.icon;
                                 const active = filterStatus === btn.id;

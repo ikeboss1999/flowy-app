@@ -25,21 +25,27 @@ import {
     Download,
     Calendar,
     Folder,
-    Clock
+    Clock,
+    Briefcase,
+    Globe,
+    ExternalLink,
+    Camera
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal"
 import { EmployeeDocument } from "@/types/employee"
+import { SelfieCaptureModal } from "@/components/mobile/SelfieCaptureModal"
 
 export default function MobileProfile() {
     const { currentEmployee, refreshEmployee, logoutEmployee } = useAuth()
-    const { requestEmployeeUpdate } = useEmployees()
+    const { updateEmployee, requestEmployeeUpdate } = useEmployees()
     const { showToast } = useNotification()
     const { data: companyData } = useCompanySettings()
 
     const [expandedSection, setExpandedSection] = useState<string | null>(null)
     const [isSaving, setIsSaving] = useState(false)
     const [showSuccess, setShowSuccess] = useState(false)
+    const [showSelfieModal, setShowSelfieModal] = useState(false)
 
     // Auto-refresh on focus
     useEffect(() => {
@@ -230,17 +236,23 @@ export default function MobileProfile() {
         <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-36">
             {/* Profile Header */}
             <div className="flex flex-col items-center text-center gap-5 mt-4">
-                <div className="h-28 w-28 rounded-[2.5rem] bg-indigo-50 flex items-center justify-center border-4 border-white shadow-2xl shadow-indigo-500/10 relative group">
-                    <div className="absolute inset-0 bg-indigo-600/5 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity" />
+                <button
+                    onClick={() => setShowSelfieModal(true)}
+                    className="h-28 w-28 rounded-[2.5rem] bg-indigo-50 flex items-center justify-center border-4 border-white shadow-2xl shadow-indigo-500/10 relative group hover:scale-105 transition-all active:scale-95"
+                >
+                    <div className="absolute inset-0 bg-indigo-600/10 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 backdrop-blur-[2px]">
+                        <Camera className="h-8 w-8 text-white shadow-lg" />
+                    </div>
                     {currentEmployee.avatar ? (
                         <img src={currentEmployee.avatar} alt="Avatar" className="h-full w-full object-cover rounded-[2.5rem]" />
                     ) : (
                         <User className="h-12 w-12 text-indigo-500" />
                     )}
-                    <div className="absolute -bottom-1 -right-1 h-8 w-8 bg-emerald-500 rounded-2xl border-4 border-white flex items-center justify-center shadow-lg">
+                    <div className="absolute -bottom-1 -right-1 h-8 w-8 bg-emerald-500 rounded-2xl border-4 border-white flex items-center justify-center shadow-lg z-20">
                         <ShieldCheck className="h-4 w-4 text-white" />
                     </div>
-                </div>
+                </button>
+
                 <div className="space-y-1">
                     <h2 className="text-3xl font-black text-slate-800 tracking-tight">
                         {currentEmployee.personalData.firstName} {currentEmployee.personalData.lastName}
@@ -525,6 +537,28 @@ export default function MobileProfile() {
                     <ChevronRight className="h-5 w-5 opacity-20 group-hover:opacity-100 transition-all group-hover:translate-x-1" />
                 </button>
             </div>
+            <SelfieCaptureModal
+                isOpen={showSelfieModal}
+                onClose={() => setShowSelfieModal(false)}
+                onSave={async (base64) => {
+                    if (!currentEmployee) return;
+                    setIsSaving(true);
+                    try {
+                        const updatedEmployee = {
+                            ...currentEmployee,
+                            avatar: base64,
+                            updatedAt: new Date().toISOString()
+                        };
+                        await updateEmployee(currentEmployee.id, updatedEmployee);
+                        await refreshEmployee();
+                        showToast("Profilbild erfolgreich aktualisiert.", "success");
+                    } catch (error) {
+                        showToast("Fehler beim Speichern des Profilbilds.", "error");
+                    } finally {
+                        setIsSaving(false);
+                    }
+                }}
+            />
         </div>
     )
 }
