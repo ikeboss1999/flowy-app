@@ -27,12 +27,18 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     const triggerPull = useCallback(async () => {
         if (!user || isWeb || status === 'syncing') return;
         setStatus('syncing');
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
         try {
             const response = await fetch('/api/db/sync-pull', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id })
-            });
+                body: JSON.stringify({ userId: user.id }),
+                signal: controller.signal
+            }).finally(() => clearTimeout(timeoutId));
+
             if (!response.ok) throw new Error('Pull failed');
             const data = await response.json();
             setLastSyncTime(new Date());
@@ -44,6 +50,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
             return 0;
         }
     }, [user, status]);
+
 
     const triggerSync = useCallback(async (options?: { blocking?: boolean }) => {
         if (!user || isWeb || status === 'syncing') return;

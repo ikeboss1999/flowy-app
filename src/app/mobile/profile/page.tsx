@@ -14,7 +14,11 @@ import {
     Camera,
     Save,
     CheckCircle2,
-    Loader2
+    Loader2,
+    Briefcase,
+    Building,
+    CalendarDays,
+    ChevronDown
 } from "lucide-react"
 import { SelfieCaptureModal } from "@/components/mobile/SelfieCaptureModal"
 import { useNotification } from "@/context/NotificationContext"
@@ -26,6 +30,7 @@ export default function MobileProfilePage() {
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [showSelfieModal, setShowSelfieModal] = useState(false)
+    const [expandedGroup, setExpandedGroup] = useState<string | null>("Persönliche Daten")
 
     const [formData, setFormData] = useState({
         personalData: {
@@ -68,6 +73,15 @@ export default function MobileProfilePage() {
                 title: "Bankverbindung",
                 items: [
                     { id: 'iban', label: "IBAN", value: formData.bankDetails.iban, icon: CreditCard, category: 'bankDetails' },
+                ]
+            },
+            {
+                title: "Firmendaten",
+                items: [
+                    { id: 'employeeNumber', label: "Mitarbeiternummer", value: currentEmployee.employeeNumber || "-", icon: Briefcase, readonly: true },
+                    { id: 'position', label: "Position", value: currentEmployee.employment?.position || "-", icon: User, readonly: true },
+                    { id: 'department', label: "Abteilung", value: (currentEmployee.employment as any)?.department || "-", icon: Building, readonly: true },
+                    { id: 'hireDate', label: "Eintrittsdatum", value: currentEmployee.employment?.startDate ? new Date(currentEmployee.employment.startDate).toLocaleDateString("de-AT") : "-", icon: CalendarDays, readonly: true },
                 ]
             }
         ];
@@ -133,6 +147,7 @@ export default function MobileProfilePage() {
             // Prepare pending changes object
             const pendingChanges = {
                 personalData: {
+                    ...currentEmployee.personalData,
                     phone: formData.personalData.phone,
                     email: formData.personalData.email,
                     street: formData.personalData.street,
@@ -140,9 +155,10 @@ export default function MobileProfilePage() {
                     zip: formData.personalData.zip,
                 },
                 bankDetails: {
+                    ...currentEmployee.bankDetails,
                     iban: formData.bankDetails.iban
                 }
-            };
+            } as any;
 
             const result = await requestEmployeeUpdate(currentEmployee.id, pendingChanges);
             if (result?.success) {
@@ -220,35 +236,55 @@ export default function MobileProfilePage() {
 
             {/* Form Sections */}
             <div className="p-8 space-y-10 pb-32">
-                {settingGroups.map((group) => (
-                    <div key={group.title} className="space-y-4">
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">
-                            {group.title}
-                        </p>
-                        <div className="bg-white rounded-[2rem] border border-slate-200/60 shadow-sm divide-y divide-slate-50 overflow-hidden">
-                            {group.items.map((item) => (
-                                <div key={item.id} className="p-5 flex flex-col gap-1.5 group">
-                                    <div className="flex items-center gap-3">
-                                        <item.icon className="h-3.5 w-3.5 text-slate-300" />
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                            {item.label}
-                                        </label>
+                {settingGroups.map((group) => {
+                    const isExpanded = expandedGroup === group.title;
+                    return (
+                        <div key={group.title} className="space-y-4">
+                            <button
+                                onClick={() => setExpandedGroup(isExpanded ? null : group.title)}
+                                className="w-full flex items-center justify-between group active:scale-[0.98] transition-all"
+                            >
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1 group-hover:text-indigo-500 transition-colors">
+                                    {group.title}
+                                </p>
+                                <ChevronDown className={cn(
+                                    "h-4 w-4 text-slate-300 transition-transform duration-300",
+                                    isExpanded && "rotate-180 text-indigo-500"
+                                )} />
+                            </button>
+
+                            <div className={cn(
+                                "grid transition-all duration-300 ease-in-out",
+                                isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                            )}>
+                                <div className="overflow-hidden">
+                                    <div className="bg-white rounded-[2rem] border border-slate-200/60 shadow-sm divide-y divide-slate-50">
+                                        {group.items.map((item) => (
+                                            <div key={item.id} className="p-5 flex flex-col gap-1.5 group/item">
+                                                <div className="flex items-center gap-3">
+                                                    <item.icon className="h-3.5 w-3.5 text-slate-300" />
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                        {item.label}
+                                                    </label>
+                                                </div>
+                                                <input
+                                                    type={(item as any).type || 'text'}
+                                                    value={item.value}
+                                                    onChange={(e) => !(item as any).readonly && handleInputChange((item as any).category, item.id, e.target.value)}
+                                                    readOnly={(item as any).readonly}
+                                                    className={cn(
+                                                        "w-full text-base font-black text-slate-800 bg-transparent outline-none p-1 -ml-1 rounded-lg transition-all",
+                                                        (item as any).readonly ? "text-slate-400" : "focus:bg-indigo-50 focus:px-3 focus:text-indigo-600"
+                                                    )}
+                                                />
+                                            </div>
+                                        ))}
                                     </div>
-                                    <input
-                                        type={item.type || 'text'}
-                                        value={item.value}
-                                        onChange={(e) => !item.readonly && handleInputChange(item.category!, item.id, e.target.value)}
-                                        readOnly={item.readonly}
-                                        className={cn(
-                                            "w-full text-base font-black text-slate-800 bg-transparent outline-none p-1 -ml-1 rounded-lg transition-all",
-                                            item.readonly ? "text-slate-400" : "focus:bg-indigo-50 focus:px-3 focus:text-indigo-600"
-                                        )}
-                                    />
                                 </div>
-                            ))}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
 
                 {/* Info Box */}
                 <div className="bg-amber-50 rounded-[2.5rem] p-7 border border-amber-100 flex gap-4 animate-pulse">
