@@ -73,8 +73,11 @@ export async function POST(request: Request) {
                 writeLog('SyncPush', `Found ${records.length} records for ${table}. Syncing...`);
                 console.log(`[SyncPush] Found ${records.length} records for ${table}. Syncing...`);
 
-                // 2. Prepare and Upsert in batches of 100
-                const batchSize = 100;
+                // 2. Prepare and Upsert in batches
+                // Optimization: Use smaller batches for tables with potential large Base64 data (avatars, diary images)
+                const isLargeDataTable = table === 'employees' || table === 'projects';
+                const batchSize = isLargeDataTable ? 5 : 50;
+
                 for (let i = 0; i < records.length; i += batchSize) {
                     const batch = records.slice(i, i + batchSize);
                     const syncData = UnifiedDB.prepareForCloud(table, batch, userId);
@@ -85,6 +88,7 @@ export async function POST(request: Request) {
 
                     if (error) {
                         console.error(`[SyncPush] Error syncing ${table} batch:`, error);
+                        writeLog('SyncPush', `Error syncing ${table} batch: ${error.message}`);
                         throw error;
                     }
                 }

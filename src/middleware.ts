@@ -50,11 +50,20 @@ export function middleware(request: NextRequest) {
 
     // 3. Protect UI Pages
     const isAuthenticated = !!(sessionToken || sbAccessToken);
+    const userAgent = request.headers.get('user-agent') || '';
+    const isElectron = userAgent.toLowerCase().includes('electron');
 
     if (!isAuthenticated) {
-        // Redirect to welcome if trying to access protected UI
+        // Redirect to welcome (web) or login (desktop) if trying to access protected UI
         if (!isAuthPage && !isWelcomePage) {
-            return NextResponse.redirect(new URL('/welcome', request.url));
+            const redirectPath = isElectron ? '/login' : '/welcome';
+            return NextResponse.redirect(new URL(redirectPath, request.url));
+        }
+
+        // Extra check for desktop: NEVER allow /welcome or /
+        // If unauthenticated and on / or /welcome in desktop, go to /login
+        if (isElectron && isWelcomePage) {
+            return NextResponse.redirect(new URL('/login', request.url));
         }
     } else {
         // Redirect to dashboard if logged in and trying to access auth pages

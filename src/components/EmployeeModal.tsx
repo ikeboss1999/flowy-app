@@ -138,7 +138,16 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     annualLeave: initialEmployee.employment.annualLeave ?? 25,
                 },
                 documents: initialEmployee.documents || [],
-                appAccess: initialEmployee.appAccess || {
+                appAccess: initialEmployee.appAccess ? {
+                    ...initialEmployee.appAccess,
+                    staffId: initialEmployee.appAccess.staffId || initialEmployee.employeeNumber || "",
+                    permissions: initialEmployee.appAccess.permissions || {
+                        timeTracking: true,
+                        documents: false,
+                        personalData: true,
+                        projectDiary: false
+                    }
+                } : {
                     staffId: initialEmployee.employeeNumber || "",
                     accessPIN: "",
                     isAccessEnabled: false,

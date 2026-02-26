@@ -44,8 +44,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             const data = await response.json();
             if (data.success && data.employee) {
-                setCurrentEmployee(data.employee);
-                localStorage.setItem('flowy_employee_session', JSON.stringify(data.employee));
+                // IMPORTANT: Preserving PIN because API hides it for security
+                const updatedEmployee = {
+                    ...data.employee,
+                    appAccess: {
+                        ...data.employee.appAccess,
+                        accessPIN: employeeData.appAccess.accessPIN
+                    }
+                };
+                setCurrentEmployee(updatedEmployee);
+                localStorage.setItem('flowy_employee_session', JSON.stringify(updatedEmployee));
             }
         } catch (e) {
             console.error("Auto-refresh failed", e);
@@ -125,11 +133,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         window.addEventListener('visibilitychange', visibilityHandler);
 
+        // Background refresh every 5 minutes while app is active
+        const refreshInterval = setInterval(() => {
+            if (localStorage.getItem('flowy_employee_session')) {
+                console.log('[AuthContext] Running periodic background refresh...');
+                refreshEmployee();
+            }
+        }, 1000 * 60 * 5);
+
         return () => {
             mounted = false;
             subscription.unsubscribe();
             window.removeEventListener('focus', handleFocus);
             window.removeEventListener('visibilitychange', visibilityHandler);
+            clearInterval(refreshInterval);
         };
     }, []);
 

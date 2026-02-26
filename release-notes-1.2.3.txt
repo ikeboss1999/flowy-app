@@ -1,0 +1,14 @@
+Release Notes - FlowY v1.2.3
+
+# Zusammenfassung der Updates (v1.2.3)
+
+In dieser Version lag der Fokus auf der Stabilität und der automatischen Synchronisation, besonders für die mobile App. 
+
+## Neue Funktionen & Verbesserungen
+- **📱 Smartes Auto-Refresh (Mobile)**: Die mobile App aktualisiert sich jetzt automatisch alle 5 Minuten im Hintergrund und synchronisiert Änderungen wie neue Profilbilder sofort ohne lästiges Ab- und Anmelden.
+- **🔄 Synchronisation Optimiert**: Bilder und große Datenmengen werden jetzt in kleineren, sicheren Paketen verschickt. Ein "Aufhängen" der App bei "Wird gesichert..." gehört der Vergangenheit an (automatischer Timeout nach 60s).
+
+## Bugfixes (Fehlerbehebungen)
+- **🔒 PIN-Verlust behoben**: Der Fehler, dass der Sicherheits-PIN nach einem automatischen Update im Hintergrund vergessen wurde, wurde behoben.
+- **👻 "Ghost"-Anfragen entfernt**: In der Chef-Ansicht (Mitarbeiterverwaltung) tauchten leere Änderungsanfragen auf. Diese werden jetzt restlos blockiert und ausgefiltert.
+- **⚡ Profil-Ladefehler**: Ein Fehler beim Öffnen des mobilen Profils, der den "Speichern"-Button ohne Grund aktivierte, wurde beseitigt.

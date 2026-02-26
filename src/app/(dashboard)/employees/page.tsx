@@ -379,9 +379,9 @@ export default function EmployeesPage() {
                         >
                             <Bell className="h-4 w-4" />
                             Anfragen
-                            {employees.filter(e => e.pendingChanges).length > 0 && (
+                            {employees.filter(e => e.pendingChanges && Object.keys(e.pendingChanges).length > 0).length > 0 && (
                                 <span className="absolute -top-1 -right-1 h-4 w-4 bg-rose-500 rounded-full flex items-center justify-center text-[10px] text-white animate-pulse">
-                                    {employees.filter(e => e.pendingChanges).length}
+                                    {employees.filter(e => e.pendingChanges && Object.keys(e.pendingChanges).length > 0).length}
                                 </span>
                             )}
                         </button>
@@ -750,8 +750,8 @@ export default function EmployeesPage() {
             ) : (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <div className="grid grid-cols-1 gap-6">
-                        {employees.filter(e => e.pendingChanges).length > 0 ? (
-                            employees.filter(e => e.pendingChanges).map(emp => (
+                        {employees.filter(e => e.pendingChanges && Object.keys(e.pendingChanges).length > 0).length > 0 ? (
+                            employees.filter(e => e.pendingChanges && Object.keys(e.pendingChanges).length > 0).map(emp => (
                                 <div key={emp.id} className="bg-white border border-slate-100 rounded-[32px] overflow-hidden shadow-sm p-8">
                                     <div className="flex justify-between items-start mb-8">
                                         <div className="flex items-center gap-5">

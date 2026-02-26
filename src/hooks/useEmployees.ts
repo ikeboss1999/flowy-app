@@ -10,7 +10,7 @@ const STORAGE_KEY = 'flowy_employees';
 export function useEmployees() {
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const { user, currentEmployee, isLoading: authLoading } = useAuth();
+    const { user, currentEmployee, refreshEmployee, isLoading: authLoading } = useAuth();
     const { markDirty, lastSyncTime } = useSync();
 
     const activeUserId = user?.id || currentEmployee?.userId;
@@ -71,6 +71,11 @@ export function useEmployees() {
             });
             setEmployees(prev => prev.map(e => e.id === id ? updated : e));
             markDirty();
+
+            // Auto-refresh AuthContext if the updated employee is the current one
+            if (currentEmployee?.id === id) {
+                refreshEmployee();
+            }
         } catch (e) {
             console.error('Failed to update employee', e);
         }
@@ -79,6 +84,12 @@ export function useEmployees() {
     const requestEmployeeUpdate = async (id: string, pendingChanges: Partial<Employee>) => {
         const employee = employees.find(e => e.id === id);
         if (!employee || !activeUserId) return;
+
+        // Safety check: Don't save empty requests
+        if (!pendingChanges || Object.keys(pendingChanges).length === 0) {
+            console.warn('[useEmployees] Skipping requestEmployeeUpdate: No changes detected.');
+            return { success: true };
+        }
 
         const updated = { ...employee, pendingChanges };
 
@@ -90,6 +101,11 @@ export function useEmployees() {
             });
             setEmployees(prev => prev.map(e => e.id === id ? updated : e));
             markDirty();
+
+            // Auto-refresh AuthContext if the updated employee is the current one
+            if (currentEmployee?.id === id) {
+                refreshEmployee();
+            }
             return { success: true };
         } catch (e) {
             console.error('Failed to request update', e);

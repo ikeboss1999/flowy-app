@@ -51,11 +51,16 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         setStatus('syncing');
         if (options?.blocking) setIsBlocking(true);
         try {
+            // Add dynamic timeout for sync-push to avoid hanging forever
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 1 minute timeout for push
+
             const response = await fetch('/api/db/sync-push', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id })
-            });
+                body: JSON.stringify({ userId: user.id }),
+                signal: controller.signal
+            }).finally(() => clearTimeout(timeoutId));
 
             if (!response.ok) throw new Error('Sync failed');
 
