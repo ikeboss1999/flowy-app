@@ -28,6 +28,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSync } from "@/context/SyncContext";
 import { Cloud, CheckCircle2, RefreshCcw, Menu, X } from "lucide-react";
 import { useDevice } from "@/hooks/useDevice";
+import { isWeb } from "@/lib/is-web";
 import { useEffect } from "react";
 
 interface MenuItem {
@@ -270,16 +271,26 @@ export function Sidebar() {
                 </div>
 
                 <nav className="flex-1 space-y-8">
-                    {menuGroups.map((group) => (
-                        <div key={group.title} className="space-y-2">
-                            <div className="px-5 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">
-                                {group.title}
+                    {menuGroups.map((group) => {
+                        // Filter items based on isWeb/isElectron
+                        const filteredItems = group.items.filter(item => {
+                            // Home/Welcome is now always allowed if the user wants it back
+                            return true;
+                        });
+
+                        if (filteredItems.length === 0) return null;
+
+                        return (
+                            <div key={group.title} className="space-y-2">
+                                <div className="px-5 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">
+                                    {group.title}
+                                </div>
+                                <div className="space-y-1">
+                                    {filteredItems.map(item => renderMenuItem(item))}
+                                </div>
                             </div>
-                            <div className="space-y-1">
-                                {group.items.map(item => renderMenuItem(item))}
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </nav>
 
                 <div className="mt-12 border-t border-white/10 pt-8 pb-4">

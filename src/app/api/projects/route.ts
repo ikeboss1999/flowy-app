@@ -30,7 +30,8 @@ export async function GET(request: Request) {
             const rows = sqliteDb.prepare('SELECT * FROM projects WHERE userId = ?').all(userId);
             const data = rows.map((r: any) => ({
                 ...r,
-                paymentPlan: r.paymentPlan ? JSON.parse(r.paymentPlan) : []
+                paymentPlan: r.paymentPlan ? JSON.parse(r.paymentPlan) : [],
+                diaryEntries: r.diaryEntries ? JSON.parse(r.diaryEntries) : []
             }));
             return NextResponse.json(data);
         }
@@ -69,14 +70,15 @@ export async function POST(request: Request) {
         } else {
             const stmt = sqliteDb.prepare(`
                 INSERT OR REPLACE INTO projects 
-                (id, name, customerId, description, status, address, startDate, endDate, budget, paymentPlan, createdAt, updatedAt, userId)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (id, name, customerId, description, status, address, startDate, endDate, budget, paymentPlan, diaryEntries, createdAt, updatedAt, userId)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             stmt.run(
                 projectId, project.name, project.customerId, project.description,
                 project.status, JSON.stringify(project.address), project.startDate, project.endDate,
                 project.budget, JSON.stringify(project.paymentPlan || []),
+                JSON.stringify(project.diaryEntries || []),
                 project.createdAt || now, now, userId
             );
 

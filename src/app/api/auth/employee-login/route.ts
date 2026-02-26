@@ -9,7 +9,9 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
     try {
-        const { staffId, pin } = await request.json();
+        const body = await request.json();
+        const staffId = body.staffId?.toString().trim();
+        const pin = body.pin?.toString().trim();
 
         if (!staffId || !pin) {
             return NextResponse.json({ message: 'Verfügernummer und PIN sind erforderlich' }, { status: 400 });
@@ -23,10 +25,14 @@ export async function POST(request: Request) {
             // but for now we search globally across employees.
             // SECURITY: Use supabaseAdmin to bypass RLS policies and find the employee
             const client = supabaseAdmin || supabase;
+            if (!supabaseAdmin) {
+                console.warn('[EmployeeLogin] WARNING: supabaseAdmin is null. Falling back to anonymous client. Search may fail due to RLS.');
+            }
+
             const { data, error } = await client
                 .from('employees')
                 .select('*')
-                .filter('appAccess->staffId', 'eq', staffId)
+                .filter('appAccess->>staffId', 'eq', staffId)
                 .single();
 
             if (error || !data) {
@@ -63,7 +69,7 @@ export async function POST(request: Request) {
                 const { data, error } = await client
                     .from('employees')
                     .select('*')
-                    .filter('appAccess->staffId', 'eq', staffId)
+                    .filter('appAccess->>staffId', 'eq', staffId)
                     .single();
 
                 if (data && !error) {

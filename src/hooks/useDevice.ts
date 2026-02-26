@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { isWeb } from '@/lib/is-web';
 
 export function useDevice() {
     const [isIPhone, setIsIPhone] = useState(false);
@@ -8,6 +9,7 @@ export function useDevice() {
     const [isTouchDevice, setIsTouchDevice] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [isDesktop, setIsDesktop] = useState(false);
+    const isElectron = !isWeb;
 
     useEffect(() => {
         const checkDevice = () => {
@@ -37,5 +39,5 @@ export function useDevice() {
         return () => window.removeEventListener('resize', checkDevice);
     }, []);
 
-    return { isIPhone, isIPad, isTouchDevice, isMobile, isDesktop };
+    return { isIPhone, isIPad, isTouchDevice, isMobile, isDesktop, isElectron };
 }

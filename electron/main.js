@@ -59,6 +59,15 @@ async function createWindow() {
             const appPath = app.getAppPath();
             console.log(`[SERVER] Starting Next.js server from path: ${appPath}`);
 
+            // Load environment variables for the production build
+            try {
+                const { loadEnvConfig } = require('@next/env');
+                loadEnvConfig(appPath, false);
+                console.log('[SERVER] Loaded environment variables from app context.');
+            } catch (envErr) {
+                console.warn('[SERVER] Warning: @next/env failed to load. Environment variables might be missing.', envErr.message);
+            }
+
             const nextApp = next({
                 dev: false,
                 dir: appPath,
@@ -66,6 +75,7 @@ async function createWindow() {
                     distDir: '.next',
                 }
             });
+
             const handle = nextApp.getRequestHandler();
 
             console.log('[SERVER] Preparing Next.js app...');

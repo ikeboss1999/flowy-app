@@ -145,7 +145,8 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     permissions: {
                         timeTracking: true,
                         documents: false,
-                        personalData: true
+                        personalData: true,
+                        projectDiary: false
                     }
                 }
             });
@@ -208,7 +209,8 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     permissions: {
                         timeTracking: true,
                         documents: false,
-                        personalData: true
+                        personalData: true,
+                        projectDiary: false
                     }
                 }
             });
@@ -223,7 +225,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 ...(prev.appAccess || {
                     accessPIN: "",
                     isAccessEnabled: false,
-                    permissions: { timeTracking: true, documents: false, personalData: true }
+                    permissions: { timeTracking: true, documents: false, personalData: true, projectDiary: false }
                 }),
                 staffId: id
             }
@@ -238,7 +240,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 ...(prev.appAccess || {
                     staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
                     isAccessEnabled: false,
-                    permissions: { timeTracking: true, documents: false, personalData: true }
+                    permissions: { timeTracking: true, documents: false, personalData: true, projectDiary: false }
                 }),
                 accessPIN: pin
             }
@@ -1199,7 +1201,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                             staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
                                                             accessPIN: "",
                                                             isAccessEnabled: false,
-                                                            permissions: { timeTracking: true, documents: false, personalData: true }
+                                                            permissions: { timeTracking: true, documents: false, personalData: true, projectDiary: false }
                                                         }),
                                                         isAccessEnabled: !prev.appAccess?.isAccessEnabled
                                                     }
@@ -1288,13 +1290,14 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                         <div className="grid grid-cols-1 gap-4">
                                             {[
                                                 { id: 'timeTracking', label: 'Mobile Zeiterfassung', desc: 'Arbeitszeiten erfassen & Urlaub beantragen', icon: Clock, color: 'indigo' },
+                                                { id: 'projectDiary', label: 'Bautagebuch', desc: 'Fotos aufnehmen & Berichte erstellen', icon: Activity, color: 'rose' },
                                                 { id: 'personalData', label: 'Stammdaten-Änderung', desc: 'Adressdaten & Bankverbindung anpassen', icon: User, color: 'emerald' },
                                                 { id: 'documents', label: 'Dokumenten-Einsicht', desc: 'Lohnzettel & Verträge am Handy sehen', icon: FileText, color: 'orange' },
                                             ].map((perm) => (
                                                 <div
                                                     key={perm.id}
                                                     onClick={() => {
-                                                        const currentPerms = formData.appAccess?.permissions || { timeTracking: true, documents: false, personalData: true };
+                                                        const currentPerms = formData.appAccess?.permissions || { timeTracking: true, documents: false, personalData: true, projectDiary: false };
                                                         setFormData({
                                                             ...formData,
                                                             appAccess: {
@@ -1302,7 +1305,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                                     staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
                                                                     accessPIN: "",
                                                                     isAccessEnabled: false,
-                                                                    permissions: { timeTracking: true, documents: false, personalData: true }
+                                                                    permissions: { timeTracking: true, documents: false, personalData: true, projectDiary: false }
                                                                 }),
                                                                 permissions: {
                                                                     ...currentPerms,

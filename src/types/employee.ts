@@ -20,6 +20,7 @@ export interface EmployeeAppAccess {
         timeTracking: boolean;
         documents: boolean;
         personalData: boolean;
+        projectDiary: boolean;
     };
     lastLogin?: string;
 }

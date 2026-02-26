@@ -11,7 +11,8 @@ import {
     Briefcase,
     X,
     Info,
-    CheckCircle2
+    CheckCircle2,
+    Activity
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -61,6 +62,16 @@ export default function MobileDashboard() {
             lightColor: "bg-amber-50",
             textColor: "text-amber-600",
             enabled: permissions?.personalData !== false
+        },
+        {
+            title: "Bautagebuch",
+            description: "Fotos & Berichte vom Bau",
+            icon: Activity,
+            href: "/mobile/projects",
+            color: "bg-rose-500",
+            lightColor: "bg-rose-50",
+            textColor: "text-rose-600",
+            enabled: permissions?.projectDiary === true
         }
     ]
 

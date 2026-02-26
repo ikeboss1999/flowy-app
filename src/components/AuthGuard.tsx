@@ -28,17 +28,23 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         // Wait until loading is done OR failsafe triggers
         if (isLoading && !forceShow) return
 
-        const isPublic = PUBLIC_ROUTES.includes(pathname)
-        const isMobileRoute = pathname.startsWith('/mobile')
-
         const handleRouting = async () => {
+            const isPublic = PUBLIC_ROUTES.includes(pathname)
+            const isMobileRoute = pathname.startsWith('/mobile')
+            const isElectron = !isWeb
+
             if (isPublic) {
-                if (user) {
-                    // Logged in user (admin) on a public page -> Redirect to app
+                // RESTRICTION: No /welcome or /register in Electron (except if explicitly allowed, but user wants them and welcome web-only)
+                if (isElectron && (pathname === "/welcome" || pathname === "/register")) {
                     setIsRedirecting(true)
-                    router.push("/")
+                    router.push("/login")
+                    return
+                }
+
+                if (user) {
+                    setIsRedirecting(true)
+                    router.push("/dashboard")
                 } else if (currentEmployee) {
-                    // Logged in employee on a public page -> Redirect to mobile app
                     setIsRedirecting(true)
                     router.push("/mobile/dashboard")
                 } else {
@@ -47,24 +53,31 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             } else {
                 // Protected routes
                 if (!user && !currentEmployee) {
-                    // Not logged in at all -> Welcome/Login
+                    // Only redirect if we are NOT in the failsafe "forceShow" state without any data
+                    // If forceShow is true but we have no user, we might be offline or still loading.
+                    // Better to wait or stay on login if we were already there.
+                    if (isLoading && forceShow) {
+                        // In failsafe mode but still no user -> don't redirect yet to avoid loops
+                        setIsRedirecting(false)
+                        return
+                    }
+
                     setIsRedirecting(true)
 
-                    // ZOMBIE COOKIE KILLER: Ensure server session is dead before redirecting to login
+                    // ZOMBIE COOKIE KILLER
                     try {
                         await fetch('/api/auth/logout', { method: 'POST' });
-                    } catch (e) { console.error("Auto-logout failed", e); }
+                    } catch (e) { }
 
-                    if (isWeb && pathname === "/") {
+                    if (isWeb && (pathname === "/" || pathname === "/welcome")) {
                         router.push("/welcome")
                     } else {
+                        // Desktop app always goes to /login
                         router.push("/login")
                     }
                 } else if (isMobileRoute && !currentEmployee && user) {
-                    // Admin trying to access mobile route - ALLOW
                     setIsRedirecting(false)
                 } else if (!isMobileRoute && !user && currentEmployee) {
-                    // Employee trying to access admin route - REDIRECT TO MOBILE
                     setIsRedirecting(true)
                     router.push("/mobile/dashboard")
                 } else {
@@ -75,8 +88,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         };
 
         handleRouting();
-
-    }, [user, currentEmployee, isLoading, forceShow, pathname, router])
+    }, [user, currentEmployee, isLoading, forceShow, pathname, router]);
 
     // Render Logic helper
     const showLoader = (isLoading || isRedirecting) && !forceShow;

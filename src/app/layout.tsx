@@ -51,14 +51,14 @@ export default function RootLayout({
         <AuthProvider>
           <NotificationProvider>
             <SyncProvider>
+              <UpdateNotification />
+              <CloudSyncModal />
+              <SyncNotice />
               <AuthGuard>
                 <AutoRestore>
                   {children}
                 </AutoRestore>
-                <UpdateNotification />
-                <CloudSyncModal />
                 <InputAutoSelect />
-                <SyncNotice />
                 <DisableZoom />
               </AuthGuard>
             </SyncProvider>

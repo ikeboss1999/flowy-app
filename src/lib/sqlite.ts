@@ -65,6 +65,7 @@ function initSchema(db: any) {
             endDate TEXT,
             budget REAL,
             paymentPlan TEXT,
+            diaryEntries TEXT,
             createdAt TEXT,
             updatedAt TEXT,
             userId TEXT
@@ -348,6 +349,13 @@ function initSchema(db: any) {
     }
     if (!empColumnNames.includes('sharedFolders')) {
       db.prepare("ALTER TABLE employees ADD COLUMN sharedFolders TEXT").run();
+    }
+
+    const projColumns = db.prepare("PRAGMA table_info(projects)").all();
+    const projColumnNames = projColumns.map((c: any) => c.name);
+    if (!projColumnNames.includes('diaryEntries')) {
+      db.prepare("ALTER TABLE projects ADD COLUMN diaryEntries TEXT").run();
+      console.log("[Migration] Added diaryEntries to projects");
     }
   } catch (e) {
     console.error("Migration failed", e);

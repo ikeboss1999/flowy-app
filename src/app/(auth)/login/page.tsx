@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { getAuthErrorMessage } from "@/lib/auth-utils"
 import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
 import { AlertCircle, CheckCircle2, Loader2, Lock, Mail, User, Eye, EyeOff } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useDevice } from "@/hooks/useDevice"
@@ -25,15 +24,17 @@ export default function LoginPage() {
     const [staffId, setStaffId] = useState("")
     const [pin, setPin] = useState("")
     const { loginAsEmployee } = useAuth()
-    const { isMobile, isDesktop, isIPhone } = useDevice()
+    const { isMobile, isDesktop, isIPhone, isElectron } = useDevice()
+    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    const hideRegister = isElectron || isLocalhost
     const router = useRouter()
 
     // Sync state with query param if it changes
     useEffect(() => {
         const mode = searchParams.get('mode')
-        if (mode === 'register') setIsLogin(false)
-        else if (mode === 'login') setIsLogin(true)
-    }, [searchParams])
+        if (mode === 'register' && !hideRegister) setIsLogin(false)
+        else setIsLogin(true)
+    }, [searchParams, hideRegister])
 
     // Adaptive login type based on device
     useEffect(() => {
@@ -73,7 +74,7 @@ export default function LoginPage() {
                 if (error) throw error
                 router.push("/")
                 router.refresh()
-            } else {
+            } else if (!hideRegister) {
                 const { error } = await supabase.auth.signUp({
                     email,
                     password,
@@ -157,8 +158,8 @@ export default function LoginPage() {
                 {/* Auth Card */}
                 <div className="w-full bg-[#0F0F1A]/60 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] p-10 md:p-12 shadow-2xl ring-1 ring-white/10">
 
-                    {/* Login Type Switcher - Only visible on non-mobile touch devices or if manually requested? No, user wants it hidden on mobile and removed on desktop */}
-                    {!isIPhone && !isMobile && !isDesktop && (
+                    {/* Login Type Switcher - Hidden in Electron */}
+                    {!isIPhone && !isMobile && !isDesktop && !hideRegister && (
                         <div className="flex bg-black/40 p-1.5 rounded-2xl mb-10 border border-white/5">
                             <button
                                 onClick={() => {
@@ -167,7 +168,7 @@ export default function LoginPage() {
                                 }}
                                 className={cn(
                                     "flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                                    loginType === 'admin' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"
+                                    loginType === 'admin' ? "bg-indigo-600 text-white shadow-lg" : "text-sidebar-foreground/60 hover:text-white"
                                 )}
                             >
                                 Verwaltung
@@ -181,7 +182,7 @@ export default function LoginPage() {
                                 }}
                                 className={cn(
                                     "flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                                    loginType === 'employee' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"
+                                    loginType === 'employee' ? "bg-indigo-600 text-white shadow-lg" : "text-sidebar-foreground/60 hover:text-white"
                                 )}
                             >
                                 Mitarbeiter App
@@ -347,16 +348,15 @@ export default function LoginPage() {
                         </button>
                     </form>
 
-                    {loginType === 'admin' && (
+                    {loginType === 'admin' && !hideRegister && (
                         <div className="mt-8 text-center">
-                            <p className="text-sm text-slate-500 font-medium">
+                            <p className="text-sm text-sidebar-foreground/60 font-medium">
                                 {isLogin ? "Noch kein FlowY Konto? " : "Bereits ein FlowY Mitglied? "}
                                 <button
                                     onClick={() => {
                                         setIsLogin(!isLogin)
                                         setError(null)
                                         setMessage(null)
-                                        // Update URL without full refresh to preserve context
                                         const newUrl = isLogin ? '/login?mode=register' : '/login?mode=login'
                                         window.history.pushState({}, '', newUrl)
                                     }}
@@ -365,30 +365,6 @@ export default function LoginPage() {
                                     {isLogin ? "Jetzt registrieren" : "Hier einloggen"}
                                 </button>
                             </p>
-                        </div>
-                    )}
-
-                    {/* Discrete Admin Login for Mobile */}
-                    {(isIPhone || isMobile) && loginType === 'employee' && (
-                        <div className="mt-8 text-center border-t border-white/5 pt-6">
-                            <button
-                                onClick={() => setLoginType('admin')}
-                                className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 hover:text-indigo-400 transition-colors"
-                            >
-                                Verwaltung Login
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Back to Employee Login for Mobile */}
-                    {(isIPhone || isMobile) && loginType === 'admin' && (
-                        <div className="mt-8 text-center border-t border-white/5 pt-6">
-                            <button
-                                onClick={() => setLoginType('employee')}
-                                className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 hover:text-indigo-400 transition-colors"
-                            >
-                                Zurück zur Mitarbeiter App
-                            </button>
                         </div>
                     )}
                 </div>

@@ -20,7 +20,12 @@ import { Invoice } from "@/types/invoice";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useProjects } from "@/hooks/useProjects";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { PaymentPlanModal } from "./PaymentPlanModal";
+import { ProjectDiary } from "./ProjectDiary";
+import { DiaryPDF } from "./DiaryPDF";
+import { InvoicePrintHandler } from "@/components/InvoicePrintHandler";
+import { DiaryEntry } from "@/types/project";
 
 interface ProjectDetailsProps {
     project: Project;
@@ -34,7 +39,9 @@ interface ProjectDetailsProps {
 export function ProjectDetails({ project, customer, invoices, onBack, onEdit, onCreateInvoice }: ProjectDetailsProps) {
     const router = useRouter();
     const { updateProject } = useProjects();
+    const { data: companySettings } = useCompanySettings();
     const [isPaymentPlanModalOpen, setIsPaymentPlanModalOpen] = useState(false);
+    const [isPrintingDiary, setIsPrintingDiary] = useState(false);
 
     // Calculate financials
     const financials = useMemo(() => {
@@ -111,6 +118,16 @@ export function ProjectDetails({ project, customer, invoices, onBack, onEdit, on
         });
 
         router.push(`/invoices/new?${params.toString()}`);
+    };
+
+    const [activeTab, setActiveTab] = useState<'billing' | 'diary'>('billing');
+
+    const handleUpdateDiary = (entries: DiaryEntry[]) => {
+        updateProject(project.id, { diaryEntries: entries });
+    };
+
+    const handleGenerateDiaryPDF = () => {
+        setIsPrintingDiary(true);
     };
 
     const getStatusStyle = (status: ProjectStatus) => {
@@ -206,196 +223,236 @@ export function ProjectDetails({ project, customer, invoices, onBack, onEdit, on
                 </div>
             </div>
 
-            {/* Payment Plan Section */}
-            <div className="space-y-4">
-                <div className="flex justify-between items-center px-2">
-                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                        <ListChecks className="h-5 w-5 text-indigo-600" />
-                        Zahlungsplan
-                    </h3>
-                    <button
-                        onClick={() => setIsPaymentPlanModalOpen(true)}
-                        className="text-indigo-600 font-bold hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors text-sm"
-                    >
-                        Plan bearbeiten
-                    </button>
-                </div>
+            {/* View Selection Tabs */}
+            <div className="flex gap-1 p-1 bg-slate-100/50 rounded-2xl w-fit">
+                <button
+                    onClick={() => setActiveTab('billing')}
+                    className={cn(
+                        "px-6 py-2.5 rounded-xl font-bold text-sm transition-all",
+                        activeTab === 'billing' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    )}
+                >
+                    Abrechnung & Plan
+                </button>
+                <button
+                    onClick={() => setActiveTab('diary')}
+                    className={cn(
+                        "px-6 py-2.5 rounded-xl font-bold text-sm transition-all",
+                        activeTab === 'diary' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    )}
+                >
+                    Bautagebuch
+                </button>
+            </div>
 
-                {!project.paymentPlan || project.paymentPlan.length === 0 ? (
-                    <div className="bg-slate-50 rounded-[24px] border border-slate-100 p-8 text-center border-dashed">
-                        <p className="text-slate-500 font-medium mb-4">Noch kein Zahlungsplan hinterlegt.</p>
-                        <button
-                            onClick={() => setIsPaymentPlanModalOpen(true)}
-                            className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm inline-flex items-center gap-2"
-                        >
-                            <Plus className="h-4 w-4" /> Zahlungsplan erstellen
-                        </button>
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 border-b border-slate-100">
-                                <tr>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest w-16">Nr.</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Bezeichnung</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Fällig am</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Betrag (Netto)</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Status</th>
-                                    <th className="px-6 py-4 w-40"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {project.paymentPlan.map((item, index) => {
-                                    const linkedInvoice = invoices.find(inv =>
-                                        (inv.paymentPlanItemId && String(inv.paymentPlanItemId) === String(item.id)) ||
-                                        (inv.projectId && String(inv.projectId) === String(project.id) &&
-                                            inv.billingType === (item.type || 'partial') &&
-                                            (inv.billingType === 'final' || inv.partialPaymentNumber === (index + 1)))
-                                    );
+            {activeTab === 'billing' ? (
+                <>
+                    {/* Payment Plan Section */}
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center px-2">
+                            <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <ListChecks className="h-5 w-5 text-indigo-600" />
+                                Zahlungsplan
+                            </h3>
+                            <button
+                                onClick={() => setIsPaymentPlanModalOpen(true)}
+                                className="text-indigo-600 font-bold hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors text-sm"
+                            >
+                                Plan bearbeiten
+                            </button>
+                        </div>
 
-                                    const isLocked = linkedInvoice && !['draft', 'canceled'].includes(linkedInvoice.status);
-
-                                    return (
-                                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-6 py-4 font-bold text-slate-400">{index + 1}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="font-bold text-slate-700">{item.name}</div>
-                                                {item.description && (
-                                                    <div className="text-xs text-slate-400 mt-0.5 font-medium">{item.description}</div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-slate-500">
-                                                {item.dueDate ? new Date(item.dueDate).toLocaleDateString('de-DE') : '-'}
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-mono font-medium text-slate-700">
-                                                € {(item.amount || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                {linkedInvoice ? (
-                                                    <span className={cn(
-                                                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border",
-                                                        linkedInvoice.status === 'paid' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                                                            linkedInvoice.status === 'draft' ? "bg-slate-50 text-slate-600 border-slate-100" :
-                                                                linkedInvoice.status === 'canceled' ? "bg-rose-50 text-rose-600 border-rose-100" :
-                                                                    "bg-amber-50 text-amber-700 border-amber-100"
-                                                    )}>
-                                                        {linkedInvoice.status === 'paid' && <CheckCircle className="h-3 w-3" />}
-                                                        {linkedInvoice.status === 'draft' ? 'Entwurf' :
-                                                            linkedInvoice.status === 'paid' ? 'Bezahlt' :
-                                                                linkedInvoice.status === 'canceled' ? 'Storniert' : 'Erstellt'}
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-wider">
-                                                        Geplant
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                {(!linkedInvoice || !isLocked) && (
-                                                    <button
-                                                        onClick={() => handleCreateInvoiceFromPlan(item)}
-                                                        className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1 ml-auto"
-                                                    >
-                                                        Rechnung erstellen <ArrowRight className="h-3 w-3" />
-                                                    </button>
-                                                )}
-                                                {isLocked && (
-                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1.5 justify-end">
-                                                        <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
-                                                        Bereits abgerechnet
-                                                    </div>
-                                                )}
-                                            </td>
+                        {!project.paymentPlan || project.paymentPlan.length === 0 ? (
+                            <div className="bg-slate-50 rounded-[24px] border border-slate-100 p-8 text-center border-dashed">
+                                <p className="text-slate-500 font-medium mb-4">Noch kein Zahlungsplan hinterlegt.</p>
+                                <button
+                                    onClick={() => setIsPaymentPlanModalOpen(true)}
+                                    className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm inline-flex items-center gap-2"
+                                >
+                                    <Plus className="h-4 w-4" /> Zahlungsplan erstellen
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50 border-b border-slate-100">
+                                        <tr>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest w-16">Nr.</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Bezeichnung</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Fällig am</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Betrag (Netto)</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Status</th>
+                                            <th className="px-6 py-4 w-40"></th>
                                         </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {project.paymentPlan.map((item, index) => {
+                                            const linkedInvoice = invoices.find(inv =>
+                                                (inv.paymentPlanItemId && String(inv.paymentPlanItemId) === String(item.id)) ||
+                                                (inv.projectId && String(inv.projectId) === String(project.id) &&
+                                                    inv.billingType === (item.type || 'partial') &&
+                                                    (inv.billingType === 'final' || inv.partialPaymentNumber === (index + 1)))
+                                            );
 
-            {/* Invoices List */}
-            <div className="space-y-4">
-                <h3 className="text-xl font-bold text-slate-900 px-2 flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-indigo-600" />
-                    Projektrechnungen
-                </h3>
+                                            const isLocked = linkedInvoice && !['draft', 'canceled'].includes(linkedInvoice.status);
 
-                {financials.invoices.length === 0 ? (
-                    <div className="bg-slate-50 rounded-[24px] border border-slate-100 p-12 text-center">
-                        <p className="text-slate-500 font-medium">Noch keine Rechnungen für dieses Projekt erstellt.</p>
-                        <button
-                            onClick={() => onCreateInvoice('partial')}
-                            className="mt-4 text-indigo-600 font-bold hover:underline"
-                        >
-                            Erste Teilrechnung erstellen
-                        </button>
+                                            return (
+                                                <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                                                    <td className="px-6 py-4 font-bold text-slate-400">{index + 1}</td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="font-bold text-slate-700">{item.name}</div>
+                                                        {item.description && (
+                                                            <div className="text-xs text-slate-400 mt-0.5 font-medium">{item.description}</div>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-slate-500">
+                                                        {item.dueDate ? new Date(item.dueDate).toLocaleDateString('de-DE') : '-'}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right font-mono font-medium text-slate-700">
+                                                        € {(item.amount || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        {linkedInvoice ? (
+                                                            <span className={cn(
+                                                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border",
+                                                                linkedInvoice.status === 'paid' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                                                    linkedInvoice.status === 'draft' ? "bg-slate-50 text-slate-600 border-slate-100" :
+                                                                        linkedInvoice.status === 'canceled' ? "bg-rose-50 text-rose-600 border-rose-100" :
+                                                                            "bg-amber-50 text-amber-700 border-amber-100"
+                                                            )}>
+                                                                {linkedInvoice.status === 'paid' && <CheckCircle className="h-3 w-3" />}
+                                                                {linkedInvoice.status === 'draft' ? 'Entwurf' :
+                                                                    linkedInvoice.status === 'paid' ? 'Bezahlt' :
+                                                                        linkedInvoice.status === 'canceled' ? 'Storniert' : 'Erstellt'}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-wider">
+                                                                Geplant
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        {(!linkedInvoice || !isLocked) && (
+                                                            <button
+                                                                onClick={() => handleCreateInvoiceFromPlan(item)}
+                                                                className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1 ml-auto"
+                                                            >
+                                                                Rechnung erstellen <ArrowRight className="h-3 w-3" />
+                                                            </button>
+                                                        )}
+                                                        {isLocked && (
+                                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1.5 justify-end">
+                                                                <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                                                                Bereits abgerechnet
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
-                ) : (
-                    <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 border-b border-slate-100">
-                                <tr>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Nr.</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Typ</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Datum</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Betrag (Netto)</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {financials.invoices.map((inv) => (
-                                    <tr
-                                        key={inv.id}
-                                        onClick={() => router.push('/dashboard')} // Ideally open functionality
-                                        className="hover:bg-slate-50 cursor-pointer transition-colors"
-                                    >
-                                        <td className="px-6 py-4 font-bold text-slate-900">{inv.invoiceNumber}</td>
-                                        <td className="px-6 py-4">
-                                            <span className={cn(
-                                                "px-2 py-1 rounded-md text-xs font-bold uppercase",
-                                                inv.billingType === 'final' ? "bg-emerald-100 text-emerald-700" :
-                                                    inv.billingType === 'partial' ? "bg-indigo-100 text-indigo-700" :
-                                                        "bg-slate-100 text-slate-700"
-                                            )}>
-                                                {inv.billingType === 'final' ? 'Schlussrechnung' :
-                                                    inv.billingType === 'partial' ? `${inv.partialPaymentNumber}. Teilrechnung` : 'Standard'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-slate-500">
-                                            {new Date(inv.issueDate).toLocaleDateString('de-DE')}
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-mono font-medium text-slate-700">
-                                            € {(inv.subtotal || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <span className={cn(
-                                                "px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
-                                                inv.status === 'paid' ? "bg-emerald-50 text-emerald-600" :
-                                                    inv.status === 'pending' ? "bg-amber-50 text-amber-600" :
-                                                        inv.status === 'overdue' ? "bg-rose-50 text-rose-600" :
-                                                            "bg-slate-100 text-slate-500"
-                                            )}>
-                                                {inv.status === 'paid' ? 'Bezahlt' :
-                                                    inv.status === 'pending' ? 'Offen' :
-                                                        inv.status === 'overdue' ? 'Überfällig' : inv.status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
 
-            <PaymentPlanModal
-                isOpen={isPaymentPlanModalOpen}
-                onClose={() => setIsPaymentPlanModalOpen(false)}
-                project={project}
-                onSave={handleSavePaymentPlan}
-            />
+                    {/* Invoices List */}
+                    <div className="space-y-4">
+                        <h3 className="text-xl font-bold text-slate-900 px-2 flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-indigo-600" />
+                            Projektrechnungen
+                        </h3>
+
+                        {financials.invoices.length === 0 ? (
+                            <div className="bg-slate-50 rounded-[24px] border border-slate-100 p-12 text-center">
+                                <p className="text-slate-500 font-medium">Noch keine Rechnungen für dieses Projekt erstellt.</p>
+                                <button
+                                    onClick={() => onCreateInvoice('partial')}
+                                    className="mt-4 text-indigo-600 font-bold hover:underline"
+                                >
+                                    Erste Teilrechnung erstellen
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50 border-b border-slate-100">
+                                        <tr>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Nr.</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Typ</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Datum</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Betrag (Netto)</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {financials.invoices.map((inv) => (
+                                            <tr
+                                                key={inv.id}
+                                                onClick={() => router.push('/dashboard')} // Ideally open functionality
+                                                className="hover:bg-slate-50 cursor-pointer transition-colors"
+                                            >
+                                                <td className="px-6 py-4 font-bold text-slate-900">{inv.invoiceNumber}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className={cn(
+                                                        "px-2 py-1 rounded-md text-xs font-bold uppercase",
+                                                        inv.billingType === 'final' ? "bg-emerald-100 text-emerald-700" :
+                                                            inv.billingType === 'partial' ? "bg-indigo-100 text-indigo-700" :
+                                                                "bg-slate-100 text-slate-700"
+                                                    )}>
+                                                        {inv.billingType === 'final' ? 'Schlussrechnung' :
+                                                            inv.billingType === 'partial' ? `${inv.partialPaymentNumber}. Teilrechnung` : 'Standard'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-slate-500">
+                                                    {new Date(inv.issueDate).toLocaleDateString('de-DE')}
+                                                </td>
+                                                <td className="px-6 py-4 text-right font-mono font-medium text-slate-700">
+                                                    € {(inv.subtotal || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <span className={cn(
+                                                        "px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                                                        inv.status === 'paid' ? "bg-emerald-50 text-emerald-600" :
+                                                            inv.status === 'pending' ? "bg-amber-50 text-amber-600" :
+                                                                inv.status === 'overdue' ? "bg-rose-50 text-rose-600" :
+                                                                    "bg-slate-100 text-slate-500"
+                                                    )}>
+                                                        {inv.status === 'paid' ? 'Bezahlt' :
+                                                            inv.status === 'pending' ? 'Offen' :
+                                                                inv.status === 'overdue' ? 'Überfällig' : inv.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </>
+            ) : (
+                <ProjectDiary
+                    project={project}
+                    onUpdate={handleUpdateDiary}
+                    onGeneratePDF={handleGenerateDiaryPDF}
+                />
+            )}
+
+            {/* Print Handler for Bautagebuch */}
+            {isPrintingDiary && companySettings && (
+                <InvoicePrintHandler
+                    onAfterPrint={() => setIsPrintingDiary(false)}
+                    documentTitle={`Bautagebuch_${project.name.replace(/\s+/g, '_')}`}
+                >
+                    <DiaryPDF
+                        project={project}
+                        customer={customer}
+                        companySettings={companySettings}
+                    />
+                </InvoicePrintHandler>
+            )}
+
         </div>
     );
 }

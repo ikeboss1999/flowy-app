@@ -1,5 +1,12 @@
 export type ProjectStatus = 'active' | 'completed' | 'planned' | 'on_hold';
 
+export interface DiaryEntry {
+    id: string;
+    date: string;
+    description: string;
+    images: string[]; // Base64 strings
+}
+
 export interface Project {
     id: string;
     name: string; // Baustellenname / Bezeichnung
@@ -18,6 +25,7 @@ export interface Project {
     createdAt: string;
     updatedAt: string;
     userId?: string; // Owner of the project
+    diaryEntries?: DiaryEntry[];
 }
 
 export interface PaymentPlanItem {

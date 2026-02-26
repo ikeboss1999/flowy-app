@@ -74,14 +74,15 @@
       "public/**/*",
       "node_modules/**/*",
       "Logo.png",
-      "package.json"
+      "package.json",
+      ".env*"
     ],
     "win": {
       "target": [
         "nsis"
       ],
       "icon": "Logo.png",
-      "artifactName": "FlowY-Setup-${version}.${ext}",
+      "artifactName": "FlowY-Setup.${ext}",
       "publish": [
         {
           "provider": "github",
