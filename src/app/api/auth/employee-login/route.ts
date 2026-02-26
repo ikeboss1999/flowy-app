@@ -35,10 +35,7 @@ export async function POST(request: Request) {
 
             employee = data as Employee;
         } else {
-            // In local mode, we search SQLite.
-            // We'll iterate through all employees and check their appAccess JSON.
-            // A more efficient way would be a generated column or a separate table, 
-            // but for a small local DB, this search is fine.
+            // In local mode, we search SQLite first.
             const rows = sqliteDb.prepare('SELECT * FROM employees').all() as any[];
             for (const row of rows) {
                 const appAccess = row.appAccess ? JSON.parse(row.appAccess) : null;
@@ -55,10 +52,53 @@ export async function POST(request: Request) {
                         pendingChanges: row.pendingChanges ? JSON.parse(row.pendingChanges) : null,
                         sharedFolders: row.sharedFolders ? JSON.parse(row.sharedFolders) : []
                     };
-                    if (employee) {
-                        console.log(`[EmployeeLogin] Found employee ${staffId} with ${employee.documents?.length} documents and ${employee.sharedFolders?.length} folders`);
-                    }
                     break;
+                }
+            }
+
+            // FALLBACK: If not found in local SQLite, try Supabase (production safety)
+            if (!employee) {
+                console.log(`[EmployeeLogin] Not found locally, falling back to Supabase for ${staffId}...`);
+                const client = supabaseAdmin || supabase;
+                const { data, error } = await client
+                    .from('employees')
+                    .select('*')
+                    .filter('appAccess->staffId', 'eq', staffId)
+                    .single();
+
+                if (data && !error) {
+                    console.log(`[EmployeeLogin] Found employee ${staffId} in Supabase. Provisioning local DB...`);
+                    employee = data as Employee;
+
+                    // Cache in local SQLite for future offline access
+                    try {
+                        const stmt = sqliteDb.prepare(`
+                            INSERT OR REPLACE INTO employees 
+                            (id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, appAccess, pendingChanges, sharedFolders, createdAt, updatedAt, userId)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        `);
+
+                        stmt.run(
+                            employee.id,
+                            employee.employeeNumber,
+                            JSON.stringify(employee.personalData),
+                            JSON.stringify(employee.bankDetails),
+                            JSON.stringify(employee.employment),
+                            JSON.stringify(employee.additionalInfo || null),
+                            JSON.stringify(employee.weeklySchedule || null),
+                            JSON.stringify(employee.documents || []),
+                            employee.avatar || null,
+                            JSON.stringify(employee.appAccess),
+                            JSON.stringify(employee.pendingChanges || null),
+                            JSON.stringify(employee.sharedFolders || []),
+                            employee.createdAt || new Date().toISOString(),
+                            employee.updatedAt || new Date().toISOString(),
+                            employee.userId
+                        );
+                        console.log(`[EmployeeLogin] Local provisioning successful for ${staffId}`);
+                    } catch (dbError) {
+                        console.error('[EmployeeLogin] Local provisioning failed:', dbError);
+                    }
                 }
             }
         }

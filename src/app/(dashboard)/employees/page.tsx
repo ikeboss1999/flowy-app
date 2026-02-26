@@ -27,6 +27,7 @@ import {
     Folder,
     Bell,
     Check,
+    RefreshCcw,
     X as CloseIcon
 } from "lucide-react";
 import { Employee, EmploymentStatus, EmployeeDocument } from "@/types/employee";
@@ -38,6 +39,7 @@ import { cn } from "@/lib/utils";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useNotification } from "@/context/NotificationContext";
+import { useSync } from "@/context/SyncContext";
 
 export default function EmployeesPage() {
     const { employees, addEmployee, updateEmployee, deleteEmployee, getNextEmployeeNumber, isLoading } = useEmployees();
@@ -315,6 +317,8 @@ export default function EmployeesPage() {
         );
     }
 
+    const { status, triggerPull } = useSync();
+
     return (
         <div className="flex-1 p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-screen">
             {/* Header Area */}
@@ -383,17 +387,28 @@ export default function EmployeesPage() {
                         </button>
                     </div>
 
-                    {viewMode === 'list' && (
+                    <div className="flex gap-2">
                         <button
-                            onClick={() => {
-                                setEditingEmployee(undefined);
-                                setIsModalOpen(true);
-                            }}
-                            className="bg-primary-gradient text-white px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+                            onClick={() => triggerPull()}
+                            disabled={status === 'syncing'}
+                            className="bg-white text-slate-400 p-4 rounded-2xl border border-slate-100 shadow-sm hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-95 disabled:opacity-50"
+                            title="Daten aus Cloud aktualisieren"
                         >
-                            <Plus className="h-5 w-5" /> Neuer Mitarbeiter
+                            <RefreshCcw className={cn("h-5 w-5", status === "syncing" && "animate-spin")} />
                         </button>
-                    )}
+
+                        {viewMode === 'list' && (
+                            <button
+                                onClick={() => {
+                                    setEditingEmployee(undefined);
+                                    setIsModalOpen(true);
+                                }}
+                                className="bg-primary-gradient text-white px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+                            >
+                                <Plus className="h-5 w-5" /> Neuer Mitarbeiter
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 

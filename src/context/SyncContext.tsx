@@ -95,16 +95,15 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         }
     }, [status, triggerSync]);
 
-    // Initial sync on boot
+    // Initial sync and periodic pull on boot
     useEffect(() => {
         const runInitialSync = async () => {
             if (!isWeb && user) {
-                // 1. Safety Check: Verify if local data belongs to this user
+                // ... safety check (existing logic) ...
                 try {
                     const res = await fetch('/api/db/identify');
                     if (res.ok) {
                         const { userId: localUserId } = await res.json();
-                        // If we have local data but it belongs to someone else, wipe it
                         if (localUserId && localUserId !== user.id) {
                             console.warn(`[Sync] User mismatch! Local: ${localUserId}, Current: ${user.id}. Wiping.`);
                             await fetch('/api/db/clear', {
@@ -118,22 +117,40 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
                     console.error('[Sync] Safety check failed:', e);
                 }
 
-                // 2. Try to pull first (for new installs)
-                const pulledCount = await triggerPull();
-
-                // 3. If we pulled nothing, maybe local has data and cloud is behind?
-                // We trigger a push-sync anyway to ensure everything is mirrored.
-                if (pulledCount === 0) {
-                    await triggerSync();
-                }
+                // Initial pull
+                await triggerPull();
             }
         };
 
-        const t = setTimeout(() => {
-            runInitialSync();
-        }, 2000);
-        return () => clearTimeout(t);
-    }, [user, triggerSync, triggerPull]);
+        runInitialSync();
+
+        // Auto-pull every 5 minutes in Electron
+        let interval: NodeJS.Timeout;
+        if (!isWeb && user) {
+            interval = setInterval(() => {
+                triggerPull();
+            }, 5 * 60 * 1000);
+        }
+
+        // Auto-pull on window focus if been away for > 1 min
+        let lastFocusTime = Date.now();
+        const handleFocus = () => {
+            const now = Date.now();
+            if (now - lastFocusTime > 60 * 1000) {
+                triggerPull();
+            }
+            lastFocusTime = now;
+        };
+
+        if (typeof window !== 'undefined' && !isWeb) {
+            window.addEventListener('focus', handleFocus);
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+            if (typeof window !== 'undefined') window.removeEventListener('focus', handleFocus);
+        };
+    }, [user, triggerPull]);
 
     return (
         <SyncContext.Provider value={{ status, isBlocking, lastSyncTime, triggerSync, triggerPull, markDirty }}>

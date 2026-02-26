@@ -11,7 +11,7 @@ export function useEmployees() {
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { user, currentEmployee, isLoading: authLoading } = useAuth();
-    const { markDirty } = useSync();
+    const { markDirty, lastSyncTime } = useSync();
 
     const activeUserId = user?.id || currentEmployee?.userId;
 
@@ -26,30 +26,8 @@ export function useEmployees() {
                 const response = await fetch(`/api/employees?userId=${activeUserId}`);
                 const data = await response.json();
 
-                if (Array.isArray(data) && data.length > 0) {
+                if (Array.isArray(data)) {
                     setEmployees(data);
-                } else if (user) {
-                    // Try to migrate from localStorage (admin only)
-                    const savedData = localStorage.getItem(STORAGE_KEY);
-                    if (savedData) {
-                        try {
-                            const localEmployees: Employee[] = JSON.parse(savedData);
-                            const userEmployees = localEmployees.filter(e => e.userId === user.id || !e.userId);
-
-                            // Save each to SQLite
-                            for (const employee of userEmployees) {
-                                await fetch('/api/employees', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ userId: user.id, employee: { ...employee, userId: user.id } })
-                                });
-                            }
-
-                            setEmployees(userEmployees.map(e => ({ ...e, userId: user.id })));
-                        } catch (e) {
-                            console.error('Migration failed', e);
-                        }
-                    }
                 }
             } catch (e) {
                 console.error('Failed to fetch employees', e);
@@ -58,7 +36,7 @@ export function useEmployees() {
         };
 
         loadEmployees();
-    }, [activeUserId, authLoading, user]);
+    }, [activeUserId, authLoading, user, lastSyncTime]);
 
     const addEmployee = async (employee: Employee) => {
         const targetUserId = user?.id || currentEmployee?.userId;

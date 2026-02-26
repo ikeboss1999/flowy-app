@@ -77,6 +77,7 @@ export interface Employee {
     };
     documents: EmployeeDocument[];
     createdAt: string;
+    updatedAt?: string;
     avatar?: string; // Base64 string for profile picture
     userId?: string; // Owner of the employee data
     appAccess?: EmployeeAppAccess;

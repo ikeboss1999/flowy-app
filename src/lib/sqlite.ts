@@ -1,7 +1,8 @@
-import Database from 'better-sqlite3';
+// Removed static import of better-sqlite3 to prevent crashes on Vercel
 import path from 'path';
 import fs from 'fs';
 import { getAppDataPath } from './datapath';
+import { isWeb } from './is-web';
 
 const dbDir = getAppDataPath();
 const dbPath = path.join(dbDir, 'flowy.db');
@@ -9,16 +10,22 @@ const logPath = path.join(dbDir, 'sqlite_debug.log');
 const errorLogPath = path.join(dbDir, 'SQLITE_CRITICAL_ERROR.txt');
 
 // Lazy instance
-let dbInstance: Database.Database | null = null;
+let dbInstance: any | null = null;
 
-function getDb(): Database.Database {
+function getDb(): any {
+  if (isWeb) {
+    throw new Error('[SQLite] Cannot access SQLite in Web/Mobile environment. Use Supabase instead.');
+  }
+
   if (dbInstance) return dbInstance;
 
   try {
+    const Database = require('better-sqlite3');
+
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
     }
-
+    // ... rest of the logic remains same but using dynamic Database class
     // Clear previous error log if exists
     if (fs.existsSync(errorLogPath)) {
       try { fs.unlinkSync(errorLogPath); } catch (e) { /* ignore */ }
@@ -27,7 +34,7 @@ function getDb(): Database.Database {
     fs.appendFileSync(logPath, `[${new Date().toISOString()}] Opening DB at ${dbPath}\n`);
 
     dbInstance = new Database(dbPath, {
-      verbose: (msg) => {
+      verbose: (msg: string) => {
         try { fs.appendFileSync(logPath, `[SQL] ${msg}\n`); } catch (e) { }
       }
     });
@@ -45,7 +52,7 @@ function getDb(): Database.Database {
   }
 }
 
-function initSchema(db: Database.Database) {
+function initSchema(db: any) {
   db.exec(`
         CREATE TABLE IF NOT EXISTS projects (
             id TEXT PRIMARY KEY,
