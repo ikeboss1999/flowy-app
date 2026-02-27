@@ -1,0 +1,14 @@
+Release Notes - FlowY v1.2.4
+
+# Zusammenfassung der Updates (v1.2.4)
+
+Diese Version enthält essenzielle Stabilitätsupdates und Fehlerbehebungen für die Mobile- und Desktop-App, die basierend auf den neuesten Tests durchgeführt wurden.
+
+## Fehlerbehebungen (Bugfixes)
+- **🖥️ Desktop App Sync ("Wird gesichert" Endlosschleife behoben)**: Ein Fehler, bei dem der automatische Download beim Start der Desktop-App bei großen Datenmengen (wie hochauflösenden Profilbildern) hängen blieb, wurde behoben. Ein Sicherheits-Timeout (60s) verhindert nun das "Einfrieren" der App.
+- **📱 Mobile App Profil UI**: Die Darstellung im mobilen Mitarbeiterprofil wurde korrigiert. 
+  - Die Rubriken (Persönliche Daten, Anschrift, etc.) lassen sich wieder per Klick (Akkordeon-Methode) auf- und zuklappen.
+  - Die "Firmendaten" (Eintrittsdatum, Abteilung, Position, Mitarbeiternummer) werden für den Mitarbeiter wieder korrekt im Profil angezeigt.
+
+## Sonstige Anpassungen
+- **📦 Repository Push**: Das neueste Update wurde synchron zum GitHub-Repository gepusht, um Vercel den automatischen Build für die Web/Mobile-Version zu ermöglichen.
