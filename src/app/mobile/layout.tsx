@@ -7,12 +7,14 @@ import { LayoutDashboard, Clock, User, LogOut, Layers } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 import { useEmployees } from "@/hooks/useEmployees"
+import { useCompanySettings } from "@/hooks/useCompanySettings"
 import { SelfieCaptureModal } from "@/components/mobile/SelfieCaptureModal"
 
 export default function MobileLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
     const { logoutEmployee, currentEmployee, refreshEmployee } = useAuth()
     const { updateEmployee } = useEmployees()
+    const { data: companyData } = useCompanySettings()
     const [showSelfiePrompt, setShowSelfiePrompt] = useState(false)
 
     useEffect(() => {
@@ -49,9 +51,15 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
             {/* Mobile Header */}
             <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 pt-[calc(1rem+env(safe-area-inset-top))] pb-4 flex items-center justify-between shadow-sm shadow-slate-200/20">
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200 ring-2 ring-indigo-50">
-                        <Layers className="h-6 w-6 text-white" />
-                    </div>
+                    {companyData?.logo ? (
+                        <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-lg shadow-slate-200/50 ring-1 ring-slate-100 p-1 overflow-hidden">
+                            <img src={companyData.logo} alt="Logo" className="h-full w-full object-contain" />
+                        </div>
+                    ) : (
+                        <div className="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200 ring-2 ring-indigo-50">
+                            <Layers className="h-6 w-6 text-white" />
+                        </div>
+                    )}
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.22em] text-indigo-500 leading-none mb-1">FlowY Mobile</p>
                         <h1 className="text-sm font-black text-slate-800 tracking-tight">
