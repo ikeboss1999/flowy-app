@@ -306,13 +306,7 @@ export default function MobileProfile() {
                             )}
                         </div>
 
-                        <div className="h-px bg-white/5 w-full" />
-                        <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Zulassungsbehörde: Stadt Wien</span>
-                            <div className="h-6 w-6 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                                <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                            </div>
-                        </div>
+
                     </div>
                 </div>
             </div>
