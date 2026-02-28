@@ -1,0 +1,11 @@
+# Release Version 1.2.5
+
+Dieses Update behebt Performance-Probleme und Fehler in der Desktop- und Mobile-App.
+
+### ✨ Neue Funktionen & Verbesserungen
+- **Intelligenter Desktop-Sync:** Die lokale Windows-App prüft jetzt vor dem Daten-Upload smarte Zeitstempel. Nur noch wirklich geänderte Profile & riesige Bilder werden hochgeladen. Dadurch ist die ewige Ladezeit ("Wird gesichert...") behoben!
+- **Mobile Header Logo:** Das FlowY-Icon oben in der mobilen Ansicht wird jetzt durch das tatsächliche Logo der angemeldeten Firma ersetzt.
+- **Speichern Button (Timesheet):** Ein neues Klick-System umgeht einen Safari-Bug auf iPhones, bei dem der Speichern-Button für gebuchte Zeiten im Pop-Up manchmal nicht reagierte.
+
+### 🐛 Fehlerbehebungen
+- Automatischer Updater repariert: Zukünftige Updates werden nun wieder automatisch von der `.exe` in GitHub bezogen.
