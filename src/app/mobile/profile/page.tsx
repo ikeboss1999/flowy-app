@@ -53,15 +53,32 @@ export default function MobileProfile() {
 
     // Local state for editing
     const [formData, setFormData] = useState({
-        firstName: currentEmployee?.personalData.firstName || "",
-        lastName: currentEmployee?.personalData.lastName || "",
-        phone: currentEmployee?.personalData.phone || "",
-        email: currentEmployee?.personalData.email || "",
-        street: currentEmployee?.personalData.street || "",
-        city: currentEmployee?.personalData.city || "",
-        zip: currentEmployee?.personalData.zip || "",
-        iban: currentEmployee?.bankDetails.iban || ""
+        firstName: currentEmployee?.personalData?.firstName || "",
+        lastName: currentEmployee?.personalData?.lastName || "",
+        phone: currentEmployee?.personalData?.phone || "",
+        email: currentEmployee?.personalData?.email || "",
+        street: currentEmployee?.personalData?.street || "",
+        city: currentEmployee?.personalData?.city || "",
+        zip: currentEmployee?.personalData?.zip || "",
+        iban: currentEmployee?.bankDetails?.iban || ""
     })
+
+    // Sync form data if employee data is updated from backend (e.g. sync/refresh)
+    useEffect(() => {
+        if (currentEmployee) {
+            setFormData(prev => ({
+                ...prev,
+                firstName: currentEmployee.personalData?.firstName || "",
+                lastName: currentEmployee.personalData?.lastName || "",
+                phone: currentEmployee.personalData?.phone || "",
+                email: currentEmployee.personalData?.email || "",
+                street: currentEmployee.personalData?.street || "",
+                city: currentEmployee.personalData?.city || "",
+                zip: currentEmployee.personalData?.zip || "",
+                iban: currentEmployee.bankDetails?.iban || ""
+            }))
+        }
+    }, [currentEmployee])
 
     // Group documents by folder for employee view - ONLY shared documents
     const groupedDocuments = useMemo(() => {
@@ -93,13 +110,15 @@ export default function MobileProfile() {
     // Check if form is dirty
     const isDirty = useMemo(() => {
         if (!currentEmployee) return false;
+        const normalize = (val: any) => (val || "").trim();
+
         return (
-            formData.phone !== (currentEmployee.personalData.phone || "") ||
-            formData.email !== (currentEmployee.personalData.email || "") ||
-            formData.street !== (currentEmployee.personalData.street || "") ||
-            formData.city !== (currentEmployee.personalData.city || "") ||
-            formData.zip !== (currentEmployee.personalData.zip || "") ||
-            formData.iban !== (currentEmployee.bankDetails.iban || "")
+            normalize(formData.phone) !== normalize(currentEmployee.personalData?.phone) ||
+            normalize(formData.email) !== normalize(currentEmployee.personalData?.email) ||
+            normalize(formData.street) !== normalize(currentEmployee.personalData?.street) ||
+            normalize(formData.city) !== normalize(currentEmployee.personalData?.city) ||
+            normalize(formData.zip) !== normalize(currentEmployee.personalData?.zip) ||
+            normalize(formData.iban) !== normalize(currentEmployee.bankDetails?.iban)
         );
     }, [formData, currentEmployee]);
 
