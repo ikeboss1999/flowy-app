@@ -141,8 +141,8 @@ export function MobileTimeEntryModal({
                     </button>
                 </div>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="px-8 pb-[calc(2.5rem+env(safe-area-inset-bottom))] space-y-8 overflow-y-auto">
+                {/* Form (changed to div to fix Safari submission bugs) */}
+                <div className="px-8 pb-[calc(2.5rem+env(safe-area-inset-bottom))] space-y-8 overflow-y-auto">
                     {/* Time Selectors */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -154,7 +154,6 @@ export function MobileTimeEntryModal({
                                     value={formData.startTime}
                                     onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
                                     className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-transparent rounded-2xl text-sm font-black text-slate-800 outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all"
-                                    required
                                 />
                             </div>
                         </div>
@@ -167,7 +166,6 @@ export function MobileTimeEntryModal({
                                     value={formData.endTime}
                                     onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                                     className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-transparent rounded-2xl text-sm font-black text-slate-800 outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all"
-                                    required
                                 />
                             </div>
                         </div>
@@ -185,7 +183,6 @@ export function MobileTimeEntryModal({
                                     value={formData.location}
                                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                                     className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-transparent rounded-2xl text-sm font-black text-slate-800 outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all"
-                                    required
                                 />
                             </div>
                         </div>
@@ -211,7 +208,14 @@ export function MobileTimeEntryModal({
                     {/* Actions */}
                     <div className="flex flex-col gap-3 pt-4">
                         <button
-                            type="submit"
+                            type="button"
+                            onClick={(e) => {
+                                if (!formData.startTime || !formData.endTime || !formData.location?.trim()) {
+                                    alert("Bitte füllen Sie Zeit und Arbeitsort aus.");
+                                    return;
+                                }
+                                handleSubmit(e as any);
+                            }}
                             className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-lg uppercase tracking-[0.2em] shadow-2xl shadow-indigo-900/20 active:scale-95 transition-all flex items-center justify-center gap-3"
                         >
                             <CheckCircle2 className="h-6 w-6" />
@@ -229,7 +233,7 @@ export function MobileTimeEntryModal({
                             </button>
                         )}
                     </div>
-                </form>
+                </div>
             </div>
         </div>,
         document.body
