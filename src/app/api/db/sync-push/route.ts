@@ -64,22 +64,50 @@ export async function POST(request: Request) {
         for (const table of tables) {
             try {
                 // 1. Fetch all local records
-                const records = sqliteDb.prepare(`SELECT * FROM ${table}`).all();
+                const records = sqliteDb.prepare(`SELECT * FROM ${table}`).all() as any[];
                 if (!records || records.length === 0) {
                     writeLog('SyncPush', `No local records found for ${table}.`);
                     continue;
                 }
 
-                writeLog('SyncPush', `Found ${records.length} records for ${table}. Syncing...`);
-                console.log(`[SyncPush] Found ${records.length} records for ${table}. Syncing...`);
+                // 2. Fetch remote timestamps to prevent pushing massive unchanged loops
+                const { data: remoteTimestamps, error: tsError } = await client
+                    .from(table)
+                    .select('id, updatedAt');
+
+                let recordsToPush = records;
+
+                if (!tsError && remoteTimestamps) {
+                    const remoteMap = new Map(remoteTimestamps.map(r => [r.id, r.updatedAt]));
+                    recordsToPush = records.filter(local => {
+                        const remoteUpdated = remoteMap.get(local.id);
+                        if (!remoteUpdated) return true; // New record
+
+                        const localTime = new Date(local.updatedAt || 0).getTime();
+                        const remoteTime = new Date(remoteUpdated || 0).getTime();
+
+                        return localTime > remoteTime; // Only push if local is actually newer
+                    });
+                } else {
+                    writeLog('SyncPush', `Warning: Could not fetch remote timestamps for ${table}, pushing all.`);
+                }
+
+                if (recordsToPush.length === 0) {
+                    writeLog('SyncPush', `No newer local records found for ${table}. Skipping push.`);
+                    console.log(`[SyncPush] No newer records for ${table}.`);
+                    continue;
+                }
+
+                writeLog('SyncPush', `Found ${recordsToPush.length} newer records for ${table} (out of ${records.length}). Syncing...`);
+                console.log(`[SyncPush] Found ${recordsToPush.length} newer records for ${table} (out of ${records.length}). Syncing...`);
 
                 // 2. Prepare and Upsert in batches
                 // Optimization: Use smaller batches for tables with potential large Base64 data (avatars, diary images)
                 const isLargeDataTable = table === 'employees' || table === 'projects';
                 const batchSize = isLargeDataTable ? 5 : 50;
 
-                for (let i = 0; i < records.length; i += batchSize) {
-                    const batch = records.slice(i, i + batchSize);
+                for (let i = 0; i < recordsToPush.length; i += batchSize) {
+                    const batch = recordsToPush.slice(i, i + batchSize);
                     const syncData = UnifiedDB.prepareForCloud(table, batch, userId);
 
                     const { error } = await client
@@ -93,7 +121,7 @@ export async function POST(request: Request) {
                     }
                 }
 
-                totalSynced += records.length;
+                totalSynced += recordsToPush.length;
             } catch (err) {
                 console.error(`[SyncPush] Failed to sync table ${table}:`, err);
             }
