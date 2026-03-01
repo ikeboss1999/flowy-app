@@ -26,6 +26,14 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
         }
     }, [currentEmployee])
 
+    // Refresh employee data on every route/tab change
+    useEffect(() => {
+        if (currentEmployee) {
+            refreshEmployee();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pathname])
+
     const handleSaveSelfie = async (base64: string) => {
         if (!currentEmployee) return;
 

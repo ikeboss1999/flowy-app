@@ -153,7 +153,7 @@ export function MobileTimeEntryModal({
                                     type="time"
                                     value={formData.startTime}
                                     onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-transparent rounded-2xl text-sm font-black text-slate-800 outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-transparent rounded-2xl text-base font-black text-slate-800 outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all"
                                 />
                             </div>
                         </div>
@@ -165,7 +165,7 @@ export function MobileTimeEntryModal({
                                     type="time"
                                     value={formData.endTime}
                                     onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-transparent rounded-2xl text-sm font-black text-slate-800 outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-transparent rounded-2xl text-base font-black text-slate-800 outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all"
                                 />
                             </div>
                         </div>
@@ -182,7 +182,7 @@ export function MobileTimeEntryModal({
                                     placeholder="z.B. Baustelle Wien"
                                     value={formData.location}
                                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-transparent rounded-2xl text-sm font-black text-slate-800 outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-transparent rounded-2xl text-base font-black text-slate-800 outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all"
                                 />
                             </div>
                         </div>
@@ -194,7 +194,7 @@ export function MobileTimeEntryModal({
                                 <select
                                     value={formData.projectId}
                                     onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
-                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-transparent rounded-2xl text-sm font-black text-slate-800 outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all appearance-none"
+                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-transparent rounded-2xl text-base font-black text-slate-800 outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all appearance-none"
                                 >
                                     <option value="">Kein Projekt</option>
                                     {projects.map(p => (

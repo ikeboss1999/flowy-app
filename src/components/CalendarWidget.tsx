@@ -47,6 +47,30 @@ export function CalendarWidget() {
     const [isMinimized, setIsMinimized] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
+    // Load minimized state from localStorage on mount
+    React.useEffect(() => {
+        try {
+            const savedState = localStorage.getItem('flowy_calendar_minimized');
+            if (savedState !== null) {
+                setIsMinimized(savedState === 'true');
+            }
+        } catch (e) {
+            console.error('Error reading localStorage', e);
+        }
+    }, []);
+
+    const toggleMinimized = () => {
+        const newValue = !isMinimized;
+        setIsMinimized(newValue);
+        if (!isFullscreen) { // Only save state if not toggling while in fullscreen
+            try {
+                localStorage.setItem('flowy_calendar_minimized', String(newValue));
+            } catch (e) {
+                console.error('Error setting localStorage', e);
+            }
+        }
+    };
+
     const monthNames = [
         "Januar", "Februar", "März", "April", "Mai", "Juni",
         "Juli", "August", "September", "Oktober", "November", "Dezember"
@@ -525,7 +549,7 @@ export function CalendarWidget() {
                     {/* View Controls (Minimize/Fullscreen) */}
                     <div className="flex items-center bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
                         <button
-                            onClick={() => setIsMinimized(!isMinimized)}
+                            onClick={toggleMinimized}
                             title={isMinimized ? "Maximieren" : "Minimieren"}
                             className="p-2.5 hover:bg-white hover:shadow-md rounded-[1rem] transition-all text-slate-600"
                         >

@@ -43,6 +43,28 @@ export default function DashboardPage() {
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [isTodoMinimized, setIsTodoMinimized] = useState(false);
 
+    // Load minimized state from localStorage on mount
+    React.useEffect(() => {
+        try {
+            const savedState = localStorage.getItem('flowy_todo_minimized');
+            if (savedState !== null) {
+                setIsTodoMinimized(savedState === 'true');
+            }
+        } catch (e) {
+            console.error('Error reading localStorage', e);
+        }
+    }, []);
+
+    const toggleTodoMinimized = () => {
+        const newValue = !isTodoMinimized;
+        setIsTodoMinimized(newValue);
+        try {
+            localStorage.setItem('flowy_todo_minimized', String(newValue));
+        } catch (e) {
+            console.error('Error setting localStorage', e);
+        }
+    };
+
     // Sorting State
     const [sortBy, setSortBy] = useState<string>("number");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -310,7 +332,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between">
                         <h3 className="text-2xl font-bold text-slate-900">To-Do Liste</h3>
                         <button
-                            onClick={() => setIsTodoMinimized(!isTodoMinimized)}
+                            onClick={toggleTodoMinimized}
                             className="p-2 hover:bg-slate-100 rounded-xl transition-all text-slate-400"
                         >
                             {isTodoMinimized ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}

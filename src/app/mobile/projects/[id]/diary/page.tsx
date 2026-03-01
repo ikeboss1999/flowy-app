@@ -186,7 +186,7 @@ export default function MobileProjectDiary() {
             </div>
 
             {/* Submit Button */}
-            <div className="fixed bottom-0 left-0 right-0 p-8 pt-4 pb-[calc(2rem+env(safe-area-inset-bottom))] bg-white/80 backdrop-blur-2xl border-t border-slate-100 z-50">
+            <div className="fixed bottom-24 left-6 right-6 z-40 animate-in slide-in-from-bottom-10 duration-500">
                 <button
                     onClick={handleSubmit}
                     disabled={isSaving || !description}

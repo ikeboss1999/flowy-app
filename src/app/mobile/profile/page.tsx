@@ -179,32 +179,47 @@ export default function MobileProfile() {
         try {
             // Check if it's a remote URL (Supabase Storage)
             if (doc.content.startsWith('http')) {
-                showToast("Download gestartet...", "info");
+                showToast("Dokument wird geöffnet...", "info");
 
-                const response = await fetch(doc.content);
-                if (!response.ok) throw new Error('Download failed');
+                // For mobile, it's often safer to just open the URL rather than forcing a blob download
+                // Opening in a new tab/window allows iOS native viewer to take over
+                window.open(doc.content, '_blank');
 
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = doc.name;
-                document.body.appendChild(link);
-                link.click();
-
-                // Cleanup
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(link);
-                showToast("Download erfolgreich", "success");
             } else {
                 // Base64 or other immediate content
-                const link = document.createElement('a')
-                link.href = doc.content
-                link.download = doc.name
-                document.body.appendChild(link)
-                link.click()
-                document.body.removeChild(link)
+
+                // For base64 PDFs or images on mobile (especially iOS PWAs), the anchor tag download often fails silently.
+                // It's safer to open it in a new tab or use the native sharing API.
+                try {
+                    // Try to convert base64 to Blob and open it
+                    if (doc.content.startsWith('data:')) {
+                        const parts = doc.content.split(';base64,');
+                        const contentType = parts[0].split(':')[1];
+                        const raw = window.atob(parts[1]);
+                        const rawLength = raw.length;
+                        const uInt8Array = new Uint8Array(rawLength);
+                        for (let i = 0; i < rawLength; ++i) {
+                            uInt8Array[i] = raw.charCodeAt(i);
+                        }
+                        const blob = new Blob([uInt8Array], { type: contentType });
+                        const url = URL.createObjectURL(blob);
+
+                        window.open(url, '_blank');
+
+                        // Cleanup after a delay
+                        setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    } else {
+                        window.open(doc.content, '_blank');
+                    }
+                } catch (e) {
+                    // Fallback to the old method if blob conversion fails
+                    const link = document.createElement('a')
+                    link.href = doc.content
+                    link.download = doc.name
+                    document.body.appendChild(link)
+                    link.click()
+                    document.body.removeChild(link)
+                }
             }
         } catch (e) {
             console.error("Download error:", e);
