@@ -45,11 +45,15 @@ export function useEmployees() {
         const newEmployee = { ...employee, userId: targetUserId };
 
         try {
-            await fetch('/api/employees', {
+            const response = await fetch('/api/employees', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: targetUserId, employee: newEmployee })
             });
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || `HTTP ${response.status}`);
+            }
             setEmployees(prev => [...prev, newEmployee]);
             markDirty();
         } catch (e) {
@@ -64,11 +68,15 @@ export function useEmployees() {
         const updated = { ...employee, userId: targetUserId };
 
         try {
-            await fetch('/api/employees', {
+            const response = await fetch('/api/employees', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: targetUserId, employee: updated })
             });
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || `HTTP ${response.status}`);
+            }
             setEmployees(prev => prev.map(e => e.id === id ? updated : e));
             markDirty();
 
@@ -94,11 +102,15 @@ export function useEmployees() {
         const updated = { ...employee, pendingChanges };
 
         try {
-            await fetch('/api/employees', {
+            const response = await fetch('/api/employees', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: activeUserId, employee: updated })
             });
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || `HTTP ${response.status}`);
+            }
             setEmployees(prev => prev.map(e => e.id === id ? updated : e));
             markDirty();
 

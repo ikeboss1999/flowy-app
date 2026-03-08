@@ -104,12 +104,9 @@ export async function POST(
             return NextResponse.json({ error: 'User ID is required in data for global admin edits' }, { status: 400 });
         }
 
-        // Use Admin client to bypass RLS for edits
-        if (supabaseAdmin) {
-            const { error } = await supabaseAdmin.from(type).upsert(data);
-            if (error) throw error;
-        } else if (isWeb) {
-            const { error } = await supabase.from(type).upsert(data);
+        if (isWeb) {
+            const client = supabaseAdmin || supabase;
+            const { error } = await client.from(type).upsert(data);
             if (error) throw error;
         } else {
             // SQLite local logic
@@ -126,6 +123,7 @@ export async function POST(
             });
 
             sqliteDb.prepare(sql).run(...values);
+            // Background sync to cloud
             UnifiedDB.syncToCloud(type, data, userId);
         }
 
@@ -151,16 +149,17 @@ export async function DELETE(
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
     try {
-        if (supabaseAdmin) {
-            const { error } = await supabaseAdmin.from(type).delete().eq('id', id);
-            if (error) throw error;
-        } else if (isWeb) {
-            const { error } = await supabase.from(type).delete().eq('id', id);
+        if (isWeb) {
+            const client = supabaseAdmin || supabase;
+            const { error } = await client.from(type).delete().eq('id', id);
             if (error) throw error;
         } else {
             sqliteDb.prepare(`DELETE FROM ${type} WHERE id = ?`).run(id);
             if (userId) {
-                supabase.from(type).delete().eq('id', id).catch(e => console.error(e));
+                const client = supabaseAdmin || supabase;
+                client.from(type).delete().eq('id', id).then(({ error }) => {
+                    if (error) console.error(error);
+                });
             }
         }
         return NextResponse.json({ success: true });

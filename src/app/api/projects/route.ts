@@ -43,16 +43,20 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
-
-    if (!userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     try {
         const payload = await request.json();
         // Support both { project: { ... } } and { ... }
         const project = payload.project || payload;
+
+        let userId = session?.userId;
+        if (!userId) userId = payload.userId;
+        if (!userId && project) userId = project.userId;
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const projectId = project.id || nanoid();
         const now = new Date().toISOString();
 

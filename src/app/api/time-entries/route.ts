@@ -38,14 +38,17 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
-
-    if (!userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     try {
         const payload = await request.json();
+
+        let userId = session?.userId;
+        if (!userId) userId = payload.userId;
+        if (!userId && payload.entry) userId = payload.entry.userId;
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
         // Support both { entry: { ... } } and { ... }
         const entry = payload.entry || payload;
         const entryId = entry.id || nanoid();
@@ -65,14 +68,14 @@ export async function POST(request: Request) {
         } else {
             const stmt = sqliteDb.prepare(`
                 INSERT OR REPLACE INTO time_entries 
-                (id, employeeId, date, startTime, endTime, duration, overtime, location, type, projectId, serviceId, description, userId, createdAt)
+                (id, employeeId, date, startTime, endTime, breakDuration, duration, overtime, location, type, projectId, description, userId, createdAt)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             stmt.run(
                 entryId, entry.employeeId, entry.date, entry.startTime, entry.endTime,
-                entry.duration, entry.overtime, entry.location, entry.type,
-                entry.projectId, entry.serviceId, entry.description, userId, entry.createdAt || now
+                entry.breakDuration || 0, entry.duration, entry.overtime, entry.location, entry.type,
+                entry.projectId, entry.description, userId, entry.createdAt || now
             );
 
             // Silent Sync

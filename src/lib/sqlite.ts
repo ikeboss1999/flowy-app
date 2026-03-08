@@ -169,18 +169,30 @@ function initSchema(db: any) {
             date TEXT NOT NULL,
             startTime TEXT,
             endTime TEXT,
+            breakDuration INTEGER DEFAULT 0,
             duration INTEGER,
             overtime REAL,
             location TEXT,
             type TEXT,
             projectId TEXT,
-            serviceId TEXT,
             description TEXT,
             userId TEXT,
             createdAt TEXT,
             updatedAt TEXT
         );
+    `);
 
+  // Add breakDuration column to existing databases if it doesn't exist
+  try {
+    db.exec("ALTER TABLE time_entries ADD COLUMN breakDuration INTEGER DEFAULT 0;");
+  } catch (e: any) {
+    // Ignore error if column already exists
+    if (!e.message.includes("duplicate column name")) {
+      console.error("Migration error breakDuration:", e);
+    }
+  }
+
+  db.exec(`
         CREATE TABLE IF NOT EXISTS timesheets (
             id TEXT PRIMARY KEY,
             employeeId TEXT NOT NULL,
