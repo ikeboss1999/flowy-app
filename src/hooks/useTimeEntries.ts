@@ -77,7 +77,11 @@ export function useTimeEntries() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: activeUserId, entry: newEntry })
             });
-            if (!res.ok) throw new Error("Failed to save entry");
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error("API Error details:", res.status, errorText);
+                throw new Error(`Failed to save entry: ${res.status} ${errorText}`);
+            }
             setEntries(prev => [newEntry, ...prev]);
             markDirty();
         } catch (e) {

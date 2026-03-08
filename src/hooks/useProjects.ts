@@ -62,8 +62,8 @@ export function useProjects() {
     }, [activeUserId, user]);
 
     const addProject = async (project: Project) => {
-        if (!user) return;
-        const newProject = { ...project, userId: user.id };
+        if (!activeUserId) return;
+        const newProject = { ...project, userId: activeUserId };
 
         try {
             await fetch('/api/projects', {
@@ -79,7 +79,7 @@ export function useProjects() {
     };
 
     const updateProject = async (id: string, updates: Partial<Project>) => {
-        if (!user) return;
+        if (!activeUserId) return;
 
         const current = projects.find(p => p.id === id);
         if (!current) return;
@@ -100,6 +100,7 @@ export function useProjects() {
     };
 
     const deleteProject = async (id: string) => {
+        if (!activeUserId) return;
         try {
             await fetch(`/api/projects?id=${id}`, { method: 'DELETE' });
             setProjects(prev => prev.filter(p => p.id !== id));

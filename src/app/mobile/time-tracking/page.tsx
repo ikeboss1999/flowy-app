@@ -43,25 +43,6 @@ export default function MobileTimeTracking() {
     const [selectedDate, setSelectedDate] = useState<string>("");
     const [editingEntry, setEditingEntry] = useState<TimeEntry | undefined>(undefined);
 
-    if (!currentEmployee) return null
-
-    const permissions = currentEmployee.appAccess?.permissions || { timeTracking: true }; // Default to true if undefined for safety
-    if (permissions.timeTracking === false) {
-        return (
-            <div className="p-6 flex flex-col items-center justify-center h-[70vh] text-center gap-6">
-                <div className="h-20 w-20 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-                    <Clock className="h-10 w-10 opacity-20" />
-                </div>
-                <div className="space-y-2">
-                    <h2 className="text-xl font-black text-slate-800 tracking-tight">Zugriff verweigert</h2>
-                    <p className="text-sm text-slate-500 font-medium max-w-[240px]">
-                        Die Zeiterfassung wurde für Ihren Account deaktiviert.
-                    </p>
-                </div>
-            </div>
-        )
-    }
-
     // Helper to change month
     const changeMonth = (offset: number) => {
         setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1));
@@ -87,13 +68,32 @@ export default function MobileTimeTracking() {
     const entriesByDate = useMemo(() => {
         const groups: Record<string, TimeEntry[]> = {};
         entries.forEach(entry => {
-            if (entry.employeeId === currentEmployee.id) {
+            if (currentEmployee && entry.employeeId === currentEmployee.id) {
                 if (!groups[entry.date]) groups[entry.date] = [];
                 groups[entry.date].push(entry);
             }
         });
         return groups;
-    }, [entries, currentEmployee.id]);
+    }, [entries, currentEmployee]);
+
+    if (!currentEmployee) return null
+
+    const permissions = currentEmployee.appAccess?.permissions || { timeTracking: true }; // Default to true if undefined for safety
+    if (permissions.timeTracking === false) {
+        return (
+            <div className="p-6 flex flex-col items-center justify-center h-[70vh] text-center gap-6">
+                <div className="h-20 w-20 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                    <Clock className="h-10 w-10 opacity-20" />
+                </div>
+                <div className="space-y-2">
+                    <h2 className="text-xl font-black text-slate-800 tracking-tight">Zugriff verweigert</h2>
+                    <p className="text-sm text-slate-500 font-medium max-w-[240px]">
+                        Die Zeiterfassung wurde für Ihren Account deaktiviert.
+                    </p>
+                </div>
+            </div>
+        )
+    }
 
     const handleAddClick = (date: string) => {
         if (isFinalized) {

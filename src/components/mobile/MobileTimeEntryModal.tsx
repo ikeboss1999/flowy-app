@@ -76,8 +76,7 @@ export function MobileTimeEntryModal({
 
     if (!isOpen || !mounted) return null;
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = () => {
 
         // Calculate duration
         const [startH, startM] = (formData.startTime || "00:00").split(':').map(Number);
@@ -209,17 +208,21 @@ export function MobileTimeEntryModal({
                     <div className="flex flex-col gap-3 pt-4">
                         <button
                             type="button"
-                            onClick={(e) => {
+                            onClick={() => {
                                 if (!formData.startTime || !formData.endTime || !formData.location?.trim()) {
                                     alert("Bitte füllen Sie Zeit und Arbeitsort aus.");
                                     return;
                                 }
-                                handleSubmit(e as any);
+                                handleSubmit();
                             }}
-                            className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-lg uppercase tracking-[0.2em] shadow-2xl shadow-indigo-900/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                            onPointerDown={(e) => {
+                                // Fallback for iOS Safari which sometimes drops onClick in portals
+                                e.currentTarget.click();
+                            }}
+                            className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-lg uppercase tracking-[0.2em] shadow-2xl shadow-indigo-900/20 active:scale-95 transition-all flex items-center justify-center gap-3 touch-manipulation select-none"
                         >
-                            <CheckCircle2 className="h-6 w-6" />
-                            Speichern
+                            <CheckCircle2 className="h-6 w-6 pointer-events-none" />
+                            <span className="pointer-events-none">Speichern</span>
                         </button>
 
                         {initialEntry?.id && onDelete && (

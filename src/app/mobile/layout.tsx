@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { LayoutDashboard, Clock, User, LogOut, Layers } from "lucide-react"
+import { LayoutDashboard, Clock, User, LogOut, Layers, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 import { useEmployees } from "@/hooks/useEmployees"
@@ -75,12 +75,20 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
                         </h1>
                     </div>
                 </div>
-                <button
-                    onClick={logoutEmployee}
-                    className="h-10 w-10 rounded-xl bg-slate-100/50 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all border border-slate-100"
-                >
-                    <LogOut className="h-5 w-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="h-10 w-10 rounded-xl bg-slate-100/50 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 active:scale-95 transition-all border border-slate-100"
+                    >
+                        <RefreshCw className="h-5 w-5" />
+                    </button>
+                    <button
+                        onClick={logoutEmployee}
+                        className="h-10 w-10 rounded-xl bg-slate-100/50 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 active:scale-95 transition-all border border-slate-100"
+                    >
+                        <LogOut className="h-5 w-5" />
+                    </button>
+                </div>
             </header>
 
             {/* Content Area */}
