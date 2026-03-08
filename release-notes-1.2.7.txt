@@ -1,0 +1,10 @@
+# Release Version 1.2.7
+
+Dieses Update bringt weitere Verfeinerungen an der Benutzeroberfläche und behebt kleinere Fehler in der Zeiterfassung und Projektübersicht.
+
+### ✨ Änderungen
+- Optimierte Darstellung der Zeiterfassung auf mobilen Endgeräten
+- Stabilitätsverbesserungen im lokalen Datenbank-Sync
+- Kleinere UI-Korrekturen im Dashboard
+
+Dieser Release ist als "Latest Release" markiert, um automatische Updates für alle Desktop-Clients zu gewährleisten.
