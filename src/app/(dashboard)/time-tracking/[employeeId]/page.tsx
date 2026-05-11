@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, memo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, memo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
     Calendar as CalendarIcon,
@@ -20,6 +20,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useTimeEntries } from "@/hooks/useTimeEntries";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useNotification } from "@/context/NotificationContext";
+import { useAuth } from "@/context/AuthContext";
 import { TimeEntry, TimeEntryType } from "@/types/time-tracking";
 import { Employee } from "@/types/employee";
 import { TimeTrackingPreviewModal } from "@/components/TimeTrackingPreviewModal";
@@ -203,18 +204,36 @@ export default function EmployeeTimeTrackingPage() {
     const employeeId = params.employeeId as string;
 
     // Hooks
+    const { user, currentEmployee } = useAuth();
     const { employees, isLoading: employeesLoading } = useEmployees();
-    const { entries, addEntry, updateEntry, deleteEntry, isLoading: entriesLoading, timesheets, finalizeMonth, reopenMonth } = useTimeEntries();
+    const { entries, deleteEntry, isLoading: entriesLoading, timesheets, finalizeMonth, reopenMonth, refreshEntries } = useTimeEntries();
     const { data: companySettings } = useCompanySettings();
     const { showToast, showConfirm } = useNotification();
+
+    const activeUserId = user?.id ?? currentEmployee?.userId;
 
     // State
     const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7));
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
-    // Local state for buffered edits
+    // Buffered edits: state drives UI, ref drives save (no stale-closure risk)
     const [unsavedChanges, setUnsavedChanges] = useState<Record<string, TimeEntry>>({});
+    const unsavedRef = useRef<Record<string, TimeEntry>>({});
     const [isSaving, setIsSaving] = useState(false);
+
+    // Keep ref in sync with state
+    const setUnsaved = useCallback((updater: Record<string, TimeEntry> | ((prev: Record<string, TimeEntry>) => Record<string, TimeEntry>)) => {
+        if (typeof updater === 'function') {
+            setUnsavedChanges(prev => {
+                const next = updater(prev);
+                unsavedRef.current = next;
+                return next;
+            });
+        } else {
+            unsavedRef.current = updater;
+            setUnsavedChanges(updater);
+        }
+    }, []);
 
     const employee = employees.find((e: Employee) => e.id === employeeId);
 
@@ -238,7 +257,7 @@ export default function EmployeeTimeTrackingPage() {
     const handleUpdateEntry = useMemo(() => (date: string, field: keyof TimeEntry, value: any) => {
         if (isFinalized) return;
 
-        setUnsavedChanges(prev => {
+        setUnsaved(prev => {
             const existing = prev[date] || monthEntries.find(e => e.date === date);
 
             const dayMap: Record<number, keyof NonNullable<Employee['weeklySchedule']>> = {
@@ -302,7 +321,7 @@ export default function EmployeeTimeTrackingPage() {
                 [date]: newEntry
             };
         });
-    }, [isFinalized, employeeId, monthEntries, employee]);
+    }, [isFinalized, employeeId, monthEntries, employee, setUnsaved]);
 
     if (employeesLoading || entriesLoading) {
         return <div className="p-10 text-center text-slate-400">Laden...</div>;
@@ -314,13 +333,14 @@ export default function EmployeeTimeTrackingPage() {
 
     // Handlers
 
-    const performSave = async () => {
-        const changes = Object.values(unsavedChanges);
+    const performSave = async (): Promise<boolean> => {
+        // Read from ref — always current even if closure is stale
+        const changes = Object.values(unsavedRef.current);
         if (changes.length === 0) return true;
 
         setIsSaving(true);
         try {
-            for (const entry of changes) {
+            await Promise.all(changes.map(async (entry) => {
                 let duration = 0;
                 if (typeof entry.duration === 'number') {
                     duration = entry.duration;
@@ -330,19 +350,25 @@ export default function EmployeeTimeTrackingPage() {
                     duration = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
                 }
 
-                const entryWithDuration = { ...entry, duration };
-                const exists = entries.find(e => e.id === entry.id);
-                if (exists) {
-                    await updateEntry(entry.id, entryWithDuration);
-                } else {
-                    await addEntry(entryWithDuration);
+                const res = await fetch('/api/time-entries', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: activeUserId, entry: { ...entry, duration } })
+                });
+
+                if (!res.ok) {
+                    const text = await res.text().catch(() => String(res.status));
+                    throw new Error(`${entry.date}: HTTP ${res.status} – ${text}`);
                 }
-            }
-            setUnsavedChanges({});
+            }));
+
+            // Refresh FIRST so table never goes blank, then clear pending markers
+            try { await refreshEntries(); } catch { /* ignore re-fetch errors */ }
+            setUnsaved({});
             return true;
         } catch (e: any) {
-            console.error("Save failed", e);
-            showToast("Fehler beim Speichern! Bitte überprüfen Sie Ihre Eingaben.", "error");
+            console.error("[performSave]", e);
+            showToast(`Fehler beim Speichern: ${e.message}`, "error");
             return false;
         } finally {
             setIsSaving(false);
@@ -350,6 +376,7 @@ export default function EmployeeTimeTrackingPage() {
     };
 
     const handleSaveChanges = async () => {
+        if (Object.keys(unsavedRef.current).length === 0) return;
         const success = await performSave();
         if (success) {
             showToast("Erfolgreich gespeichert!", "success");
@@ -430,7 +457,7 @@ export default function EmployeeTimeTrackingPage() {
                 }
 
                 // Add to unsaved changes instead of direct save
-                setUnsavedChanges(prev => ({ ...prev, ...updates }));
+                setUnsaved(prev => ({ ...prev, ...updates }));
                 showToast("Monat befüllt! Bitte speichern Sie Ihre Änderungen.", "info");
             }
         });
@@ -445,7 +472,7 @@ export default function EmployeeTimeTrackingPage() {
             await Promise.all(idsToDelete.map(id => deleteEntry(id)));
 
             // 2. Clear from unsaved changes
-            setUnsavedChanges(prev => {
+            setUnsaved(prev => {
                 const next = { ...prev };
                 Object.keys(next).forEach(key => {
                     if (key.startsWith(selectedMonth)) {
@@ -608,7 +635,14 @@ export default function EmployeeTimeTrackingPage() {
                                 showConfirm({
                                     title: "Monat wieder öffnen?",
                                     message: "Der Monat wird für Bearbeitungen wieder freigegeben.",
-                                    onConfirm: () => reopenMonth(employeeId, selectedMonth)
+                                    onConfirm: async () => {
+                                        try {
+                                            await reopenMonth(employeeId, selectedMonth);
+                                            showToast("Monat wieder geöffnet!", "success");
+                                        } catch (e: any) {
+                                            showToast(`Fehler: ${e.message}`, "error");
+                                        }
+                                    }
                                 });
                             }}
                             className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm bg-amber-100 text-amber-700 hover:bg-amber-200 transition-all"

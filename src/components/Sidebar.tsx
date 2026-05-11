@@ -28,7 +28,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useSync } from "@/context/SyncContext";
 import { Cloud, CheckCircle2, RefreshCcw, Menu, X } from "lucide-react";
 import { useDevice } from "@/hooks/useDevice";
-import { isWeb } from "@/lib/is-web";
 import { useEffect } from "react";
 
 interface MenuItem {
@@ -48,7 +47,7 @@ const menuGroups: MenuGroup[] = [
     {
         title: "Übersicht",
         items: [
-            { icon: LayoutDashboard, label: "Welcome", href: "/" },
+            { icon: LayoutDashboard, label: "Startseite", href: "/" },
             { icon: BarChart3, label: "Übersicht", href: "/dashboard" },
         ]
     },

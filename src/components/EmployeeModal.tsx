@@ -45,9 +45,7 @@ const TABS = [
     { id: "employment", label: "Anstellung", icon: Briefcase },
     { id: "schedule", label: "Zeiteinteilung", icon: Clock },
     { id: "bank", label: "Bankdaten", icon: CreditCard },
-    { id: "documents", label: "Archiv", icon: FileText },
-    { id: "shared_docs", label: "Geteilte Docs", icon: Share2 },
-    { id: "access", label: "App-Zugriff", icon: Smartphone }
+    { id: "documents", label: "Archiv", icon: FileText }
 ];
 
 const EU_EWR_COUNTRIES = [
@@ -73,6 +71,8 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
     const [activeTab, setActiveTab] = useState("personal");
     const [previewDoc, setPreviewDoc] = useState<EmployeeDocument | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [showAvatarMenu, setShowAvatarMenu] = useState(false);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
     const { showConfirm, showPrompt, showToast } = useNotification();
     const [formData, setFormData] = useState<Employee>(() => initialEmployee || {
         id: Math.random().toString(36).substr(2, 9),
@@ -212,7 +212,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 documents: [],
                 createdAt: new Date().toISOString(),
                 appAccess: {
-                    staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
+                    staffId: nextNum || Math.floor(100000 + Math.random() * 900000).toString(),
                     accessPIN: "",
                     isAccessEnabled: false,
                     permissions: {
@@ -227,7 +227,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
     }, [initialEmployee, isOpen]);
 
     const generateStaffId = () => {
-        const id = Math.floor(10000000 + Math.random() * 90000000).toString();
+        const id = Math.floor(100000 + Math.random() * 900000).toString();
         setFormData(prev => ({
             ...prev,
             appAccess: {
@@ -254,6 +254,24 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 accessPIN: pin
             }
         }));
+    };
+
+    const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64 = reader.result as string;
+            setFormData(prev => ({ ...prev, avatar: base64 }));
+            setShowAvatarMenu(false);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleAvatarDelete = () => {
+        setFormData(prev => ({ ...prev, avatar: undefined }));
+        setShowAvatarMenu(false);
     };
 
     const handleSharedUpload = async (files: FileList | null, folder?: string) => {
@@ -304,7 +322,33 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validation for Non-EU Passport
+        // 1. Mandatory Field Validation
+        const missingFields: string[] = [];
+        if (!formData.personalData.firstName) missingFields.push("Vorname");
+        if (!formData.personalData.lastName) missingFields.push("Nachname");
+        if (!formData.personalData.birthday) missingFields.push("Geburtsdatum");
+        if (!formData.personalData.birthPlace) missingFields.push("Geburtsort");
+        if (!formData.personalData.birthCountry) missingFields.push("Geburtsland");
+        if (!formData.personalData.nationality) missingFields.push("Staatsbürgerschaft");
+        if (!formData.personalData.street || !formData.personalData.zip || !formData.personalData.city) missingFields.push("Vollständige Anschrift");
+        if (!formData.personalData.socialSecurityNumber) missingFields.push("Sozialversicherungsnummer");
+        if (!formData.employment.startDate) missingFields.push("Eintrittsdatum");
+        if (!formData.bankDetails.iban) missingFields.push("IBAN");
+
+        if (missingFields.length > 0) {
+            showToast(`Bitte füllen Sie folgende Pflichtfelder aus: ${missingFields.join(", ")}`, 'error');
+            // Auto-switch to first tab with error if possible
+            if (!formData.personalData.firstName || !formData.personalData.lastName || !formData.personalData.birthday) {
+                setActiveTab("personal");
+            } else if (!formData.employment.startDate) {
+                setActiveTab("employment");
+            } else if (!formData.bankDetails.iban) {
+                setActiveTab("bank");
+            }
+            return;
+        }
+
+        // 2. Validation for Non-EU Passport
         const isEUEWR = EU_EWR_COUNTRIES.includes(formData.personalData.nationality);
         if (!isEUEWR) {
             const hasPassport = formData.documents.some(d => d.subType === 'passport');
@@ -321,7 +365,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
             }
         }
 
-        // Dienstzettel Validation (only for new employees or if being generated)
+        // 3. Dienstzettel Validation (only for new employees or if being generated)
         const isNew = !initialEmployee;
         const missingContractFields = !formData.employment.salary ||
             !formData.employment.classification ||
@@ -409,16 +453,60 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
             <div className="relative bg-white w-full max-w-4xl xl:max-w-6xl rounded-[32px] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="px-6 xl:px-8 py-4 xl:py-6 border-b border-slate-100 flex justify-between items-center bg-white">
-                    <div className="flex items-center gap-5">
-                        {formData.avatar ? (
-                            <div className="h-16 w-16 rounded-2xl overflow-hidden shadow-md ring-4 ring-indigo-50 border-2 border-white">
-                                <img src={formData.avatar} alt="Profile" className="h-full w-full object-cover" />
-                            </div>
-                        ) : (
-                            <div className="h-16 w-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-100">
-                                <User className="h-8 w-8" />
-                            </div>
-                        )}
+                    <div className="flex items-center gap-5 relative">
+                        <div 
+                            className="relative cursor-pointer group"
+                            onClick={() => {
+                                if (formData.avatar) {
+                                    setShowAvatarMenu(!showAvatarMenu);
+                                } else {
+                                    avatarInputRef.current?.click();
+                                }
+                            }}
+                        >
+                            {formData.avatar ? (
+                                <div className="h-16 w-16 rounded-2xl overflow-hidden shadow-md ring-4 ring-indigo-50 border-2 border-white group-hover:opacity-90 transition-opacity">
+                                    <img src={formData.avatar} alt="Profile" className="h-full w-full object-cover" />
+                                </div>
+                            ) : (
+                                <div className="h-16 w-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-100 group-hover:bg-indigo-200 transition-colors">
+                                    <User className="h-8 w-8" />
+                                </div>
+                            )}
+
+                            {showAvatarMenu && formData.avatar && (
+                                <div className="absolute top-16 left-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-[200] animate-in fade-in slide-in-from-top-2">
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            avatarInputRef.current?.click();
+                                            setShowAvatarMenu(false);
+                                        }}
+                                        className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm font-medium text-slate-700 transition-colors"
+                                    >
+                                        Profilbild ändern
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleAvatarDelete();
+                                        }}
+                                        className="w-full text-left px-4 py-2 hover:bg-rose-50 text-sm font-medium text-rose-600 transition-colors"
+                                    >
+                                        Profilbild löschen
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        <input
+                            type="file"
+                            ref={avatarInputRef}
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                        />
                         <div>
                             <h2 className="text-2xl font-bold text-slate-900 font-outfit leading-tight">
                                 {initialEmployee ? "Mitarbeiter bearbeiten" : "Neuer Mitarbeiter"}
@@ -487,7 +575,9 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Vorname</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                                                    Vorname <span className="text-rose-500">*</span>
+                                                </label>
                                                 <input
                                                     className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-bold shadow-sm"
                                                     value={formData.personalData.firstName}
@@ -497,7 +587,9 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Nachname</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                                                    Nachname <span className="text-rose-500">*</span>
+                                                </label>
                                                 <input
                                                     className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-bold shadow-sm"
                                                     value={formData.personalData.lastName}
@@ -543,7 +635,9 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-[2.5rem] bg-slate-50/30 border border-slate-100">
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Geburtsdatum</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                                                    Geburtsdatum <span className="text-rose-500">*</span>
+                                                </label>
                                                 <input
                                                     type="date"
                                                     className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium shadow-sm"
@@ -565,7 +659,9 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 </select>
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Geburtsort</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                                                    Geburtsort <span className="text-rose-500">*</span>
+                                                </label>
                                                 <input
                                                     className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium shadow-sm"
                                                     value={formData.personalData.birthPlace}
@@ -574,7 +670,9 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Geburtsland</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                                                    Geburtsland <span className="text-rose-500">*</span>
+                                                </label>
                                                 <select
                                                     className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium shadow-sm appearance-none"
                                                     value={formData.personalData.birthCountry}
@@ -587,7 +685,9 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 </select>
                                             </div>
                                             <div className="space-y-2 col-span-1 md:col-span-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Staatsangehörigkeit</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                                                    Staatsangehörigkeit <span className="text-rose-500">*</span>
+                                                </label>
                                                 <select
                                                     className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium shadow-sm appearance-none"
                                                     value={formData.personalData.nationality}
@@ -612,7 +712,9 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-[2.5rem] bg-slate-50/30 border border-slate-100">
                                             <div className="space-y-2 col-span-1 md:col-span-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Anschrift</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                                                    Anschrift <span className="text-rose-500">*</span>
+                                                </label>
                                                 <div className="grid grid-cols-3 gap-3">
                                                     <input
                                                         className="col-span-2 px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium shadow-sm"
@@ -640,7 +742,9 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Sozialversicherungsnummer</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                                                    Sozialversicherungsnummer <span className="text-rose-500">*</span>
+                                                </label>
                                                 <input
                                                     className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium shadow-sm"
                                                     value={formData.personalData.socialSecurityNumber}
@@ -697,14 +801,12 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 >
                                                     <option value="Vollzeit">Vollzeit</option>
                                                     <option value="Teilzeit">Teilzeit</option>
-                                                    <option value="Minijob">Minijob</option>
-                                                    <option value="Werkstudent">Werkstudent</option>
-                                                    <option value="Auszubildender">Auszubildender</option>
-                                                    <option value="Freelancer">Freelancer</option>
                                                 </select>
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Eintrittsdatum</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                                                    Eintrittsdatum <span className="text-rose-500">*</span>
+                                                </label>
                                                 <input
                                                     type="date"
                                                     className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium shadow-sm"
@@ -938,7 +1040,9 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div className="md:col-span-2 space-y-3">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">IBAN</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                                                    IBAN <span className="text-rose-500">*</span>
+                                                </label>
                                                 <input
                                                     className="w-full px-6 py-5 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-black font-mono uppercase tracking-wider shadow-sm"
                                                     value={formData.bankDetails.iban}
@@ -1081,281 +1185,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                 </div>
                             )}
 
-                            {activeTab === "shared_docs" && (
-                                <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300 pb-10 space-y-10">
-                                    <section className="bg-indigo-50/50 p-8 rounded-[2.5rem] border border-indigo-100 font-medium">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="h-10 w-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-                                                    <Share2 className="h-5 w-5 text-indigo-600" />
-                                                </div>
-                                                <h4 className="text-indigo-900 font-black text-xl">Dokumente für die Mobile App</h4>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    showPrompt({
-                                                        title: "Neuer Ordner",
-                                                        message: "Geben Sie einen Namen für den neuen Dokumenten-Ordner ein.",
-                                                        placeholder: "z.B. Lohnzettel 2024",
-                                                        confirmLabel: "Ordner erstellen",
-                                                        onConfirm: (folderName) => {
-                                                            setFormData(prev => ({
-                                                                ...prev,
-                                                                sharedFolders: [...(prev.sharedFolders || []), folderName]
-                                                            }));
-                                                        }
-                                                    });
-                                                }}
-                                                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
-                                            >
-                                                <Plus className="h-4 w-4" />
-                                                Neuer Ordner
-                                            </button>
-                                        </div>
-                                        <p className="text-indigo-600 border-l-2 border-indigo-200 pl-6 py-1 font-medium italic">
-                                            Erstellen Sie Ordner und laden Sie Dokumente hoch, die der Mitarbeiter in seiner App sehen soll.
-                                        </p>
 
-                                        <div className="mt-8 space-y-6">
-                                            {/* General Documents (Unfolderd) */}
-                                            <FolderSection
-                                                title="Allgemeine Dokumente"
-                                                folder={undefined}
-                                                documents={formData.documents.filter(d => d.category === 'hr_shared' && !d.folder)}
-                                                onUpload={(files) => handleSharedUpload(files)}
-                                                onDeleteDoc={(id) => setFormData(prev => ({ ...prev, documents: prev.documents.filter(d => d.id !== id) }))}
-                                                onPreview={handlePreview}
-                                            />
-
-                                            {/* Folder Sections */}
-                                            {(formData.sharedFolders || []).map(folderName => (
-                                                <FolderSection
-                                                    key={folderName}
-                                                    title={folderName}
-                                                    folder={folderName}
-                                                    documents={formData.documents.filter(d => d.category === 'hr_shared' && d.folder === folderName)}
-                                                    onUpload={(files) => handleSharedUpload(files, folderName)}
-                                                    onDeleteDoc={(id) => setFormData(prev => ({ ...prev, documents: prev.documents.filter(d => d.id !== id) }))}
-                                                    onDeleteFolder={() => {
-                                                        showConfirm({
-                                                            title: "Ordner löschen",
-                                                            message: `Ordner "${folderName}" wirklich löschen? Alle Dokumente darin werden ebenfalls entfernt.`,
-                                                            confirmLabel: "Löschen",
-                                                            variant: 'danger',
-                                                            onConfirm: () => {
-                                                                setFormData(prev => ({
-                                                                    ...prev,
-                                                                    sharedFolders: prev.sharedFolders?.filter(f => f !== folderName),
-                                                                    documents: prev.documents.filter(d => d.folder !== folderName || d.category !== 'hr_shared')
-                                                                }));
-                                                            }
-                                                        });
-                                                    }}
-                                                    onRename={() => {
-                                                        showPrompt({
-                                                            title: "Ordner umbenennen",
-                                                            message: "Geben Sie einen neuen Namen für den Ordner ein.",
-                                                            initialValue: folderName,
-                                                            confirmLabel: "Speichern",
-                                                            onConfirm: (newName) => {
-                                                                if (newName !== folderName) {
-                                                                    setFormData(prev => ({
-                                                                        ...prev,
-                                                                        sharedFolders: prev.sharedFolders?.map(f => f === folderName ? newName : f),
-                                                                        documents: prev.documents.map(d => d.folder === folderName ? { ...d, folder: newName } : d)
-                                                                    }));
-                                                                }
-                                                            }
-                                                        });
-                                                    }}
-                                                    onPreview={handlePreview}
-                                                />
-                                            ))}
-                                        </div>
-                                    </section>
-                                </div>
-                            )}
-
-                            {activeTab === "access" && (
-                                <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300 pb-10 space-y-10">
-                                    <div className="bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
-                                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl -mr-32 -mt-32" />
-                                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -ml-16 -mb-16" />
-
-                                        <div className="relative z-10">
-                                            <div className="flex items-center gap-5 mb-6">
-                                                <div className="h-14 w-14 bg-indigo-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                                                    <Smartphone className="h-8 w-8 text-white" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="text-3xl font-black tracking-tight leading-none">Mitarbeiter-App</h4>
-                                                    <p className="text-indigo-200 mt-2 font-medium">Digitaler Zugang & Zeiterfassung</p>
-                                                </div>
-                                            </div>
-                                            <p className="text-slate-400 max-w-lg leading-relaxed font-medium">
-                                                Ermöglichen Sie Ihrem Team den Zugriff auf die mobile FlowY App für iPhones und Android-Geräte.
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div className="md:col-span-1 space-y-3">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Status</label>
-                                            <div
-                                                onClick={() => setFormData(prev => ({
-                                                    ...prev,
-                                                    appAccess: {
-                                                        ...(prev.appAccess || {
-                                                            staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
-                                                            accessPIN: "",
-                                                            isAccessEnabled: false,
-                                                            permissions: { timeTracking: true, documents: false, personalData: true, projectDiary: false }
-                                                        }),
-                                                        isAccessEnabled: !prev.appAccess?.isAccessEnabled
-                                                    }
-                                                }))}
-                                                className={cn(
-                                                    "flex flex-col items-center justify-center p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer h-full gap-4",
-                                                    formData.appAccess?.isAccessEnabled
-                                                        ? "bg-emerald-50 border-emerald-100 text-emerald-700"
-                                                        : "bg-slate-50 border-slate-100 text-slate-400"
-                                                )}
-                                            >
-                                                <div className={cn(
-                                                    "w-12 h-12 rounded-full flex items-center justify-center transition-all",
-                                                    formData.appAccess?.isAccessEnabled ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200" : "bg-slate-200 text-slate-400"
-                                                )}>
-                                                    <Shield className="h-6 w-6" />
-                                                </div>
-                                                <span className="font-black uppercase tracking-widest text-xs text-center">{formData.appAccess?.isAccessEnabled ? "Aktiviert" : "Deaktiviert"}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="md:col-span-2 space-y-3">
-                                            <div className="flex justify-between items-center px-1">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Verfügernummer (Login-ID)</label>
-                                                {!initialEmployee && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={generateStaffId}
-                                                        className="text-indigo-600 font-bold text-xs hover:text-indigo-700 transition-colors"
-                                                    >
-                                                        Neu generieren
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <div className="p-8 bg-slate-50 border border-slate-100 rounded-[2.5rem] flex items-center justify-center">
-                                                <span className="text-4xl font-black text-slate-800 tracking-[0.2em]">
-                                                    {formData.appAccess?.staffId || "--------"}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <section className="space-y-4">
-                                        <div className="flex justify-between items-center px-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Sicherheits-PIN</label>
-                                            <button
-                                                type="button"
-                                                onClick={generatePIN}
-                                                className="text-indigo-600 font-bold text-xs hover:text-indigo-700 transition-colors"
-                                            >
-                                                Neu generieren
-                                            </button>
-                                        </div>
-                                        <div className="flex flex-col md:flex-row gap-4">
-                                            <div className="flex-1 p-10 bg-slate-50 border border-slate-100 rounded-[3rem] flex items-center justify-center gap-4 relative overflow-hidden group">
-                                                <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                {formData.appAccess?.accessPIN ? (
-                                                    formData.appAccess.accessPIN.split('').map((digit, idx) => (
-                                                        <div key={idx} className="w-12 h-16 bg-white border-2 border-indigo-100 rounded-2xl flex items-center justify-center text-3xl font-black text-indigo-600 shadow-sm animate-in zoom-in-95 duration-300" style={{ animationDelay: `${idx * 50}ms` }}>
-                                                            {digit}
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="flex gap-4">
-                                                        {[1, 2, 3, 4, 5, 6].map(i => (
-                                                            <div key={i} className="w-12 h-16 bg-white border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center text-slate-200 text-3xl font-black">
-                                                                ?
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="p-4 rounded-2xl bg-orange-50/50 border border-orange-100 flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
-                                                <Activity className="h-4 w-4 text-orange-600" />
-                                            </div>
-                                            <p className="text-[10px] text-orange-700 font-bold leading-tight">
-                                                DIESER CODE WIRD NUR EINMAL ANGEZEIGT. NOTIEREN SIE DEN PIN FÜR DEN MITARBEITER.
-                                            </p>
-                                        </div>
-                                    </section>
-
-                                    <section className="space-y-6">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Berechtigungen & Funktionen</label>
-                                        <div className="grid grid-cols-1 gap-4">
-                                            {[
-                                                { id: 'timeTracking', label: 'Mobile Zeiterfassung', desc: 'Arbeitszeiten erfassen & Urlaub beantragen', icon: Clock, color: 'indigo' },
-                                                { id: 'projectDiary', label: 'Bautagebuch', desc: 'Fotos aufnehmen & Berichte erstellen', icon: Activity, color: 'rose' },
-                                                { id: 'personalData', label: 'Stammdaten-Änderung', desc: 'Adressdaten & Bankverbindung anpassen', icon: User, color: 'emerald' },
-                                                { id: 'documents', label: 'Dokumenten-Einsicht', desc: 'Lohnzettel & Verträge am Handy sehen', icon: FileText, color: 'orange' },
-                                            ].map((perm) => (
-                                                <div
-                                                    key={perm.id}
-                                                    onClick={() => {
-                                                        const currentPerms = formData.appAccess?.permissions || { timeTracking: true, documents: false, personalData: true, projectDiary: false };
-                                                        setFormData({
-                                                            ...formData,
-                                                            appAccess: {
-                                                                ...(formData.appAccess || {
-                                                                    staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
-                                                                    accessPIN: "",
-                                                                    isAccessEnabled: false,
-                                                                    permissions: { timeTracking: true, documents: false, personalData: true, projectDiary: false }
-                                                                }),
-                                                                permissions: {
-                                                                    ...currentPerms,
-                                                                    [perm.id]: !currentPerms[perm.id as keyof typeof currentPerms]
-                                                                }
-                                                            }
-                                                        });
-                                                    }}
-                                                    className={cn(
-                                                        "p-6 rounded-[2.5rem] border-2 flex items-center gap-6 cursor-pointer transition-all",
-                                                        (formData.appAccess?.permissions as any)?.[perm.id]
-                                                            ? "bg-white border-indigo-100 shadow-xl shadow-indigo-500/5"
-                                                            : "bg-slate-50 border-slate-100 opacity-60 grayscale"
-                                                    )}
-                                                >
-                                                    <div className={cn(
-                                                        "h-12 w-12 rounded-2xl flex items-center justify-center transition-all",
-                                                        (formData.appAccess?.permissions as any)?.[perm.id]
-                                                            ? `bg-${perm.color}-50 text-${perm.color}-600`
-                                                            : "bg-white text-slate-300"
-                                                    )}>
-                                                        <perm.icon className="h-6 w-6" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="font-black text-slate-800 text-lg leading-tight">{perm.label}</div>
-                                                        <div className="text-xs text-slate-400 font-medium mt-1">{perm.desc}</div>
-                                                    </div>
-                                                    <div className={cn(
-                                                        "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
-                                                        (formData.appAccess?.permissions as any)?.[perm.id]
-                                                            ? "bg-indigo-600 border-indigo-600 text-white"
-                                                            : "bg-white border-slate-200"
-                                                    )}>
-                                                        {(formData.appAccess?.permissions as any)?.[perm.id] && <Plus className="h-4 w-4 rotate-45" />}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </section>
-                                </div>
-                            )}
                         </form>
 
                         {/* Footer */}

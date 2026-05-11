@@ -3,11 +3,9 @@ import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { NotificationProvider } from "@/context/NotificationContext";
-
+import { SWRProvider } from "@/components/SWRProvider";
 import { UpdateNotification } from "@/components/UpdateNotification";
 import { AuthGuard } from "@/components/AuthGuard";
-import { CloudSyncModal } from "@/components/CloudSyncModal";
-import { AutoRestore } from "@/components/AutoRestore";
 import { InputAutoSelect } from "@/components/InputAutoSelect";
 import { DisableZoom } from "@/components/DisableZoom";
 
@@ -37,8 +35,7 @@ export const metadata: Metadata = {
   },
 };
 
-import { SyncProvider } from "@/context/SyncContext";
-import { SyncNotice } from "@/components/SyncNotice";
+
 
 export default function RootLayout({
   children,
@@ -48,22 +45,18 @@ export default function RootLayout({
   return (
     <html lang="de">
       <body className={`${inter.variable} ${outfit.variable} antialiased font-sans`}>
-        <AuthProvider>
-          <NotificationProvider>
-            <SyncProvider>
-              <UpdateNotification />
-              <CloudSyncModal />
-              <SyncNotice />
-              <AuthGuard>
-                <AutoRestore>
+        <SWRProvider>
+          <AuthProvider>
+            <NotificationProvider>
+                <UpdateNotification />
+                <AuthGuard>
                   {children}
-                </AutoRestore>
-                <InputAutoSelect />
-                <DisableZoom />
-              </AuthGuard>
-            </SyncProvider>
-          </NotificationProvider>
-        </AuthProvider>
+                  <InputAutoSelect />
+                  <DisableZoom />
+                </AuthGuard>
+            </NotificationProvider>
+          </AuthProvider>
+        </SWRProvider>
         <div id="print-portal" />
       </body>
     </html>

@@ -147,7 +147,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header Section with Gradient */}
-      <section className="bg-primary-gradient pt-24 pb-48 px-16 relative overflow-hidden">
+      <section className="bg-primary-gradient pt-20 md:pt-24 pb-32 md:pb-48 px-4 md:px-16 relative overflow-hidden">
         <div className="absolute inset-0 bg-black/5 pointer-events-none" />
 
         {/* Floating background elements for depth */}
@@ -171,21 +171,21 @@ export default function Home() {
               )}
             </div>
 
-            <h1 className="text-7xl font-black text-white tracking-tight font-outfit leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-tight font-outfit leading-tight">
               Willkommen bei FlowY
             </h1>
-            <p className="text-white/90 text-2xl max-w-3xl font-medium leading-relaxed">
+            <p className="text-white/90 text-base md:text-2xl max-w-3xl font-medium leading-relaxed">
               {companyName} — Guten Abend! Ihre All-in-One-Lösung für Rechnungen, Projekte und Zeiterfassung.
             </p>
 
-            <div className="flex gap-6 mt-10">
-              <Link href="/dashboard" className="bg-white text-indigo-600 px-10 py-5 rounded-2xl font-bold text-lg flex items-center gap-3 shadow-xl shadow-black/15 transition-all hover:scale-105 hover:shadow-2xl active:scale-95">
+            <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 mt-10">
+              <Link href="/dashboard" className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-3 shadow-xl shadow-black/15 transition-all hover:scale-105 hover:shadow-2xl active:scale-95">
                 Zum Dashboard <ArrowRight className="h-5 w-5" />
               </Link>
-              <Link href="/settings" className="bg-white/15 backdrop-blur-xl text-white border-2 border-white/30 px-10 py-5 rounded-2xl font-bold text-lg flex items-center gap-3 hover:bg-white/25 transition-all hover:scale-105 active:scale-95">
+              <Link href="/settings" className="bg-white/15 backdrop-blur-xl text-white border-2 border-white/30 px-8 py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-3 hover:bg-white/25 transition-all hover:scale-105 active:scale-95">
                 <Settings className="h-5 w-5" /> Einstellungen
               </Link>
-              <a href="mailto:elsword.ie@gmail.com" className="bg-orange-500/20 backdrop-blur-xl text-orange-400 border-2 border-orange-500/30 px-10 py-5 rounded-2xl font-bold text-lg flex items-center gap-3 hover:bg-orange-500/30 transition-all hover:scale-105 active:scale-95">
+              <a href="mailto:elsword.ie@gmail.com" className="bg-orange-500/20 backdrop-blur-xl text-orange-400 border-2 border-orange-500/30 px-8 py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-3 hover:bg-orange-500/30 transition-all hover:scale-105 active:scale-95">
                 <LifeBuoy className="h-5 w-5" /> Support kontaktieren
               </a>
             </div>
@@ -194,52 +194,52 @@ export default function Home() {
       </section>
 
       {/* Stats Widgets */}
-      <section className="px-16 -mt-24 relative z-20">
-        <div className="max-w-7xl mx-auto grid grid-cols-3 gap-10">
-          <div className="glass-card p-12 flex flex-col items-center text-center space-y-4 hover:-translate-y-2 duration-300">
-            <div className="h-16 w-16 rounded-[1.5rem] bg-indigo-50/50 flex items-center justify-center mb-2">
-              <Clock className="h-8 w-8 text-indigo-500" />
+      <section className="px-4 md:px-16 -mt-16 md:-mt-24 relative z-20">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-10">
+          <div className="glass-card p-8 md:p-12 flex flex-col items-center text-center space-y-4 hover:-translate-y-2 duration-300">
+            <div className="h-14 w-14 md:h-16 md:w-16 rounded-[1.5rem] bg-indigo-50/50 flex items-center justify-center mb-2">
+              <Clock className="h-7 w-7 md:h-8 md:w-8 text-indigo-500" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 tracking-tight">Guten Abend</h3>
+            <h3 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">Willkommen</h3>
             <p className="text-base text-slate-500 font-semibold tracking-wide uppercase">{userName}</p>
           </div>
 
-          <div className="glass-card p-12 flex flex-col items-center text-center space-y-4 hover:-translate-y-2 duration-300">
-            <div className="h-16 w-16 rounded-[1.5rem] bg-emerald-50/50 flex items-center justify-center mb-2">
-              <Calendar className="h-8 w-8 text-emerald-500" />
+          <div className="glass-card p-8 md:p-12 flex flex-col items-center text-center space-y-4 hover:-translate-y-2 duration-300">
+            <div className="h-14 w-14 md:h-16 md:w-16 rounded-[1.5rem] bg-emerald-50/50 flex items-center justify-center mb-2">
+              <Calendar className="h-7 w-7 md:h-8 md:w-8 text-emerald-500" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 tracking-tight">{formattedDate.split(',')[0]}</h3>
-            <p className="text-base text-slate-500 font-semibold tracking-wide">{formattedDate.split(',')[1]}</p>
+            <h3 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">{formattedDate.split(',')[0]}</h3>
+            <p className="text-sm md:text-base text-slate-500 font-semibold tracking-wide">{formattedDate.split(',')[1]}</p>
           </div>
 
-          <div className="glass-card p-12 flex flex-col items-center text-center space-y-4 hover:-translate-y-2 duration-300">
-            <div className="h-16 w-16 rounded-[1.5rem] bg-orange-50/50 flex items-center justify-center mb-2">
-              <Clock className="h-8 w-8 text-orange-500" />
+          <div className="glass-card p-8 md:p-12 flex flex-col items-center text-center space-y-4 hover:-translate-y-2 duration-300">
+            <div className="h-14 w-14 md:h-16 md:w-16 rounded-[1.5rem] bg-orange-50/50 flex items-center justify-center mb-2">
+              <Clock className="h-7 w-7 md:h-8 md:w-8 text-orange-500" />
             </div>
-            <h3 className="text-5xl font-black text-slate-900 tracking-tighter tabular-nums">
+            <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter tabular-nums">
               <RealtimeClock />
             </h3>
-            <p className="text-base text-slate-500 font-semibold tracking-wide">Aktuelle Uhrzeit</p>
+            <p className="text-sm md:text-base text-slate-500 font-semibold tracking-wide">Aktuelle Uhrzeit</p>
           </div>
         </div>
       </section>
 
       {/* Features Explore Section */}
-      <section className="px-16 py-32">
-        <div className="max-w-7xl mx-auto space-y-20">
+      <section className="px-4 md:px-16 py-16 md:py-32">
+        <div className="max-w-7xl mx-auto space-y-12 md:space-y-20">
           <div className="text-center space-y-4">
-            <h2 className="text-5xl font-black text-slate-900 tracking-tight font-outfit">Entdecken Sie alle Funktionen</h2>
-            <p className="text-xl text-slate-500 font-semibold">Alles, was Sie für Ihre Unternehmensverwaltung benötigen</p>
+            <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight font-outfit">Entdecken Sie alle Funktionen</h2>
+            <p className="text-base md:text-xl text-slate-500 font-semibold">Alles, was Sie für Ihre Unternehmensverwaltung benötigen</p>
           </div>
 
-          <div className="grid grid-cols-3 gap-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-12">
             {features.map((feature, i) => (
-              <div key={i} className="glass-card p-12 group cursor-pointer hover:border-indigo-500/40 hover:-translate-y-2 duration-300" onClick={() => setSelectedFeature(feature)}>
+              <div key={i} className="glass-card p-8 md:p-12 group cursor-pointer hover:border-indigo-500/40 hover:-translate-y-2 duration-300" onClick={() => setSelectedFeature(feature)}>
                 <div className={cn("h-16 w-16 rounded-2xl flex items-center justify-center mb-8 transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg", feature.bg)}>
                   <feature.icon className={cn("h-8 w-8", feature.color)} />
                 </div>
-                <h4 className="text-2xl font-bold text-slate-900 mb-4">{feature.title}</h4>
-                <p className="text-lg text-slate-500 leading-relaxed mb-8">
+                <h4 className="text-xl md:text-2xl font-bold text-slate-900 mb-4">{feature.title}</h4>
+                <p className="text-base md:text-lg text-slate-500 leading-relaxed mb-8">
                   {feature.desc}
                 </p>
                 <button className="text-base font-black text-indigo-600 flex items-center gap-2 group-hover:gap-3 transition-all" onClick={(e) => {

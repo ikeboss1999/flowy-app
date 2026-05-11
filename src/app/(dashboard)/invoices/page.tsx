@@ -13,7 +13,8 @@ import {
     Trash2,
     ChevronDown,
     ArrowUpDown,
-    Edit2
+    Edit2,
+    Loader2
 } from "lucide-react";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useCustomers } from "@/hooks/useCustomers";
@@ -40,6 +41,31 @@ export default function InvoicesPage() {
     // Sorting State
     const [sortBy, setSortBy] = useState<string>("number");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+    const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+
+    const handleDownload = async (invoice: Invoice, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setDownloadingIds(prev => new Set(prev).add(invoice.id));
+        try {
+            const { pdf } = await import('@react-pdf/renderer');
+            const { InvoiceReactPDF } = await import('@/components/InvoiceReactPDF');
+            const customer = customers.find(c => c.id === invoice.customerId);
+            const blob = await pdf(
+                React.createElement(InvoiceReactPDF, { invoice, customer, companySettings }) as any
+            ).toBlob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Rechnung_${invoice.invoiceNumber}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('[PDF Download]', err);
+        } finally {
+            setDownloadingIds(prev => { const n = new Set(prev); n.delete(invoice.id); return n; });
+        }
+    };
 
     const processedInvoices = useMemo(() => {
         // First filter
@@ -312,6 +338,18 @@ export default function InvoicesPage() {
                                                 <Eye className="h-4 w-4" />
                                                 Vorschau
                                             </button>
+                                            <button
+                                                onClick={(e) => handleDownload(invoice, e)}
+                                                disabled={downloadingIds.has(invoice.id)}
+                                                className="p-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-all disabled:opacity-50"
+                                                title="PDF herunterladen"
+                                            >
+                                                {downloadingIds.has(invoice.id) ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <Download className="h-4 w-4" />
+                                                )}
+                                            </button>
                                             {invoice.status === 'draft' && (
                                                 <button
                                                     onClick={(e) => {
@@ -371,6 +409,7 @@ export default function InvoicesPage() {
                 customer={customers.find(c => c.id === previewInvoice?.customerId)}
                 companySettings={companySettings}
             />
+
         </div>
     );
 }

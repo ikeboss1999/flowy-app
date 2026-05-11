@@ -13,7 +13,7 @@ import {
     ArrowDownRight,
     Clock,
     MoreVertical,
-    Download,
+    Eye,
     AlertCircle,
     Trash2,
     ChevronUp,
@@ -310,9 +310,10 @@ export default function DashboardPage() {
                                                             e.stopPropagation();
                                                             handleDownload(invoice);
                                                         }}
-                                                        className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
+                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all"
                                                     >
-                                                        <Download className="h-5 w-5" />
+                                                        <Eye className="h-4 w-4" />
+                                                        Vorschau
                                                     </button>
                                                 </td>
                                             </tr>

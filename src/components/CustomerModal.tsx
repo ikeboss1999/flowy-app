@@ -56,7 +56,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
             setStatus('active');
             setFormData({
                 name: "",
-                salutation: "",
+                salutation: type === 'business' ? "Firma" : "",
                 email: "",
                 phone: "",
                 street: "",
@@ -72,11 +72,36 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
         setError(null);
     }, [initialCustomer, isOpen]);
 
+    // Auto-set salutation for business
+    useEffect(() => {
+        if (!initialCustomer && type === 'business' && !formData.salutation) {
+            setFormData(prev => ({ ...prev, salutation: "Firma" }));
+        }
+    }, [type, initialCustomer]);
+
     if (!isOpen) return null;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+
+        // Validation logic
+        const missingFields = [];
+        if (!formData.salutation) missingFields.push("Anrede");
+        if (!formData.name) missingFields.push(type === 'private' ? "Name" : "Firmenname");
+        if (!formData.street) missingFields.push("Straße");
+        if (!formData.zip) missingFields.push("PLZ");
+        if (!formData.city) missingFields.push("Stadt");
+
+        if (type === 'business') {
+            if (!formData.email) missingFields.push("E-Mail");
+            if (!formData.taxId) missingFields.push("ATU-Nummer");
+        }
+
+        if (missingFields.length > 0) {
+            setError(`Bitte füllen Sie alle Pflichtfelder aus: ${missingFields.join(", ")}`);
+            return;
+        }
 
         // Duplicate Check
         const isDuplicate = existingCustomers.some(c => {
@@ -207,7 +232,9 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                     {/* Basic Info */}
                     <div className="grid grid-cols-3 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Anrede</label>
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
+                                Anrede <span className="text-rose-500">*</span>
+                            </label>
                             <select
                                 name="salutation"
                                 value={formData.salutation}
@@ -223,7 +250,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                         </div>
                         <div className="col-span-2 space-y-2">
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
-                                {type === 'private' ? "Vollständiger Name" : "Firmenname"}
+                                {type === 'private' ? "Vollständiger Name" : "Firmenname"} <span className="text-rose-500">*</span>
                             </label>
                             <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -241,7 +268,9 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">E-Mail</label>
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
+                                E-Mail {type === 'business' && <span className="text-rose-500">*</span>}
+                            </label>
                             <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                     <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -284,7 +313,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                     {/* Address Info */}
                     <div className="space-y-4">
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
-                            <MapPin className="h-3 w-3" /> Anschrift
+                            <MapPin className="h-3 w-3" /> Anschrift <span className="text-rose-500">*</span>
                         </label>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2">
@@ -326,7 +355,9 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                         {type === 'business' && (
                             <div className="col-span-2 grid grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Steuernummer / USt-ID</label>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
+                                        Steuernummer / USt-ID <span className="text-rose-500">*</span>
+                                    </label>
                                     <input
                                         name="taxId"
                                         value={formData.taxId}

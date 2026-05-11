@@ -1,13 +1,26 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/sqlite';
+import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getUserSession } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+    const session = await getUserSession();
+    const userId = session?.userId;
+    const { id } = params;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
-        db.prepare('DELETE FROM employees WHERE id = ?').run(params.id);
+        const client = supabaseAdmin || supabase;
+        const { error } = await client.from('employees').delete().eq('id', id).eq('userId', userId);
+        if (error) throw error;
         return NextResponse.json({ success: true });
     } catch (error) {
-        return NextResponse.json({ message: 'Error' }, { status: 500 });
+        console.error(error);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }

@@ -1,49 +1,31 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import useSWR from 'swr';
 import { Employee } from '@/types/employee';
 import { useAuth } from '@/context/AuthContext';
 import { useSync } from '@/context/SyncContext';
-
-const STORAGE_KEY = 'flowy_employees';
+import { fetcher } from '@/lib/fetcher';
 
 export function useEmployees() {
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const { user, currentEmployee, refreshEmployee, isLoading: authLoading } = useAuth();
+    const { user, currentEmployee, refreshEmployee } = useAuth();
     const { markDirty, lastSyncTime } = useSync();
 
     const activeUserId = user?.id || currentEmployee?.userId;
+    const key = activeUserId ? `/api/employees?userId=${activeUserId}` : null;
 
+    const { data = [], isLoading, mutate } = useSWR<Employee[]>(key, fetcher);
+
+    // Re-fetch after a cloud sync
     useEffect(() => {
-        if (authLoading || !activeUserId) {
-            if (!authLoading && !activeUserId) setIsLoading(false);
-            return;
-        }
-
-        const loadEmployees = async () => {
-            try {
-                const response = await fetch(`/api/employees?userId=${activeUserId}`);
-                const data = await response.json();
-
-                if (Array.isArray(data)) {
-                    setEmployees(data);
-                }
-            } catch (e) {
-                console.error('Failed to fetch employees', e);
-            }
-            setIsLoading(false);
-        };
-
-        loadEmployees();
-    }, [activeUserId, authLoading, user, lastSyncTime]);
+        if (lastSyncTime) mutate();
+    }, [lastSyncTime]);
 
     const addEmployee = async (employee: Employee) => {
         const targetUserId = user?.id || currentEmployee?.userId;
         if (!targetUserId) return;
-
         const newEmployee = { ...employee, userId: targetUserId };
-
+        mutate([...data, newEmployee], false);
         try {
             const response = await fetch('/api/employees', {
                 method: 'POST',
@@ -54,19 +36,18 @@ export function useEmployees() {
                 const text = await response.text();
                 throw new Error(text || `HTTP ${response.status}`);
             }
-            setEmployees(prev => [...prev, newEmployee]);
             markDirty();
         } catch (e) {
             console.error('Failed to add employee', e);
+            mutate();
         }
     };
 
     const updateEmployee = async (id: string, employee: Employee) => {
         const targetUserId = user?.id || employee.userId || currentEmployee?.userId;
         if (!targetUserId) return;
-
         const updated = { ...employee, userId: targetUserId };
-
+        mutate(data.map(e => e.id === id ? updated : e), false);
         try {
             const response = await fetch('/api/employees', {
                 method: 'POST',
@@ -77,30 +58,23 @@ export function useEmployees() {
                 const text = await response.text();
                 throw new Error(text || `HTTP ${response.status}`);
             }
-            setEmployees(prev => prev.map(e => e.id === id ? updated : e));
             markDirty();
-
-            // Auto-refresh AuthContext if the updated employee is the current one
-            if (currentEmployee?.id === id) {
-                refreshEmployee();
-            }
+            if (currentEmployee?.id === id) refreshEmployee();
         } catch (e) {
             console.error('Failed to update employee', e);
+            mutate();
         }
     };
 
     const requestEmployeeUpdate = async (id: string, pendingChanges: Partial<Employee>) => {
-        const employee = employees.find(e => e.id === id);
+        const employee = data.find(e => e.id === id);
         if (!employee || !activeUserId) return;
-
-        // Safety check: Don't save empty requests
         if (!pendingChanges || Object.keys(pendingChanges).length === 0) {
             console.warn('[useEmployees] Skipping requestEmployeeUpdate: No changes detected.');
             return { success: true };
         }
-
         const updated = { ...employee, pendingChanges };
-
+        mutate(data.map(e => e.id === id ? updated : e), false);
         try {
             const response = await fetch('/api/employees', {
                 method: 'POST',
@@ -111,44 +85,42 @@ export function useEmployees() {
                 const text = await response.text();
                 throw new Error(text || `HTTP ${response.status}`);
             }
-            setEmployees(prev => prev.map(e => e.id === id ? updated : e));
             markDirty();
-
-            // Auto-refresh AuthContext if the updated employee is the current one
-            if (currentEmployee?.id === id) {
-                refreshEmployee();
-            }
+            if (currentEmployee?.id === id) refreshEmployee();
             return { success: true };
         } catch (e) {
             console.error('Failed to request update', e);
+            mutate();
             return { success: false, error: e };
         }
     };
 
     const deleteEmployee = async (id: string) => {
         if (!activeUserId) return;
+        mutate(data.filter(e => e.id !== id), false);
         try {
             await fetch(`/api/employees/${id}?userId=${activeUserId}`, { method: 'DELETE' });
-            setEmployees(prev => prev.filter(e => e.id !== id));
             markDirty();
         } catch (e) {
             console.error('Failed to delete employee', e);
+            mutate();
         }
     };
 
     const getNextEmployeeNumber = () => {
-        if (employees.length === 0) return "1001";
-        const max = Math.max(...employees.map(e => parseInt(e.employeeNumber) || 0));
-        return (max + 1).toString();
-    }
+        if (data.length === 0) return "100001";
+        const max = Math.max(...data.map(e => parseInt(e.employeeNumber) || 0));
+        const next = Math.max(max + 1, 100001);
+        return next.toString();
+    };
 
     return {
-        employees,
+        employees: data,
         addEmployee,
         updateEmployee,
         requestEmployeeUpdate,
         deleteEmployee,
         getNextEmployeeNumber,
-        isLoading: isLoading || authLoading
+        isLoading
     };
 }

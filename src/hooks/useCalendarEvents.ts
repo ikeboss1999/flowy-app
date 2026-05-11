@@ -1,52 +1,17 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { CalendarEvent } from '@/types/calendar';
 import { useAuth } from '@/context/AuthContext';
 import { useSync } from '@/context/SyncContext';
-
-const STORAGE_KEY = 'flowy_calendar_events';
+import { fetcher } from '@/lib/fetcher';
 
 export function useCalendarEvents() {
-    const [events, setEvents] = useState<CalendarEvent[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const { user, isLoading: authLoading } = useAuth();
+    const { user } = useAuth();
     const { markDirty } = useSync();
 
-    useEffect(() => {
-        if (authLoading || !user) {
-            if (!authLoading && !user) setIsLoading(false);
-            return;
-        }
-
-        const loadEvents = async () => {
-            try {
-                const response = await fetch(`/api/calendar-events?userId=${user.id}`);
-                const data = await response.json();
-
-                if (Array.isArray(data) && data.length > 0) {
-                    setEvents(data);
-                } else {
-                    const saved = localStorage.getItem(STORAGE_KEY);
-                    if (saved) {
-                        try {
-                            const local: CalendarEvent[] = JSON.parse(saved).filter((e: any) => e.userId === user.id);
-                            for (const item of local) {
-                                await fetch('/api/calendar-events', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ userId: user.id, event: item })
-                                });
-                            }
-                            setEvents(local);
-                        } catch (e) { console.error(e); }
-                    }
-                }
-            } catch (e) { console.error(e); }
-            setIsLoading(false);
-        };
-        loadEvents();
-    }, [user, authLoading]);
+    const key = user ? `/api/calendar-events?userId=${user.id}` : null;
+    const { data = [], isLoading, mutate } = useSWR<CalendarEvent[]>(key, fetcher);
 
     const addEvent = async (eventData: Omit<CalendarEvent, 'id' | 'userId' | 'createdAt'>) => {
         if (!user) return;
@@ -56,47 +21,50 @@ export function useCalendarEvents() {
             ...eventData,
             createdAt: new Date().toISOString()
         };
+        mutate([...data, newEvent], false);
         try {
             await fetch('/api/calendar-events', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, event: newEvent })
             });
-            const updated = [...events, newEvent];
-            setEvents(updated);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
             markDirty();
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            mutate();
+        }
     };
 
     const updateEvent = async (id: string, eventData: Partial<CalendarEvent>) => {
         if (!user) return;
-        const event = events.find(e => e.id === id);
+        const event = data.find(e => e.id === id);
         if (!event) return;
         const updatedEvent = { ...event, ...eventData };
+        mutate(data.map(e => e.id === id ? updatedEvent : e), false);
         try {
             await fetch('/api/calendar-events', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, event: updatedEvent })
             });
-            const updated = events.map(e => e.id === id ? updatedEvent : e);
-            setEvents(updated);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
             markDirty();
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            mutate();
+        }
     };
 
     const deleteEvent = async (id: string) => {
         if (!user) return;
+        mutate(data.filter(e => e.id !== id), false);
         try {
-            await fetch(`/api/calendar-events/${id}`, { method: 'DELETE' });
-            const updated = events.filter(e => e.id !== id);
-            setEvents(updated);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            await fetch(`/api/calendar-events?id=${id}`, { method: 'DELETE' });
             markDirty();
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            mutate();
+        }
     };
 
-    return { events, addEvent, updateEvent, deleteEvent, isLoading: isLoading || authLoading };
+    return { events: data, addEvent, updateEvent, deleteEvent, isLoading };
 }

@@ -114,7 +114,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Sync session to cookie for server-side access
             if (session?.access_token) {
-                document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
+                const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+                document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax${secureFlag}`;
             } else if (event === 'SIGNED_OUT') {
                 document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             }

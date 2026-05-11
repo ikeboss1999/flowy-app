@@ -453,6 +453,14 @@ export function ProjectDetails({ project, customer, invoices, onBack, onEdit, on
                 </InvoicePrintHandler>
             )}
 
+            {/* Payment Plan Modal — was imported and state was managed but never rendered */}
+            <PaymentPlanModal
+                isOpen={isPaymentPlanModalOpen}
+                onClose={() => setIsPaymentPlanModalOpen(false)}
+                project={project}
+                onSave={handleSavePaymentPlan}
+            />
+
         </div>
     );
 }

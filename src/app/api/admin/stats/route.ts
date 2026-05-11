@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
 import { checkAdmin } from '@/lib/auth-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,33 +12,34 @@ export async function GET() {
             return NextResponse.json({ message: 'Nicht autorisiert' }, { status: 403 });
         }
 
-        const sqlite = getDb();
+        const client = supabaseAdmin || supabase;
 
-        // Default stats from local DB
-        let totalUsers = (sqlite.prepare('SELECT COUNT(*) as count FROM users').get() as any).count;
-        let recentUsers = sqlite.prepare('SELECT name, email, createdAt FROM users ORDER BY createdAt DESC LIMIT 5').all();
+        const [usersResult, invoicesResult, customersResult] = await Promise.all([
+            supabaseAdmin
+                ? supabaseAdmin.auth.admin.listUsers()
+                : Promise.resolve({ data: { users: [] }, error: null }),
+            client.from('invoices').select('id, totalAmount, status', { count: 'exact' }),
+            client.from('customers').select('id', { count: 'exact' })
+        ]);
 
-        // Try to get fresh counts from Supabase if available
-        if (supabaseAdmin) {
-            const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
-            if (!error && users) {
-                totalUsers = users.length;
-                recentUsers = users
-                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                    .slice(0, 5)
-                    .map(u => ({
-                        name: u.user_metadata?.full_name || u.email?.split('@')[0],
-                        email: u.email,
-                        createdAt: u.created_at
-                    }));
-            }
-        }
+        const users = usersResult.data?.users || [];
+        const recentUsers = [...users]
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 5)
+            .map(u => ({
+                name: u.user_metadata?.full_name || u.email?.split('@')[0],
+                email: u.email,
+                createdAt: u.created_at
+            }));
+
+        const paidInvoices = (invoicesResult.data || []).filter(i => i.status === 'bezahlt' || i.status === 'paid');
+        const totalRevenue = paidInvoices.reduce((sum, i) => sum + (i.totalAmount || 0), 0);
 
         const stats = {
-            totalUsers,
-            totalInvoices: (sqlite.prepare('SELECT COUNT(*) as count FROM invoices').get() as any).count,
-            totalCustomers: (sqlite.prepare('SELECT COUNT(*) as count FROM customers').get() as any).count,
-            totalRevenue: (sqlite.prepare('SELECT SUM(totalAmount) as total FROM invoices WHERE status = "bezahlt"').get() as any).total || 0,
+            totalUsers: users.length,
+            totalInvoices: invoicesResult.count || 0,
+            totalCustomers: customersResult.count || 0,
+            totalRevenue,
             recentUsers,
         };
 

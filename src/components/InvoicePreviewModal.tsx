@@ -1,17 +1,14 @@
 "use client";
 
 import React, { useRef } from "react";
-import { X, Download, Loader2 } from "lucide-react";
+import { X, Download, Loader2, AlertTriangle } from "lucide-react";
 import { Invoice } from "@/types/invoice";
 import { Customer } from "@/types/customer";
 import { CompanyData } from "@/types/company";
 import { InvoicePDF } from "@/components/InvoicePDF";
-import { InvoicePrintHandler } from "@/components/InvoicePrintHandler";
 import { DunningModal } from "@/components/DunningModal";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { useInvoices } from "@/hooks/useInvoices";
-import { createPortal } from "react-dom";
-import { AlertTriangle } from "lucide-react";
 
 interface InvoicePreviewModalProps {
     isOpen: boolean;
@@ -30,13 +27,23 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
     const { data: invoiceSettings } = useInvoiceSettings();
     const { updateInvoice } = useInvoices();
 
-    // Mounted state removed as we don't use portal anymore
-
-
     if (!isOpen || !invoice) return null;
 
-    const handlePrint = () => {
+    const handlePrint = async () => {
         setIsPrinting(true);
+        try {
+            const { pdf } = await import('@react-pdf/renderer');
+            const { InvoiceReactPDF } = await import('@/components/InvoiceReactPDF');
+            const blob = await pdf(
+                React.createElement(InvoiceReactPDF, { invoice, customer, companySettings }) as any
+            ).toBlob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+        } catch (e) {
+            console.error('[PDF]', e);
+        } finally {
+            setIsPrinting(false);
+        }
     };
 
     const handleDunningConfirm = (level: number, date: string) => {
@@ -83,10 +90,14 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
 
                         <button
                             onClick={handlePrint}
-                            className="px-6 py-3 bg-primary-gradient text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                            disabled={isPrinting}
+                            className="px-6 py-3 bg-primary-gradient text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
                         >
-                            <Download className="h-4 w-4" />
-                            PDF erstellen / Drucken
+                            {isPrinting ? (
+                                <><Loader2 className="h-4 w-4 animate-spin" /> PDF wird erstellt...</>
+                            ) : (
+                                <><Download className="h-4 w-4" /> PDF Erstellen</>
+                            )}
                         </button>
                         <button
                             onClick={onClose}
@@ -110,19 +121,7 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
                 </div>
             </div>
 
-            {/* Hidden Print Handler */}
-            {isPrinting && (
-                <InvoicePrintHandler
-                    onAfterPrint={() => setIsPrinting(false)}
-                    documentTitle={`Rechnung_${invoice.invoiceNumber.replace(/\//g, '-')}`}
-                >
-                    <InvoicePDF
-                        invoice={invoice}
-                        customer={customer}
-                        companySettings={companySettings}
-                    />
-                </InvoicePrintHandler>
-            )}
+                {/* No Print Handler needed anymore as we use real PDFs */}
 
             {/* Dunning Modal */}
             {isDunningModalOpen && customer && (

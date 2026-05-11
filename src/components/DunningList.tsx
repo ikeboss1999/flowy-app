@@ -5,6 +5,7 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useInvoiceSettings } from '@/hooks/useInvoiceSettings';
 import { DunningModal } from '@/components/DunningModal';
 import { AlertTriangle, Clock, ArrowRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Invoice } from '@/types/invoice';
 
 export function DunningList() {
@@ -103,9 +104,15 @@ export function DunningList() {
                                 </div>
                                 <button
                                     onClick={() => setSelectedInvoice(invoice)}
-                                    className="px-5 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-indigo-600 transition-colors flex items-center gap-2"
+                                    disabled={dunningLevel >= 4}
+                                    className={cn(
+                                        "px-5 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2",
+                                        dunningLevel >= 4 
+                                            ? "bg-slate-100 text-slate-400 cursor-not-allowed" 
+                                            : "bg-slate-900 text-white hover:bg-indigo-600 shadow-lg shadow-black/10"
+                                    )}
                                 >
-                                    Mahnung erstellen <ArrowRight className="h-4 w-4" />
+                                    {dunningLevel >= 4 ? 'Max. Mahnstufe' : 'Mahnung erstellen'} <ArrowRight className="h-4 w-4" />
                                 </button>
                             </div>
                         </div>

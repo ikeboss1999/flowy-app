@@ -4,7 +4,6 @@ import { useState } from "react";
 import { CompanySettings } from "@/components/CompanySettings";
 import { InvoiceSettings } from "@/components/InvoiceSettings";
 import { AccountSettings } from "@/components/AccountSettings";
-import { BackupSettings } from "@/components/BackupSettings";
 import { AppSettings } from "@/components/AppSettings";
 import { Settings as SettingsIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,7 +12,6 @@ const TABS = [
     { id: "Stammdaten", label: "Stammdaten" },
     { id: "Rechnung", label: "Rechnung" },
     { id: "App", label: "App" },
-    { id: "Datensicherung", label: "Datensicherung" },
     { id: "Mein Konto", label: "Mein Konto" },
 ];
 
@@ -86,13 +84,7 @@ export default function SettingsPage() {
                         </div>
                     )}
 
-                    {activeTab === "Datensicherung" && (
-                        <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
-                            <BackupSettings />
-                        </div>
-                    )}
-
-                    {!["Stammdaten", "Rechnung", "App", "Mein Konto", "Datensicherung"].includes(activeTab) && (
+                    {!["Stammdaten", "Rechnung", "App", "Mein Konto"].includes(activeTab) && (
                         <div className="flex flex-col items-center justify-center p-24 bg-white rounded-[40px] border-2 border-dashed border-slate-200 shadow-sm animate-in zoom-in-95 duration-500">
                             <div className="h-24 w-24 rounded-3xl bg-indigo-50 flex items-center justify-center mb-8 shadow-inner">
                                 <SettingsIcon className="h-12 w-12 text-indigo-200" />

@@ -49,7 +49,7 @@ export default function EmployeesPage() {
     const [filterStatus, setFilterStatus] = useState<EmploymentStatus | "all">("all");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>(undefined);
-    const [viewMode, setViewMode] = useState<'list' | 'archive' | 'requests'>('list');
+    const [viewMode, setViewMode] = useState<'list' | 'archive'>('list');
     const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
 
     // PDF States
@@ -333,12 +333,10 @@ export default function EmployeesPage() {
                     <h1 className="text-5xl font-black text-slate-900 tracking-tight font-outfit">
                         {viewMode === 'list' && (<>Mitarbeiter <span className="text-slate-300 font-light">Verwalten</span></>)}
                         {viewMode === 'archive' && (<>Dokumenten <span className="text-slate-300 font-light">Archiv</span></>)}
-                        {viewMode === 'requests' && (<>Offene <span className="text-slate-300 font-light">Anfragen</span></>)}
                     </h1>
                     <p className="text-xl text-slate-500 font-medium">
                         {viewMode === 'list' && "Verwalten Sie Ihr Team, Unterlagen und Personalstammdaten."}
                         {viewMode === 'archive' && "Chronologische Übersicht aller Mitarbeiter-Dokumente gruppiert nach Ordnernamen."}
-                        {viewMode === 'requests' && "Prüfen und bestätigen Sie Stammdaten-Änderungen Ihrer Mitarbeiter."}
                     </p>
                 </div>
 
@@ -368,23 +366,7 @@ export default function EmployeesPage() {
                             <Library className="h-4 w-4" />
                             Archiv
                         </button>
-                        <button
-                            onClick={() => setViewMode('requests')}
-                            className={cn(
-                                "flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all relative",
-                                viewMode === 'requests'
-                                    ? "bg-white text-indigo-600 shadow-sm border border-slate-100"
-                                    : "text-slate-400 hover:text-slate-600"
-                            )}
-                        >
-                            <Bell className="h-4 w-4" />
-                            Anfragen
-                            {employees.filter(e => e.pendingChanges && Object.keys(e.pendingChanges).length > 0).length > 0 && (
-                                <span className="absolute -top-1 -right-1 h-4 w-4 bg-rose-500 rounded-full flex items-center justify-center text-[10px] text-white animate-pulse">
-                                    {employees.filter(e => e.pendingChanges && Object.keys(e.pendingChanges).length > 0).length}
-                                </span>
-                            )}
-                        </button>
+
                     </div>
 
                     <div className="flex gap-2">
@@ -419,7 +401,7 @@ export default function EmployeesPage() {
                         {[
                             { label: "Gesamt", count: employees.length, color: "text-slate-600", bg: "bg-slate-100", icon: UserSquare2 },
                             { label: "Vollzeit", count: employees.filter(e => e.employment.status === 'Vollzeit').length, color: "text-emerald-600", bg: "bg-emerald-50", icon: Briefcase },
-                            { label: "Freelance", count: employees.filter(e => e.employment.status === 'Freelancer').length, color: "text-rose-600", bg: "bg-rose-50", icon: Search },
+                            { label: "Teilzeit", count: employees.filter(e => e.employment.status === 'Teilzeit').length, color: "text-blue-600", bg: "bg-blue-50", icon: Users2 },
                         ].map((stat) => {
                             const Icon = stat.icon;
                             return (
@@ -454,7 +436,8 @@ export default function EmployeesPage() {
                         <div className="bg-white/50 backdrop-blur-md p-1 rounded-2xl border border-slate-100 shadow-sm flex gap-1">
                             {[
                                 { id: "all", label: "Alle", icon: Filter },
-                                { id: "Vollzeit", label: "Vollzeit", icon: Briefcase }
+                                { id: "Vollzeit", label: "Vollzeit", icon: Briefcase },
+                                { id: "Teilzeit", label: "Teilzeit", icon: Users2 }
                             ].map((btn) => {
                                 const Icon = btn.icon;
                                 const active = filterStatus === btn.id;
@@ -613,7 +596,7 @@ export default function EmployeesPage() {
                         </div>
                     )}
                 </>
-            ) : viewMode === 'archive' ? (
+            ) : (
                 <div className="space-y-6">
                     {/* Archive Filtering */}
                     <div className="flex gap-4 items-center">
@@ -747,106 +730,7 @@ export default function EmployeesPage() {
                         )}
                     </div>
                 </div>
-            ) : (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="grid grid-cols-1 gap-6">
-                        {employees.filter(e => e.pendingChanges && Object.keys(e.pendingChanges).length > 0).length > 0 ? (
-                            employees.filter(e => e.pendingChanges && Object.keys(e.pendingChanges).length > 0).map(emp => (
-                                <div key={emp.id} className="bg-white border border-slate-100 rounded-[32px] overflow-hidden shadow-sm p-8">
-                                    <div className="flex justify-between items-start mb-8">
-                                        <div className="flex items-center gap-5">
-                                            <div className="h-16 w-16 rounded-2xl bg-amber-50 flex items-center justify-center">
-                                                <User className="h-8 w-8 text-amber-500" />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-2xl font-black text-slate-900">{emp.personalData.firstName} {emp.personalData.lastName}</h3>
-                                                <p className="text-sm text-slate-500 font-medium">{emp.employment.position} • {emp.employeeNumber}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-3">
-                                            <button
-                                                onClick={() => {
-                                                    updateEmployee(emp.id, { ...emp, pendingChanges: undefined });
-                                                    showToast("Änderungen wurden abgelehnt.", "info");
-                                                }}
-                                                className="px-6 py-3 bg-slate-50 text-slate-600 rounded-2xl font-bold text-sm hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center gap-2"
-                                            >
-                                                <CloseIcon className="h-4 w-4" /> Ablehnen
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    const mergePersonalData = {
-                                                        ...emp.personalData,
-                                                        ...(emp.pendingChanges?.personalData || {})
-                                                    };
-                                                    const mergeBankDetails = {
-                                                        ...emp.bankDetails,
-                                                        ...(emp.pendingChanges?.bankDetails || {})
-                                                    };
-                                                    const mergedEmployee = {
-                                                        ...emp,
-                                                        ...emp.pendingChanges,
-                                                        personalData: mergePersonalData,
-                                                        bankDetails: mergeBankDetails,
-                                                        updatedAt: new Date().toISOString(),
-                                                        pendingChanges: undefined
-                                                    };
-                                                    updateEmployee(emp.id, mergedEmployee as Employee);
-                                                    showToast("Änderungen wurden übernommen.", "success");
-                                                }}
-                                                className="px-6 py-3 bg-emerald-600 text-white rounded-2xl font-bold text-sm hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 flex items-center gap-2"
-                                            >
-                                                <Check className="h-4 w-4" /> Übernehmen
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-slate-50/50 rounded-3xl p-6 border border-slate-100">
-                                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Angefragte Änderungen</h4>
-                                        <div className="space-y-3">
-                                            {emp.pendingChanges && Object.entries(emp.pendingChanges).map(([key, value]) => {
-                                                if (typeof value === 'object' && value !== null) {
-                                                    return Object.entries(value).map(([subKey, subValue]) => (
-                                                        <div key={`${key}.${subKey}`} className="flex items-center justify-between py-3 border-b border-white last:border-0">
-                                                            <span className="text-slate-500 text-sm font-medium uppercase tracking-tighter">{key}.{subKey}</span>
-                                                            <div className="flex items-center gap-4">
-                                                                <span className="text-slate-400 line-through text-sm">{(emp as any)[key]?.[subKey] || "-"}</span>
-                                                                <ChevronRight className="h-4 w-4 text-slate-300" strokeWidth={3} />
-                                                                <span className="text-indigo-600 font-black px-3 py-1 bg-indigo-50 rounded-lg border border-indigo-100">{String(subValue)}</span>
-                                                            </div>
-                                                        </div>
-                                                    ));
-                                                }
-                                                return (
-                                                    <div key={key} className="flex items-center justify-between py-3 border-b border-white last:border-0">
-                                                        <span className="text-slate-500 text-sm font-medium uppercase tracking-tighter">{key}</span>
-                                                        <div className="flex items-center gap-4">
-                                                            <span className="text-slate-400 line-through text-sm">{(emp as any)[key] || "-"}</span>
-                                                            <ChevronRight className="h-4 w-4 text-slate-300" strokeWidth={3} />
-                                                            <span className="text-indigo-600 font-black px-3 py-1 bg-indigo-50 rounded-lg border border-indigo-100">{String(value)}</span>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="glass-card py-24 flex flex-col items-center justify-center text-center space-y-4">
-                                <div className="h-20 w-20 rounded-3xl bg-slate-50 flex items-center justify-center mb-2">
-                                    <Bell className="h-10 w-10 text-slate-200" />
-                                </div>
-                                <div className="space-y-1">
-                                    <h4 className="text-xl font-bold text-slate-900">Keine Anfragen</h4>
-                                    <p className="text-slate-500 font-medium">Es liegen aktuell keine Stammdaten-Änderungswünsche vor.</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
             )}
-
 
             <EmployeeModal
                 isOpen={isModalOpen}

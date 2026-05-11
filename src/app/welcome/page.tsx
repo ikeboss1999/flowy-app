@@ -18,9 +18,11 @@ import {
 import { cn } from '@/lib/utils';
 import { useDevice } from '@/hooks/useDevice';
 import { PartnerLogos } from '@/components/PartnerLogos';
+import { useAuth } from '@/context/AuthContext';
 
 export default function WelcomePage() {
     const { isIPad, isMobile } = useDevice();
+    const { user } = useAuth();
 
     return (
         <div className="min-h-screen bg-[#020205] text-white selection:bg-indigo-500/30 overflow-x-hidden">
@@ -40,12 +42,20 @@ export default function WelcomePage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
-                    <Link href="/login" className="text-xs md:text-sm font-bold text-white/60 hover:text-white transition-colors">
-                        Anmelden
-                    </Link>
-                    <Link href="/login?mode=register" className="bg-white text-black px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-black hover:bg-white/90 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-white/10">
-                        Starten
-                    </Link>
+                    {user ? (
+                        <Link href="/" className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-xs md:text-sm font-black hover:bg-indigo-500 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-indigo-500/20">
+                            Zum Dashboard
+                        </Link>
+                    ) : (
+                        <>
+                            <Link href="/login" className="text-xs md:text-sm font-bold text-white/60 hover:text-white transition-colors">
+                                Anmelden
+                            </Link>
+                            <Link href="/login?mode=register" className="bg-white text-black px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-black hover:bg-white/90 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-white/10">
+                                Starten
+                            </Link>
+                        </>
+                    )}
                 </div>
             </nav>
 
@@ -58,7 +68,7 @@ export default function WelcomePage() {
                         ) : isMobile ? (
                             <><Smartphone className="h-3 w-3" /> Optimiert für Mobilgeräte</>
                         ) : (
-                            <><Smartphone className="h-3 w-3" /> NEU: Jetzt auch als Desktop App</>
+                            <><Smartphone className="h-3 w-3" /> Für Browser & Mobilgeräte</>
                         )}
                     </div>
                     <h1 className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tight leading-[1.2] md:leading-[1.3] mb-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 px-4">
@@ -73,61 +83,45 @@ export default function WelcomePage() {
                     <div className="flex flex-col items-center gap-12 animate-in fade-in slide-in-from-bottom-16 duration-700 delay-300">
                         {/* Primary Web Action */}
                         <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 w-full px-6">
-                            <Link href="/login?mode=register" className="group bg-gradient-to-r from-indigo-600 to-purple-600 px-8 md:px-10 py-4 md:py-5 rounded-[2rem] text-lg md:text-xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-indigo-500/20 transition-all hover:scale-105 active:scale-95 w-full md:w-auto">
-                                Kostenlos Registrieren <ArrowRight className="h-5 w-5 md:h-6 md:w-6 group-hover:translate-x-1 transition-transform" />
-                            </Link>
-                            <Link href="/login" className="bg-white/5 backdrop-blur-xl border border-white/10 px-8 md:px-10 py-4 md:py-5 rounded-[2rem] text-lg md:text-xl font-black hover:bg-white/10 transition-all hover:scale-105 active:scale-95 w-full md:w-auto">
-                                Zum Login
-                            </Link>
+                            {user ? (
+                                <Link href="/" className="group bg-gradient-to-r from-indigo-600 to-purple-600 px-8 md:px-12 py-4 md:py-5 rounded-[2rem] text-lg md:text-xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-indigo-500/20 transition-all hover:scale-105 active:scale-95 w-full md:w-auto">
+                                    Zum Dashboard gehen <ArrowRight className="h-5 w-5 md:h-6 md:w-6 group-hover:translate-x-1 transition-transform" />
+                                </Link>
+                            ) : (
+                                <>
+                                    <Link href="/login?mode=register" className="group bg-gradient-to-r from-indigo-600 to-purple-600 px-8 md:px-10 py-4 md:py-5 rounded-[2rem] text-lg md:text-xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-indigo-500/20 transition-all hover:scale-105 active:scale-95 w-full md:w-auto">
+                                        Kostenlos Registrieren <ArrowRight className="h-5 w-5 md:h-6 md:w-6 group-hover:translate-x-1 transition-transform" />
+                                    </Link>
+                                    <Link href="/login" className="bg-white/5 backdrop-blur-xl border border-white/10 px-8 md:px-10 py-4 md:py-5 rounded-[2rem] text-lg md:text-xl font-black hover:bg-white/10 transition-all hover:scale-105 active:scale-95 w-full md:w-auto">
+                                        Zum Login
+                                    </Link>
+                                </>
+                            )}
                         </div>
 
-                        {/* Secondary Desktop/iPad Action */}
-                        <div className="flex flex-col items-center gap-4 pt-8 border-t border-white/5 w-full max-w-lg">
-                            {isIPad ? (
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 opacity-60">
-                                        <Layout className="h-4 w-4" />
-                                        App zum Home-Bildschirm hinzufügen
+                        {/* iPad: Add to Home Screen instructions */}
+                        {isIPad && (
+                            <div className="flex flex-col items-center gap-4 pt-8 border-t border-white/5 w-full max-w-lg">
+                                <div className="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 opacity-60">
+                                    <Layout className="h-4 w-4" />
+                                    App zum Home-Bildschirm hinzufügen
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-center text-center">
+                                        <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center mb-3">
+                                            <Share className="h-5 w-5 text-indigo-400" />
+                                        </div>
+                                        <span className="text-xs font-bold text-white/70">1. Share Icon tippen</span>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-center text-center">
-                                            <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center mb-3">
-                                                <Share className="h-5 w-5 text-indigo-400" />
-                                            </div>
-                                            <span className="text-xs font-bold text-white/70">1. Share Icon tippen</span>
+                                    <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-center text-center">
+                                        <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center mb-3">
+                                            <Plus className="h-5 w-5 text-indigo-400" />
                                         </div>
-                                        <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-center text-center">
-                                            <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center mb-3">
-                                                <Plus className="h-5 w-5 text-indigo-400" />
-                                            </div>
-                                            <span className="text-xs font-bold text-white/70">2. "Zum Home-Bildschirm"</span>
-                                        </div>
+                                        <span className="text-xs font-bold text-white/70">2. "Zum Home-Bildschirm"</span>
                                     </div>
                                 </div>
-                            ) : !isMobile ? (
-                                <>
-                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 opacity-60">
-                                        <Smartphone className="h-3 w-3" />
-                                        Verfügbar für Windows
-                                    </div>
-                                    <a
-                                        href="https://github.com/ikeboss1999/flowy-app/releases/latest/download/FlowY-Setup.exe"
-                                        download="FlowY-Setup.exe"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="group relative flex items-center gap-4 bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"
-                                    >
-                                        <div className="flex flex-col items-start">
-                                            <span className="text-sm font-black uppercase tracking-widest text-white/90">Desktop App laden</span>
-                                            <span className="text-[10px] text-white/30 font-medium">FlowY-Setup.exe • Direkt-Download</span>
-                                        </div>
-                                        <div className="h-10 w-10 rounded-xl bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
-                                            <ArrowRight className="h-5 w-5 text-indigo-400 rotate-90" />
-                                        </div>
-                                    </a>
-                                </>
-                            ) : null}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>

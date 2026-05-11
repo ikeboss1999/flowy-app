@@ -32,7 +32,7 @@ export default function ReportsPage() {
     const { invoices, updateInvoice, isLoading } = useInvoices();
     const { customers } = useCustomers();
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-    const [expandedQuarters, setExpandedQuarters] = useState<string[]>(['Q1', 'Q2', 'Q3', 'Q4']);
+    const [expandedQuarters, setExpandedQuarters] = useState<string[]>([]);
     const [deviationModalInvoice, setDeviationModalInvoice] = useState<Invoice | null>(null);
 
     const getQuarter = (date: string): number => {

@@ -1,76 +1,35 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import useSWR from 'swr';
 import { TimeEntry, TimesheetMeta } from '@/types/time-tracking';
 import { useAuth } from '@/context/AuthContext';
 import { useSync } from '@/context/SyncContext';
-
-const ENTRIES_KEY = 'flowy_time_entries';
-const SHEETS_KEY = 'flowy_timesheets';
+import { fetcher } from '@/lib/fetcher';
 
 export function useTimeEntries() {
-    const [entries, setEntries] = useState<TimeEntry[]>([]);
-    const [timesheets, setTimesheets] = useState<TimesheetMeta[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const { user, currentEmployee, isLoading: authLoading } = useAuth();
+    const { user, currentEmployee } = useAuth();
     const { markDirty } = useSync();
 
     const activeUserId = user?.id || currentEmployee?.userId;
 
-    useEffect(() => {
-        if (authLoading || !activeUserId) {
-            if (!authLoading && !activeUserId) setIsLoading(false);
-            return;
-        }
+    const entriesKey = activeUserId ? `/api/time-entries?userId=${activeUserId}` : null;
+    const sheetsKey = activeUserId ? `/api/timesheets?userId=${activeUserId}` : null;
 
-        const loadData = async () => {
-            try {
-                // Load Time Entries
-                const entryRes = await fetch(`/api/time-entries?userId=${activeUserId}`);
-                const entryData = await entryRes.json();
+    const { data: rawEntries = [], isLoading: entriesLoading, mutate: mutateEntries } =
+        useSWR<TimeEntry[]>(entriesKey, fetcher);
+    const { data: timesheets = [], isLoading: sheetsLoading, mutate: mutateTimesheets } =
+        useSWR<TimesheetMeta[]>(sheetsKey, fetcher);
 
-                if (Array.isArray(entryData) && entryData.length > 0) {
-                    // Filter for current employee if not admin
-                    const filteredData = currentEmployee && !user
-                        ? entryData.filter((e: TimeEntry) => e.employeeId === currentEmployee.id)
-                        : entryData;
-                    setEntries(filteredData);
-                } else {
-                    // Only migrate if admin
-                    if (user) {
-                        const saved = localStorage.getItem(ENTRIES_KEY);
-                        if (saved) {
-                            const local = JSON.parse(saved).filter((e: any) => e.userId === user.id || !e.userId);
-                            for (const item of local) {
-                                await fetch('/api/time-entries', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ userId: user.id, entry: { ...item, userId: user.id } })
-                                });
-                            }
-                            setEntries(local.map((e: any) => ({ ...e, userId: user.id })));
-                        }
-                    }
-                }
-
-                // Load Timesheets
-                const sheetRes = await fetch(`/api/timesheets?userId=${activeUserId}`);
-                const sheetData = await sheetRes.json();
-
-                if (Array.isArray(sheetData) && sheetData.length > 0) {
-                    setTimesheets(sheetData);
-                }
-            } catch (e) {
-                console.error(e);
-            }
-            setIsLoading(false);
-        };
-        loadData();
-    }, [activeUserId, authLoading, currentEmployee?.id, user?.id]);
+    const entries = currentEmployee && !user
+        ? rawEntries.filter(e => e.employeeId === currentEmployee.id)
+        : rawEntries;
 
     const addEntry = async (entry: TimeEntry) => {
         if (!activeUserId) throw new Error("Not authenticated");
         const newEntry = { ...entry, userId: activeUserId };
+        // Functional updater avoids stale-closure bug in bulk-save loops
+        mutateEntries(current => [newEntry, ...(current ?? [])], { revalidate: false });
         try {
             const res = await fetch('/api/time-entries', {
                 method: 'POST',
@@ -79,22 +38,22 @@ export function useTimeEntries() {
             });
             if (!res.ok) {
                 const errorText = await res.text();
-                console.error("API Error details:", res.status, errorText);
                 throw new Error(`Failed to save entry: ${res.status} ${errorText}`);
             }
-            setEntries(prev => [newEntry, ...prev]);
             markDirty();
         } catch (e) {
             console.error(e);
+            mutateEntries();
             throw e;
         }
     };
 
     const updateEntry = async (id: string, updates: Partial<TimeEntry>) => {
         if (!activeUserId) throw new Error("Not authenticated");
-        const entry = entries.find(e => e.id === id);
+        const entry = rawEntries.find(e => e.id === id);
         if (!entry) throw new Error("Entry not found");
         const updated = { ...entry, ...updates };
+        mutateEntries(current => (current ?? []).map(e => e.id === id ? updated : e), { revalidate: false });
         try {
             const res = await fetch('/api/time-entries', {
                 method: 'POST',
@@ -102,21 +61,24 @@ export function useTimeEntries() {
                 body: JSON.stringify({ userId: activeUserId, entry: updated })
             });
             if (!res.ok) throw new Error("Failed to update entry");
-            setEntries(prev => prev.map(e => e.id === id ? updated : e));
             markDirty();
         } catch (e) {
             console.error(e);
+            mutateEntries();
             throw e;
         }
     };
 
     const deleteEntry = async (id: string) => {
         if (!activeUserId) return;
+        mutateEntries(current => (current ?? []).filter(e => e.id !== id), { revalidate: false });
         try {
             await fetch(`/api/time-entries/${id}?userId=${activeUserId}`, { method: 'DELETE' });
-            setEntries(prev => prev.filter(e => e.id !== id));
             markDirty();
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            mutateEntries();
+        }
     };
 
     const addEntries = async (newEntries: TimeEntry[]) => {
@@ -127,48 +89,56 @@ export function useTimeEntries() {
     };
 
     const finalizeMonth = async (employeeId: string, month: string) => {
-        if (!user) return;
+        if (!activeUserId) throw new Error("Not authenticated");
         const id = `${employeeId}-${month}`;
         const newTimesheet: TimesheetMeta = {
-            id,
-            employeeId,
-            month,
+            id, employeeId, month,
             status: 'finalized',
             finalizedAt: new Date().toISOString(),
-            userId: user.id
+            userId: activeUserId
         };
+        const updated = [...timesheets.filter(t => t.id !== id), newTimesheet];
+        mutateTimesheets(updated, false);
         try {
-            await fetch('/api/timesheets', {
+            const res = await fetch('/api/timesheets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, timesheet: newTimesheet })
+                body: JSON.stringify({ userId: activeUserId, timesheet: newTimesheet })
             });
-            setTimesheets(prev => {
-                const others = prev.filter(t => t.id !== id);
-                return [...others, newTimesheet];
-            });
+            if (!res.ok) {
+                const text = await res.text().catch(() => String(res.status));
+                throw new Error(`HTTP ${res.status}: ${text}`);
+            }
             markDirty();
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error('[finalizeMonth]', e);
+            mutateTimesheets();
+            throw e;
+        }
     };
 
     const reopenMonth = async (employeeId: string, month: string) => {
-        if (!user) return;
+        if (!activeUserId) throw new Error("Not authenticated");
         const id = `${employeeId}-${month}`;
-        // In this implementation, reopening just means deleting the timesheet record 
-        // OR updating its status. For simplicity with existing UI, let's keep it as is.
-        // But we need a way to "reopen" in SQLite.
         const current = timesheets.find(t => t.id === id);
         if (!current) return;
-        const updated = { ...current, status: 'draft' as const, finalizedAt: undefined };
+        mutateTimesheets(timesheets.filter(t => t.id !== id), false);
         try {
-            await fetch('/api/timesheets', {
+            const res = await fetch('/api/timesheets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, timesheet: updated })
+                body: JSON.stringify({ userId: activeUserId, timesheet: { ...current, status: 'draft', finalizedAt: undefined } })
             });
-            setTimesheets(prev => prev.filter(t => t.id !== id));
+            if (!res.ok) {
+                const text = await res.text().catch(() => String(res.status));
+                throw new Error(`HTTP ${res.status}: ${text}`);
+            }
             markDirty();
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error('[reopenMonth]', e);
+            mutateTimesheets();
+            throw e;
+        }
     };
 
     const getMonthStatus = (employeeId: string, month: string) => {
@@ -187,11 +157,12 @@ export function useTimeEntries() {
         updateEntry,
         deleteEntry,
         addEntries,
-        isLoading: isLoading || authLoading,
+        isLoading: entriesLoading || sheetsLoading,
         finalizeMonth,
         reopenMonth,
         getMonthStatus,
         getFinalizedDate,
-        timesheets
+        timesheets,
+        refreshEntries: () => mutateEntries()
     };
 }

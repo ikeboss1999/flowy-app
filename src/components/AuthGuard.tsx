@@ -4,12 +4,11 @@ import { useAuth } from "@/context/AuthContext"
 import { useRouter, usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
-import { isWeb } from "@/lib/is-web"
 
 const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/welcome"]
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-    const { user, currentEmployee, isLoading } = useAuth()
+    const { user, isLoading } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
     const [forceShow, setForceShow] = useState(false)
@@ -30,65 +29,41 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
         const handleRouting = async () => {
             const isPublic = PUBLIC_ROUTES.includes(pathname)
-            const isMobileRoute = pathname.startsWith('/mobile')
-            const isElectron = !isWeb
 
             if (isPublic) {
-                // RESTRICTION: No /welcome or /register in Electron (except if explicitly allowed, but user wants them and welcome web-only)
-                if (isElectron && (pathname === "/welcome" || pathname === "/register")) {
-                    setIsRedirecting(true)
-                    router.push("/login")
-                    return
-                }
-
                 if (user) {
                     setIsRedirecting(true)
-                    router.push("/dashboard")
-                } else if (currentEmployee) {
-                    setIsRedirecting(true)
-                    router.push("/mobile/dashboard")
+                    router.push("/")
                 } else {
                     setIsRedirecting(false)
                 }
             } else {
                 // Protected routes
-                if (!user && !currentEmployee) {
-                    // Only redirect if we are NOT in the failsafe "forceShow" state without any data
-                    // If forceShow is true but we have no user, we might be offline or still loading.
-                    // Better to wait or stay on login if we were already there.
+                if (!user) {
                     if (isLoading && forceShow) {
-                        // In failsafe mode but still no user -> don't redirect yet to avoid loops
                         setIsRedirecting(false)
                         return
                     }
 
                     setIsRedirecting(true)
 
-                    // ZOMBIE COOKIE KILLER
                     try {
                         await fetch('/api/auth/logout', { method: 'POST' });
                     } catch (e) { }
 
-                    if (isWeb && (pathname === "/" || pathname === "/welcome")) {
+                    if (pathname === "/" || pathname === "/welcome") {
                         router.push("/welcome")
                     } else {
-                        // Desktop app always goes to /login
                         router.push("/login")
                     }
-                } else if (isMobileRoute && !currentEmployee && user) {
-                    setIsRedirecting(false)
-                } else if (!isMobileRoute && !user && currentEmployee) {
-                    setIsRedirecting(true)
-                    router.push("/mobile/dashboard")
                 } else {
-                    // Valid state
                     setIsRedirecting(false)
                 }
             }
         };
 
         handleRouting();
-    }, [user, currentEmployee, isLoading, forceShow, pathname, router]);
+    }, [user, isLoading, forceShow, pathname, router]);
 
     // Render Logic helper
     const showLoader = (isLoading || isRedirecting) && !forceShow;

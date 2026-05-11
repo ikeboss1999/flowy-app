@@ -109,13 +109,13 @@ export const TimeTrackingPDF = forwardRef<HTMLDivElement, TimeTrackingPDFProps>(
     return (
         <div ref={ref} style={{
             width: '794px',
-            height: '1123px',
-            padding: '60px 70px',
+            minHeight: '1123px',
+            padding: '48px 56px',
             backgroundColor: 'white',
             color: '#1e293b',
             fontFamily: 'Arial, Helvetica, sans-serif',
-            fontSize: '11pt',
-            lineHeight: '1.4',
+            fontSize: '10.5pt',
+            lineHeight: '1.35',
             position: 'relative',
             boxSizing: 'border-box',
             display: 'flex',
@@ -123,12 +123,12 @@ export const TimeTrackingPDF = forwardRef<HTMLDivElement, TimeTrackingPDFProps>(
             margin: '0 auto',
         }}>
             {/* Header Area */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '45px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <h1 style={{ fontSize: '20pt', fontWeight: 'bold', color: '#2563eb', margin: '0 0 4px 0', letterSpacing: '0.05em' }}>STUNDENZETTEL</h1>
                     <p style={{ color: '#64748b', fontSize: '12pt', fontWeight: '500', margin: 0 }}>{formatMonth(month)}</p>
 
-                    <div style={{ marginTop: '50px' }}>
+                    <div style={{ marginTop: '36px' }}>
                         <p style={{ fontSize: '10pt', color: '#64748b', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Mitarbeiter</p>
                         <p style={{ fontSize: '14pt', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{employee.personalData.firstName} {employee.personalData.lastName}</p>
                     </div>
@@ -157,13 +157,13 @@ export const TimeTrackingPDF = forwardRef<HTMLDivElement, TimeTrackingPDFProps>(
             <table style={{ width: '100%', borderCollapse: 'collapse', borderTop: '2px solid #334155', borderBottom: '2px solid #334155' }}>
                 <thead>
                     <tr style={{ borderBottom: '1px solid #334155' }}>
-                        <th style={{ padding: '10px 6px', textAlign: 'left', fontSize: '10pt', width: '40px' }}>Tag</th>
-                        <th style={{ padding: '10px 6px', textAlign: 'left', fontSize: '10pt', width: '85px' }}>Datum</th>
-                        <th style={{ padding: '10px 6px', textAlign: 'left', fontSize: '10pt', width: '95px' }}>Status</th>
-                        <th style={{ padding: '10px 6px', textAlign: 'right', fontSize: '10pt', width: '55px' }}>Std.</th>
-                        <th style={{ padding: '10px 6px', textAlign: 'right', fontSize: '10pt', width: '105px' }}>Schlechtwetter</th>
-                        <th style={{ padding: '10px 6px', textAlign: 'right', fontSize: '10pt', width: '75px' }}>Überstd.</th>
-                        <th style={{ padding: '10px 6px', textAlign: 'left', fontSize: '10pt' }}>Baustelle</th>
+                        <th style={{ padding: '7px 5px', textAlign: 'left', fontSize: '9pt', width: '40px' }}>Tag</th>
+                        <th style={{ padding: '7px 5px', textAlign: 'left', fontSize: '9pt', width: '85px' }}>Datum</th>
+                        <th style={{ padding: '7px 5px', textAlign: 'left', fontSize: '9pt', width: '95px' }}>Status</th>
+                        <th style={{ padding: '7px 5px', textAlign: 'right', fontSize: '9pt', width: '55px' }}>Std.</th>
+                        <th style={{ padding: '7px 5px', textAlign: 'right', fontSize: '9pt', width: '105px' }}>Schlechtwetter</th>
+                        <th style={{ padding: '7px 5px', textAlign: 'right', fontSize: '9pt', width: '75px' }}>Überstd.</th>
+                        <th style={{ padding: '7px 5px', textAlign: 'left', fontSize: '9pt' }}>Baustelle</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -176,9 +176,9 @@ export const TimeTrackingPDF = forwardRef<HTMLDivElement, TimeTrackingPDFProps>(
 
                         return (
                             <tr key={date.toISOString()} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: isWeekend ? '#f8fafc' : 'transparent' }}>
-                                <td style={{ padding: '5px 6px', fontSize: '9pt', color: isWeekend ? '#3b82f6' : '#0f172a', fontWeight: isWeekend ? 'bold' : 'normal' }}>{dayName}</td>
-                                <td style={{ padding: '5px 6px', fontSize: '9pt', color: '#64748b' }}>{date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-                                <td style={{ padding: '5px 6px', fontSize: '9pt' }}>
+                                <td style={{ padding: '3.5px 5px', fontSize: '8.5pt', color: isWeekend ? '#3b82f6' : '#0f172a', fontWeight: isWeekend ? 'bold' : 'normal' }}>{dayName}</td>
+                                <td style={{ padding: '3.5px 5px', fontSize: '8.5pt', color: '#64748b' }}>{date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                                <td style={{ padding: '3.5px 5px', fontSize: '8.5pt' }}>
                                     {entry ? (
                                         <span style={{
                                             color: entry.type === 'WORK' ? '#10b981' : entry.type === 'SICK' ? '#ef4444' : entry.type === 'OFF' ? '#94a3b8' : '#f59e0b',
@@ -190,17 +190,17 @@ export const TimeTrackingPDF = forwardRef<HTMLDivElement, TimeTrackingPDFProps>(
                                         <span style={{ color: '#94a3b8' }}>{isWeekend ? 'Frei' : '-'}</span>
                                     )}
                                 </td>
-                                <td style={{ padding: '5px 6px', fontSize: '9pt', textAlign: 'right', fontWeight: hours > 0 ? 'bold' : 'normal' }}>
+                                <td style={{ padding: '3.5px 5px', fontSize: '8.5pt', textAlign: 'right', fontWeight: hours > 0 ? 'bold' : 'normal' }}>
                                     {hours > 0 ? hours.toFixed(1).replace('.', ',') : '-'}
                                 </td>
-                                <td style={{ padding: '5px 6px', fontSize: '9pt', textAlign: 'right', color: swHours > 0 ? '#0f172a' : '#cbd5e1', fontWeight: swHours > 0 ? 'bold' : 'normal' }}>
+                                <td style={{ padding: '3.5px 5px', fontSize: '8.5pt', textAlign: 'right', color: swHours > 0 ? '#0f172a' : '#cbd5e1', fontWeight: swHours > 0 ? 'bold' : 'normal' }}>
                                     {swHours > 0 ? swHours.toFixed(1).replace('.', ',') : '-'}
                                 </td>
-                                <td style={{ padding: '5px 6px', fontSize: '9pt', textAlign: 'right', fontWeight: overtime > 0 ? 'bold' : 'normal' }}>
+                                <td style={{ padding: '3.5px 5px', fontSize: '8.5pt', textAlign: 'right', fontWeight: overtime > 0 ? 'bold' : 'normal' }}>
                                     {overtime > 0 ? overtime.toFixed(1).replace('.', ',') : '0,0'}
                                 </td>
-                                <td style={{ padding: '5px 6px', fontSize: '9pt', color: '#334155', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {entry?.location || entry?.projectId || entry?.notes || '-'}
+                                <td style={{ padding: '3.5px 5px', fontSize: '8.5pt', color: '#334155', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {entry?.location || (entry as any)?.projectId || (entry as any)?.notes || '-'}
                                 </td>
                             </tr>
                         );

@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import sqliteDb from '@/lib/sqlite';
-import { UnifiedDB, isWeb } from '@/lib/database';
+import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getUserSession } from '@/lib/auth-server';
-import { writeLog } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,30 +15,9 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     try {
-        if (isWeb) {
-            const client = UnifiedDB.getAuthenticatedClient(session);
-            const { error } = await client.from('calendar_events').delete().eq('id', id).eq('userId', userId);
-            if (error) throw error;
-        } else {
-            // Check ownership
-            const existing = sqliteDb.prepare('SELECT userId FROM calendar_events WHERE id = ?').get(id) as any;
-            if (existing && existing.userId !== userId) {
-                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-            }
-
-            sqliteDb.prepare('DELETE FROM calendar_events WHERE id = ? AND userId = ?').run(id, userId);
-            writeLog('CalendarAPI', `Direct delete successful for ID: ${id}`);
-
-            // Silent Sync
-            const client = UnifiedDB.getAuthenticatedClient(session);
-            client.from('calendar_events').delete().eq('id', id).eq('userId', userId).then(({ error }) => {
-                if (error) {
-                    writeLog('CalendarAPI', `Direct cloud delete failed for ID: ${id}. Error: ${error.message}`);
-                } else {
-                    writeLog('CalendarAPI', `Direct cloud delete successful for ID: ${id}`);
-                }
-            });
-        }
+        const client = supabaseAdmin || supabase;
+        const { error } = await client.from('calendar_events').delete().eq('id', id).eq('userId', userId);
+        if (error) throw error;
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error(error);

@@ -388,7 +388,7 @@ export function CalendarWidget() {
                                     if (event.endTime) {
                                         const endH = parseInt(event.endTime.split(':')[0]);
                                         const endM = parseInt(event.endTime.split(':')[1]);
-                                        const durationMins = (endH * 60 + endM) - (hourPart * 60 + minPart);
+                                        const durationMins = Math.max(15, (endH * 60 + endM) - (hourPart * 60 + minPart));
                                         height = (durationMins / 60) * 80;
                                     }
 

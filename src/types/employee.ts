@@ -1,4 +1,4 @@
-export type EmploymentStatus = "Vollzeit" | "Teilzeit" | "Minijob" | "Werkstudent" | "Auszubildender" | "Freelancer";
+export type EmploymentStatus = "Vollzeit" | "Teilzeit";
 
 export interface EmployeeDocument {
     id: string;

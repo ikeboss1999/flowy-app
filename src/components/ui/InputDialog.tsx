@@ -49,6 +49,10 @@ export function InputDialog({
             document.body.style.overflow = "unset";
             return () => clearTimeout(timer);
         }
+        
+        return () => {
+            document.body.style.overflow = "unset";
+        };
     }, [isOpen, initialValue]);
 
     const handleSubmit = (e?: React.FormEvent) => {

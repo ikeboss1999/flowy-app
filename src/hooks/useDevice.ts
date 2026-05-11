@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { isWeb } from '@/lib/is-web';
 
 export function useDevice() {
     const [isIPhone, setIsIPhone] = useState(false);
@@ -9,7 +8,7 @@ export function useDevice() {
     const [isTouchDevice, setIsTouchDevice] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [isDesktop, setIsDesktop] = useState(false);
-    const isElectron = !isWeb;
+    const isElectron = false;
 
     useEffect(() => {
         const checkDevice = () => {

@@ -90,4 +90,5 @@ export interface Invoice {
     createdAt: string;
     updatedAt: string;
     userId?: string; // Owner of the invoice
+    pdfUrl?: string; // URL to the generated PDF stored in Supabase
 }

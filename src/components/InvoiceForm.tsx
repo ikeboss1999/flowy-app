@@ -14,7 +14,8 @@ import {
     Calculator,
     LayoutDashboard,
     ArrowLeft,
-    Book
+    Book,
+    Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Invoice, InvoiceItem, InvoiceUnit, InvoiceStatus } from '@/types/invoice';
@@ -36,6 +37,9 @@ import { ServiceSelectionModal } from '@/components/ServiceSelectionModal';
 import { ServiceModal } from '@/components/ServiceModal';
 import { Service } from '@/types/service';
 import { CustomerSearchSelect } from '@/components/CustomerSearchSelect';
+import { pdf } from '@react-pdf/renderer';
+import { InvoiceReactPDF } from '@/components/InvoiceReactPDF';
+import { supabase } from '@/lib/supabase';
 
 interface InvoiceFormProps {
     initialData?: Partial<Invoice>;
@@ -71,6 +75,8 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
     const [activeServiceItemId, setActiveServiceItemId] = useState<string | null>(null);
     const [savingStatus, setSavingStatus] = useState<InvoiceStatus | null>(null);
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const pdfRef = useRef<HTMLDivElement>(null);
 
     // Form State
@@ -137,7 +143,8 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                 setProjectId(paramProjectId);
                 const proj = projects.find(p => p.id === paramProjectId);
                 if (proj) {
-                    setConstructionProject(`${proj.name} - ${proj.address.street}, ${proj.address.city}`);
+                    const addressParts = [proj.address?.street, proj.address?.city].filter(Boolean).join(', ');
+                    setConstructionProject(addressParts ? `${proj.name} - ${addressParts}` : proj.name);
                     if (!paramCustomerId) {
                         setCustomerId(proj.customerId);
                     }
@@ -188,7 +195,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
 
                         // 2. Subtract Previous Partial Invoices
                         const prevInvs = (invoices as any[])
-                            .filter((inv: any) => inv.projectId === paramProjectId && inv.billingType === 'partial' && inv.status !== 'canceled' && inv.id !== initialData?.id);
+                            .filter((inv: any) => inv.projectId === paramProjectId && inv.billingType === 'partial' && inv.status !== 'canceled' && inv.id !== (initialData as any)?.id);
 
                         prevInvs.forEach((inv, idx) => {
                             finalItems.push({
@@ -307,7 +314,19 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
         }));
     };
 
-    const handleSave = (status: InvoiceStatus) => {
+    const handleSave = async (status: InvoiceStatus) => {
+        setError(null);
+        
+        if (!customerId) {
+            setError("Bitte wählen Sie einen Kunden aus.");
+            return;
+        }
+
+        if (subtotal <= 0) {
+            setError("Die Rechnung muss mindestens eine Position mit einem Betrag größer als 0€ enthalten.");
+            return;
+        }
+
         const customer = customers.find(c => c.id === customerId);
 
         const invoiceData: Invoice = {
@@ -334,24 +353,68 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
             partialPaymentNumber: billingType === 'partial' ? (partialPaymentNumber || previousInvoices.length + 1) : undefined,
             previousInvoices: (billingType === 'partial' || billingType === 'final') ? previousInvoices : undefined,
             createdAt: initialData?.createdAt || new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
+            pdfUrl: initialData?.pdfUrl
         };
 
-        if (initialData?.id) {
-            updateInvoice(initialData.id, invoiceData);
-        } else {
-            addInvoice(invoiceData);
-            // Increment invoice number for next invoice
-            updateSettings({ nextInvoiceNumber: settings.nextInvoiceNumber + 1 });
-        }
+        if ((status === 'pending' || status === 'paid') && !isGeneratingPDF) {
+            setIsGeneratingPDF(true);
+            try {
+                // Generate Blob using React-PDF
+                const blob = await pdf(<InvoiceReactPDF invoice={invoiceData} customer={customer} companySettings={companySettings!} />).toBlob();
+                const safeInvoiceNumber = invoiceData.invoiceNumber.replace(/\//g, '-');
+                const fileName = `RE-${safeInvoiceNumber}-${Date.now()}.pdf`;
 
-        // Generate PDF if finalized
-        if (status === 'pending' || status === 'paid') {
-            setSavingStatus(status);
+                // Upload to Supabase Storage
+                const { data, error } = await supabase.storage
+                    .from('invoices')
+                    .upload(fileName, blob, { contentType: 'application/pdf' });
+
+                if (error) throw error;
+
+                // Get Public URL
+                const { data: urlData } = supabase.storage.from('invoices').getPublicUrl(fileName);
+                
+                // Add PDF URL to invoice data
+                invoiceData.pdfUrl = urlData.publicUrl;
+
+                // Save to database
+                if (initialData?.id) {
+                    await updateInvoice(initialData.id, invoiceData);
+                } else {
+                    await addInvoice(invoiceData);
+                    await updateSettings({ nextInvoiceNumber: settings.nextInvoiceNumber + 1 });
+                }
+                
+                setIsGeneratingPDF(false);
+                router.push('/dashboard');
+            } catch (e) {
+                console.error("PDF Upload Failed", e);
+                setIsGeneratingPDF(false);
+                
+                // Save anyway without PDF if it fails
+                if (initialData?.id) {
+                    await updateInvoice(initialData.id, invoiceData);
+                } else {
+                    await addInvoice(invoiceData);
+                    await updateSettings({ nextInvoiceNumber: settings.nextInvoiceNumber + 1 });
+                }
+                router.push('/dashboard');
+            }
             return;
         }
 
-        router.push('/dashboard'); // Or invoices list
+        // For Drafts
+        if (initialData?.id) {
+            await updateInvoice(initialData.id, invoiceData);
+        } else {
+            await addInvoice(invoiceData);
+            await updateSettings({ nextInvoiceNumber: settings.nextInvoiceNumber + 1 });
+        }
+
+        if (status === 'draft') {
+            router.push('/dashboard');
+        }
     };
 
     const handleSaveNewCustomer = (newCustomer: Customer) => {
@@ -426,7 +489,8 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                                     const proj = projects.find(p => p.id === pid);
                                     if (proj) {
                                         setCustomerId(proj.customerId);
-                                        setConstructionProject(`${proj.name} - ${proj.address.street}, ${proj.address.city}`);
+                                        const addressParts = [proj.address?.street, proj.address?.city].filter(Boolean).join(', ');
+                                        setConstructionProject(addressParts ? `${proj.name} - ${addressParts}` : proj.name);
                                     }
                                 }}
                                 className={cn(inputClasses, "appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22m19%209-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1.25rem_center] bg-no-repeat")}
@@ -558,7 +622,9 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                 <div className="space-y-8">
                     <h3 className="text-xl font-bold text-slate-800 tracking-tight">Kundendaten</h3>
                     <div className="space-y-4">
-                        <label className={labelClasses}>Kunde auswählen</label>
+                        <label className={labelClasses}>
+                            Kunde auswählen <span className="text-rose-500">*</span>
+                        </label>
                         <CustomerSearchSelect
                             customers={customers}
                             selectedId={customerId}
@@ -713,100 +779,45 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                 </div>
 
                 {/* Footer Actions */}
-                <div className="pt-10 flex justify-end gap-6">
+                <div className="pt-10 flex flex-col items-end gap-6">
+                    {error && (
+                        <div className="w-full xl:w-auto bg-rose-50 border border-rose-100 text-rose-600 px-6 py-4 rounded-2xl font-bold flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                            <CheckCircle2 className="h-5 w-5 rotate-180" />
+                            {error}
+                        </div>
+                    )}
+                    <div className="flex justify-end gap-6 w-full xl:w-auto">
                     <button
                         onClick={() => handleSave('draft')}
-                        className="px-10 py-5 bg-white border-2 border-slate-200 text-slate-600 rounded-2xl font-black text-lg hover:bg-slate-50 transition-all shadow-xl shadow-slate-200/10 active:scale-95"
+                        disabled={isGeneratingPDF}
+                        className="px-10 py-5 bg-white border-2 border-slate-200 text-slate-600 rounded-2xl font-black text-lg hover:bg-slate-50 transition-all shadow-xl shadow-slate-200/10 active:scale-95 disabled:opacity-50"
                     >
                         Als Entwurf speichern
                     </button>
                     <button
                         onClick={() => handleSave('pending')}
-                        className="px-10 py-5 bg-primary-gradient text-white rounded-2xl font-black text-lg flex items-center gap-3 shadow-xl shadow-indigo-500/25 hover:scale-[1.02] transition-all active:scale-95"
+                        disabled={isGeneratingPDF}
+                        className="px-10 py-5 bg-primary-gradient text-white rounded-2xl font-black text-lg flex items-center gap-3 shadow-xl shadow-indigo-500/25 hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
                     >
-                        <Save className="h-6 w-6" /> Finalisieren & Speichern
+                        {isGeneratingPDF ? (
+                            <>
+                                <Loader2 className="h-6 w-6 animate-spin" /> PDF wird erstellt...
+                            </>
+                        ) : (
+                            <>
+                                <Save className="h-6 w-6" /> Finalisieren & Speichern
+                            </>
+                        )}
                     </button>
                 </div>
-                {/* Hidden PDF Container */}
-                <div style={{ position: 'absolute', top: '-10000px', left: '-10000px' }}>
-                    <InvoicePDF
-                        ref={pdfRef}
-                        invoice={{
-                            id: initialData?.id || 'temp-id',
-                            invoiceNumber,
-                            subjectExtra,
-                            constructionProject,
-                            issueDate,
-                            paymentTerms,
-                            performancePeriod: { from: perfFrom, to: perfTo },
-                            customerId,
-                            customerName: customers.find(c => c.id === customerId)?.name || '',
-                            processor,
-                            items,
-                            subtotal,
-                            taxRate: isReverseCharge ? 0 : (settings?.defaultTaxRate || 20),
-                            taxAmount,
-                            totalAmount,
-                            isReverseCharge,
-                            status: 'pending', // Temporary status for preview
-                            projectId,
-                            paymentPlanItemId,
-                            billingType,
-                            partialPaymentNumber: billingType === 'partial' ? (partialPaymentNumber || previousInvoices.length + 1) : undefined,
-                            previousInvoices: (billingType === 'partial' || billingType === 'final') ? previousInvoices : undefined,
-                            createdAt: new Date().toISOString(),
-                            updatedAt: new Date().toISOString()
-                        }}
-                        customer={customers.find(c => c.id === customerId)}
-                        companySettings={companySettings}
-                    />
-                </div>
+            </div>
 
-                <CustomerModal
+            <CustomerModal
                     isOpen={isCustomerModalOpen}
                     onClose={() => setIsCustomerModalOpen(false)}
                     onSave={handleSaveNewCustomer}
                     existingCustomers={customers}
                 />
-
-                {/* Hidden Print Handler */}
-                {savingStatus && (
-                    <InvoicePrintHandler onAfterPrint={() => {
-                        setSavingStatus(null);
-                        router.push('/dashboard');
-                    }}>
-                        <InvoicePDF
-                            invoice={{
-                                id: initialData?.id || 'temp-id',
-                                invoiceNumber: invoiceNumber,
-                                subjectExtra: subjectExtra,
-                                constructionProject: constructionProject,
-                                issueDate: issueDate,
-                                paymentTerms: paymentTerms,
-                                performancePeriod: { from: perfFrom, to: perfTo },
-                                customerId,
-                                customerName: customers.find(c => c.id === customerId)?.name || '',
-                                processor,
-                                items,
-                                subtotal,
-                                taxRate: isReverseCharge ? 0 : (settings?.defaultTaxRate || 20),
-                                taxAmount,
-                                totalAmount,
-                                isReverseCharge,
-                                status: savingStatus,
-                                projectId,
-                                paymentPlanItemId,
-                                billingType,
-                                partialPaymentNumber: billingType === 'partial' ? (partialPaymentNumber || previousInvoices.length + 1) : undefined,
-                                previousInvoices: (billingType === 'partial' || billingType === 'final') ? previousInvoices : undefined,
-                                createdAt: new Date().toISOString(),
-                                updatedAt: new Date().toISOString()
-                            }}
-                            customer={customers.find(c => c.id === customerId)}
-                            companySettings={companySettings}
-                        />
-                    </InvoicePrintHandler>
-                )}
 
                 <ServiceSelectionModal
                     isOpen={activeServiceItemId !== null}

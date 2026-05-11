@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { getAuthErrorMessage } from "@/lib/auth-utils"
 import { useRouter, useSearchParams } from "next/navigation"
-import { AlertCircle, CheckCircle2, Loader2, Lock, Mail, User, Eye, EyeOff } from "lucide-react"
+import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, Lock, Mail, User, Eye, EyeOff } from "lucide-react"
+import Link from "next/link"
 import { useAuth } from "@/context/AuthContext"
 import { useDevice } from "@/hooks/useDevice"
 import { cn } from "@/lib/utils"
@@ -20,30 +21,26 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null)
     const [message, setMessage] = useState<string | null>(null)
     const [showPassword, setShowPassword] = useState(false)
-    const [loginType, setLoginType] = useState<'admin' | 'employee'>('admin')
-    const [staffId, setStaffId] = useState("")
-    const [pin, setPin] = useState("")
-    const { loginAsEmployee } = useAuth()
     const { isMobile, isDesktop, isIPhone, isElectron } = useDevice()
-    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    const hideRegister = isElectron || isLocalhost
+    const [isLocalhost, setIsLocalhost] = useState(false)
+    const [isMounted, setIsMounted] = useState(false)
+    const hideRegister = isElectron // Allow registration on localhost for testing
     const router = useRouter()
+
+    useEffect(() => {
+        setIsMounted(true)
+        setIsLocalhost(window.location.hostname === 'localhost')
+    }, [])
 
     // Sync state with query param if it changes
     useEffect(() => {
+        if (!isMounted) return;
         const mode = searchParams.get('mode')
         if (mode === 'register' && !hideRegister) setIsLogin(false)
         else setIsLogin(true)
-    }, [searchParams, hideRegister])
+    }, [searchParams, hideRegister, isMounted])
 
-    // Adaptive login type based on device
-    useEffect(() => {
-        if (isMobile || isIPhone) {
-            setLoginType('employee')
-        } else {
-            setLoginType('admin')
-        }
-    }, [isMobile, isIPhone])
+
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -58,15 +55,7 @@ export default function LoginPage() {
         }
 
         try {
-            if (loginType === 'employee') {
-                const result = await loginAsEmployee(staffId, pin);
-                if (result.success) {
-                    router.push("/mobile/dashboard");
-                    router.refresh();
-                } else {
-                    setError(result.error || "Login fehlgeschlagen");
-                }
-            } else if (isLogin) {
+            if (isLogin) {
                 const { error } = await supabase.auth.signInWithPassword({
                     email,
                     password,
@@ -135,21 +124,26 @@ export default function LoginPage() {
                     </div>
                 </div>
 
+                {/* Back to Welcome */}
+                <Link
+                    href="/welcome"
+                    className="mb-6 flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold text-white/60 hover:text-white hover:bg-white/10 transition-all hover:scale-105 active:scale-95"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Zurück zur Startseite
+                </Link>
+
                 {/* Header Text */}
                 <div className="text-center mb-10 space-y-3">
                     <h1 className="text-5xl font-black tracking-tight">
-                        {loginType === 'employee' ? (
-                            <>Mitarbeiter <span className="bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">Login</span></>
-                        ) : isLogin ? (
+                        {isLogin ? (
                             <>Willkommen <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">zurück</span></>
                         ) : (
                             <>Konto <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">erstellen</span></>
                         )}
                     </h1>
                     <p className="text-slate-400 text-lg font-medium">
-                        {loginType === 'employee'
-                            ? "Geben Sie Ihre Verfügernummer und PIN ein."
-                            : isLogin
+                        {isLogin
                                 ? "Melden Sie sich an, um fortzufahren."
                                 : "Starten Sie jetzt mit FlowY Professional."}
                     </p>
@@ -158,80 +152,8 @@ export default function LoginPage() {
                 {/* Auth Card */}
                 <div className="w-full bg-[#0F0F1A]/60 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] p-10 md:p-12 shadow-2xl ring-1 ring-white/10">
 
-                    {/* Login Type Switcher - Hidden in Electron */}
-                    {!isIPhone && !isMobile && !isDesktop && !hideRegister && (
-                        <div className="flex bg-black/40 p-1.5 rounded-2xl mb-10 border border-white/5">
-                            <button
-                                onClick={() => {
-                                    setLoginType('admin');
-                                    setPassword("");
-                                }}
-                                className={cn(
-                                    "flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                                    loginType === 'admin' ? "bg-indigo-600 text-white shadow-lg" : "text-sidebar-foreground/60 hover:text-white"
-                                )}
-                            >
-                                Verwaltung
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setLoginType('employee');
-                                    setIsLogin(true);
-                                    setStaffId("");
-                                    setPin("");
-                                }}
-                                className={cn(
-                                    "flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                                    loginType === 'employee' ? "bg-indigo-600 text-white shadow-lg" : "text-sidebar-foreground/60 hover:text-white"
-                                )}
-                            >
-                                Mitarbeiter App
-                            </button>
-                        </div>
-                    )}
-
                     <form onSubmit={handleAuth} className="space-y-6">
 
-                        {loginType === 'employee' ? (
-                            <>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500 ml-1">Verfügernummer</label>
-                                    <div className="relative">
-                                        <User className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
-                                        <input
-                                            type="text"
-                                            required
-                                            placeholder="8-stellige Nummer"
-                                            value={staffId}
-                                            onChange={(e) => setStaffId(e.target.value)}
-                                            className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-6 py-4 text-base font-medium text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500 ml-1">App PIN</label>
-                                    <div className="relative">
-                                        <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
-                                        <input
-                                            type={showPassword ? "text" : "password"}
-                                            required
-                                            placeholder="6-stellige Nummer"
-                                            value={pin}
-                                            onChange={(e) => setPin(e.target.value)}
-                                            className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-14 py-4 text-base font-medium text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition-colors"
-                                        >
-                                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                                        </button>
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
                             <>
                                 {!isLogin && (
                                     <div className="space-y-2">
@@ -315,7 +237,6 @@ export default function LoginPage() {
                                     </div>
                                 )}
                             </>
-                        )}
 
                         {error && (
                             <div className="flex items-center gap-3 rounded-2xl bg-red-500/10 border border-red-500/20 p-4 text-sm font-medium text-red-400 animate-in fade-in zoom-in-95">
@@ -338,8 +259,6 @@ export default function LoginPage() {
                         >
                             {loading ? (
                                 <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                            ) : loginType === 'employee' ? (
-                                "In App einloggen"
                             ) : isLogin ? (
                                 "Jetzt anmelden"
                             ) : (
@@ -348,7 +267,7 @@ export default function LoginPage() {
                         </button>
                     </form>
 
-                    {loginType === 'admin' && !hideRegister && (
+                    {!hideRegister && (
                         <div className="mt-8 text-center">
                             <p className="text-sm text-sidebar-foreground/60 font-medium">
                                 {isLogin ? "Noch kein FlowY Konto? " : "Bereits ein FlowY Mitglied? "}

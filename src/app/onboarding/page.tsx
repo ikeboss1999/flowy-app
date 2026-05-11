@@ -31,6 +31,7 @@ export default function OnboardingPage() {
     const { triggerSync } = useSync();
 
     const [currentStep, setCurrentStep] = useState<Step>("pin");
+    const [isInitialized, setIsInitialized] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [pin, setPin] = useState("");
     const [confirmPin, setConfirmPin] = useState("");
@@ -51,7 +52,7 @@ export default function OnboardingPage() {
 
     // Initialize data from hooks once loaded
     useEffect(() => {
-        if (!isAccountLoading && accountSettings) {
+        if (!isAccountLoading && accountSettings && !isInitialized) {
             if (accountSettings.onboardingCompleted) {
                 console.log("Onboarding: Completed flag found, redirecting to /");
                 router.push("/");
@@ -73,8 +74,9 @@ export default function OnboardingPage() {
             }
 
             setCurrentStep(nextStep);
+            setIsInitialized(true);
         }
-    }, [isAccountLoading, accountSettings, router]);
+    }, [isAccountLoading, accountSettings, router, isInitialized]);
 
     useEffect(() => {
         if (!isCompanyLoading && companySettings) {

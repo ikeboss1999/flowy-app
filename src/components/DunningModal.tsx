@@ -6,6 +6,7 @@ import { CompanyData } from '@/types/company';
 import { DunningPDF } from './DunningPDF';
 import { InvoicePrintHandler } from './InvoicePrintHandler';
 import { X, Printer, AlertTriangle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DunningModalProps {
     isOpen: boolean;
@@ -100,10 +101,16 @@ export function DunningModal({ isOpen, onClose, invoice, customer, companySettin
                         </div>
                         <button
                             onClick={handlePrint}
-                            className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-lg shadow-orange-500/20 active:scale-95 transition-all flex items-center gap-2"
+                            disabled={invoice.dunningLevel ? invoice.dunningLevel >= 4 : false}
+                            className={cn(
+                                "px-6 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center gap-2",
+                                (invoice.dunningLevel && invoice.dunningLevel >= 4)
+                                    ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+                                    : "bg-orange-500 hover:bg-orange-600 text-white shadow-orange-500/20 active:scale-95"
+                            )}
                         >
                             <Printer className="h-5 w-5" />
-                            Mahnung erstellen & Drucken
+                            {invoice.dunningLevel && invoice.dunningLevel >= 4 ? "Maximalstufe erreicht" : "Mahnung erstellen & Drucken"}
                         </button>
                         <button
                             onClick={onClose}

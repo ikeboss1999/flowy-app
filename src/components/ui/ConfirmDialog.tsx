@@ -42,6 +42,10 @@ export function ConfirmDialog({
             document.body.style.overflow = "unset";
             return () => clearTimeout(timer);
         }
+        
+        return () => {
+            document.body.style.overflow = "unset";
+        };
     }, [isOpen]);
 
     if (!mounted) return null;

@@ -1,125 +1,68 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import useSWR from 'swr';
 import { Project } from "@/types/project";
 import { useAuth } from "@/context/AuthContext";
 import { useSync } from "@/context/SyncContext";
-
-const STORAGE_KEY = 'flowy_projects';
+import { fetcher } from '@/lib/fetcher';
 
 export function useProjects() {
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const { user, currentEmployee } = useAuth();
     const { markDirty } = useSync();
 
     const activeUserId = user?.id || currentEmployee?.userId;
-
-    useEffect(() => {
-        const loadProjects = async () => {
-            if (!activeUserId) {
-                setIsLoading(false);
-                return;
-            }
-
-            try {
-                // 1. Try to load from SQLite API
-                const response = await fetch(`/api/projects?userId=${activeUserId}`);
-                const data = await response.json();
-
-                if (Array.isArray(data) && data.length > 0) {
-                    setProjects(data);
-                } else if (user) {
-                    // 2. Migration: Only for admin
-                    const saved = localStorage.getItem(STORAGE_KEY);
-                    if (saved) {
-                        try {
-                            const localProjects: Project[] = JSON.parse(saved);
-                            const userProjects = localProjects.filter(p => p.userId === user.id || !p.userId);
-
-                            if (userProjects.length > 0) {
-                                for (const p of userProjects) {
-                                    await fetch('/api/projects', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ ...p, userId: user.id })
-                                    });
-                                }
-                                setProjects(userProjects.map(p => ({ ...p, userId: user.id })));
-                            }
-                        } catch (e) {
-                            console.error("Migration failed", e);
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error("Failed to load projects from API", e);
-            }
-            setIsLoading(false);
-        };
-
-        loadProjects();
-    }, [activeUserId, user]);
+    const key = activeUserId ? `/api/projects?userId=${activeUserId}` : null;
+    const { data = [], isLoading, mutate } = useSWR<Project[]>(key, fetcher);
 
     const addProject = async (project: Project) => {
         if (!activeUserId) return;
         const newProject = { ...project, userId: activeUserId };
-
+        mutate([newProject, ...data], false);
         try {
             await fetch('/api/projects', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newProject)
             });
-            setProjects(prev => [newProject, ...prev]);
             markDirty();
         } catch (e) {
             console.error("Failed to add project", e);
+            mutate();
         }
     };
 
     const updateProject = async (id: string, updates: Partial<Project>) => {
         if (!activeUserId) return;
-
-        const current = projects.find(p => p.id === id);
+        const current = data.find(p => p.id === id);
         if (!current) return;
-
         const updated = { ...current, ...updates, updatedAt: new Date().toISOString() };
-
+        mutate(data.map(p => p.id === id ? updated : p), false);
         try {
             await fetch('/api/projects', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updated)
             });
-            setProjects(prev => prev.map(p => p.id === id ? updated : p));
             markDirty();
         } catch (e) {
             console.error("Failed to update project", e);
+            mutate();
         }
     };
 
     const deleteProject = async (id: string) => {
         if (!activeUserId) return;
+        mutate(data.filter(p => p.id !== id), false);
         try {
             await fetch(`/api/projects?id=${id}`, { method: 'DELETE' });
-            setProjects(prev => prev.filter(p => p.id !== id));
             markDirty();
         } catch (e) {
             console.error("Failed to delete project", e);
+            mutate();
         }
     };
 
-    const getProject = (id: string) => {
-        return projects.find(p => p.id === id);
-    };
+    const getProject = (id: string) => data.find(p => p.id === id);
 
-    return {
-        projects,
-        isLoading,
-        addProject,
-        updateProject,
-        deleteProject,
-        getProject
-    };
+    return { projects: data, isLoading, addProject, updateProject, deleteProject, getProject };
 }

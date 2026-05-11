@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { useAuth } from '@/context/AuthContext';
 import { InvoiceSettings } from '@/types/invoice';
 import { useSync } from '@/context/SyncContext';
-
-const STORAGE_KEY = 'flowy_invoice_settings';
+import { fetcher } from '@/lib/fetcher';
 
 const initialData: InvoiceSettings = {
     nextInvoiceNumber: 1,
@@ -27,100 +26,54 @@ const initialData: InvoiceSettings = {
 };
 
 export function useInvoiceSettings() {
-    const { user, isLoading: authLoading } = useAuth();
-    const [data, setData] = useState<InvoiceSettings>(initialData);
-    const [isLoading, setIsLoading] = useState(true);
+    const { user } = useAuth();
     const { markDirty } = useSync();
 
-    useEffect(() => {
-        if (authLoading || !user) {
-            if (!authLoading && !user) setIsLoading(false);
-            return;
-        }
+    const key = user ? `/api/settings?userId=${user.id}` : null;
+    const { data: allSettings, isLoading, mutate } = useSWR(key, fetcher);
 
-        const loadData = async () => {
-            try {
-                const response = await fetch(`/api/settings?userId=${user.id}`);
-                const allSettings = await response.json();
-
-                if (allSettings.invoiceSettings) {
-                    let settings = allSettings.invoiceSettings;
-                    // Migration: Ensure paymentTerms exist
-                    if (!settings.paymentTerms) {
-                        settings = {
-                            ...settings,
-                            paymentTerms: initialData.paymentTerms,
-                            defaultPaymentTermId: initialData.defaultPaymentTermId
-                        };
-                        // Note: We don't necessarily need to POST back immediately, 
-                        // it will be saved on next update.
-                    }
-                    setData(settings);
-                } else {
-                    // Migration
-                    const storageKey = `${STORAGE_KEY}_${user.id}`;
-                    const savedData = localStorage.getItem(storageKey);
-                    if (savedData) {
-                        try {
-                            const parsed = JSON.parse(savedData);
-                            await fetch('/api/settings', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ userId: user.id, type: 'invoice', data: parsed })
-                            });
-                            setData(parsed);
-                        } catch (e) {
-                            console.error('Migration failed', e);
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error('Failed to load invoice settings', e);
-            }
-            setIsLoading(false);
-        };
-
-        loadData();
-    }, [user, authLoading]);
+    let data: InvoiceSettings = initialData;
+    if (allSettings?.invoiceSettings) {
+        const s = allSettings.invoiceSettings;
+        data = s.paymentTerms
+            ? s
+            : { ...s, paymentTerms: initialData.paymentTerms, defaultPaymentTermId: initialData.defaultPaymentTermId };
+    }
 
     const updateData = async (newData: Partial<InvoiceSettings>) => {
         if (!user) return;
         const updated = { ...data, ...newData };
-
+        mutate({ ...allSettings, invoiceSettings: updated }, false);
         try {
             await fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, type: 'invoice', data: updated })
             });
-            setData(updated);
             markDirty();
         } catch (e) {
             console.error('Failed to update invoice settings', e);
+            mutate();
         }
     };
 
     const updateDunningLevel = async (levelKey: keyof InvoiceSettings['dunningLevels'], newData: Partial<{ fee: number; period: number }>) => {
         if (!user) return;
-
-        const updatedDunning = {
-            ...data.dunningLevels,
-            [levelKey]: { ...data.dunningLevels[levelKey], ...newData }
-        };
+        const updatedDunning = { ...data.dunningLevels, [levelKey]: { ...data.dunningLevels[levelKey], ...newData } };
         const updated = { ...data, dunningLevels: updatedDunning };
-
+        mutate({ ...allSettings, invoiceSettings: updated }, false);
         try {
             await fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, type: 'invoice', data: updated })
             });
-            setData(updated);
             markDirty();
         } catch (e) {
             console.error('Failed to update dunning levels', e);
+            mutate();
         }
     };
 
-    return { data, updateData, updateDunningLevel, isLoading: isLoading || authLoading };
+    return { data, updateData, updateDunningLevel, isLoading };
 }

@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { X, Download, Loader2 } from "lucide-react";
 import { TimeEntry } from "@/types/time-tracking";
 import { Employee } from "@/types/employee";
 import { CompanyData } from "@/types/company";
 import { TimeTrackingPDF } from "@/components/TimeTrackingPDF";
-import { TimeTrackingPrintHandler } from "@/components/TimeTrackingPrintHandler";
 
 interface TimeTrackingPreviewModalProps {
     isOpen: boolean;
@@ -18,13 +17,25 @@ interface TimeTrackingPreviewModalProps {
 }
 
 export function TimeTrackingPreviewModal({ isOpen, onClose, entries, employee, month, companySettings }: TimeTrackingPreviewModalProps) {
-    const pdfRef = useRef<HTMLDivElement>(null);
     const [isPrinting, setIsPrinting] = useState(false);
 
     if (!isOpen || !employee || !companySettings) return null;
 
-    const handlePrint = () => {
+    const handlePrint = async () => {
         setIsPrinting(true);
+        try {
+            const { pdf } = await import('@react-pdf/renderer');
+            const { TimesheetReactPDF } = await import('@/components/TimesheetReactPDF');
+            const blob = await pdf(
+                React.createElement(TimesheetReactPDF, { entries, employee, month, companySettings }) as any
+            ).toBlob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+        } catch (e) {
+            console.error('[PDF Timesheet]', e);
+        } finally {
+            setIsPrinting(false);
+        }
     };
 
     return (
@@ -43,10 +54,14 @@ export function TimeTrackingPreviewModal({ isOpen, onClose, entries, employee, m
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handlePrint}
-                            className="px-6 py-3 bg-primary-gradient text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                            disabled={isPrinting}
+                            className="px-6 py-3 bg-primary-gradient text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
                         >
-                            <Download className="h-4 w-4" />
-                            PDF erstellen / Drucken
+                            {isPrinting ? (
+                                <><Loader2 className="h-4 w-4 animate-spin" /> PDF wird erstellt...</>
+                            ) : (
+                                <><Download className="h-4 w-4" /> PDF Erstellen</>
+                            )}
                         </button>
                         <button
                             onClick={onClose}
@@ -57,11 +72,10 @@ export function TimeTrackingPreviewModal({ isOpen, onClose, entries, employee, m
                     </div>
                 </div>
 
-                {/* PDF Preview */}
+                {/* HTML Preview */}
                 <div className="flex-1 overflow-y-auto bg-slate-50 p-8 no-print">
                     <div className="max-w-[210mm] mx-auto bg-white shadow-xl">
                         <TimeTrackingPDF
-                            ref={pdfRef}
                             entries={entries}
                             employee={employee}
                             month={month}
@@ -70,18 +84,6 @@ export function TimeTrackingPreviewModal({ isOpen, onClose, entries, employee, m
                     </div>
                 </div>
             </div>
-
-            {/* Hidden Print Handler */}
-            {isPrinting && (
-                <TimeTrackingPrintHandler onAfterPrint={() => setIsPrinting(false)}>
-                    <TimeTrackingPDF
-                        entries={entries}
-                        employee={employee}
-                        month={month}
-                        companySettings={companySettings}
-                    />
-                </TimeTrackingPrintHandler>
-            )}
         </div>
     );
 }
