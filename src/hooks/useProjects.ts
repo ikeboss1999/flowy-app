@@ -5,10 +5,12 @@ import { Project } from "@/types/project";
 import { useAuth } from "@/context/AuthContext";
 import { useSync } from "@/context/SyncContext";
 import { fetcher } from '@/lib/fetcher';
+import { useProjectSettings } from './useProjectSettings';
 
 export function useProjects() {
     const { user, currentEmployee } = useAuth();
     const { markDirty } = useSync();
+    const { data: projectSettings, updateData: updateProjectSettings } = useProjectSettings();
 
     const activeUserId = user?.id || currentEmployee?.userId;
     const key = activeUserId ? `/api/projects?userId=${activeUserId}` : null;
@@ -16,7 +18,8 @@ export function useProjects() {
 
     const addProject = async (project: Project) => {
         if (!activeUserId) return;
-        const newProject = { ...project, userId: activeUserId };
+        const projectNumber = `${projectSettings.projectNumberPrefix}${projectSettings.nextProjectNumber}`;
+        const newProject = { ...project, userId: activeUserId, projectNumber };
         mutate([newProject, ...data], false);
         try {
             await fetch('/api/projects', {
@@ -24,6 +27,7 @@ export function useProjects() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newProject)
             });
+            await updateProjectSettings({ nextProjectNumber: projectSettings.nextProjectNumber + 1 });
             markDirty();
         } catch (e) {
             console.error("Failed to add project", e);

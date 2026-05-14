@@ -45,7 +45,8 @@ const TABS = [
     { id: "employment", label: "Anstellung", icon: Briefcase },
     { id: "schedule", label: "Zeiteinteilung", icon: Clock },
     { id: "bank", label: "Bankdaten", icon: CreditCard },
-    { id: "documents", label: "Archiv", icon: FileText }
+    { id: "documents", label: "Archiv", icon: FileText },
+    { id: "app-access", label: "Mobile App", icon: Smartphone },
 ];
 
 const EU_EWR_COUNTRIES = [
@@ -140,7 +141,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 documents: initialEmployee.documents || [],
                 appAccess: initialEmployee.appAccess ? {
                     ...initialEmployee.appAccess,
-                    staffId: initialEmployee.appAccess.staffId || initialEmployee.employeeNumber || "",
+                    staffId: initialEmployee.appAccess.staffId || Math.floor(10000000 + Math.random() * 90000000).toString(),
                     permissions: initialEmployee.appAccess.permissions || {
                         timeTracking: true,
                         documents: false,
@@ -148,7 +149,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                         projectDiary: false
                     }
                 } : {
-                    staffId: initialEmployee.employeeNumber || "",
+                    staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
                     accessPIN: "",
                     isAccessEnabled: false,
                     permissions: {
@@ -212,7 +213,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 documents: [],
                 createdAt: new Date().toISOString(),
                 appAccess: {
-                    staffId: nextNum || Math.floor(100000 + Math.random() * 900000).toString(),
+                    staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
                     accessPIN: "",
                     isAccessEnabled: false,
                     permissions: {
@@ -227,7 +228,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
     }, [initialEmployee, isOpen]);
 
     const generateStaffId = () => {
-        const id = Math.floor(100000 + Math.random() * 900000).toString();
+        const id = Math.floor(10000000 + Math.random() * 90000000).toString();
         setFormData(prev => ({
             ...prev,
             appAccess: {
@@ -296,7 +297,8 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                         content: base64,
                         category: 'hr_shared',
                         subType: 'general',
-                        folder: folder
+                        folder: folder,
+                        isShared: true
                     });
                 };
                 reader.readAsDataURL(file);
@@ -310,7 +312,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 ...prev,
                 documents: [...prev.documents, ...newDocs]
             }));
-            showToast(`${newDocs.length} Dokument(e) erfolgreich hochgeladen.`, 'success');
+            showToast(`${newDocs.length} Dokument(e) erfolgreich hochgeladen und freigegeben.`, 'success');
         } catch (error) {
             console.error("Upload failed:", error);
             showToast("Fehler beim Hochladen der Dokumente.", 'error');
@@ -1181,10 +1183,194 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 />
                                             </div>
                                         </section>
+
+                                        <section>
+                                            <div className="flex items-center justify-between mb-4 px-1">
+                                                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Freigegebene App-Ordner</h5>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const name = prompt("Name des neuen Ordners:");
+                                                        if (name) {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                sharedFolders: [...(prev.sharedFolders || []), name]
+                                                            }));
+                                                        }
+                                                    }}
+                                                    className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
+                                                >
+                                                    <Plus className="h-3 w-3" />
+                                                    Neuer Ordner
+                                                </button>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-4">
+                                                {(formData.sharedFolders || []).map((folderName, idx) => (
+                                                    <FolderSection
+                                                        key={idx}
+                                                        title={folderName}
+                                                        folder={folderName}
+                                                        documents={formData.documents.filter(d => d.folder === folderName)}
+                                                        onUpload={(files) => handleSharedUpload(files, folderName)}
+                                                        onDeleteDoc={(docId) => setFormData(prev => ({
+                                                            ...prev,
+                                                            documents: prev.documents.filter(d => d.id !== docId)
+                                                        }))}
+                                                        onDeleteFolder={() => {
+                                                            if (window.confirm(`Ordner "${folderName}" wirklich löschen? Alle enthaltenen Dokumente werden ebenfalls gelöscht.`)) {
+                                                                setFormData(prev => ({
+                                                                    ...prev,
+                                                                    sharedFolders: (prev.sharedFolders || []).filter(f => f !== folderName),
+                                                                    documents: prev.documents.filter(d => d.folder !== folderName)
+                                                                }));
+                                                            }
+                                                        }}
+                                                        onPreview={handlePreview}
+                                                    />
+                                                ))}
+                                                {(!formData.sharedFolders || formData.sharedFolders.length === 0) && (
+                                                    <div className="p-8 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
+                                                        <Folder className="h-10 w-10 text-slate-300 mb-3" />
+                                                        <p className="text-sm font-bold text-slate-600 mb-1">Keine Ordner vorhanden</p>
+                                                        <p className="text-xs text-slate-400 max-w-sm mb-4">Erstellen Sie Ordner (z.B. "Lohnzettel"), um Dokumente hochzuladen und für den Mitarbeiter in der App freizugeben.</p>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const name = prompt("Name des neuen Ordners:");
+                                                                if (name) {
+                                                                    setFormData(prev => ({
+                                                                        ...prev,
+                                                                        sharedFolders: [...(prev.sharedFolders || []), name]
+                                                                    }));
+                                                                }
+                                                            }}
+                                                            className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-colors"
+                                                        >
+                                                            Ersten Ordner erstellen
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </section>
                                     </div>
                                 </div>
                             )}
 
+
+                            {activeTab === "app-access" && (
+                                <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-8">
+                                    {/* Section header */}
+                                    <section>
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                                                <Smartphone className="h-4 w-4 text-indigo-600" />
+                                            </div>
+                                            <h3 className="text-lg font-black text-slate-800 tracking-tight">Mobile App Zugang</h3>
+                                        </div>
+
+                                        <div className="space-y-6 p-6 rounded-[2.5rem] bg-slate-50/30 border border-slate-100">
+                                            {/* Toggle: App-Zugang aktiv */}
+                                            <div className="flex items-center justify-between py-1">
+                                                <div>
+                                                    <p className="font-black text-slate-800 text-sm">App-Zugang aktiv</p>
+                                                    <p className="text-xs text-slate-400 font-medium mt-0.5">
+                                                        Erlaubt dem Mitarbeiter die Anmeldung in der mobilen App.
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData(prev => ({
+                                                        ...prev,
+                                                        appAccess: {
+                                                            ...(prev.appAccess || { staffId: '', accessPIN: '', isAccessEnabled: false, permissions: { timeTracking: true, documents: false, personalData: true, projectDiary: false } }),
+                                                            isAccessEnabled: !prev.appAccess?.isAccessEnabled,
+                                                        }
+                                                    }))}
+                                                    className={cn(
+                                                        "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus:outline-none shadow-inner",
+                                                        formData.appAccess?.isAccessEnabled ? "bg-indigo-500" : "bg-slate-200"
+                                                    )}
+                                                >
+                                                    <span className={cn(
+                                                        "inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform",
+                                                        formData.appAccess?.isAccessEnabled ? "translate-x-6" : "translate-x-1"
+                                                    )} />
+                                                </button>
+                                            </div>
+
+                                            <div className="border-t border-slate-100" />
+
+                                            {/* Verfügernummer (read-only) */}
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                                                    Verfügernummer (Staff ID)
+                                                </label>
+                                                <input
+                                                    readOnly
+                                                    className="w-full px-5 py-4 bg-slate-100 border border-slate-200 rounded-2xl font-black text-indigo-600 outline-none cursor-not-allowed shadow-sm"
+                                                    value={formData.appAccess?.staffId || ''}
+                                                    placeholder="Wird automatisch vergeben"
+                                                />
+                                                <p className="text-[10px] text-slate-400 pl-1">
+                                                    Wird automatisch aus der Personalnummer übernommen.
+                                                </p>
+                                            </div>
+
+                                            {/* PIN */}
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                                                    Zugangs-PIN (6-stellig)
+                                                </label>
+                                                <div className="flex gap-3">
+                                                    <input
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        maxLength={6}
+                                                        className="flex-1 px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-black text-slate-900 shadow-sm tracking-[0.3em] text-lg"
+                                                        value={formData.appAccess?.accessPIN || ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                appAccess: {
+                                                                    ...(prev.appAccess || { staffId: '', isAccessEnabled: false, permissions: { timeTracking: true, documents: false, personalData: true, projectDiary: false } }),
+                                                                    accessPIN: val,
+                                                                }
+                                                            }));
+                                                        }}
+                                                        placeholder="••••••"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={generatePIN}
+                                                        className="px-5 py-3 bg-indigo-50 text-indigo-600 rounded-2xl font-bold text-sm hover:bg-indigo-100 transition-all whitespace-nowrap flex items-center gap-2 border border-indigo-100"
+                                                    >
+                                                        <Activity className="h-4 w-4" />
+                                                        Neuen PIN generieren
+                                                    </button>
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 pl-1">
+                                                    Mit diesem PIN kann sich der Mitarbeiter in der App anmelden.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    {/* Info-Banner */}
+                                    <div className="p-5 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex gap-4 items-start">
+                                        <div className="h-9 w-9 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0 mt-0.5">
+                                            <Smartphone className="h-4 w-4 text-indigo-600" />
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-indigo-700 text-sm mb-1">Zugangsdaten sicher aufbewahren</p>
+                                            <p className="text-xs text-indigo-500 leading-relaxed">
+                                                Bitte teilen Sie dem Mitarbeiter seine Verfügernummer und den PIN persönlich mit.
+                                                Die Zugangsdaten ermöglichen die Anmeldung in der mobilen Zeiterfassungs-App.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                         </form>
 

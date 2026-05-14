@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(ls \"C:\\\\Users\\\\faceb\\\\Desktop\\\\FlowY\\\\\" | Where-Object {$_.Name -eq \"src\"})"
+    ]
+  }
+}

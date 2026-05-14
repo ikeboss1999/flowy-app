@@ -32,7 +32,9 @@ export type InvoiceUnit = 'PA' | 'h' | 'Stk' | 'm' | 'm²' | 'm³' | 'kg' | 'Tag
 
 export interface InvoiceItem {
     id: string;
+    title?: string;
     description: string;
+    itemType?: 'title' | 'standard' | 'detailed';
     quantity: number;
     unit: InvoiceUnit;
     pricePerUnit: number;

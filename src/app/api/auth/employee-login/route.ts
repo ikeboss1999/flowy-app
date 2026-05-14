@@ -59,16 +59,23 @@ export async function POST(request: Request) {
             }
         };
 
-        const { createSessionToken } = await import('@/lib/auth');
+        const { createSessionToken, createSupabaseToken } = await import('@/lib/auth');
         const sessionToken = await createSessionToken({
             userId: employee.userId!,
             email: employee.personalData.email || 'employee@flowy.local',
             role: 'employee'
         });
 
+        const supabaseToken = await createSupabaseToken({
+            employeeId: employee.id,
+            ownerId: employee.userId!,
+            email: employee.personalData.email || 'employee@flowy.local',
+        });
+
         const response = NextResponse.json({
             success: true,
-            employee: responseEmployee
+            employee: responseEmployee,
+            supabase_token: supabaseToken
         });
 
         response.cookies.set('session_token', sessionToken, {

@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
         maxWidth: 260,       // ← Logo-BREITE
         objectFit: 'contain',
         alignSelf: 'flex-start',
-        marginLeft: -65,       // ← Abstand vom linken Seitenrand (zusätzlich zu paddingLeft)
+        marginLeft: 0,       // ← Abstand vom linken Seitenrand (zusätzlich zu paddingLeft)
         marginTop: 0,        // ← Abstand vom oberen Seitenrand (zusätzlich zu paddingTop)
     },
     companyName: {
@@ -371,20 +371,43 @@ export const InvoiceReactPDF: React.FC<InvoiceReactPDFProps> = ({ invoice, custo
                         <Text style={[styles.cPrice, styles.thText]}>Einzelpreis</Text>
                         <Text style={[styles.cTotal, styles.thText]}>Gesamt</Text>
                     </View>
-                    {invoice.items.map((item, idx) => (
-                        <View key={item.id} style={styles.tableRow}>
-                            <Text style={[styles.cPos, styles.tdText]}>{idx + 1}</Text>
-                            <Text style={[styles.cDesc, styles.tdText]}>{item.description}</Text>
-                            <Text style={[styles.cUnit, styles.tdText]}>{item.unit === 'pauschal' ? 'PA' : item.unit}</Text>
-                            <Text style={[styles.cQty, styles.tdText]}>{item.quantity}</Text>
-                            <Text style={[styles.cPrice, styles.tdText]}>
-                                {'€ ' + (Number(item.pricePerUnit) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
-                            </Text>
-                            <Text style={[styles.cTotal, styles.tdBold]}>
-                                {'€ ' + (Number(item.totalPrice) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
-                            </Text>
-                        </View>
-                    ))}
+                    {(() => {
+                        let pos = 0;
+                        return invoice.items.map((item) => {
+                            const isTitle = item.itemType === 'title' || (!item.itemType && (item as any).isTitleOnly);
+                            if (!isTitle) pos++;
+                            if (isTitle) {
+                                return (
+                                    <View key={item.id} style={[styles.tableRow, { backgroundColor: '#f5f5f5' }]}>
+                                        <Text style={[styles.cPos, styles.tdText, { color: '#aaaaaa' }]}>—</Text>
+                                        <View style={{ width: '93%', paddingLeft: 8 }}>
+                                            <Text style={{ fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#111111' }}>
+                                                {item.title || item.description}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                );
+                            }
+                            return (
+                                <View key={item.id} style={styles.tableRow}>
+                                    <Text style={[styles.cPos, styles.tdText]}>{pos}</Text>
+                                    <View style={styles.cDesc}>
+                                        {item.title ? <Text style={{ fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#000000' }}>{item.title}</Text> : null}
+                                        {item.description ? <Text style={{ fontSize: 9, color: '#555555', marginTop: item.title ? 1 : 0 }}>{item.description}</Text> : null}
+                                        {!item.title && !item.description ? <Text style={{ color: '#aaaaaa' }}>—</Text> : null}
+                                    </View>
+                                    <Text style={[styles.cUnit, styles.tdText]}>{item.unit === 'pauschal' ? 'PA' : item.unit}</Text>
+                                    <Text style={[styles.cQty, styles.tdText]}>{item.quantity}</Text>
+                                    <Text style={[styles.cPrice, styles.tdText]}>
+                                        {'€ ' + (Number(item.pricePerUnit) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                                    </Text>
+                                    <Text style={[styles.cTotal, styles.tdBold]}>
+                                        {'€ ' + (Number(item.totalPrice) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                                    </Text>
+                                </View>
+                            );
+                        });
+                    })()}
                 </View>
 
                 {/* ── Summary ── */}

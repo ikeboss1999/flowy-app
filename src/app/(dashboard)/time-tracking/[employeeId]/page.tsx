@@ -24,6 +24,7 @@ import { useAuth } from "@/context/AuthContext";
 import { TimeEntry, TimeEntryType } from "@/types/time-tracking";
 import { Employee } from "@/types/employee";
 import { TimeTrackingPreviewModal } from "@/components/TimeTrackingPreviewModal";
+import { isAustrianHoliday } from "@/lib/holidays";
 
 // Memoized Row Component for extreme performance
 const TimeEntryRow = memo(({
@@ -31,12 +32,14 @@ const TimeEntryRow = memo(({
     entry,
     isModified,
     isFinalized,
+    holidayName,
     onUpdate
 }: {
     dateStr: string,
     entry?: TimeEntry,
     isModified: boolean,
     isFinalized: boolean,
+    holidayName?: string,
     onUpdate: (date: string, field: keyof TimeEntry, value: any) => void
 }) => {
     const [localLocation, setLocalLocation] = useState(entry?.location || "");
@@ -65,6 +68,7 @@ const TimeEntryRow = memo(({
     const rowClass = cn(
         "border-b border-slate-100 hover:bg-slate-50 transition-colors",
         isWeekend && "bg-slate-50/50",
+        holidayName && "bg-purple-50/50",
         isModified && "bg-amber-50/30"
     );
 
@@ -74,11 +78,19 @@ const TimeEntryRow = memo(({
         <tr className={rowClass}>
             <td className="px-4 py-3 whitespace-nowrap relative">
                 {isModified && <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-400" />}
+                {holidayName && <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-400" />}
                 <div className="flex flex-col">
-                    <span className={cn("text-sm font-bold", isWeekend ? "text-slate-400" : "text-slate-700")}>
+                    <span className={cn(
+                        "text-sm font-bold", 
+                        isWeekend ? "text-slate-400" : "text-slate-700",
+                        holidayName && "text-purple-700"
+                    )}>
                         {d.toString().padStart(2, '0')}.
                     </span>
-                    <span className="text-xs text-slate-400 uppercase">{weekdayNames[dayOfWeek]}</span>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] text-slate-400 uppercase font-medium">{weekdayNames[dayOfWeek]}</span>
+                        {holidayName && <span className="text-[10px] text-purple-600 font-bold whitespace-nowrap">{holidayName}</span>}
+                    </div>
                 </div>
             </td>
 
@@ -236,6 +248,16 @@ export default function EmployeeTimeTrackingPage() {
     }, []);
 
     const employee = employees.find((e: Employee) => e.id === employeeId);
+
+    // Ensure selectedMonth is not before employee startDate
+    useEffect(() => {
+        if (employee?.employment?.startDate) {
+            const startMonthStr = employee.employment.startDate.slice(0, 7);
+            if (selectedMonth < startMonthStr) {
+                setSelectedMonth(startMonthStr);
+            }
+        }
+    }, [employee, selectedMonth]);
 
     // Derived Data
     const daysInMonth = useMemo(() => {
@@ -432,26 +454,36 @@ export default function EmployeeTimeTrackingPage() {
                     const dayOfWeek = dateObj.getDay();
                     const schedule = employee.weeklySchedule?.[dayMap[dayOfWeek]];
 
-                    if (schedule?.enabled) {
+                    const holiday = isAustrianHoliday(dateStr, companySettings?.state);
+
+                    if (holiday) {
+                        updates[dateStr] = {
+                            id: Math.random().toString(36).substr(2, 9),
+                            employeeId,
+                            date: dateStr,
+                            startTime: "",
+                            endTime: "",
+                            breakDuration: 0,
+                            type: "HOLIDAY",
+                            createdAt: new Date().toISOString(),
+                            overtime: 0,
+                            location: holiday.name,
+                            duration: (schedule?.hours || 0) * 60 // Give holiday hours based on schedule
+                        };
+                    } else if (schedule?.enabled) {
                         const hours = Number(schedule.hours) || 0;
-
-                        // We set 'startTime' and 'endTime' ONLY for compatibility, 
-                        // but the 'duration' field is our source of truth.
-                        // We ignore the break time in the 'endTime' calculation here to avoid confusion.
-                        // If the user wants 8 hours net, we just give them 8 hours.
-
                         updates[dateStr] = {
                             id: Math.random().toString(36).substr(2, 9),
                             employeeId,
                             date: dateStr,
                             startTime: "08:00",
-                            endTime: "16:00", // Dummy end time for legacy compatibility (8h net)
-                            breakDuration: 0, // Zero break for simplicity in this calculation mode
+                            endTime: "16:00", 
+                            breakDuration: 0, 
                             type: "WORK",
                             createdAt: new Date().toISOString(),
                             overtime: 0,
-                            location: "Hauptsitz", // Default
-                            duration: hours * 60 // Set net duration in minutes
+                            location: "Hauptsitz", 
+                            duration: hours * 60 
                         };
                     }
                 }
@@ -499,6 +531,8 @@ export default function EmployeeTimeTrackingPage() {
             const dateStr = `${year}-${month.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
             const entry = unsavedChanges[dateStr] || monthEntries.find(e => e.date === dateStr);
             const isModified = !!unsavedChanges[dateStr];
+            
+            const holiday = isAustrianHoliday(dateStr, companySettings?.state);
 
             rows.push(
                 <TimeEntryRow
@@ -507,6 +541,7 @@ export default function EmployeeTimeTrackingPage() {
                     entry={entry}
                     isModified={isModified}
                     isFinalized={isFinalized}
+                    holidayName={holiday?.name}
                     onUpdate={handleUpdateEntry}
                 />
             );
@@ -542,13 +577,23 @@ export default function EmployeeTimeTrackingPage() {
                             onChange={(e) => setSelectedMonth(e.target.value)}
                             className="pl-10 pr-8 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none cursor-pointer appearance-none transition-colors"
                         >
-                            {Array.from({ length: 12 }, (_, i) => {
-                                const date = new Date();
-                                date.setMonth(date.getMonth() - (11 - i));
-                                const value = date.toISOString().slice(0, 7);
-                                const label = date.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-                                return <option key={value} value={value}>{label}</option>;
-                            })}
+                            {(() => {
+                                const startMonthStr = employee?.employment?.startDate ? employee.employment.startDate.slice(0, 7) : '2024-01';
+                                const options = [];
+                                // Generate months from 12 months ago until 1 month in the future
+                                for (let i = 0; i < 14; i++) {
+                                    const date = new Date();
+                                    date.setMonth(date.getMonth() - (12 - i));
+                                    const value = date.toISOString().slice(0, 7);
+                                    
+                                    // Only add if month is at or after employee's start date
+                                    if (value >= startMonthStr) {
+                                        const label = date.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+                                        options.push(<option key={value} value={value}>{label}</option>);
+                                    }
+                                }
+                                return options;
+                            })()}
                         </select>
                         <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
                     </div>

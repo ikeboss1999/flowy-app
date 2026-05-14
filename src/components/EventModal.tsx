@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { X, Calendar as CalendarIcon, Clock, Type, AlignLeft } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Clock, Type, AlignLeft, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
@@ -15,6 +15,7 @@ interface EventModalProps {
     editingEvent?: CalendarEvent;
     onAddEvent: (data: Omit<CalendarEvent, 'id' | 'userId' | 'createdAt'>) => void;
     onUpdateEvent: (id: string, data: Partial<CalendarEvent>) => void;
+    onDeleteEvent?: (id: string) => void;
 }
 
 export function EventModal({
@@ -25,7 +26,8 @@ export function EventModal({
     initialEndTime,
     editingEvent,
     onAddEvent,
-    onUpdateEvent
+    onUpdateEvent,
+    onDeleteEvent
 }: EventModalProps) {
     const [title, setTitle] = useState(editingEvent?.title || "");
     const [description, setDescription] = useState(editingEvent?.description || "");
@@ -193,6 +195,21 @@ export function EventModal({
                     </div>
 
                     <div className="pt-4 flex gap-4">
+                        {editingEvent && onDeleteEvent && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (confirm("Möchten Sie diesen Termin wirklich löschen?")) {
+                                        onDeleteEvent(editingEvent.id);
+                                        onClose();
+                                    }
+                                }}
+                                className="p-5 border-2 border-rose-100 text-rose-500 rounded-2xl hover:bg-rose-50 transition-all"
+                                title="Termin löschen"
+                            >
+                                <Trash2 className="h-6 w-6" />
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={onClose}

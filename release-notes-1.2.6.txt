@@ -1,8 +1,0 @@
-# Release Version 1.2.6
-
-Dieses Update beinhaltet allgemeine Fehlerbehebungen und Detail-Verbesserungen an der Benutzeroberfläche in der Web- sowie Mobile-App.
-
-### ✨ Änderungen
-- UI-Verbesserungen in der mobilen Ansicht (Profil, Projekt-Tagebuch, Zeiterfassung)
-- Layout-Optimierungen im Dashboard und Kalender-Widget
-- Weitere kleine Performance-Verbesserungen für ein flüssigeres App-Erlebnis

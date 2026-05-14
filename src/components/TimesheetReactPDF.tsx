@@ -293,7 +293,7 @@ export function TimesheetReactPDF({ entries, employee, month, companySettings }:
                                 <Text style={[overtime > 0 ? styles.cellRightBold : styles.cellRight, styles.colOvertime]}>
                                     {overtime > 0 ? overtime.toFixed(1).replace('.', ',') : '0,0'}
                                 </Text>
-                                <Text style={[styles.cell, styles.colLocation]} numberOfLines={1}>
+                                <Text style={[styles.cell, styles.colLocation]}>
                                     {(entry as any)?.location || (entry as any)?.notes || '-'}
                                 </Text>
                             </View>

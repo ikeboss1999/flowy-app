@@ -5,6 +5,7 @@ import {
     BarChart3,
     Users,
     FileText,
+    FileSignature,
     TrendingUp,
     Plus,
     CheckCircle2,
@@ -23,6 +24,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useInvoices } from '@/hooks/useInvoices';
+import { useOffers } from '@/hooks/useOffers';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useTodos } from '@/hooks/useTodos';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -35,6 +37,7 @@ import { CalendarWidget } from '@/components/CalendarWidget';
 export default function DashboardPage() {
     const { user } = useAuth();
     const { invoices, updateInvoice, isLoading } = useInvoices();
+    const { offers } = useOffers();
     const { customers } = useCustomers();
     const { todos, addTodo, toggleTodo, deleteTodo } = useTodos();
     const { data: companySettings } = useCompanySettings();
@@ -80,10 +83,18 @@ export default function DashboardPage() {
 
         const totalRevenue = currentYearInvoices.reduce((sum, inv) => inv.status === 'paid' ? sum + inv.totalAmount : sum, 0);
         const openInvoicesCount = currentYearInvoices.filter(inv => inv.status === 'pending' || inv.status === 'overdue').length;
-        const openAmount = currentYearInvoices.reduce((sum, inv) => inv.status !== 'paid' ? sum + inv.totalAmount : sum, 0);
+        
+        // FIX: Nur Rechnungen addieren, die wirklich offen oder fällig sind (nicht Entwürfe oder Stornierte)
+        const openAmount = currentYearInvoices
+            .filter(inv => inv.status === 'pending' || inv.status === 'overdue')
+            .reduce((sum, inv) => sum + inv.totalAmount, 0);
 
-        return { totalRevenue, openInvoicesCount, openAmount };
-    }, [invoices, currentYear]);
+        const currentYearOffers = offers.filter(o => new Date(o.issueDate).getFullYear() === currentYear);
+        const openOffersCount = currentYearOffers.filter(o => o.status === 'sent').length;
+        const openOffersAmount = currentYearOffers.filter(o => o.status === 'sent').reduce((sum, o) => sum + o.totalAmount, 0);
+
+        return { totalRevenue, openInvoicesCount, openAmount, openOffersCount, openOffersAmount };
+    }, [invoices, offers, currentYear]);
 
     const sortedInvoices = useMemo(() => {
         const currentYearInvoices = invoices.filter(inv => {
@@ -124,309 +135,177 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="p-10 space-y-10">
-            {/* Header section */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                <div>
-                    <span className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-2 block">Dashboard</span>
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tight font-outfit">Willkommen zurück, {accountSettings?.name || "Benutzer"}!</h2>
-                    <p className="text-slate-500 text-lg font-medium mt-1">Hier ist eine Übersicht deines Unternehmens.</p>
+        <div className="p-8 lg:p-12 space-y-12 animate-in fade-in duration-1000">
+            {/* Header section - Premium & Clean */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+                <div className="space-y-1">
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight font-outfit">Dashboard</h2>
+                    <p className="text-slate-500 font-bold flex items-center gap-2">
+                        Willkommen zurück, <span className="text-indigo-600">{accountSettings?.name || "Benutzer"}</span>
+                        <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                        Status für {currentYear}
+                    </p>
                 </div>
                 <div className="flex items-center gap-4">
                     <Link
-                        href="/invoices/new"
-                        className="h-14 px-8 bg-primary-gradient text-white rounded-2xl flex items-center gap-3 font-black text-sm uppercase tracking-widest shadow-2xl shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        href="/offers/new"
+                        className="h-14 px-8 bg-white border-2 border-slate-100 text-slate-700 rounded-[1.25rem] flex items-center gap-3 font-black text-xs uppercase tracking-[0.15em] shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-all active:scale-95"
                     >
-                        <Plus className="h-5 w-5" /> Rechnung erstellen
+                        <FileSignature className="h-5 w-5" /> Angebot
+                    </Link>
+                    <Link
+                        href="/invoices/new"
+                        className="h-14 px-8 bg-primary-gradient text-white rounded-[1.25rem] flex items-center gap-3 font-black text-xs uppercase tracking-[0.15em] shadow-2xl shadow-indigo-500/30 hover:scale-[1.05] active:scale-95 transition-all"
+                    >
+                        <Plus className="h-5 w-5 text-white" /> Rechnung
                     </Link>
                 </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                {/* Revenue Card */}
-                <div className="glass-card p-8 group hover:border-indigo-500/30 transition-all duration-500 cursor-pointer overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-[40px] rounded-full -mr-16 -mt-16 group-hover:bg-indigo-500/10 transition-all" />
-                    <div className="flex justify-between items-start mb-6">
-                        <div className="h-14 w-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-100/50">
-                            <BarChart3 className="h-7 w-7" />
-                        </div>
-                        <div className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                            <ArrowUpRight className="h-3 w-3" /> +12%
-                        </div>
-                    </div>
-                    <div className="space-y-1">
-                        <h4 className="text-4xl font-black text-slate-900 tracking-tighter">
-                            {stats.totalRevenue.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                        </h4>
-                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                            Gesamtumsatz <span className="h-1 w-1 bg-slate-300 rounded-full" /> Bezahlt
-                        </p>
-                    </div>
-                </div>
-
-                {/* Open Invoices Card */}
-                <div className="glass-card p-8 group hover:border-amber-500/30 transition-all duration-500 cursor-pointer overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 blur-[40px] rounded-full -mr-16 -mt-16 group-hover:bg-amber-500/10 transition-all" />
-                    <div className="flex justify-between items-start mb-6">
-                        <div className="h-14 w-14 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500 shadow-sm border border-amber-100/50">
-                            <FileText className="h-7 w-7" />
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-full text-xs font-bold border border-slate-100">
-                            Aktuell
-                        </div>
-                    </div>
-                    <div className="space-y-1">
-                        <h4 className="text-4xl font-black text-slate-900 tracking-tighter">
-                            {stats.openInvoicesCount} Rechnungen
-                        </h4>
-                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                            Offene Posten <span className="h-1 w-1 bg-slate-300 rounded-full" /> Unbezahlt
-                        </p>
-                    </div>
-                </div>
-
-                {/* Open Amount Card */}
-                <div className="glass-card p-8 group hover:border-rose-500/30 transition-all duration-500 cursor-pointer overflow-hidden relative text-white bg-slate-900">
-                    <div className="absolute inset-0 bg-primary-gradient opacity-10 pointer-events-none" />
-                    <div className="flex justify-between items-start mb-6 relative z-10">
-                        <div className="h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center text-white shadow-sm border border-white/10">
-                            <AlertCircle className="h-7 w-7" />
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1 bg-rose-500 text-white rounded-full text-xs font-bold">
-                            Fällig
-                        </div>
-                    </div>
-                    <div className="space-y-1 relative z-10">
-                        <h4 className="text-4xl font-black text-white tracking-tighter">
-                            {stats.openAmount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                        </h4>
-                        <p className="text-sm font-bold text-white/60 uppercase tracking-widest flex items-center gap-2">
-                            Offener Betrag <span className="h-1 w-1 bg-white/20 rounded-full" /> Gesamt
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
-                {/* Recent Invoices Column */}
-                <div className="xl:col-span-2 space-y-10">
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                                Letzte Rechnungen
-                            </h3>
-                            <div className="flex items-center gap-6">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sortieren:</span>
-                                    <select
-                                        value={`${sortBy}-${sortOrder}`}
-                                        onChange={(e) => {
-                                            const [key, order] = e.target.value.split('-');
-                                            setSortBy(key);
-                                            setSortOrder(order as "asc" | "desc");
-                                        }}
-                                        className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer"
-                                    >
-                                        <option value="date-desc">Datum (Neu zuerst)</option>
-                                        <option value="date-asc">Datum (Alt zuerst)</option>
-                                        <option value="number-desc">Rechnungsnummer (Z-A)</option>
-                                        <option value="number-asc">Rechnungsnummer (A-Z)</option>
-                                        <option value="amount-desc">Betrag (Hoch zuerst)</option>
-                                        <option value="amount-asc">Betrag (Gering zuerst)</option>
-                                        <option value="customer-asc">Kunde (A-Z)</option>
-                                        <option value="customer-desc">Kunde (Z-A)</option>
-                                    </select>
-                                </div>
-                                <Link
-                                    href="/invoices"
-                                    className="text-sm font-black text-indigo-600 hover:text-indigo-700 underline underline-offset-4 decoration-2 decoration-indigo-200 hover:decoration-indigo-400 transition-all"
-                                >
-                                    Alle Rechnungen
-                                </Link>
-                            </div>
-                        </div>
-
-                        <div className="glass-card overflow-hidden">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="bg-slate-50/50 border-b border-slate-100">
-                                        <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">Nummer</th>
-                                        <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">Kunde</th>
-                                        <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                        <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">Betrag</th>
-                                        <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Aktion</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {isLoading ? (
-                                        <tr>
-                                            <td colSpan={5} className="text-center py-10 text-slate-400">Lade Rechnungen...</td>
-                                        </tr>
-                                    ) : (
-                                        sortedInvoices.map((invoice) => (
-                                            <tr key={invoice.id} className="group hover:bg-slate-50/30 transition-colors cursor-pointer">
-                                                <td className="px-6 py-5">
-                                                    <p className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">#{invoice.invoiceNumber}</p>
-                                                    <p className="text-xs text-slate-400 font-medium">Vom {new Date(invoice.issueDate).toLocaleDateString('de-DE')}</p>
-                                                </td>
-                                                <td className="px-6 py-5">
-                                                    <p className="text-base font-bold text-slate-800">{invoice.customerName}</p>
-                                                </td>
-                                                <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
-                                                    <div className="relative inline-block">
-                                                        <select
-                                                            value={invoice.status}
-                                                            onChange={(e) => updateInvoice(invoice.id, { ...invoice, status: e.target.value as any })}
-                                                            className={cn(
-                                                                "appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all",
-                                                                invoice.status === 'paid' ? "bg-emerald-50 text-emerald-600 border-emerald-100 focus:ring-emerald-500" :
-                                                                    invoice.status === 'overdue' ? "bg-rose-50 text-rose-600 border-rose-100 focus:ring-rose-500" :
-                                                                        "bg-amber-50 text-amber-600 border-amber-100 focus:ring-amber-500"
-                                                            )}
-                                                        >
-                                                            <option value="paid">Bezahlt</option>
-                                                            <option value="pending">Offen</option>
-                                                            <option value="overdue">Fällig</option>
-                                                        </select>
-                                                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                                                            <svg className={cn(
-                                                                "h-3 w-3",
-                                                                invoice.status === 'paid' ? "text-emerald-600" :
-                                                                    invoice.status === 'overdue' ? "text-rose-600" : "text-amber-600"
-                                                            )} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                            </svg>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-5 text-right font-black text-slate-900">
-                                                    {invoice.totalAmount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                                                </td>
-                                                <td className="px-6 py-5 text-center">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDownload(invoice);
-                                                        }}
-                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all"
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                        Vorschau
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {/* Calendar Widget in Main Column */}
-                    <CalendarWidget />
-                </div>
-
-                {/* To-Do Column */}
-                <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-2xl font-bold text-slate-900">To-Do Liste</h3>
-                        <button
-                            onClick={toggleTodoMinimized}
-                            className="p-2 hover:bg-slate-100 rounded-xl transition-all text-slate-400"
+            {/* Stats Grid - Premium Glass Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+                {[
+                    { label: "Gesamtumsatz", value: stats.totalRevenue, sub: "Bezahlt dieses Jahr", color: "indigo", icon: TrendingUp, href: "/reports" },
+                    { label: "Offener Betrag", value: stats.openAmount, sub: "Gesamte Außenstände", color: "rose", icon: AlertCircle, dark: true },
+                    { label: "Angebote", value: stats.openOffersAmount, sub: `${stats.openOffersCount} offene Angebote`, color: "emerald", icon: FileSignature, href: "/offers" },
+                ].map((stat, i) => {
+                    const CardWrapper = stat.href ? Link : 'div';
+                    return (
+                        <CardWrapper 
+                            key={i} 
+                            href={stat.href || "#"}
+                            className={cn(
+                                "p-8 rounded-[3rem] border transition-all duration-500 group relative overflow-hidden block",
+                                stat.dark ? "bg-slate-900 border-slate-800 text-white shadow-2xl shadow-slate-900/20" : "bg-white border-slate-100 hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-500/5 shadow-sm",
+                                stat.href && "hover:-translate-y-1 cursor-pointer"
+                            )}
                         >
-                            {isTodoMinimized ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
-                        </button>
+                            <div className="flex justify-between items-start mb-6 relative z-10">
+                                <div className={cn(
+                                    "h-14 w-14 rounded-2xl flex items-center justify-center shadow-sm transition-transform duration-500 group-hover:scale-110",
+                                    stat.dark ? "bg-white/10 text-white" : `bg-${stat.color}-50 text-${stat.color}-600`
+                                )}>
+                                    <stat.icon className="h-7 w-7" />
+                                </div>
+                                <div className={cn("text-[10px] font-black uppercase tracking-[0.2em]", stat.dark ? "text-white/30" : "text-slate-400")}>
+                                    {stat.label}
+                                    {stat.href && <ArrowUpRight className="h-3 w-3 ml-1 inline-block opacity-0 group-hover:opacity-100 transition-all" />}
+                                </div>
+                            </div>
+                            
+                            <div className="relative z-10">
+                                <h4 className="text-3xl font-black tracking-tight mb-2">
+                                    {typeof stat.value === 'number' ? stat.value.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) : stat.value + (stat.unit || "")}
+                                </h4>
+                                <p className={cn("text-[11px] font-bold", stat.dark ? "text-white/40" : "text-slate-400")}>{stat.sub}</p>
+                            </div>
+                        </CardWrapper>
+                    );
+                })}
+            </div>
+
+            {/* Main Content Area - 2:1 Split */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-12 items-start">
+                {/* Recent Invoices - Left (8/12 = 2/3) */}
+                <div className="xl:col-span-8 space-y-8">
+                    <div className="flex items-center justify-between px-4">
+                        <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500">
+                                <FileText className="h-5 w-5" />
+                            </div>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Letzte Rechnungen</h3>
+                        </div>
+                        <div className="flex items-center gap-6">
+                            <select
+                                value={`${sortBy}-${sortOrder}`}
+                                onChange={(e) => {
+                                    const [key, order] = e.target.value.split('-');
+                                    setSortBy(key);
+                                    setSortOrder(order as "asc" | "desc");
+                                }}
+                                className="bg-slate-50 border-none rounded-2xl px-6 py-3 text-[10px] font-black text-slate-500 outline-none cursor-pointer hover:bg-slate-100 transition-all"
+                            >
+                                <option value="number-asc">Rechnungsnummer A-Z</option>
+                                <option value="customer-asc">Kunde A-Z</option>
+                            </select>
+                            <Link href="/invoices" className="text-xs font-black text-indigo-600 hover:text-indigo-800 tracking-widest uppercase flex items-center gap-2">
+                                Alle ansehen <ArrowUpRight className="h-4 w-4" />
+                            </Link>
+                        </div>
                     </div>
 
-                    <div className={cn("glass-card p-6 flex flex-col transition-all duration-300", isTodoMinimized ? "h-fit space-y-0" : "h-full space-y-6")}>
-                        {!isTodoMinimized && (
-                            <>
-                                <form onSubmit={handleAddTodo} className="relative">
-                                    <input
-                                        type="text"
-                                        value={newTodo}
-                                        onChange={(e) => setNewTodo(e.target.value)}
-                                        placeholder="Aufgabe hinzufügen..."
-                                        className="w-full pl-4 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-base font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all placeholder:text-slate-400"
-                                    />
-                                    <button
-                                        type="submit"
-                                        className="absolute right-2 top-2 h-10 w-10 bg-primary-gradient text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 hover:scale-[1.05] active:scale-95 transition-all"
-                                    >
-                                        <Plus className="h-5 w-5" />
-                                    </button>
-                                </form>
-
-                                <div className="flex-1 space-y-3">
-                                    {todos.map((todo) => (
-                                        <div
-                                            key={todo.id}
-                                            className={cn(
-                                                "flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer group",
-                                                todo.completed
-                                                    ? "bg-slate-50 border-transparent opacity-60"
-                                                    : "bg-white border-slate-100 hover:border-indigo-500/30 hover:shadow-md hover:shadow-indigo-500/5"
-                                            )}
-                                        >
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    toggleTodo(todo.id);
-                                                }}
-                                                className={cn(
-                                                    "mt-1 h-6 w-6 rounded-lg flex items-center justify-center transition-all",
-                                                    todo.completed ? "bg-indigo-500 text-white" : "border-2 border-slate-200 text-transparent group-hover:border-indigo-400"
-                                                )}
-                                            >
-                                                <CheckCircle2 className="h-4 w-4" />
-                                            </button>
-                                            <div
-                                                className="flex-1 min-w-0"
-                                                onClick={() => toggleTodo(todo.id)}
-                                            >
-                                                <p className={cn(
-                                                    "font-bold text-base leading-tight decoration-2 underline-offset-4",
-                                                    todo.completed ? "text-slate-400 line-through" : "text-slate-800"
+                    <div className="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="bg-slate-50/50">
+                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Rechnung</th>
+                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Kunde</th>
+                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
+                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Betrag</th>
+                                    <th className="px-10 py-6 w-24"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {isLoading ? (
+                                    <tr><td colSpan={5} className="py-24 text-center font-black text-slate-300 uppercase tracking-[0.2em] text-[11px]">Ladevorgang...</td></tr>
+                                ) : sortedInvoices.length === 0 ? (
+                                    <tr><td colSpan={5} className="py-24 text-center font-black text-slate-300 uppercase tracking-[0.2em] text-[11px]">Keine Rechnungen gefunden</td></tr>
+                                ) : (
+                                    sortedInvoices.slice(0, 6).map((invoice) => (
+                                        <tr key={invoice.id} className="group hover:bg-slate-50/50 transition-all duration-300 cursor-pointer" onClick={() => handleDownload(invoice)}>
+                                            <td className="px-10 py-8">
+                                                <p className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors">#{invoice.invoiceNumber}</p>
+                                                <p className="text-xs text-slate-400 font-bold mt-1">Vom {new Date(invoice.issueDate).toLocaleDateString('de-DE')}</p>
+                                            </td>
+                                            <td className="px-10 py-8 text-base font-bold text-slate-700">{invoice.customerName}</td>
+                                            <td className="px-10 py-8">
+                                                <span className={cn(
+                                                    "px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                                                    invoice.status === 'paid' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                                                    invoice.status === 'overdue' ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-amber-50 text-amber-600 border-amber-100"
                                                 )}>
-                                                    {todo.task}
-                                                </p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className={cn(
-                                                        "text-[9px] font-black uppercase tracking-widest",
-                                                        todo.priority === 'high' ? "text-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.1)]" :
-                                                            todo.priority === 'medium' ? "text-amber-500" : "text-slate-400"
-                                                    )}>
-                                                        {todo.priority === 'high' ? 'Dringend' : todo.priority === 'medium' ? 'Normal' : 'Nachrangig'}
-                                                    </span>
+                                                    {invoice.status === 'paid' ? 'Bezahlt' : invoice.status === 'overdue' ? 'Fällig' : 'Offen'}
+                                                </span>
+                                            </td>
+                                            <td className="px-10 py-8 text-right">
+                                                <p className="text-lg font-black text-slate-900">{invoice.totalAmount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+                                            </td>
+                                            <td className="px-10 py-8 text-right">
+                                                <div className="h-12 w-12 rounded-2xl bg-slate-50 text-slate-300 flex items-center justify-center group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
+                                                    <Eye className="h-6 w-6" />
                                                 </div>
-                                            </div>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    deleteTodo(todo.id);
-                                                }}
-                                                className="mt-1 p-2 text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </>
-                        )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
-                <InvoicePreviewModal
-                    isOpen={!!selectedInvoice}
-                    onClose={() => setSelectedInvoice(null)}
-                    invoice={selectedInvoice}
-                    customer={customers.find(c => c.id === selectedInvoice?.customerId)}
-                    companySettings={companySettings}
-                />
+                <div className="xl:col-span-4 space-y-8">
+                    <div className="flex items-center justify-between px-4">
+                        <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500">
+                                <CalendarIcon className="h-5 w-5" />
+                            </div>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Tagesplan</h3>
+                        </div>
+                        <Link href="/calendar" className="text-xs font-black text-indigo-600 hover:text-indigo-800 tracking-widest uppercase flex items-center gap-2">
+                            Kalender <ArrowUpRight className="h-4 w-4" />
+                        </Link>
+                    </div>
+                    <CalendarWidget isCompact={true} />
+                </div>
             </div>
+
+            <InvoicePreviewModal
+                isOpen={!!selectedInvoice}
+                onClose={() => setSelectedInvoice(null)}
+                invoice={selectedInvoice}
+                customer={customers.find(c => c.id === selectedInvoice?.customerId)}
+                companySettings={companySettings}
+            />
         </div>
     );
 }

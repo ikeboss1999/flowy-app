@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { X, Search, Plus, Book } from 'lucide-react';
 import { Service } from '@/types/service';
+import { cn } from '@/lib/utils';
 
 interface ServiceSelectionModalProps {
     isOpen: boolean;
@@ -13,13 +14,19 @@ interface ServiceSelectionModalProps {
 
 export function ServiceSelectionModal({ isOpen, onClose, onSelect, services, onCreateNew }: ServiceSelectionModalProps) {
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState<'services' | 'positions'>('services');
 
     const filteredServices = useMemo(() => {
-        return services.filter(s =>
-            s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.description?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [services, searchTerm]);
+        return services.filter(s => {
+            const matchesSearch = s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                s.description?.toLowerCase().includes(searchTerm.toLowerCase());
+            
+            const isPosition = s.category === 'Position';
+            const matchesTab = activeTab === 'positions' ? isPosition : !isPosition;
+
+            return matchesSearch && matchesTab;
+        });
+    }, [services, searchTerm, activeTab]);
 
     if (!isOpen) return null;
 
@@ -45,8 +52,8 @@ export function ServiceSelectionModal({ isOpen, onClose, onSelect, services, onC
                     </button>
                 </div>
 
-                {/* Search */}
-                <div className="p-4 border-b border-slate-100">
+                {/* Search & Tabs */}
+                <div className="p-4 border-b border-slate-100 space-y-4">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                         <input
@@ -57,6 +64,26 @@ export function ServiceSelectionModal({ isOpen, onClose, onSelect, services, onC
                             className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500/20 text-slate-700 font-medium placeholder:text-slate-400"
                             autoFocus
                         />
+                    </div>
+                    <div className="flex p-1 bg-slate-100 rounded-xl">
+                        <button
+                            onClick={() => setActiveTab('services')}
+                            className={cn(
+                                "flex-1 py-2 text-xs font-bold rounded-lg transition-all",
+                                activeTab === 'services' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                            )}
+                        >
+                            Leistungen
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('positions')}
+                            className={cn(
+                                "flex-1 py-2 text-xs font-bold rounded-lg transition-all",
+                                activeTab === 'positions' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                            )}
+                        >
+                            Positions-Vorlagen
+                        </button>
                     </div>
                 </div>
 

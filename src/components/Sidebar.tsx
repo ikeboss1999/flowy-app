@@ -20,7 +20,10 @@ import {
     ChevronDown,
     AlertTriangle,
     Shield,
-    Megaphone
+    Megaphone,
+    FileSignature,
+    BookOpen,
+    CalendarDays
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
@@ -49,12 +52,20 @@ const menuGroups: MenuGroup[] = [
         items: [
             { icon: LayoutDashboard, label: "Startseite", href: "/" },
             { icon: BarChart3, label: "Übersicht", href: "/dashboard" },
+            { icon: CalendarDays, label: "Kalender", href: "/calendar" },
         ]
     },
     {
         title: "Kerngeschäft",
         items: [
-            { icon: Wrench, label: "Leistungen", href: "/services" },
+            {
+                icon: BookOpen,
+                label: "Katalog",
+                children: [
+                    { icon: Wrench, label: "Leistungen", href: "/services" },
+                    { icon: FileText, label: "Positions-Vorlagen", href: "/position-presets" },
+                ]
+            },
             { icon: Users, label: "Kunden", href: "/customers" },
             { icon: UserSquare2, label: "Mitarbeiter", href: "/employees" },
             { icon: Car, label: "Fahrzeuge", href: "/vehicles" },
@@ -77,6 +88,21 @@ const menuGroups: MenuGroup[] = [
     {
         title: "Buchhaltung",
         items: [
+            {
+                icon: FileSignature,
+                label: "Angebote",
+                children: [
+                    { icon: PlusCircle, label: "Neues Angebot", href: "/offers/new" },
+                    { icon: FileSignature, label: "Angebotsarchiv", href: "/offers" },
+                ]
+            },
+            {
+                icon: FileSignature,
+                label: "Aufträge",
+                children: [
+                    { icon: FileSignature, label: "Auftragsarchiv", href: "/orders" },
+                ]
+            },
             {
                 icon: FileText,
                 label: "Rechnungen",
@@ -131,7 +157,7 @@ export function Sidebar() {
         }
     };
     const { data: companySettings } = useCompanySettings();
-    const [expandedItems, setExpandedItems] = useState<string[]>(["Rechnungen"]);
+    const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
     const toggleExpand = (label: string) => {
         setExpandedItems(prev =>

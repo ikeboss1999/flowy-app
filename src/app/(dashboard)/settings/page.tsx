@@ -3,25 +3,36 @@
 import { useState } from "react";
 import { CompanySettings } from "@/components/CompanySettings";
 import { InvoiceSettings } from "@/components/InvoiceSettings";
+import { OfferSettings } from "@/components/OfferSettings";
+import { OrderSettings } from "@/components/OrderSettings";
+import { ProjectSettings } from "@/components/ProjectSettings";
 import { AccountSettings } from "@/components/AccountSettings";
 import { AppSettings } from "@/components/AppSettings";
-import { Settings as SettingsIcon } from "lucide-react";
+import { Settings as SettingsIcon, FileText, Receipt, Briefcase, FileSignature } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
     { id: "Stammdaten", label: "Stammdaten" },
-    { id: "Rechnung", label: "Rechnung" },
-    { id: "App", label: "App" },
+    { id: "Dokumente", label: "Dokumente & Projekte" },
+    { id: "Neuigkeiten", label: "Neuigkeiten" },
     { id: "Mein Konto", label: "Mein Konto" },
+];
+
+const DOC_SUBTABS = [
+    { id: "offer", label: "Angebot", icon: FileText },
+    { id: "order", label: "Auftrag", icon: FileSignature },
+    { id: "invoice", label: "Rechnung", icon: Receipt },
+    { id: "project", label: "Projekte", icon: Briefcase },
 ];
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState("Stammdaten");
+    const [docSubTab, setDocSubTab] = useState("offer");
 
     return (
         <div className="p-10 min-h-screen">
             <div className="max-w-5xl mx-auto space-y-16">
-                {/* Header Section - Centered */}
+                {/* Header */}
                 <div className="flex flex-col items-center text-center gap-4">
                     <div className="flex items-center gap-3 text-indigo-600 mb-2">
                         <div className="p-2.5 bg-indigo-50 rounded-xl shadow-sm border border-indigo-100/50">
@@ -35,7 +46,7 @@ export default function SettingsPage() {
                     </p>
                 </div>
 
-                {/* Tab Navigation - Enlarged and Centered */}
+                {/* Tab Navigation */}
                 <div className="flex justify-center">
                     <div className="flex items-center p-2 bg-slate-100/80 backdrop-blur-md rounded-[24px] border border-slate-200/50 shadow-inner w-fit">
                         {TABS.map((tab) => (
@@ -58,7 +69,7 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {/* Content Section - Centered with animation */}
+                {/* Content */}
                 <div className="pt-4 max-w-4xl mx-auto w-full">
                     {activeTab === "Stammdaten" && (
                         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
@@ -66,13 +77,35 @@ export default function SettingsPage() {
                         </div>
                     )}
 
-                    {activeTab === "Rechnung" && (
-                        <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
-                            <InvoiceSettings />
+                    {activeTab === "Dokumente" && (
+                        <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out space-y-8">
+                            {/* Sub-tab strip */}
+                            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl p-1.5 w-fit">
+                                {DOC_SUBTABS.map(({ id, label, icon: Icon }) => (
+                                    <button
+                                        key={id}
+                                        onClick={() => setDocSubTab(id)}
+                                        className={cn(
+                                            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all",
+                                            docSubTab === id
+                                                ? "bg-white text-indigo-600 shadow-sm border border-slate-100"
+                                                : "text-slate-500 hover:text-slate-700"
+                                        )}
+                                    >
+                                        <Icon className="h-4 w-4" />
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {docSubTab === "offer" && <OfferSettings />}
+                            {docSubTab === "order" && <OrderSettings />}
+                            {docSubTab === "invoice" && <InvoiceSettings />}
+                            {docSubTab === "project" && <ProjectSettings />}
                         </div>
                     )}
 
-                    {activeTab === "App" && (
+                    {activeTab === "Neuigkeiten" && (
                         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
                             <AppSettings />
                         </div>
@@ -81,18 +114,6 @@ export default function SettingsPage() {
                     {activeTab === "Mein Konto" && (
                         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
                             <AccountSettings />
-                        </div>
-                    )}
-
-                    {!["Stammdaten", "Rechnung", "App", "Mein Konto"].includes(activeTab) && (
-                        <div className="flex flex-col items-center justify-center p-24 bg-white rounded-[40px] border-2 border-dashed border-slate-200 shadow-sm animate-in zoom-in-95 duration-500">
-                            <div className="h-24 w-24 rounded-3xl bg-indigo-50 flex items-center justify-center mb-8 shadow-inner">
-                                <SettingsIcon className="h-12 w-12 text-indigo-200" />
-                            </div>
-                            <h3 className="text-3xl font-black text-slate-800 tracking-tight mb-3">{activeTab} Einstellungen</h3>
-                            <div className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full">
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em]">Demnächst verfügbar</p>
-                            </div>
                         </div>
                     )}
                 </div>

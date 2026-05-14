@@ -2,8 +2,6 @@ import React, { forwardRef } from 'react';
 import { Invoice } from '@/types/invoice';
 import { CompanyData } from '@/types/company';
 import { Customer } from '@/types/customer';
-import { cn } from '@/lib/utils';
-import { useCompanySettings } from '@/hooks/useCompanySettings';
 
 interface InvoicePDFProps {
     invoice: Invoice;
@@ -13,7 +11,7 @@ interface InvoicePDFProps {
 
 export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice, customer, companySettings }, ref) => {
     // Determine logo to use
-    const logoSrc = companySettings.logo;
+    const logoSrc = companySettings?.logo;
 
     // Format dates
     const formatDate = (dateString: string) => {
@@ -110,7 +108,7 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                                 <span style={{ fontWeight: 'normal' }}>{customer.taxId}</span>
                             </div>
                         )}
-                        {invoice.isReverseCharge && companySettings.employerNumber && (
+                        {invoice.isReverseCharge && companySettings?.employerNumber && (
                             <div style={{ display: 'flex', marginTop: '4px' }}>
                                 <span style={{ fontWeight: 'bold', width: '135px', flexShrink: 0 }}>Dienstgebernr.:</span>
                                 <span style={{ fontWeight: 'normal' }}>{companySettings.employerNumber}</span>
@@ -122,9 +120,9 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                             ['Datum:', formatDate(invoice.issueDate)],
                             ['Bearbeiter:', (invoice.processor && invoice.processor !== 'Max Mustermann')
                                 ? invoice.processor
-                                : `${companySettings.ceoFirstName} ${companySettings.ceoLastName}`.trim() || invoice.processor || '-'],
-                            ['E-Mail:', companySettings.email],
-                            ['Telefon:', companySettings.phone]
+                                : `${companySettings?.ceoFirstName || ''} ${companySettings?.ceoLastName || ''}`.trim() || invoice.processor || '-'],
+                            ['E-Mail:', companySettings?.email || '-'],
+                            ['Telefon:', companySettings?.phone || '-']
                         ].map(([label, value]) => (
                             <div key={label} style={{ display: 'flex', marginBottom: '3px' }}>
                                 <span style={{ fontWeight: 'bold', width: '85px', flexShrink: 0 }}>{label}</span>
@@ -160,16 +158,37 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                     </tr>
                 </thead>
                 <tbody>
-                    {invoice.items.map((item, index) => (
-                        <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
-                            <td style={{ padding: '12px 5px', fontSize: '10pt', textAlign: 'center', color: '#444' }}>{index + 1}</td>
-                            <td style={{ padding: '12px 10px', fontSize: '10pt' }}>{item.description}</td>
-                            <td style={{ padding: '12px 5px', fontSize: '10pt', textAlign: 'center' }}>{item.unit === 'pauschal' ? 'PA' : item.unit}</td>
-                            <td style={{ padding: '12px 5px', fontSize: '10pt', textAlign: 'center' }}>{item.quantity}</td>
-                            <td style={{ padding: '12px 10px', fontSize: '10pt', textAlign: 'right' }}>€ {(Number(item.pricePerUnit) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</td>
-                            <td style={{ padding: '12px 10px', fontSize: '10pt', textAlign: 'right', fontWeight: 'bold' }}>€ {(Number(item.totalPrice) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</td>
-                        </tr>
-                    ))}
+                    {(() => {
+                        let pos = 0;
+                        return invoice.items.map((item) => {
+                            const isTitle = item.itemType === 'title' || (!item.itemType && (item as any).isTitleOnly);
+                            if (!isTitle) pos++;
+                            if (isTitle) {
+                                return (
+                                    <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f5f5f5' }}>
+                                        <td style={{ padding: '9px 5px', textAlign: 'center', color: '#aaa', fontSize: '9pt' }}>—</td>
+                                        <td colSpan={5} style={{ padding: '9px 10px', fontWeight: 'bold', fontSize: '10.5pt', color: '#111' }}>
+                                            {item.title || item.description}
+                                        </td>
+                                    </tr>
+                                );
+                            }
+                            return (
+                                <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
+                                    <td style={{ padding: '10px 5px', fontSize: '10pt', textAlign: 'center', color: '#444' }}>{pos}</td>
+                                    <td style={{ padding: '10px 10px', fontSize: '10pt' }}>
+                                        {item.title && <div style={{ fontWeight: 'bold' }}>{item.title}</div>}
+                                        {item.description && <div style={{ fontSize: '9.5pt', color: '#555', marginTop: item.title ? '2px' : '0' }}>{item.description}</div>}
+                                        {!item.title && !item.description && <div style={{ color: '#aaa' }}>—</div>}
+                                    </td>
+                                    <td style={{ padding: '10px 5px', fontSize: '10pt', textAlign: 'center' }}>{item.unit === 'pauschal' ? 'PA' : item.unit}</td>
+                                    <td style={{ padding: '10px 5px', fontSize: '10pt', textAlign: 'center' }}>{item.quantity}</td>
+                                    <td style={{ padding: '10px 10px', fontSize: '10pt', textAlign: 'right' }}>€ {(Number(item.pricePerUnit) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</td>
+                                    <td style={{ padding: '10px 10px', fontSize: '10pt', textAlign: 'right', fontWeight: 'bold' }}>€ {(Number(item.totalPrice) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</td>
+                                </tr>
+                            );
+                        });
+                    })()}
                 </tbody>
             </table>
 
@@ -201,14 +220,14 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
             {/* Payment Info */}
             <div style={{ textAlign: 'center', fontSize: '10pt', marginBottom: '60px', lineHeight: '1.6' }}>
                 Bitte überweisen Sie den Betrag von <span style={{ color: '#f43f5e', fontWeight: 'bold' }}>€ {invoice.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</span> an die folgende IBAN mit dem angegebenen Verwendungszweck:<br />
-                <div><span style={{ fontWeight: 'bold' }}>IBAN:</span> {companySettings.iban}</div>
+                <div><span style={{ fontWeight: 'bold' }}>IBAN:</span> {companySettings?.iban || '-'}</div>
                 <div><span style={{ fontWeight: 'bold' }}>Verwendungszweck:</span> Rechnungs-Nr: {invoice.invoiceNumber}</div>
             </div>
 
             {/* Signature Area */}
             <div style={{ fontSize: '10pt', marginBottom: 'auto' }}>
                 Mit freundlichen Grüßen<br /><br />
-                <div style={{ fontWeight: 'bold' }}>{companySettings.ceoFirstName} {companySettings.ceoLastName}</div>
+                <div style={{ fontWeight: 'bold' }}>{companySettings?.ceoFirstName} {companySettings?.ceoLastName}</div>
                 <div>Geschäftsführer</div>
             </div>
 
@@ -217,16 +236,16 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
                 <div style={{ fontWeight: 'bold', fontSize: '9pt', textAlign: 'center', marginBottom: '15px' }}>Zahlungskondition: {invoice.paymentTerms || 'sofort nach Rechnungserhalt'}</div>
                 <div style={{ borderTop: '1px solid #000', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', fontSize: '8pt', color: '#444' }}>
                     <div style={{ width: '30%' }}>
-                        <span style={{ fontWeight: 'bold', color: '#000' }}>Firmenbuchgericht:</span> {companySettings.commercialCourt || '-'}<br />
-                        <span style={{ fontWeight: 'bold', color: '#000' }}>Firmenbuch-Nr.:</span> {companySettings.commercialRegisterNumber || '-'}
+                        <span style={{ fontWeight: 'bold', color: '#000' }}>Firmenbuchgericht:</span> {companySettings?.commercialCourt || '-'}<br />
+                        <span style={{ fontWeight: 'bold', color: '#000' }}>Firmenbuch-Nr.:</span> {companySettings?.commercialRegisterNumber || '-'}
                     </div>
                     <div style={{ width: '35%', textAlign: 'center' }}>
-                        <span style={{ fontWeight: 'bold', color: '#000' }}>Bank:</span> {companySettings.bankName}<br />
-                        <span style={{ fontWeight: 'bold', color: '#000' }}>IBAN:</span> {companySettings.iban}
+                        <span style={{ fontWeight: 'bold', color: '#000' }}>Bank:</span> {companySettings?.bankName || '-'}<br />
+                        <span style={{ fontWeight: 'bold', color: '#000' }}>IBAN:</span> {companySettings?.iban || '-'}
                     </div>
                     <div style={{ width: '30%', textAlign: 'right' }}>
-                        <span style={{ fontWeight: 'bold', color: '#000' }}>BIC:</span> {companySettings.bic}<br />
-                        <span style={{ fontWeight: 'bold', color: '#000' }}>UID:</span> {companySettings.vatId}
+                        <span style={{ fontWeight: 'bold', color: '#000' }}>BIC:</span> {companySettings?.bic || '-'}<br />
+                        <span style={{ fontWeight: 'bold', color: '#000' }}>UID:</span> {companySettings?.vatId || '-'}
                     </div>
                 </div>
             </div>

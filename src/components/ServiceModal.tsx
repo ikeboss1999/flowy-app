@@ -148,11 +148,12 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService }: Servic
 
                         <div>
                             <label className={labelClasses}>Kategorie</label>
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-2 gap-3">
                                 {[
                                     { id: 'Labor', label: 'Arbeit' },
                                     { id: 'Material', label: 'Material' },
-                                    { id: 'FlatRate', label: 'Pauschale' }
+                                    { id: 'FlatRate', label: 'Pauschale' },
+                                    { id: 'Position', label: 'Position' }
                                 ].map((cat) => (
                                     <button
                                         key={cat.id}
@@ -170,6 +171,32 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService }: Servic
                                 ))}
                             </div>
                         </div>
+
+                        {formData.category === 'Position' && (
+                            <div>
+                                <label className={labelClasses}>Positionstyp</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { id: 'standard', label: 'Standard (1-zeilig)' },
+                                        { id: 'detailed', label: 'Detailliert (2-zeilig)' }
+                                    ].map((type) => (
+                                        <button
+                                            key={type.id}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, itemType: type.id as any })}
+                                            className={cn(
+                                                "py-3 rounded-xl text-sm font-bold border transition-all",
+                                                (formData.itemType || 'standard') === type.id
+                                                    ? "bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm"
+                                                    : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
+                                            )}
+                                        >
+                                            {type.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </form>
                 </div>
 

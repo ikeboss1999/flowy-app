@@ -29,7 +29,10 @@ export default function ServicesPage() {
     const [editingService, setEditingService] = useState<Service | undefined>(undefined);
 
     const filteredServices = useMemo(() => {
-        return services.filter(service => {
+        // Grundvoraussetzung: Nur Leistungen anzeigen, KEINE Positions-Vorlagen
+        const baseServices = services.filter(s => s.category !== 'Position');
+
+        return baseServices.filter(service => {
             const matchesSearch =
                 service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (service.description && service.description.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -95,7 +98,7 @@ export default function ServicesPage() {
             {/* Quick Stats */}
             <div className="grid grid-cols-4 gap-6">
                 {[
-                    { label: "Gesamt", count: services.length, color: "text-slate-600", bg: "bg-slate-100", icon: Wrench },
+                    { label: "Gesamt", count: services.filter(s => s.category !== 'Position').length, color: "text-slate-600", bg: "bg-slate-100", icon: Wrench },
                     { label: "Arbeit", count: services.filter(s => s.category === 'Labor').length, color: "text-indigo-600", bg: "bg-indigo-50", icon: Briefcase },
                     { label: "Material", count: services.filter(s => s.category === 'Material').length, color: "text-amber-600", bg: "bg-amber-50", icon: Package },
                     { label: "Pauschalen", count: services.filter(s => s.category === 'FlatRate').length, color: "text-emerald-600", bg: "bg-emerald-50", icon: Layers },

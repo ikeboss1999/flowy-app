@@ -10,6 +10,7 @@ export interface EmployeeDocument {
     category?: 'system' | 'upload' | 'hr_shared';
     subType?: string; // e.g., 'passport', 'id_card', 'meldezettel', etc.
     folder?: string; // For grouping in shared documents
+    isShared?: boolean; // For sharing with Mobile App
 }
 
 export interface EmployeeAppAccess {

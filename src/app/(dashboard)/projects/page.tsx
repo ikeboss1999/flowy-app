@@ -5,6 +5,8 @@ import { Plus, FolderOpen, ArrowRight } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useInvoices } from "@/hooks/useInvoices";
+import { useOffers } from "@/hooks/useOffers";
+import { useOrders } from "@/hooks/useOrders";
 import { Project } from "@/types/project";
 import { ProjectList } from "@/components/projects/ProjectList";
 import { ProjectModal } from "@/components/projects/ProjectModal";
@@ -16,6 +18,8 @@ export default function ProjectsPage() {
     const { projects, addProject, updateProject, deleteProject } = useProjects();
     const { customers, addCustomer } = useCustomers();
     const { invoices } = useInvoices();
+    const { offers } = useOffers();
+    const { orders } = useOrders();
 
     // UI State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -105,6 +109,8 @@ export default function ProjectsPage() {
                     project={activeProject}
                     customer={customers.find(c => c.id === activeProject.customerId)}
                     invoices={invoices}
+                    offers={offers}
+                    orders={orders}
                     onBack={handleBackToList}
                     onEdit={() => handleEditProject(activeProject)}
                     onCreateInvoice={handleCreateInvoice}

@@ -8,6 +8,7 @@ export interface CompanyData {
     street: string;
     zipCode: string;
     city: string;
+    state?: string; // Austrian Bundesland (e.g., 'Wien', 'Niederösterreich')
     country: string;
 
     // Geschäftsführung

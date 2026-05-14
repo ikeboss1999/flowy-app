@@ -9,6 +9,7 @@ export interface DiaryEntry {
 
 export interface Project {
     id: string;
+    projectNumber?: string; // Auto-generated, e.g. "PRJ-1000"
     name: string; // Baustellenname / Bezeichnung
     customerId: string;
     description?: string;

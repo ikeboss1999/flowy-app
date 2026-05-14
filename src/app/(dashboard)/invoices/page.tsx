@@ -236,12 +236,8 @@ export default function InvoicesPage() {
                             }}
                             className="bg-slate-50 border-none rounded-lg px-3 py-1.5 text-xs font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all cursor-pointer"
                         >
-                            <option value="date-desc">Datum (Neu zuerst)</option>
-                            <option value="date-asc">Datum (Alt zuerst)</option>
                             <option value="number-desc">Rechnungsnummer (Z-A)</option>
                             <option value="number-asc">Rechnungsnummer (A-Z)</option>
-                            <option value="amount-desc">Betrag (Hoch zuerst)</option>
-                            <option value="amount-asc">Betrag (Gering zuerst)</option>
                             <option value="customer-asc">Kunde (A-Z)</option>
                             <option value="customer-desc">Kunde (Z-A)</option>
                         </select>

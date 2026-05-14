@@ -28,6 +28,9 @@ export async function GET(request: Request) {
             if (processed.companyData && Object.keys(processed.companyData).length === 0) processed.companyData = null;
             if (processed.accountSettings && Object.keys(processed.accountSettings).length === 0) processed.accountSettings = null;
             if (processed.invoiceSettings && Object.keys(processed.invoiceSettings).length === 0) processed.invoiceSettings = null;
+            if (processed.offerSettings && Object.keys(processed.offerSettings).length === 0) processed.offerSettings = null;
+            if (processed.orderSettings && Object.keys(processed.orderSettings).length === 0) processed.orderSettings = null;
+            if (processed.projectSettings && Object.keys(processed.projectSettings).length === 0) processed.projectSettings = null;
             return NextResponse.json(processed);
         }
 
@@ -63,6 +66,9 @@ export async function POST(request: Request) {
             if (payload.type === 'company') updatedSettings.companyData = payload.data;
             if (payload.type === 'account') updatedSettings.accountSettings = payload.data;
             if (payload.type === 'invoice') updatedSettings.invoiceSettings = payload.data;
+            if (payload.type === 'offer') updatedSettings.offerSettings = payload.data;
+            if (payload.type === 'order') updatedSettings.orderSettings = payload.data;
+            if (payload.type === 'project') updatedSettings.projectSettings = payload.data;
         } else {
             updatedSettings = {
                 ...updatedSettings,

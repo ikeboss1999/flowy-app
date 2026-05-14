@@ -206,7 +206,7 @@ export function CompanySettings() {
                             className={inputClasses}
                         />
                     </div>
-                    <div className="grid grid-cols-3 gap-8">
+                    <div className="grid grid-cols-2 gap-8">
                         <div>
                             <label className={labelClasses}>PLZ *</label>
                             <input
@@ -226,6 +226,28 @@ export function CompanySettings() {
                                 onChange={handleChange}
                                 className={inputClasses}
                             />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-8">
+                        <div>
+                            <label className={labelClasses}>Bundesland (Österreich) *</label>
+                            <select
+                                name="state"
+                                value={data.state || ""}
+                                onChange={(e) => updateData({ state: e.target.value })}
+                                className={inputClasses}
+                            >
+                                <option value="">Bitte wählen...</option>
+                                <option value="Burgenland">Burgenland</option>
+                                <option value="Kärnten">Kärnten</option>
+                                <option value="Niederösterreich">Niederösterreich</option>
+                                <option value="Oberösterreich">Oberösterreich</option>
+                                <option value="Salzburg">Salzburg</option>
+                                <option value="Steiermark">Steiermark</option>
+                                <option value="Tirol">Tirol</option>
+                                <option value="Vorarlberg">Vorarlberg</option>
+                                <option value="Wien">Wien</option>
+                            </select>
                         </div>
                         <div>
                             <label className={labelClasses}>Land *</label>

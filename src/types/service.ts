@@ -7,7 +7,8 @@ export interface Service {
     description?: string;
     unit: InvoiceUnit;
     price: number;
-    category?: 'Labor' | 'Material' | 'FlatRate' | 'Other';
+    category?: 'Labor' | 'Material' | 'FlatRate' | 'Other' | 'Position';
+    itemType?: 'standard' | 'detailed'; // Support for different position types
     createdAt: string;
     updatedAt: string;
 }
