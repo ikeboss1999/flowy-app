@@ -99,11 +99,11 @@ export const OfferPDF = forwardRef<HTMLDivElement, OfferPDFProps>(({ offer, cust
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10pt', marginBottom: '30px' }}>
                     <div style={{ width: '50%' }}>
                         <div style={{ display: 'flex', marginBottom: '4px' }}>
-                            <span style={{ fontWeight: 'bold', width: '135px', flexShrink: 0 }}>Baustelle:</span>
+                            <span style={{ fontWeight: 'bold', width: '80px', flexShrink: 0 }}>Baustelle:</span>
                             <span style={{ fontWeight: 'normal' }}>{offer.constructionProject || customer?.address.street || '-'}</span>
                         </div>
                         <div style={{ display: 'flex' }}>
-                            <span style={{ fontWeight: 'bold', width: '135px', flexShrink: 0 }}>Gültig bis:</span>
+                            <span style={{ fontWeight: 'bold', width: '80px', flexShrink: 0 }}>Gültig bis:</span>
                             <span style={{ fontWeight: 'normal' }}>{offer.validUntil ? formatDate(offer.validUntil) : `${offerSettings?.defaultValidityDays || 20} Tage ab Ausstellungsdatum`}</span>
                         </div>
                     </div>

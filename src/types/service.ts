@@ -9,6 +9,7 @@ export interface Service {
     price: number;
     category?: 'Labor' | 'Material' | 'FlatRate' | 'Other' | 'Position';
     itemType?: 'standard' | 'detailed'; // Support for different position types
+    folder?: string;
     createdAt: string;
     updatedAt: string;
 }

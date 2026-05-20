@@ -3,12 +3,10 @@
 import useSWR from 'swr';
 import { Service } from '@/types/service';
 import { useAuth } from '@/context/AuthContext';
-import { useSync } from '@/context/SyncContext';
 import { fetcher } from '@/lib/fetcher';
 
 export function useServices() {
     const { user } = useAuth();
-    const { markDirty } = useSync();
 
     const key = user ? `/api/services?userId=${user.id}` : null;
     const { data = [], isLoading, mutate } = useSWR<Service[]>(key, fetcher);
@@ -23,7 +21,6 @@ export function useServices() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, service: newService })
             });
-            markDirty();
         } catch (e) {
             console.error(e);
             mutate();
@@ -40,7 +37,6 @@ export function useServices() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, service: updatedService })
             });
-            markDirty();
         } catch (e) {
             console.error(e);
             mutate();
@@ -52,7 +48,6 @@ export function useServices() {
         mutate(data.filter(s => s.id !== id), false);
         try {
             await fetch(`/api/services/${id}`, { method: 'DELETE' });
-            markDirty();
         } catch (e) {
             console.error(e);
             mutate();

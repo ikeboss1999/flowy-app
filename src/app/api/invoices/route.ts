@@ -19,7 +19,9 @@ export async function GET(request: Request) {
         const { data: invoices, error } = await client
             .from('invoices')
             .select('*')
-            .eq('userId', userId);
+            .eq('userId', userId)
+            .order('issueDate', { ascending: false })
+            .limit(500);
         if (error) throw error;
         return NextResponse.json(invoices);
     } catch (e) {

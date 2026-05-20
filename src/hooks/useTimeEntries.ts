@@ -4,12 +4,10 @@ import { useEffect } from 'react';
 import useSWR from 'swr';
 import { TimeEntry, TimesheetMeta } from '@/types/time-tracking';
 import { useAuth } from '@/context/AuthContext';
-import { useSync } from '@/context/SyncContext';
 import { fetcher } from '@/lib/fetcher';
 
 export function useTimeEntries() {
     const { user, currentEmployee } = useAuth();
-    const { markDirty } = useSync();
 
     const activeUserId = user?.id || currentEmployee?.userId;
 
@@ -40,7 +38,6 @@ export function useTimeEntries() {
                 const errorText = await res.text();
                 throw new Error(`Failed to save entry: ${res.status} ${errorText}`);
             }
-            markDirty();
         } catch (e) {
             console.error(e);
             mutateEntries();
@@ -61,7 +58,6 @@ export function useTimeEntries() {
                 body: JSON.stringify({ userId: activeUserId, entry: updated })
             });
             if (!res.ok) throw new Error("Failed to update entry");
-            markDirty();
         } catch (e) {
             console.error(e);
             mutateEntries();
@@ -74,7 +70,6 @@ export function useTimeEntries() {
         mutateEntries(current => (current ?? []).filter(e => e.id !== id), { revalidate: false });
         try {
             await fetch(`/api/time-entries/${id}?userId=${activeUserId}`, { method: 'DELETE' });
-            markDirty();
         } catch (e) {
             console.error(e);
             mutateEntries();
@@ -109,7 +104,6 @@ export function useTimeEntries() {
                 const text = await res.text().catch(() => String(res.status));
                 throw new Error(`HTTP ${res.status}: ${text}`);
             }
-            markDirty();
         } catch (e) {
             console.error('[finalizeMonth]', e);
             mutateTimesheets();
@@ -133,7 +127,6 @@ export function useTimeEntries() {
                 const text = await res.text().catch(() => String(res.status));
                 throw new Error(`HTTP ${res.status}: ${text}`);
             }
-            markDirty();
         } catch (e) {
             console.error('[reopenMonth]', e);
             mutateTimesheets();

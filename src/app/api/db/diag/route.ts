@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { getUserSession } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
@@ -10,8 +9,6 @@ export async function GET() {
         if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-
-        const cookieStore = cookies();
 
         const report = {
             status: 'Diagnostic Report',
@@ -25,8 +22,7 @@ export async function GET() {
             },
             auth: {
                 userId: session.userId,
-                role: session.role,
-                allCookies: (await cookieStore).getAll().map(c => c.name)
+                role: session.role
             }
         };
 

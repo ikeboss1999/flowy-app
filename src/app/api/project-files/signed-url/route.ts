@@ -23,15 +23,32 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Double-check ownership via DB record
-    const { data: fileRecord, error: lookupError } = await supabaseAdmin
+    // Double-check ownership via DB record (search in either project_files or archive_files)
+    let hasAccess = false;
+
+    const { data: fileRecord } = await supabaseAdmin
         .from('project_files')
         .select('id')
         .eq('storagePath', storagePath)
         .eq('userId', userId)
-        .single();
+        .maybeSingle();
 
-    if (lookupError || !fileRecord) {
+    if (fileRecord) {
+        hasAccess = true;
+    } else {
+        // Fallback check in archive_files
+        const { data: archiveRecord } = await supabaseAdmin
+            .from('archive_files')
+            .select('id')
+            .eq('storagePath', storagePath)
+            .eq('userId', userId)
+            .maybeSingle();
+        if (archiveRecord) {
+            hasAccess = true;
+        }
+    }
+
+    if (!hasAccess) {
         return NextResponse.json({ error: 'File not found or access denied' }, { status: 404 });
     }
 

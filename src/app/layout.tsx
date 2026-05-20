@@ -4,7 +4,6 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { SWRProvider } from "@/components/SWRProvider";
-import { UpdateNotification } from "@/components/UpdateNotification";
 import { AuthGuard } from "@/components/AuthGuard";
 import { InputAutoSelect } from "@/components/InputAutoSelect";
 import { DisableZoom } from "@/components/DisableZoom";
@@ -48,7 +47,6 @@ export default function RootLayout({
         <SWRProvider>
           <AuthProvider>
             <NotificationProvider>
-                <UpdateNotification />
                 <AuthGuard>
                   {children}
                   <InputAutoSelect />

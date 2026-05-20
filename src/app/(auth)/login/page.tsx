@@ -21,10 +21,9 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null)
     const [message, setMessage] = useState<string | null>(null)
     const [showPassword, setShowPassword] = useState(false)
-    const { isMobile, isDesktop, isIPhone, isElectron } = useDevice()
+    const { isMobile, isDesktop, isIPhone } = useDevice()
     const [isLocalhost, setIsLocalhost] = useState(false)
     const [isMounted, setIsMounted] = useState(false)
-    const hideRegister = isElectron // Allow registration on localhost for testing
     const router = useRouter()
 
     useEffect(() => {
@@ -36,9 +35,9 @@ export default function LoginPage() {
     useEffect(() => {
         if (!isMounted) return;
         const mode = searchParams.get('mode')
-        if (mode === 'register' && !hideRegister) setIsLogin(false)
+        if (mode === 'register') setIsLogin(false)
         else setIsLogin(true)
-    }, [searchParams, hideRegister, isMounted])
+    }, [searchParams, isMounted])
 
 
 
@@ -63,7 +62,7 @@ export default function LoginPage() {
                 if (error) throw error
                 router.push("/")
                 router.refresh()
-            } else if (!hideRegister) {
+            } else {
                 const { error } = await supabase.auth.signUp({
                     email,
                     password,
@@ -267,25 +266,23 @@ export default function LoginPage() {
                         </button>
                     </form>
 
-                    {!hideRegister && (
-                        <div className="mt-8 text-center">
-                            <p className="text-sm text-sidebar-foreground/60 font-medium">
-                                {isLogin ? "Noch kein FlowY Konto? " : "Bereits ein FlowY Mitglied? "}
-                                <button
-                                    onClick={() => {
-                                        setIsLogin(!isLogin)
-                                        setError(null)
-                                        setMessage(null)
-                                        const newUrl = isLogin ? '/login?mode=register' : '/login?mode=login'
-                                        window.history.pushState({}, '', newUrl)
-                                    }}
-                                    className="text-white hover:text-indigo-400 font-black transition-colors ml-1"
-                                >
-                                    {isLogin ? "Jetzt registrieren" : "Hier einloggen"}
-                                </button>
-                            </p>
-                        </div>
-                    )}
+                    <div className="mt-8 text-center">
+                        <p className="text-sm text-sidebar-foreground/60 font-medium">
+                            {isLogin ? "Noch kein FlowY Konto? " : "Bereits ein FlowY Mitglied? "}
+                            <button
+                                onClick={() => {
+                                    setIsLogin(!isLogin)
+                                    setError(null)
+                                    setMessage(null)
+                                    const newUrl = isLogin ? '/login?mode=register' : '/login?mode=login'
+                                    window.history.pushState({}, '', newUrl)
+                                }}
+                                className="text-white hover:text-indigo-400 font-black transition-colors ml-1"
+                            >
+                                {isLogin ? "Jetzt registrieren" : "Hier einloggen"}
+                            </button>
+                        </p>
+                    </div>
                 </div>
 
                 {/* Footer Credits */}

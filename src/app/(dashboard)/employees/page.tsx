@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useNotification } from "@/context/NotificationContext";
-import { useSync } from "@/context/SyncContext";
+import { useSWRConfig } from "swr";
 
 export default function EmployeesPage() {
     const { employees, addEmployee, updateEmployee, deleteEmployee, getNextEmployeeNumber, isLoading } = useEmployees();
@@ -62,6 +62,10 @@ export default function EmployeesPage() {
     // Preview States
     const [previewDoc, setPreviewDoc] = useState<EmployeeDocument | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    
+    // Refresh States
+    const { mutate: mutateAll } = useSWRConfig();
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const filteredEmployees = useMemo(() => {
         return employees.filter(emp => {
@@ -317,7 +321,11 @@ export default function EmployeesPage() {
         );
     }
 
-    const { status, triggerPull } = useSync();
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await mutateAll(() => true);
+        setIsRefreshing(false);
+    };
 
     return (
         <div className="flex-1 p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-screen">
@@ -371,12 +379,12 @@ export default function EmployeesPage() {
 
                     <div className="flex gap-2">
                         <button
-                            onClick={() => triggerPull()}
-                            disabled={status === 'syncing'}
+                            onClick={handleRefresh}
+                            disabled={isRefreshing}
                             className="bg-white text-slate-400 p-4 rounded-2xl border border-slate-100 shadow-sm hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-95 disabled:opacity-50"
                             title="Daten aus Cloud aktualisieren"
                         >
-                            <RefreshCcw className={cn("h-5 w-5", status === "syncing" && "animate-spin")} />
+                            <RefreshCcw className={cn("h-5 w-5", isRefreshing && "animate-spin")} />
                         </button>
 
                         {viewMode === 'list' && (

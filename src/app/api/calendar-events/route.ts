@@ -24,7 +24,9 @@ export async function GET(request: Request) {
         const { data: events, error } = await client
             .from('calendar_events')
             .select('*')
-            .eq('userId', userId);
+            .eq('userId', userId)
+            .order('startDate', { ascending: false })
+            .limit(500);
         
         if (error) {
             console.error('[Calendar API GET] Supabase Error:', error);

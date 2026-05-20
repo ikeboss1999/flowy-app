@@ -11,15 +11,18 @@ interface ServiceModalProps {
     onClose: () => void;
     onSave: (service: Service) => void;
     initialService?: Service;
+    folders?: string[];
 }
 
-export function ServiceModal({ isOpen, onClose, onSave, initialService }: ServiceModalProps) {
+export function ServiceModal({ isOpen, onClose, onSave, initialService, folders }: ServiceModalProps) {
     const [formData, setFormData] = useState({
         title: "",
         description: "",
         unit: "h" as InvoiceUnit,
         price: 0,
-        category: "Labor" as Service['category']
+        category: "Labor" as Service['category'],
+        itemType: "standard" as 'standard' | 'detailed',
+        folder: null as string | null
     });
 
     useEffect(() => {
@@ -29,7 +32,9 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService }: Servic
                 description: initialService.description || "",
                 unit: initialService.unit,
                 price: initialService.price,
-                category: initialService.category || "Labor"
+                category: initialService.category || "Labor",
+                itemType: initialService.itemType || "standard",
+                folder: initialService.folder || null
             });
         } else {
             setFormData({
@@ -37,7 +42,9 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService }: Servic
                 description: "",
                 unit: "h",
                 price: 0,
-                category: "Labor"
+                category: "Labor",
+                itemType: "standard",
+                folder: null
             });
         }
     }, [initialService, isOpen]);
@@ -173,28 +180,47 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService }: Servic
                         </div>
 
                         {formData.category === 'Position' && (
-                            <div>
-                                <label className={labelClasses}>Positionstyp</label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {[
-                                        { id: 'standard', label: 'Standard (1-zeilig)' },
-                                        { id: 'detailed', label: 'Detailliert (2-zeilig)' }
-                                    ].map((type) => (
-                                        <button
-                                            key={type.id}
-                                            type="button"
-                                            onClick={() => setFormData({ ...formData, itemType: type.id as any })}
-                                            className={cn(
-                                                "py-3 rounded-xl text-sm font-bold border transition-all",
-                                                (formData.itemType || 'standard') === type.id
-                                                    ? "bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm"
-                                                    : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
-                                            )}
-                                        >
-                                            {type.label}
-                                        </button>
-                                    ))}
+                            <div className="space-y-6">
+                                <div>
+                                    <label className={labelClasses}>Positionstyp</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {[
+                                            { id: 'standard', label: 'Standard (1-zeilig)' },
+                                            { id: 'detailed', label: 'Detailliert (2-zeilig)' }
+                                        ].map((type) => (
+                                            <button
+                                                key={type.id}
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, itemType: type.id as any })}
+                                                className={cn(
+                                                    "py-3 rounded-xl text-sm font-bold border transition-all",
+                                                    (formData.itemType || 'standard') === type.id
+                                                        ? "bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm"
+                                                        : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
+                                                )}
+                                            >
+                                                {type.label}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
+                                {folders && folders.length > 0 && (
+                                    <div>
+                                        <label className={labelClasses}>Ordner</label>
+                                        <select
+                                            value={formData.folder || ""}
+                                            onChange={(e) => setFormData({ ...formData, folder: e.target.value || null })}
+                                            className={inputClasses}
+                                        >
+                                            <option value="">Kein Ordner (Hauptverzeichnis)</option>
+                                            {folders.map((fName) => (
+                                                <option key={fName} value={fName}>
+                                                    {fName}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </form>

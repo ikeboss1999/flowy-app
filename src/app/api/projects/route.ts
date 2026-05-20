@@ -19,7 +19,9 @@ export async function GET(request: Request) {
         const { data: projects, error } = await client
             .from('projects')
             .select('*')
-            .eq('userId', userId);
+            .eq('userId', userId)
+            .order('createdAt', { ascending: false })
+            .limit(500);
         if (error) throw error;
         return NextResponse.json(projects);
     } catch (e) {

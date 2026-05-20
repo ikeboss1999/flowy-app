@@ -239,24 +239,41 @@ export function CalendarWidget({ isCompact = false }: { isCompact?: boolean }) {
         const dayEvents = events.filter(e => e.startDate === dStr);
 
         return (
-            <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm flex flex-col md:flex-row">
-                <div className="w-full md:w-64 bg-slate-50 border-r border-slate-200 p-8 flex flex-col gap-6">
-                    <div>
-                        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Ausgewählter Tag</p>
-                        <h4 className="text-4xl font-black text-slate-900">{selectedDate.getDate()}.</h4>
-                        <p className="text-lg font-bold text-slate-500">{monthNames[selectedDate.getMonth()]} {selectedDate.getFullYear()}</p>
+            <div className={cn(
+                "bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm flex",
+                isCompact ? "flex-col" : "flex-col md:flex-row"
+            )}>
+                <div className={cn(
+                    "bg-slate-50 p-6 flex flex-col gap-4",
+                    isCompact ? "w-full border-b border-slate-200" : "w-full md:w-64 border-r border-slate-200"
+                )}>
+                    <div className={cn("flex items-baseline gap-2", isCompact ? "justify-between" : "flex-col")}>
+                        <div>
+                            <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-0.5">Ausgewählter Tag</p>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-3xl font-black text-slate-900">{selectedDate.getDate()}.</span>
+                                <span className="text-sm font-bold text-slate-500">{monthNames[selectedDate.getMonth()]} {selectedDate.getFullYear()}</span>
+                            </div>
+                        </div>
+                        {isCompact && (
+                            <button onClick={() => handleAddEvent(dStr)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-100 flex items-center gap-1.5 hover:bg-indigo-700 transition-all">
+                                <Plus className="h-3.5 w-3.5" /> Neuer Termin
+                            </button>
+                        )}
                     </div>
                     {holiday && (
-                        <div className="bg-purple-100 p-4 rounded-2xl border border-purple-200">
-                            <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest mb-1">Feiertag</p>
-                            <p className="font-bold text-purple-900">{holiday.name}</p>
+                        <div className="bg-purple-100 p-3 rounded-xl border border-purple-200">
+                            <p className="text-[8px] font-black text-purple-600 uppercase tracking-widest mb-0.5">Feiertag</p>
+                            <p className="font-bold text-purple-900 text-xs">{holiday.name}</p>
                         </div>
                     )}
-                    <div className="mt-auto">
-                        <button onClick={() => handleAddEvent(dStr)} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all">
-                            <Plus className="h-4 w-4" /> Neuer Termin
-                        </button>
-                    </div>
+                    {!isCompact && (
+                        <div className="mt-auto">
+                            <button onClick={() => handleAddEvent(dStr)} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all">
+                                <Plus className="h-4 w-4" /> Neuer Termin
+                            </button>
+                        </div>
+                    )}
                 </div>
                 <div className="flex-1 p-8 max-h-[600px] overflow-y-auto custom-scrollbar">
                     {hours.map(h => {
@@ -309,69 +326,82 @@ export function CalendarWidget({ isCompact = false }: { isCompact?: boolean }) {
             isFullscreen ? "fixed inset-0 z-[100] bg-slate-50 p-10 overflow-y-auto" : ""
         )}>
             {/* Calendar Header Control Bar */}
-            <div className="bg-white p-4 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-                {/* Navigation & Title */}
-                <div className="flex items-center gap-6">
+            {isCompact ? (
+                <div className="bg-white p-4 rounded-[2rem] border border-slate-200 shadow-sm flex items-center justify-between gap-4">
+                    <h2 className="text-lg font-black text-slate-900 tracking-tight pl-2">
+                        {monthNames[viewDate.getMonth()]} <span className="text-indigo-600">{viewDate.getFullYear()}</span>
+                    </h2>
                     <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
-                        <button onClick={handlePrev} className="p-2 hover:bg-white hover:text-indigo-600 rounded-xl transition-all text-slate-500 shadow-none hover:shadow-sm"><ChevronLeft className="h-5 w-5" /></button>
-                        <button onClick={handleToday} className="px-4 py-2 hover:bg-white hover:text-indigo-600 rounded-xl transition-all text-xs font-black uppercase tracking-widest text-slate-500 shadow-none hover:shadow-sm">Heute</button>
-                        <button onClick={handleNext} className="p-2 hover:bg-white hover:text-indigo-600 rounded-xl transition-all text-slate-500 shadow-none hover:shadow-sm"><ChevronRight className="h-5 w-5" /></button>
-                    </div>
-                    <div className="hidden lg:block">
-                        <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                            {monthNames[viewDate.getMonth()]} <span className="text-indigo-600">{viewDate.getFullYear()}</span>
-                        </h2>
+                        <button onClick={handlePrev} className="p-2 hover:bg-white hover:text-indigo-600 rounded-xl transition-all text-slate-500 shadow-none"><ChevronLeft className="h-4 w-4" /></button>
+                        <button onClick={handleToday} className="px-3 py-1.5 hover:bg-white hover:text-indigo-600 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-none">Heute</button>
+                        <button onClick={handleNext} className="p-2 hover:bg-white hover:text-indigo-600 rounded-xl transition-all text-slate-500 shadow-none"><ChevronRight className="h-4 w-4" /></button>
                     </div>
                 </div>
+            ) : (
+                <div className="bg-white p-4 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+                    {/* Navigation & Title */}
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                            <button onClick={handlePrev} className="p-2 hover:bg-white hover:text-indigo-600 rounded-xl transition-all text-slate-500 shadow-none hover:shadow-sm"><ChevronLeft className="h-5 w-5" /></button>
+                            <button onClick={handleToday} className="px-4 py-2 hover:bg-white hover:text-indigo-600 rounded-xl transition-all text-xs font-black uppercase tracking-widest text-slate-500 shadow-none hover:shadow-sm">Heute</button>
+                            <button onClick={handleNext} className="p-2 hover:bg-white hover:text-indigo-600 rounded-xl transition-all text-slate-500 shadow-none hover:shadow-sm"><ChevronRight className="h-5 w-5" /></button>
+                        </div>
+                        <div className="hidden lg:block">
+                            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                                {monthNames[viewDate.getMonth()]} <span className="text-indigo-600">{viewDate.getFullYear()}</span>
+                            </h2>
+                        </div>
+                    </div>
 
-                {/* View Switcher (Segmented Control) */}
-                <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
-                    <button 
-                        onClick={() => setViewType('month')}
-                        className={cn(
-                            "px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2",
-                            viewType === 'month' ? "bg-white text-indigo-600 shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-700"
-                        )}
-                    >
-                        <LayoutGrid className="h-3.5 w-3.5" /> Monat
-                    </button>
-                    <button 
-                        onClick={() => setViewType('week')}
-                        className={cn(
-                            "px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2",
-                            viewType === 'week' ? "bg-white text-indigo-600 shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-700"
-                        )}
-                    >
-                        <CalendarDays className="h-3.5 w-3.5" /> Woche
-                    </button>
-                    <button 
-                        onClick={() => setViewType('day')}
-                        className={cn(
-                            "px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2",
-                            viewType === 'day' ? "bg-white text-indigo-600 shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-700"
-                        )}
-                    >
-                        <List className="h-3.5 w-3.5" /> Tag
-                    </button>
-                </div>
+                    {/* View Switcher (Segmented Control) */}
+                    <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                        <button 
+                            onClick={() => setViewType('month')}
+                            className={cn(
+                                "px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2",
+                                viewType === 'month' ? "bg-white text-indigo-600 shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-700"
+                            )}
+                        >
+                            <LayoutGrid className="h-3.5 w-3.5" /> Monat
+                        </button>
+                        <button 
+                            onClick={() => setViewType('week')}
+                            className={cn(
+                                "px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2",
+                                viewType === 'week' ? "bg-white text-indigo-600 shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-700"
+                            )}
+                        >
+                            <CalendarDays className="h-3.5 w-3.5" /> Woche
+                        </button>
+                        <button 
+                            onClick={() => setViewType('day')}
+                            className={cn(
+                                "px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2",
+                                viewType === 'day' ? "bg-white text-indigo-600 shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-700"
+                            )}
+                        >
+                            <List className="h-3.5 w-3.5" /> Tag
+                        </button>
+                    </div>
 
-                {/* Secondary Actions */}
-                <div className="flex items-center gap-3">
-                    <button 
-                        onClick={() => setIsFullscreen(!isFullscreen)} 
-                        className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
-                        title="Vollbild"
-                    >
-                        <Maximize2 className="h-5 w-5" />
-                    </button>
-                    <button 
-                        onClick={() => handleAddEvent()}
-                        className="flex items-center gap-2 px-8 py-3.5 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-700 hover:scale-[1.02] transition-all shadow-xl shadow-indigo-200 active:scale-95"
-                    >
-                        <Plus className="h-5 w-5" /> Neu
-                    </button>
+                    {/* Secondary Actions */}
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => setIsFullscreen(!isFullscreen)} 
+                            className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
+                            title="Vollbild"
+                        >
+                            <Maximize2 className="h-5 w-5" />
+                        </button>
+                        <button 
+                            onClick={() => handleAddEvent()}
+                            className="flex items-center gap-2 px-8 py-3.5 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-700 hover:scale-[1.02] transition-all shadow-xl shadow-indigo-200 active:scale-95"
+                        >
+                            <Plus className="h-5 w-5" /> Neu
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Main Content Area */}
             <div className="relative">

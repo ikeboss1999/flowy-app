@@ -99,10 +99,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginBottom: 3,
         fontSize: 9,
+        alignItems: 'flex-start',
     },
     infoLabelWide: {
         fontFamily: 'Helvetica-Bold',
-        width: 90,
+        width: 68,
         flexShrink: 0,
     },
     infoLabelShort: {
@@ -110,7 +111,9 @@ const styles = StyleSheet.create({
         width: 60,
         flexShrink: 0,
     },
-    infoVal: {},
+    infoVal: {
+        flex: 1,
+    },
     introText: {
         fontSize: 10,
         lineHeight: 1.55,

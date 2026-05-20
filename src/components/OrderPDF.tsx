@@ -97,7 +97,7 @@ export const OrderPDF = forwardRef<HTMLDivElement, OrderPDFProps>(({ order, cust
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10pt', marginBottom: '30px' }}>
                     <div style={{ width: '50%' }}>
                         <div style={{ display: 'flex', marginBottom: '4px' }}>
-                            <span style={{ fontWeight: 'bold', width: '135px', flexShrink: 0 }}>Baustelle:</span>
+                            <span style={{ fontWeight: 'bold', width: '105px', flexShrink: 0 }}>Baustelle:</span>
                             <span style={{ fontWeight: 'normal' }}>{order.constructionProject || customer?.address.street || '-'}</span>
                         </div>
                         {order.deliveryDate && (
@@ -108,7 +108,7 @@ export const OrderPDF = forwardRef<HTMLDivElement, OrderPDFProps>(({ order, cust
                         )}
                         {order.offerNumber && (
                             <div style={{ display: 'flex' }}>
-                                <span style={{ fontWeight: 'bold', width: '135px', flexShrink: 0 }}>Angebots-Ref:</span>
+                                <span style={{ fontWeight: 'bold', width: '105px', flexShrink: 0 }}>Angebots-Ref:</span>
                                 <span style={{ fontWeight: 'normal' }}>{order.offerNumber}</span>
                             </div>
                         )}

@@ -34,6 +34,9 @@ export async function POST(req: Request) {
         const tables = [
             'project_files', 
             'project_folders',
+            'archive_files',
+            'archive_folders',
+            'letters',
             'offers', 
             'order_confirmations',
             'order_confirmation',
@@ -51,6 +54,7 @@ export async function POST(req: Request) {
             'employees', 
             'vehicles', 
             'services', 
+            'service_folders',
             'einsaetze', 
             'project_photos', 
             'settings'
@@ -85,11 +89,11 @@ export async function POST(req: Request) {
                             if (subError) return;
 
                             const filesToDelete = subItems
-                                .filter(item => item.id !== undefined && item.metadata !== undefined)
+                                .filter(item => item.id !== null && item.id !== undefined)
                                 .map(item => `${path}/${item.name}`);
                             
                             const folders = subItems
-                                .filter(item => item.id === undefined || item.metadata === undefined)
+                                .filter(item => item.id === null || item.id === undefined)
                                 .map(item => item.name);
 
                             if (filesToDelete.length > 0) {

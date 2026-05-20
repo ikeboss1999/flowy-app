@@ -1,25 +1,17 @@
 "use client";
 
-import { useEffect } from 'react';
 import useSWR from 'swr';
 import { Employee } from '@/types/employee';
 import { useAuth } from '@/context/AuthContext';
-import { useSync } from '@/context/SyncContext';
 import { fetcher } from '@/lib/fetcher';
 
 export function useEmployees() {
     const { user, currentEmployee, refreshEmployee } = useAuth();
-    const { markDirty, lastSyncTime } = useSync();
 
     const activeUserId = user?.id || currentEmployee?.userId;
     const key = activeUserId ? `/api/employees?userId=${activeUserId}` : null;
 
     const { data = [], isLoading, mutate } = useSWR<Employee[]>(key, fetcher);
-
-    // Re-fetch after a cloud sync
-    useEffect(() => {
-        if (lastSyncTime) mutate();
-    }, [lastSyncTime]);
 
     const addEmployee = async (employee: Employee) => {
         const targetUserId = user?.id || currentEmployee?.userId;
@@ -36,7 +28,6 @@ export function useEmployees() {
                 const text = await response.text();
                 throw new Error(text || `HTTP ${response.status}`);
             }
-            markDirty();
         } catch (e) {
             console.error('Failed to add employee', e);
             mutate();
@@ -58,7 +49,6 @@ export function useEmployees() {
                 const text = await response.text();
                 throw new Error(text || `HTTP ${response.status}`);
             }
-            markDirty();
             if (currentEmployee?.id === id) refreshEmployee();
         } catch (e) {
             console.error('Failed to update employee', e);
@@ -85,7 +75,6 @@ export function useEmployees() {
                 const text = await response.text();
                 throw new Error(text || `HTTP ${response.status}`);
             }
-            markDirty();
             if (currentEmployee?.id === id) refreshEmployee();
             return { success: true };
         } catch (e) {
@@ -100,7 +89,6 @@ export function useEmployees() {
         mutate(data.filter(e => e.id !== id), false);
         try {
             await fetch(`/api/employees/${id}?userId=${activeUserId}`, { method: 'DELETE' });
-            markDirty();
         } catch (e) {
             console.error('Failed to delete employee', e);
             mutate();

@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils";
 import { useAccountSettings } from "@/hooks/useAccountSettings";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/context/AuthContext";
-import { useSync } from "@/context/SyncContext";
 
 type Step = "pin" | "username" | "company" | "bank" | "logo" | "success";
 
@@ -28,7 +27,6 @@ export default function OnboardingPage() {
     const { user, signOut } = useAuth(); // Get user and signOut
     const { data: accountSettings, updateSettings: updateAccount, isLoading: isAccountLoading } = useAccountSettings();
     const { data: companySettings, updateData: updateCompany, isLoading: isCompanyLoading } = useCompanySettings();
-    const { triggerSync } = useSync();
 
     const [currentStep, setCurrentStep] = useState<Step>("pin");
     const [isInitialized, setIsInitialized] = useState(false);
@@ -141,8 +139,6 @@ export default function OnboardingPage() {
                 if (error) console.error("Failed to sync onboarding status to cloud:", error);
                 else console.log("Onboarding status synced to cloud.");
 
-                // FINAL BLOCKING SYNC: Ensure all data is up there before proceeding
-                await triggerSync({ blocking: true });
             }
 
             router.push("/");
@@ -482,8 +478,6 @@ export default function OnboardingPage() {
                                             await supabase.auth.updateUser({
                                                 data: { onboarding_completed: true }
                                             });
-                                            // Final sync
-                                            await triggerSync({ blocking: true });
                                         }
 
                                         router.push("/projects");

@@ -3,12 +3,10 @@
 import useSWR from 'swr';
 import { Customer } from '@/types/customer';
 import { useAuth } from '@/context/AuthContext';
-import { useSync } from '@/context/SyncContext';
 import { fetcher } from '@/lib/fetcher';
 
 export function useCustomers() {
     const { user } = useAuth();
-    const { markDirty } = useSync();
 
     const key = user ? `/api/customers?userId=${user.id}` : null;
     const { data = [], isLoading, mutate } = useSWR<Customer[]>(key, fetcher);
@@ -23,7 +21,6 @@ export function useCustomers() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newCustomer)
             });
-            markDirty();
         } catch (e) {
             console.error("Failed to add customer", e);
             mutate();
@@ -40,7 +37,6 @@ export function useCustomers() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updated)
             });
-            markDirty();
         } catch (e) {
             console.error("Failed to update customer", e);
             mutate();
@@ -51,7 +47,6 @@ export function useCustomers() {
         mutate(data.filter(c => c.id !== id), false);
         try {
             await fetch(`/api/customers?id=${id}`, { method: 'DELETE' });
-            markDirty();
         } catch (e) {
             console.error("Failed to delete customer", e);
             mutate();

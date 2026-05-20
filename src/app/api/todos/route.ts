@@ -19,7 +19,9 @@ export async function GET(request: Request) {
         const { data: todos, error } = await client
             .from('todos')
             .select('*')
-            .eq('userId', userId);
+            .eq('userId', userId)
+            .order('createdAt', { ascending: false })
+            .limit(200);
         if (error) throw error;
         return NextResponse.json(todos);
     } catch (e) {

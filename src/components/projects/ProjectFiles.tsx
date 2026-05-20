@@ -16,11 +16,13 @@ import {
     Plus,
     Edit2,
     ArrowRightLeft,
+    Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjectFiles } from "@/hooks/useProjectFiles";
 import { useProjectFolders } from "@/hooks/useProjectFolders";
 import { ProjectFile, FileFolder } from "@/types/project_file";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const ACCEPT_ALL = '.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,image/jpeg,image/png,image/gif,image/webp';
 
@@ -40,9 +42,10 @@ function getFileIcon(mimeType?: string): React.ElementType {
 
 interface ProjectFilesProps {
     projectId: string;
+    title?: string;
 }
 
-export function ProjectFiles({ projectId }: ProjectFilesProps) {
+export function ProjectFiles({ projectId, title }: ProjectFilesProps) {
     const { files, isLoading: isLoadingFiles, uploadFile, deleteFile, getSignedUrl, updateFile } = useProjectFiles(projectId);
     const { folders, isLoading: isLoadingFolders, addFolder, renameFolder, deleteFolder } = useProjectFolders(projectId);
 
@@ -55,7 +58,20 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
     // Modal States
     const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
+    const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
+    const [newFileName, setNewFileName] = useState('');
     const [movingFile, setMovingFile] = useState<ProjectFile | null>(null);
+    const [confirmDialog, setConfirmDialog] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => {}
+    });
 
     // Signed URL cache
     const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
@@ -122,26 +138,32 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
         }
     };
 
-    const handleDeleteFolderUI = async (folderName: string) => {
+    const handleDeleteFolderUI = (folderName: string) => {
         const folderFiles = files.filter(f => f.folder === folderName);
         const msg = folderFiles.length > 0 
             ? `Ordner "${folderName}" und alle ${folderFiles.length} Dateien darin wirklich löschen?`
             : `Leeren Ordner "${folderName}" wirklich löschen?`;
             
-        if (!confirm(msg)) return;
-
-        try {
-            // Delete folder record if it exists
-            const folderRecord = folders.find(f => f.name === folderName);
-            if (folderRecord) await deleteFolder(folderRecord.id);
-            
-            // Delete all files in that folder
-            await Promise.all(folderFiles.map(f => deleteFile(f.id)));
-            
-            if (selectedFolder === folderName) setSelectedFolder(null);
-        } catch (e) {
-            setUploadError('Fehler beim Löschen des Ordners.');
-        }
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Ordner löschen',
+            message: msg,
+            onConfirm: async () => {
+                setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                try {
+                    // Delete folder record if it exists
+                    const folderRecord = folders.find(f => f.name === folderName);
+                    if (folderRecord) await deleteFolder(folderRecord.id);
+                    
+                    // Delete all files in that folder
+                    await Promise.all(folderFiles.map(f => deleteFile(f.id)));
+                    
+                    if (selectedFolder === folderName) setSelectedFolder(null);
+                } catch (e) {
+                    setUploadError('Fehler beim Löschen des Ordners.');
+                }
+            }
+        });
     };
 
     const handleMoveFile = async (file: ProjectFile, targetFolder: string) => {
@@ -186,14 +208,34 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
         setUploading(false);
     }, [selectedFolder, uploadFile]);
 
-    const handleDelete = async (file: ProjectFile) => {
-        if (!confirm(`"${file.name}" wirklich löschen?`)) return;
-        setDeletingId(file.id);
-        try {
-            await deleteFile(file.id);
-        } finally {
-            setDeletingId(null);
+    const handleRenameFile = async (fileId: string) => {
+        if (!newFileName.trim()) {
+            setRenamingFileId(null);
+            return;
         }
+        try {
+            await updateFile(fileId, { name: newFileName.trim() });
+            setRenamingFileId(null);
+        } catch (e) {
+            setUploadError('Fehler beim Umbenennen der Datei.');
+        }
+    };
+
+    const handleDelete = (file: ProjectFile) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Datei löschen',
+            message: `"${file.name}" wirklich löschen?`,
+            onConfirm: async () => {
+                setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                setDeletingId(file.id);
+                try {
+                    await deleteFile(file.id);
+                } finally {
+                    setDeletingId(null);
+                }
+            }
+        });
     };
 
     // ─── Render ──────────────────────────────────────────────────────────────
@@ -213,7 +255,7 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
                 <div className="flex justify-between items-center">
                     <h3 className="font-black text-slate-900 flex items-center gap-2">
                         <FolderOpen className="h-5 w-5 text-indigo-500" />
-                        Projekt-Ordner
+                        {title || "Projekt-Ordner"}
                     </h3>
                     <button
                         onClick={() => setIsCreateFolderModalOpen(true)}
@@ -268,6 +310,17 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
                         </div>
                     </div>
                 )}
+
+                <ConfirmDialog 
+                    isOpen={confirmDialog.isOpen}
+                    title={confirmDialog.title}
+                    message={confirmDialog.message}
+                    confirmLabel="Löschen"
+                    cancelLabel="Abbrechen"
+                    variant="danger"
+                    onConfirm={confirmDialog.onConfirm}
+                    onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+                />
             </div>
         );
     }
@@ -322,11 +375,27 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
                                 {isImage && signedUrls[file.id] ? <img src={signedUrls[file.id]} alt={file.name} className="w-full h-full object-cover" /> : <IconComp className="h-10 w-10 text-slate-300" />}
                             </div>
                             <div className="p-3">
-                                <p className="text-xs font-bold text-slate-700 truncate mb-1" title={file.name}>{file.name}</p>
+                                {renamingFileId === file.id ? (
+                                    <div className="flex items-center gap-1 mb-1">
+                                        <input
+                                            autoFocus
+                                            type="text"
+                                            value={newFileName}
+                                            onChange={e => setNewFileName(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && handleRenameFile(file.id)}
+                                            className="w-full text-xs font-bold text-slate-700 bg-white border border-indigo-200 rounded px-1.5 py-0.5 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                        />
+                                        <button onClick={() => handleRenameFile(file.id)} className="p-1 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100 transition-colors"><Check className="h-3 w-3" /></button>
+                                        <button onClick={() => setRenamingFileId(null)} className="p-1 bg-slate-50 text-slate-400 rounded hover:bg-slate-100 transition-colors"><X className="h-3 w-3" /></button>
+                                    </div>
+                                ) : (
+                                    <p className="text-xs font-bold text-slate-700 truncate mb-1 cursor-text" title={file.name} onDoubleClick={() => { setRenamingFileId(file.id); setNewFileName(file.name); }}>{file.name}</p>
+                                )}
                                 <div className="flex gap-1">
-                                    <button onClick={() => setMovingFile(file)} className="flex-1 p-1.5 bg-slate-50 hover:bg-indigo-50 text-slate-400 rounded-lg border border-slate-100"><ArrowRightLeft className="h-3 w-3 mx-auto" /></button>
-                                    <button onClick={() => resolveAndOpen(file)} className="flex-1 p-1.5 bg-slate-50 hover:bg-indigo-50 text-slate-400 rounded-lg border border-slate-100"><Download className="h-3 w-3 mx-auto" /></button>
-                                    <button onClick={() => handleDelete(file)} className="p-1.5 bg-slate-50 hover:bg-rose-50 text-slate-300 rounded-lg border border-slate-100">{isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}</button>
+                                    <button onClick={() => setMovingFile(file)} className="flex-1 p-1.5 bg-slate-50 hover:bg-indigo-50 text-slate-400 rounded-lg border border-slate-100 transition-colors"><ArrowRightLeft className="h-3 w-3 mx-auto" /></button>
+                                    <button onClick={() => resolveAndOpen(file)} className="flex-1 p-1.5 bg-slate-50 hover:bg-indigo-50 text-slate-400 rounded-lg border border-slate-100 transition-colors"><Download className="h-3 w-3 mx-auto" /></button>
+                                    <button onClick={() => { setRenamingFileId(file.id); setNewFileName(file.name); }} className="flex-1 p-1.5 bg-slate-50 hover:bg-indigo-50 text-slate-400 rounded-lg border border-slate-100 transition-colors"><Edit2 className="h-3 w-3 mx-auto" /></button>
+                                    <button onClick={() => handleDelete(file)} className="p-1.5 bg-slate-50 hover:bg-rose-50 text-slate-300 rounded-lg border border-slate-100 transition-colors">{isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}</button>
                                 </div>
                             </div>
                         </div>
@@ -351,6 +420,17 @@ export function ProjectFiles({ projectId }: ProjectFilesProps) {
             )}
 
             {lightboxUrl && <div className="fixed inset-0 z-[400] bg-black/90 flex items-center justify-center p-4" onClick={() => setLightboxUrl(null)}><img src={lightboxUrl} alt="Vorschau" className="max-w-full max-h-full rounded-lg object-contain" /></div>}
+
+            <ConfirmDialog 
+                isOpen={confirmDialog.isOpen}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                confirmLabel="Löschen"
+                cancelLabel="Abbrechen"
+                variant="danger"
+                onConfirm={confirmDialog.onConfirm}
+                onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+            />
         </div>
     );
 }

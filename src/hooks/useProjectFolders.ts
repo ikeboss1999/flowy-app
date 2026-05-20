@@ -2,7 +2,6 @@
 
 import useSWR from 'swr';
 import { useAuth } from '@/context/AuthContext';
-import { useSync } from '@/context/SyncContext';
 import { fetcher } from '@/lib/fetcher';
 
 export interface ProjectFolder {
@@ -16,7 +15,6 @@ export interface ProjectFolder {
 
 export function useProjectFolders(projectId: string) {
     const { user, currentEmployee } = useAuth();
-    const { markDirty } = useSync();
 
     const activeUserId = user?.id || currentEmployee?.userId;
     const key = activeUserId && projectId ? `/api/project-folders?projectId=${projectId}` : null;
@@ -32,7 +30,6 @@ export function useProjectFolders(projectId: string) {
         if (!res.ok) throw new Error('Failed to create folder');
         const newFolder = await res.json();
         await mutate();
-        markDirty();
         return newFolder;
     };
 
@@ -44,7 +41,6 @@ export function useProjectFolders(projectId: string) {
         });
         if (!res.ok) throw new Error('Failed to rename folder');
         await mutate();
-        markDirty();
     };
 
     const deleteFolder = async (id: string): Promise<void> => {
@@ -53,7 +49,6 @@ export function useProjectFolders(projectId: string) {
         });
         if (!res.ok) throw new Error('Failed to delete folder');
         await mutate();
-        markDirty();
     };
 
     return { folders, isLoading, addFolder, renameFolder, deleteFolder };

@@ -8,8 +8,6 @@ export function useDevice() {
     const [isTouchDevice, setIsTouchDevice] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [isDesktop, setIsDesktop] = useState(false);
-    const isElectron = false;
-
     useEffect(() => {
         const checkDevice = () => {
             const ua = window.navigator.userAgent.toLowerCase();
@@ -32,11 +30,20 @@ export function useDevice() {
             setIsDesktop(!isMobileCheck && !isIPadCheck);
         };
 
-        checkDevice();
-        window.addEventListener('resize', checkDevice);
+        let debounceTimer: ReturnType<typeof setTimeout>;
+        const debouncedCheck = () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(checkDevice, 150);
+        };
 
-        return () => window.removeEventListener('resize', checkDevice);
+        checkDevice();
+        window.addEventListener('resize', debouncedCheck);
+
+        return () => {
+            window.removeEventListener('resize', debouncedCheck);
+            clearTimeout(debounceTimer);
+        };
     }, []);
 
-    return { isIPhone, isIPad, isTouchDevice, isMobile, isDesktop, isElectron };
+    return { isIPhone, isIPad, isTouchDevice, isMobile, isDesktop };
 }

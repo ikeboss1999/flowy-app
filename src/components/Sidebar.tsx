@@ -23,12 +23,14 @@ import {
     Megaphone,
     FileSignature,
     BookOpen,
-    CalendarDays
+    CalendarDays,
+    Mail,
+    FolderOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/context/AuthContext";
-import { useSync } from "@/context/SyncContext";
+import { useSWRConfig } from "swr";
 import { Cloud, CheckCircle2, RefreshCcw, Menu, X } from "lucide-react";
 import { useDevice } from "@/hooks/useDevice";
 import { useEffect } from "react";
@@ -116,6 +118,13 @@ const menuGroups: MenuGroup[] = [
         ]
     },
     {
+        title: "Büro & Archiv",
+        items: [
+            { icon: Mail, label: "Briefe", href: "/letters" },
+            { icon: FolderOpen, label: "Dokumenten-Archiv", href: "/archive" },
+        ]
+    },
+    {
         title: "System",
         items: [
             { icon: Shield, label: "Admin Bereich", href: "/admin", adminOnly: true },
@@ -128,8 +137,15 @@ const menuGroups: MenuGroup[] = [
 export function Sidebar() {
     const path = usePathname();
     const { signOut, currentEmployee, logoutEmployee } = useAuth();
-    const { status, triggerSync, triggerPull } = useSync();
+    const { mutate: mutateAll } = useSWRConfig();
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const { isIPad, isTouchDevice } = useDevice();
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await mutateAll(() => true);
+        setIsRefreshing(false);
+    };
     const [isOpen, setIsOpen] = useState(false);
 
     // Close sidebar on path change (for mobile/iPad drawer)
@@ -141,9 +157,6 @@ export function Sidebar() {
 
     const handleLogout = async () => {
         try {
-            if (status === 'pending' || status === 'error') {
-                await triggerSync({ blocking: true });
-            }
             // DATA PERSISTENCE: We no longer wipe local data on logout.
             // This allows for offline access and faster loading upon re-login.
         } catch (e) {
@@ -269,35 +282,28 @@ export function Sidebar() {
                             Professional
                         </span>
 
-                        {/* Sync Status Indicator (Clickable Cloud Pull) */}
+                        {/* Cloud Refresh Button */}
                         <button
-                            onClick={() => status !== 'syncing' && triggerPull()}
-                            disabled={status === 'syncing'}
-                            title="Cloud-Daten jetzt abrufen"
+                            onClick={handleRefresh}
+                            disabled={isRefreshing}
+                            title="Daten aus Cloud aktualisieren"
                             className={cn(
                                 "mt-4 flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-300 active:scale-95 disabled:opacity-50",
-                                status === 'idle' && "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20",
-                                status === 'syncing' && "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30",
-                                status === 'pending' && "bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20",
-                                status === 'error' && "bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20"
+                                isRefreshing
+                                    ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                    : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
                             )}
                         >
-                            {status === 'idle' && <CheckCircle2 className="h-3 w-3" />}
-                            {status === 'syncing' && <RefreshCcw className="h-3 w-3 animate-spin" />}
-                            {(status === 'pending' || status === 'error') && <Cloud className="h-3 w-3" />}
-                            <span>
-                                {status === 'idle' && "Cloud Synchron"}
-                                {status === 'syncing' && "Wird gesichert..."}
-                                {status === 'pending' && "Wartet auf Sync"}
-                                {status === 'error' && "Sync Fehler"}
-                            </span>
+                            {isRefreshing
+                                ? <RefreshCcw className="h-3 w-3 animate-spin" />
+                                : <CheckCircle2 className="h-3 w-3" />}
+                            <span>{isRefreshing ? "Wird geladen..." : "Cloud Synchron"}</span>
                         </button>
                     </div>
                 </div>
 
                 <nav className="flex-1 space-y-8">
                     {menuGroups.map((group) => {
-                        // Filter items based on isWeb/isElectron
                         const filteredItems = group.items.filter(item => {
                             // Home/Welcome is now always allowed if the user wants it back
                             return true;

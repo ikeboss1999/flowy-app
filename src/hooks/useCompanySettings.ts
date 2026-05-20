@@ -3,7 +3,6 @@
 import useSWR from 'swr';
 import { useAuth } from '@/context/AuthContext';
 import { CompanyData } from '@/types/company';
-import { useSync } from '@/context/SyncContext';
 import { fetcher } from '@/lib/fetcher';
 
 const initialData: CompanyData = {
@@ -28,7 +27,6 @@ const initialData: CompanyData = {
 
 export function useCompanySettings() {
     const { user, currentEmployee } = useAuth();
-    const { markDirty } = useSync();
 
     const activeUserId = user?.id || currentEmployee?.userId;
     const key = activeUserId ? `/api/settings?userId=${activeUserId}` : null;
@@ -48,7 +46,6 @@ export function useCompanySettings() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: targetUserId, type: 'company', data: updated })
             });
-            markDirty();
         } catch (e) {
             console.error('Failed to update company settings', e);
             mutate();

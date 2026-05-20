@@ -4,6 +4,7 @@ const packageJson = require('./package.json');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    transpilePackages: ['@react-pdf/renderer'],
     env: {
         NEXT_PUBLIC_APP_VERSION: packageJson.version,
         NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,

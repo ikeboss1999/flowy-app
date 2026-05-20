@@ -2,7 +2,6 @@
 
 import useSWR from 'swr';
 import { useAuth } from '@/context/AuthContext';
-import { useSync } from '@/context/SyncContext';
 import { fetcher } from '@/lib/fetcher';
 
 export interface AccountSettings {
@@ -18,7 +17,6 @@ const DEFAULT_SETTINGS: AccountSettings = {
 
 export function useAccountSettings() {
     const { user } = useAuth();
-    const { markDirty } = useSync();
 
     const key = user ? `/api/settings?userId=${user.id}` : null;
     const { data: allSettings, isLoading, error, mutate } = useSWR(key, fetcher);
@@ -37,7 +35,6 @@ export function useAccountSettings() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, type: 'account', data: updated })
             });
-            markDirty();
         } catch (e) {
             console.error('Failed to update account settings', e);
             mutate();

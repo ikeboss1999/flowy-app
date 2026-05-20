@@ -3,12 +3,10 @@
 import useSWR from 'swr';
 import { CalendarEvent } from '@/types/calendar';
 import { useAuth } from '@/context/AuthContext';
-import { useSync } from '@/context/SyncContext';
 import { fetcher } from '@/lib/fetcher';
 
 export function useCalendarEvents() {
     const { user } = useAuth();
-    const { markDirty } = useSync();
 
     const key = user ? `/api/calendar-events?userId=${user.id}` : null;
     const { data = [], isLoading, mutate } = useSWR<CalendarEvent[]>(key, fetcher);
@@ -28,7 +26,6 @@ export function useCalendarEvents() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, event: newEvent })
             });
-            markDirty();
         } catch (e) {
             console.error(e);
             mutate();
@@ -47,7 +44,6 @@ export function useCalendarEvents() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, event: updatedEvent })
             });
-            markDirty();
         } catch (e) {
             console.error(e);
             mutate();
@@ -59,7 +55,6 @@ export function useCalendarEvents() {
         mutate(data.filter(e => e.id !== id), false);
         try {
             await fetch(`/api/calendar-events?id=${id}`, { method: 'DELETE' });
-            markDirty();
         } catch (e) {
             console.error(e);
             mutate();

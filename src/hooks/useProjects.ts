@@ -3,13 +3,11 @@
 import useSWR from 'swr';
 import { Project } from "@/types/project";
 import { useAuth } from "@/context/AuthContext";
-import { useSync } from "@/context/SyncContext";
 import { fetcher } from '@/lib/fetcher';
 import { useProjectSettings } from './useProjectSettings';
 
 export function useProjects() {
     const { user, currentEmployee } = useAuth();
-    const { markDirty } = useSync();
     const { data: projectSettings, updateData: updateProjectSettings } = useProjectSettings();
 
     const activeUserId = user?.id || currentEmployee?.userId;
@@ -28,7 +26,6 @@ export function useProjects() {
                 body: JSON.stringify(newProject)
             });
             await updateProjectSettings({ nextProjectNumber: projectSettings.nextProjectNumber + 1 });
-            markDirty();
         } catch (e) {
             console.error("Failed to add project", e);
             mutate();
@@ -47,7 +44,6 @@ export function useProjects() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updated)
             });
-            markDirty();
         } catch (e) {
             console.error("Failed to update project", e);
             mutate();
@@ -59,7 +55,6 @@ export function useProjects() {
         mutate(data.filter(p => p.id !== id), false);
         try {
             await fetch(`/api/projects?id=${id}`, { method: 'DELETE' });
-            markDirty();
         } catch (e) {
             console.error("Failed to delete project", e);
             mutate();

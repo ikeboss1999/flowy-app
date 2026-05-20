@@ -137,6 +137,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedPresetIds, setSavedPresetIds] = useState<string[]>([]);
   const { showToast } = useNotification();
 
   const isLoading =
@@ -441,6 +442,11 @@ export function OfferForm({ initialData }: OfferFormProps) {
     });
     
     showToast("Position als Vorlage gespeichert!", "success");
+    
+    setSavedPresetIds(prev => [...prev, item.id]);
+    setTimeout(() => {
+      setSavedPresetIds(prev => prev.filter(id => id !== item.id));
+    }, 2000);
   };
 
   const sensors = useSensors(
@@ -831,10 +837,15 @@ export function OfferForm({ initialData }: OfferFormProps) {
                                     <button
                                       type="button"
                                       onClick={() => handleSaveAsPreset(item)}
-                                      className="mt-0.5 h-11 w-11 shrink-0 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all border border-slate-100"
+                                      className={cn(
+                                        "mt-0.5 h-11 w-11 shrink-0 flex items-center justify-center rounded-xl transition-all border",
+                                        savedPresetIds.includes(item.id)
+                                          ? "bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-500/20"
+                                          : "bg-slate-50 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 border-slate-100"
+                                      )}
                                       title="Als Vorlage speichern"
                                     >
-                                      <Bookmark className="h-5 w-5" />
+                                      {savedPresetIds.includes(item.id) ? <CheckCircle2 className="h-5 w-5 animate-in zoom-in" /> : <Bookmark className="h-5 w-5" />}
                                     </button>
                                   </div>
                                 </>

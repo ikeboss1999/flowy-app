@@ -5,6 +5,7 @@ import { X, Calendar as CalendarIcon, Clock, Type, AlignLeft, Trash2 } from 'luc
 import { cn } from '@/lib/utils';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface EventModalProps {
     isOpen: boolean;
@@ -35,6 +36,7 @@ export function EventModal({
     const [startTime, setStartTime] = useState(editingEvent?.startTime || initialStartTime || "");
     const [endTime, setEndTime] = useState(editingEvent?.endTime || initialEndTime || "");
     const [type, setType] = useState<CalendarEventType>(editingEvent?.type || "work");
+    const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; onConfirm: () => void }>({ isOpen: false, onConfirm: () => {} });
 
     // Helper: Add 1.5 hours to a HH:mm string
     const calculateDefaultEndTime = (start: string) => {
@@ -199,10 +201,14 @@ export function EventModal({
                             <button
                                 type="button"
                                 onClick={() => {
-                                    if (confirm("Möchten Sie diesen Termin wirklich löschen?")) {
-                                        onDeleteEvent(editingEvent.id);
-                                        onClose();
-                                    }
+                                    setConfirmDialog({
+                                        isOpen: true,
+                                        onConfirm: () => {
+                                            setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                                            onDeleteEvent(editingEvent.id);
+                                            onClose();
+                                        }
+                                    });
                                 }}
                                 className="p-5 border-2 border-rose-100 text-rose-500 rounded-2xl hover:bg-rose-50 transition-all"
                                 title="Termin löschen"
@@ -226,6 +232,17 @@ export function EventModal({
                     </div>
                 </form>
             </div>
+
+            <ConfirmDialog 
+                isOpen={confirmDialog.isOpen}
+                title="Termin löschen"
+                message="Möchten Sie diesen Termin wirklich löschen?"
+                confirmLabel="Löschen"
+                cancelLabel="Abbrechen"
+                variant="danger"
+                onConfirm={confirmDialog.onConfirm}
+                onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+            />
         </div>
     );
 }

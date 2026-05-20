@@ -18,7 +18,9 @@ export async function GET(request: Request) {
         const { data: employees, error } = await client
             .from('employees')
             .select('*')
-            .eq('userId', userId);
+            .eq('userId', userId)
+            .order('createdAt', { ascending: false })
+            .limit(200);
         if (error) throw error;
         return NextResponse.json(employees);
     } catch (error) {

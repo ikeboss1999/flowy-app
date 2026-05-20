@@ -2,51 +2,39 @@
 
 import React, { useState, useMemo } from 'react';
 import {
-    BarChart3,
-    Users,
     FileText,
     FileSignature,
     TrendingUp,
     Plus,
-    CheckCircle2,
     Calendar as CalendarIcon,
     ArrowUpRight,
-    ArrowDownRight,
-    Clock,
-    MoreVertical,
     Eye,
     AlertCircle,
-    Trash2,
-    ChevronUp,
-    ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext';
 import { useInvoices } from '@/hooks/useInvoices';
-import { useOffers } from '@/hooks/useOffers';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useTodos } from '@/hooks/useTodos';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useAccountSettings } from '@/hooks/useAccountSettings';
+import { useDashboardSummary } from '@/hooks/useDashboardSummary';
 import { Invoice } from '@/types/invoice';
-import { Customer } from '@/types/customer';
 import { InvoicePreviewModal } from '@/components/InvoicePreviewModal';
 import { CalendarWidget } from '@/components/CalendarWidget';
 
 export default function DashboardPage() {
-    const { user } = useAuth();
-    const { invoices, updateInvoice, isLoading } = useInvoices();
-    const { offers } = useOffers();
+    const currentYear = new Date().getFullYear();
+    const { invoices, isLoading } = useInvoices();
     const { customers } = useCustomers();
     const { todos, addTodo, toggleTodo, deleteTodo } = useTodos();
     const { data: companySettings } = useCompanySettings();
     const { data: accountSettings } = useAccountSettings();
+    const { summary } = useDashboardSummary();
     const [newTodo, setNewTodo] = useState("");
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [isTodoMinimized, setIsTodoMinimized] = useState(false);
 
-    // Load minimized state from localStorage on mount
     React.useEffect(() => {
         try {
             const savedState = localStorage.getItem('flowy_todo_minimized');
@@ -68,60 +56,12 @@ export default function DashboardPage() {
         }
     };
 
-    // Sorting State
-    const [sortBy, setSortBy] = useState<string>("number");
-    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-
-
-    const currentYear = new Date().getFullYear();
-
-    const stats = useMemo(() => {
-        const currentYearInvoices = invoices.filter(inv => {
-            const invYear = new Date(inv.issueDate).getFullYear();
-            return invYear === currentYear;
-        });
-
-        const totalRevenue = currentYearInvoices.reduce((sum, inv) => inv.status === 'paid' ? sum + inv.totalAmount : sum, 0);
-        const openInvoicesCount = currentYearInvoices.filter(inv => inv.status === 'pending' || inv.status === 'overdue').length;
-        
-        // FIX: Nur Rechnungen addieren, die wirklich offen oder fällig sind (nicht Entwürfe oder Stornierte)
-        const openAmount = currentYearInvoices
-            .filter(inv => inv.status === 'pending' || inv.status === 'overdue')
-            .reduce((sum, inv) => sum + inv.totalAmount, 0);
-
-        const currentYearOffers = offers.filter(o => new Date(o.issueDate).getFullYear() === currentYear);
-        const openOffersCount = currentYearOffers.filter(o => o.status === 'sent').length;
-        const openOffersAmount = currentYearOffers.filter(o => o.status === 'sent').reduce((sum, o) => sum + o.totalAmount, 0);
-
-        return { totalRevenue, openInvoicesCount, openAmount, openOffersCount, openOffersAmount };
-    }, [invoices, offers, currentYear]);
-
     const sortedInvoices = useMemo(() => {
-        const currentYearInvoices = invoices.filter(inv => {
-            const invYear = new Date(inv.issueDate).getFullYear();
-            return invYear === currentYear;
-        });
-
-        return [...currentYearInvoices].sort((a, b) => {
-            let comparison = 0;
-            switch (sortBy) {
-                case 'number':
-                    comparison = (a.invoiceNumber || "").localeCompare(b.invoiceNumber || "", undefined, { numeric: true });
-                    break;
-                case 'customer':
-                    comparison = (a.customerName || "").localeCompare(b.customerName || "");
-                    break;
-                case 'amount':
-                    comparison = (a.totalAmount || 0) - (b.totalAmount || 0);
-                    break;
-                case 'date':
-                default:
-                    comparison = new Date(a.issueDate || 0).getTime() - new Date(b.issueDate || 0).getTime();
-                    break;
-            }
-            return sortOrder === 'asc' ? comparison : -comparison;
-        });
-    }, [invoices, currentYear, sortBy, sortOrder]);
+        const year = new Date().getFullYear();
+        return [...invoices]
+            .filter(inv => new Date(inv.issueDate).getFullYear() === year)
+            .sort((a, b) => (a.invoiceNumber || "").localeCompare(b.invoiceNumber || "", undefined, { numeric: true }));
+    }, [invoices]);
 
     const handleAddTodo = (e: React.FormEvent) => {
         e.preventDefault();
@@ -130,8 +70,12 @@ export default function DashboardPage() {
         setNewTodo("");
     };
 
-    const handleDownload = (invoice: Invoice) => {
-        setSelectedInvoice(invoice);
+    const stats = {
+        totalRevenue: summary?.totalRevenue ?? 0,
+        openAmount: summary?.openAmount ?? 0,
+        openInvoicesCount: summary?.openInvoicesCount ?? 0,
+        openOffersCount: summary?.openOffersCount ?? 0,
+        openOffersAmount: summary?.openOffersAmount ?? 0,
     };
 
     return (
@@ -171,8 +115,8 @@ export default function DashboardPage() {
                 ].map((stat, i) => {
                     const CardWrapper = stat.href ? Link : 'div';
                     return (
-                        <CardWrapper 
-                            key={i} 
+                        <CardWrapper
+                            key={i}
                             href={stat.href || "#"}
                             className={cn(
                                 "p-8 rounded-[3rem] border transition-all duration-500 group relative overflow-hidden block",
@@ -192,10 +136,10 @@ export default function DashboardPage() {
                                     {stat.href && <ArrowUpRight className="h-3 w-3 ml-1 inline-block opacity-0 group-hover:opacity-100 transition-all" />}
                                 </div>
                             </div>
-                            
+
                             <div className="relative z-10">
                                 <h4 className="text-3xl font-black tracking-tight mb-2">
-                                    {typeof stat.value === 'number' ? stat.value.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) : stat.value + (stat.unit || "")}
+                                    {stat.value.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
                                 </h4>
                                 <p className={cn("text-[11px] font-bold", stat.dark ? "text-white/40" : "text-slate-400")}>{stat.sub}</p>
                             </div>
@@ -205,9 +149,9 @@ export default function DashboardPage() {
             </div>
 
             {/* Main Content Area - 2:1 Split */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-12 items-start">
+            <div className="grid grid-cols-1 2xl:grid-cols-12 gap-12 items-start">
                 {/* Recent Invoices - Left (8/12 = 2/3) */}
-                <div className="xl:col-span-8 space-y-8">
+                <div className="2xl:col-span-8 space-y-8">
                     <div className="flex items-center justify-between px-4">
                         <div className="flex items-center gap-4">
                             <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500">
@@ -216,26 +160,14 @@ export default function DashboardPage() {
                             <h3 className="text-2xl font-black text-slate-900 tracking-tight">Letzte Rechnungen</h3>
                         </div>
                         <div className="flex items-center gap-6">
-                            <select
-                                value={`${sortBy}-${sortOrder}`}
-                                onChange={(e) => {
-                                    const [key, order] = e.target.value.split('-');
-                                    setSortBy(key);
-                                    setSortOrder(order as "asc" | "desc");
-                                }}
-                                className="bg-slate-50 border-none rounded-2xl px-6 py-3 text-[10px] font-black text-slate-500 outline-none cursor-pointer hover:bg-slate-100 transition-all"
-                            >
-                                <option value="number-asc">Rechnungsnummer A-Z</option>
-                                <option value="customer-asc">Kunde A-Z</option>
-                            </select>
                             <Link href="/invoices" className="text-xs font-black text-indigo-600 hover:text-indigo-800 tracking-widest uppercase flex items-center gap-2">
                                 Alle ansehen <ArrowUpRight className="h-4 w-4" />
                             </Link>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-hidden">
-                        <table className="w-full text-left">
+                    <div className="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-x-auto">
+                        <table className="w-full text-left min-w-[600px]">
                             <thead>
                                 <tr className="bg-slate-50/50">
                                     <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Rechnung</th>
@@ -251,8 +183,8 @@ export default function DashboardPage() {
                                 ) : sortedInvoices.length === 0 ? (
                                     <tr><td colSpan={5} className="py-24 text-center font-black text-slate-300 uppercase tracking-[0.2em] text-[11px]">Keine Rechnungen gefunden</td></tr>
                                 ) : (
-                                    sortedInvoices.slice(0, 6).map((invoice) => (
-                                        <tr key={invoice.id} className="group hover:bg-slate-50/50 transition-all duration-300 cursor-pointer" onClick={() => handleDownload(invoice)}>
+                                    sortedInvoices.slice(-6).map((invoice) => (
+                                        <tr key={invoice.id} className="group hover:bg-slate-50/50 transition-all duration-300 cursor-pointer" onClick={() => setSelectedInvoice(invoice)}>
                                             <td className="px-10 py-8">
                                                 <p className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors">#{invoice.invoiceNumber}</p>
                                                 <p className="text-xs text-slate-400 font-bold mt-1">Vom {new Date(invoice.issueDate).toLocaleDateString('de-DE')}</p>
@@ -283,7 +215,7 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                <div className="xl:col-span-4 space-y-8">
+                <div className="2xl:col-span-4 space-y-8">
                     <div className="flex items-center justify-between px-4">
                         <div className="flex items-center gap-4">
                             <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500">

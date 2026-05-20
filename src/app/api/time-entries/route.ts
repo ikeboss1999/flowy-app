@@ -19,7 +19,9 @@ export async function GET(request: Request) {
         const { data: entries, error } = await client
             .from('time_entries')
             .select('*')
-            .eq('userId', userId);
+            .eq('userId', userId)
+            .order('date', { ascending: false })
+            .limit(1000);
         if (error) throw error;
         return NextResponse.json(entries);
     } catch (e) {

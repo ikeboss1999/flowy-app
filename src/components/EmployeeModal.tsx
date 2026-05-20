@@ -1217,13 +1217,20 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                             documents: prev.documents.filter(d => d.id !== docId)
                                                         }))}
                                                         onDeleteFolder={() => {
-                                                            if (window.confirm(`Ordner "${folderName}" wirklich löschen? Alle enthaltenen Dokumente werden ebenfalls gelöscht.`)) {
-                                                                setFormData(prev => ({
-                                                                    ...prev,
-                                                                    sharedFolders: (prev.sharedFolders || []).filter(f => f !== folderName),
-                                                                    documents: prev.documents.filter(d => d.folder !== folderName)
-                                                                }));
-                                                            }
+                                                            showConfirm({
+                                                                title: "Ordner löschen",
+                                                                message: `Ordner "${folderName}" wirklich löschen? Alle enthaltenen Dokumente werden ebenfalls gelöscht.`,
+                                                                confirmLabel: "Löschen",
+                                                                cancelLabel: "Abbrechen",
+                                                                variant: "danger",
+                                                                onConfirm: () => {
+                                                                    setFormData(prev => ({
+                                                                        ...prev,
+                                                                        sharedFolders: (prev.sharedFolders || []).filter(f => f !== folderName),
+                                                                        documents: prev.documents.filter(d => d.folder !== folderName)
+                                                                    }));
+                                                                }
+                                                            });
                                                         }}
                                                         onPreview={handlePreview}
                                                     />

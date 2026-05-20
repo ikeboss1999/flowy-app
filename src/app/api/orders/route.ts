@@ -19,7 +19,9 @@ export async function GET(request: Request) {
         const { data: orders, error } = await client
             .from('order_confirmations')
             .select('*')
-            .eq('userId', userId);
+            .eq('userId', userId)
+            .order('issueDate', { ascending: false })
+            .limit(500);
         if (error) throw error;
         return NextResponse.json(orders);
     } catch (e) {

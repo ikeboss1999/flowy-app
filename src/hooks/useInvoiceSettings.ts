@@ -3,7 +3,6 @@
 import useSWR from 'swr';
 import { useAuth } from '@/context/AuthContext';
 import { InvoiceSettings } from '@/types/invoice';
-import { useSync } from '@/context/SyncContext';
 import { fetcher } from '@/lib/fetcher';
 
 const initialData: InvoiceSettings = {
@@ -27,7 +26,6 @@ const initialData: InvoiceSettings = {
 
 export function useInvoiceSettings() {
     const { user } = useAuth();
-    const { markDirty } = useSync();
 
     const key = user ? `/api/settings?userId=${user.id}` : null;
     const { data: allSettings, isLoading, mutate } = useSWR(key, fetcher);
@@ -50,7 +48,6 @@ export function useInvoiceSettings() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, type: 'invoice', data: updated })
             });
-            markDirty();
         } catch (e) {
             console.error('Failed to update invoice settings', e);
             mutate();
@@ -68,7 +65,6 @@ export function useInvoiceSettings() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, type: 'invoice', data: updated })
             });
-            markDirty();
         } catch (e) {
             console.error('Failed to update dunning levels', e);
             mutate();

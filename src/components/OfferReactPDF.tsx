@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
         marginBottom: 14,
     },
     zusatzCol1: {
-        width: '25%',
+        width: '45%',
     },
     zusatzCol2: {
         width: '25%',
@@ -105,10 +105,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginBottom: 3,
         fontSize: 9,
+        alignItems: 'flex-start',
     },
     infoLabelWide: {
         fontFamily: 'Helvetica-Bold',
-        width: 90,
+        width: 60,
         flexShrink: 0,
     },
     infoLabelShort: {
@@ -116,7 +117,9 @@ const styles = StyleSheet.create({
         width: 60,
         flexShrink: 0,
     },
-    infoVal: {},
+    infoVal: {
+        flex: 1,
+    },
 
     // ─── Intro text ──────────────────────────────────
     introText: {

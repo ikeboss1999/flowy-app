@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(ls \"C:\\\\Users\\\\faceb\\\\Desktop\\\\FlowY\\\\\" | Where-Object {$_.Name -eq \"src\"})"
+      "PowerShell(ls \"C:\\\\Users\\\\faceb\\\\Desktop\\\\FlowY\\\\\" | Where-Object {$_.Name -eq \"src\"})",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\faceb\\\\Desktop\\\\FlowY\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(Remove-Item \"c:\\\\Users\\\\faceb\\\\Desktop\\\\FlowY\\\\src\\\\components\\\\UpdateNotification.tsx\" -Force)",
+      "Bash(Remove-Item \"c:\\\\Users\\\\faceb\\\\Desktop\\\\FlowY\\\\src\\\\types\\\\electron.d.ts\" -Force)",
+      "Bash(Write-Host \"Deleted\")"
     ]
   }
 }

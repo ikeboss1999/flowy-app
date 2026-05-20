@@ -2,13 +2,11 @@
 
 import useSWR from 'swr';
 import { useAuth } from '@/context/AuthContext';
-import { useSync } from '@/context/SyncContext';
 import { fetcher } from '@/lib/fetcher';
 import { ProjectFile, FileFolder } from '@/types/project_file';
 
 export function useProjectFiles(projectId: string) {
     const { user, currentEmployee } = useAuth();
-    const { markDirty } = useSync();
 
     const activeUserId = user?.id || currentEmployee?.userId;
     const key = activeUserId && projectId ? `/api/project-files?projectId=${projectId}` : null;
@@ -27,7 +25,6 @@ export function useProjectFiles(projectId: string) {
             throw new Error(body.error || 'Upload failed');
         }
         await mutate();
-        markDirty();
     };
 
     const deleteFile = async (id: string): Promise<void> => {
@@ -35,7 +32,6 @@ export function useProjectFiles(projectId: string) {
         try {
             const res = await fetch(`/api/project-files?id=${id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('Delete failed');
-            markDirty();
         } catch (e) {
             mutate();
             throw e;
@@ -50,7 +46,6 @@ export function useProjectFiles(projectId: string) {
         });
         if (!res.ok) throw new Error('Update failed');
         await mutate();
-        markDirty();
     };
 
     const getSignedUrl = async (storagePath: string): Promise<string> => {
