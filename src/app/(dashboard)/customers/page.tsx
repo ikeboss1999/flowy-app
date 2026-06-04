@@ -38,8 +38,8 @@ export default function CustomersPage() {
     const filteredCustomers = useMemo(() => {
         return customers.filter(customer => {
             const matchesSearch =
-                customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                customer.email.toLowerCase().includes(searchQuery.toLowerCase());
+                (customer.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (customer.email || "").toLowerCase().includes(searchQuery.toLowerCase());
 
             const matchesType = filterType === "all" || customer.type === filterType;
 

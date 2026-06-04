@@ -1,12 +1,42 @@
 "use client";
 
-import React, { useRef } from "react";
+import React from "react";
+import dynamic from "next/dynamic";
 import { X, Download, Loader2 } from "lucide-react";
-import { OrderConfirmation, OrderSettings } from "@/types/order";
+import { OrderConfirmation } from "@/types/order";
 import { Customer } from "@/types/customer";
 import { CompanyData } from "@/types/company";
-import { OrderPDF } from "@/components/OrderPDF";
 import { useOrderSettings } from "@/hooks/useOrderSettings";
+
+const OrderPDFPreview = dynamic(
+    async () => {
+        const [{ PDFViewer }, { OrderReactPDF }] = await Promise.all([
+            import('@react-pdf/renderer'),
+            import('@/components/OrderReactPDF'),
+        ]);
+        return function OrderPDFPreviewInner({ order, customer, companySettings, orderSettings }: any) {
+            return (
+                <PDFViewer width="100%" height="100%" style={{ border: 'none' }}>
+                    <OrderReactPDF
+                        order={order}
+                        customer={customer}
+                        companySettings={companySettings}
+                        orderSettings={orderSettings}
+                    />
+                </PDFViewer>
+            );
+        };
+    },
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex items-center justify-center h-full text-slate-400 gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-sm font-medium">Vorschau wird geladen …</span>
+            </div>
+        ),
+    }
+);
 
 interface OrderPreviewModalProps {
     isOpen: boolean;
@@ -17,7 +47,6 @@ interface OrderPreviewModalProps {
 }
 
 export function OrderPreviewModal({ isOpen, onClose, order, customer, companySettings }: OrderPreviewModalProps) {
-    const pdfRef = useRef<HTMLDivElement>(null);
     const [isDownloading, setIsDownloading] = React.useState(false);
     const { data: orderSettings } = useOrderSettings();
 
@@ -52,7 +81,7 @@ export function OrderPreviewModal({ isOpen, onClose, order, customer, companySet
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-5xl max-h-[95vh] rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="bg-white w-full max-w-4xl h-[92vh] rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col animate-in zoom-in-95 duration-200">
 
                 {/* Modal Header */}
                 <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
@@ -68,10 +97,10 @@ export function OrderPreviewModal({ isOpen, onClose, order, customer, companySet
                         <button
                             onClick={handleDownloadPDF}
                             disabled={isDownloading}
-                            className="px-5 py-2.5 bg-primary-gradient text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+                            className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-all flex items-center gap-2 disabled:opacity-50"
                         >
                             {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                            PDF Herunterladen
+                            PDF
                         </button>
                         <button
                             onClick={onClose}
@@ -83,17 +112,15 @@ export function OrderPreviewModal({ isOpen, onClose, order, customer, companySet
                 </div>
 
                 {/* Document Preview */}
-                <div className="flex-1 overflow-y-auto bg-slate-50 p-8">
-                    <div className="max-w-[210mm] mx-auto bg-white shadow-xl">
-                        <OrderPDF
-                            ref={pdfRef}
-                            order={order}
-                            customer={customer}
-                            companySettings={companySettings}
-                            orderSettings={orderSettings}
-                        />
-                    </div>
+                <div className="flex-1 min-h-0 bg-slate-100">
+                    <OrderPDFPreview
+                        order={order}
+                        customer={customer}
+                        companySettings={companySettings}
+                        orderSettings={orderSettings}
+                    />
                 </div>
+
             </div>
         </div>
     );

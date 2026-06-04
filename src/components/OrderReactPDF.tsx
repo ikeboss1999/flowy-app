@@ -16,6 +16,7 @@ const styles = StyleSheet.create({
         color: '#000000',
         lineHeight: 1.3,
     },
+
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -241,8 +242,8 @@ export const OrderReactPDF: React.FC<OrderReactPDFProps> = ({ order, customer, c
         <Document title={`Auftragsbestätigung ${order.orderNumber}`}>
             <Page size="A4" style={styles.page}>
 
-                {/* Header */}
-                <View style={styles.header}>
+                {/* Header (fixed: repeats on every page) */}
+                <View fixed style={styles.header}>
                     <View>
                         {companySettings.logo ? (
                             <Image src={companySettings.logo} style={styles.logoImg} />
@@ -266,6 +267,33 @@ export const OrderReactPDF: React.FC<OrderReactPDFProps> = ({ order, customer, c
                     </View>
                 </View>
 
+                {/* Ab Seite 2: Betreff links + Seitenzahl rechts (absolut, direkt unter dem Header) */}
+                <Text
+                    fixed
+                    style={{ position: 'absolute', top: 125, left: 50, fontSize: 10, fontFamily: 'Helvetica-Bold' }}
+                    render={(props: any) => props.pageNumber > 1
+                        ? `Auftragsbestätigung Nr.: ${order.orderNumber}${order.subjectExtra ? ` // ${order.subjectExtra}` : ''}`
+                        : ''
+                    }
+                />
+                <Text
+                    fixed
+                    style={{ position: 'absolute', top: 125, right: 50, fontSize: 10 }}
+                    render={(props: any) => props.pageNumber > 1
+                        ? `Seite ${props.pageNumber} von ${props.totalPages}`
+                        : ''
+                    }
+                />
+                {/* Seite 1: Seitenzahl auf Höhe der Anschrift, rechtsbündig */}
+                <Text
+                    fixed
+                    style={{ position: 'absolute', top: 179, right: 50, fontSize: 10, fontFamily: 'Helvetica-Bold' }}
+                    render={(props: any) => props.pageNumber === 1
+                        ? `Seite ${props.pageNumber} von ${props.totalPages}`
+                        : ''
+                    }
+                />
+
                 {/* Recipient */}
                 <View style={styles.recipientSection}>
                     <View style={styles.recipientText}>
@@ -285,7 +313,6 @@ export const OrderReactPDF: React.FC<OrderReactPDFProps> = ({ order, customer, c
                             </Text>
                         )}
                     </View>
-                    <Text style={styles.pageLabel}>Seite 1</Text>
                 </View>
 
                 {/* Zusatzinformationen */}
@@ -354,7 +381,7 @@ export const OrderReactPDF: React.FC<OrderReactPDFProps> = ({ order, customer, c
                             if (!isTitle) pos++;
                             if (isTitle) {
                                 return (
-                                    <View key={item.id} style={[styles.tableRow, { backgroundColor: '#f5f5f5' }]}>
+                                    <View key={item.id} wrap={false} style={[styles.tableRow, { backgroundColor: '#f5f5f5' }]}>
                                         <Text style={[styles.cPos, styles.tdText, { color: '#aaaaaa' }]}>—</Text>
                                         <View style={{ width: '93%', paddingLeft: 8 }}>
                                             <Text style={{ fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#111111' }}>
@@ -365,7 +392,7 @@ export const OrderReactPDF: React.FC<OrderReactPDFProps> = ({ order, customer, c
                                 );
                             }
                             return (
-                                <View key={item.id} style={styles.tableRow}>
+                                <View key={item.id} wrap={false} style={styles.tableRow}>
                                     <Text style={[styles.cPos, styles.tdText]}>{pos}</Text>
                                     <View style={styles.cDesc}>
                                         {item.title ? <Text style={{ fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#000000' }}>{item.title}</Text> : null}
@@ -386,7 +413,7 @@ export const OrderReactPDF: React.FC<OrderReactPDFProps> = ({ order, customer, c
                 </View>
 
                 {/* Summary */}
-                <View style={styles.summaryOuter}>
+                <View wrap={false} style={styles.summaryOuter}>
                     <View style={styles.reverseChargeNote}>
                         {isRC && (
                             <Text>Übergang der Steuerschuld für Bauleistungen gem. §19 Abs. 1a UStG</Text>
@@ -422,7 +449,7 @@ export const OrderReactPDF: React.FC<OrderReactPDFProps> = ({ order, customer, c
                 )}
 
                 {/* Signature */}
-                <View style={styles.signatureSection}>
+                <View wrap={false} style={styles.signatureSection}>
                     <Text>Mit freundlichen Grüßen</Text>
                     <Text style={styles.signatureName}>{ceoName}</Text>
                     <Text>Geschäftsführer</Text>

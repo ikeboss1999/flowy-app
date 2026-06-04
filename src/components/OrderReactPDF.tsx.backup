@@ -1,6 +1,6 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
-import { Offer, OfferSettings } from '@/types/offer';
+import { OrderConfirmation, OrderSettings } from '@/types/order';
 import { CompanyData } from '@/types/company';
 import { Customer } from '@/types/customer';
 
@@ -16,8 +16,6 @@ const styles = StyleSheet.create({
         color: '#000000',
         lineHeight: 1.3,
     },
-
-    // ─── Header ─────────────────────────────────────
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -56,8 +54,6 @@ const styles = StyleSheet.create({
         lineHeight: 1.25,
         alignSelf: 'center',
     },
-
-    // ─── Recipient ───────────────────────────────────
     recipientSection: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -73,7 +69,6 @@ const styles = StyleSheet.create({
         fontFamily: 'Helvetica-Bold',
         fontSize: 10,
     },
-    // ─── Zusatzinformationen ─────────────────────────
     zusatzBadge: {
         backgroundColor: '#111111',
         paddingTop: 5,
@@ -95,10 +90,10 @@ const styles = StyleSheet.create({
         marginBottom: 14,
     },
     zusatzCol1: {
-        width: '45%',
+        width: '50%',
     },
     zusatzCol2: {
-        width: '25%',
+        width: '32%',
     },
     infoRow: {
         flexDirection: 'row',
@@ -108,7 +103,7 @@ const styles = StyleSheet.create({
     },
     infoLabelWide: {
         fontFamily: 'Helvetica-Bold',
-        width: 60,
+        width: 68,
         flexShrink: 0,
     },
     infoLabelShort: {
@@ -119,25 +114,20 @@ const styles = StyleSheet.create({
     infoVal: {
         flex: 1,
     },
-
-    // ─── Intro text ──────────────────────────────────
     introText: {
         fontSize: 10,
         lineHeight: 1.55,
         marginBottom: 16,
         color: '#222222',
+        whiteSpace: 'pre-wrap'
     },
-
-    // ─── Offer title ─────────────────────────────────
-    offerTitle: {
+    orderTitle: {
         fontSize: 13,
         fontFamily: 'Helvetica-Bold',
         marginTop: 2,
         marginBottom: 13,
         color: '#000000',
     },
-
-    // ─── Table ──────────────────────────────────────
     tableHeaderRow: {
         flexDirection: 'row',
         backgroundColor: '#111111',
@@ -160,8 +150,6 @@ const styles = StyleSheet.create({
     thText: { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#ffffff' },
     tdText: { fontSize: 9.5, color: '#333333' },
     tdBold: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#000000' },
-
-    // ─── Summary ─────────────────────────────────────
     summaryOuter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -199,24 +187,11 @@ const styles = StyleSheet.create({
         borderTopColor: '#000000',
         marginTop: 2,
     },
-
-    // ─── Validity block ───────────────────────────────
-    validityBlock: {
-        fontSize: 9.5,
-        lineHeight: 1.7,
+    termsBlock: {
+        fontSize: 9,
+        color: '#555555',
         marginBottom: 20,
-        backgroundColor: '#f8f8f8',
-        borderRadius: 4,
-        paddingTop: 10,
-        paddingBottom: 10,
-        paddingLeft: 14,
-        paddingRight: 14,
     },
-    validityBold: {
-        fontFamily: 'Helvetica-Bold',
-    },
-
-    // ─── Signature ───────────────────────────────────
     signatureSection: {
         fontSize: 10,
         lineHeight: 1.4,
@@ -225,14 +200,6 @@ const styles = StyleSheet.create({
     signatureName: {
         fontFamily: 'Helvetica-Bold',
         marginTop: 13,
-    },
-
-    // ─── Footer ──────────────────────────────────────
-    validityLine: {
-        textAlign: 'center',
-        fontFamily: 'Helvetica-Bold',
-        fontSize: 8,
-        marginBottom: 8,
     },
     footerGrid: {
         borderTopWidth: 0.5,
@@ -249,18 +216,18 @@ const styles = StyleSheet.create({
     footerBold: { fontFamily: 'Helvetica-Bold', color: '#000000' },
 });
 
-interface OfferReactPDFProps {
-    offer: Offer;
+interface OrderReactPDFProps {
+    order: OrderConfirmation;
     customer?: Customer;
     companySettings: CompanyData;
-    offerSettings?: OfferSettings;
+    orderSettings?: OrderSettings;
 }
 
-export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, companySettings, offerSettings }) => {
-    const fmt = (d: string) => d ? new Date(d).toLocaleDateString('de-DE') : '-';
-    const isRC = offer.isReverseCharge || (customer?.type === 'business' && (customer as any)?.reverseChargeEnabled);
+export const OrderReactPDF: React.FC<OrderReactPDFProps> = ({ order, customer, companySettings, orderSettings }) => {
+    const fmt = (d?: string) => d ? new Date(d).toLocaleDateString('de-DE') : '-';
+    const isRC = order.isReverseCharge;
     const ceoName = `${companySettings.ceoFirstName || ''} ${companySettings.ceoLastName || ''}`.trim();
-    const processor = (offer.processor && offer.processor !== 'Max Mustermann') ? offer.processor : ceoName || '-';
+    const processor = order.processor || ceoName || '-';
 
     const getSalutation = () => {
         if (customer?.type === 'business') return 'Sehr geehrte Damen und Herren,';
@@ -271,11 +238,11 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
     };
 
     return (
-        <Document>
+        <Document title={`Auftragsbestätigung ${order.orderNumber}`}>
             <Page size="A4" style={styles.page}>
 
-                {/* ── Header (fixed: repeats on every page) ── */}
-                <View fixed style={styles.header}>
+                {/* Header */}
+                <View style={styles.header}>
                     <View>
                         {companySettings.logo ? (
                             <Image src={companySettings.logo} style={styles.logoImg} />
@@ -299,34 +266,7 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
                     </View>
                 </View>
 
-                {/* Ab Seite 2: Betreff links + Seitenzahl rechts (absolut, direkt unter dem Header) */}
-                <Text
-                    fixed
-                    style={{ position: 'absolute', top: 125, left: 50, fontSize: 10, fontFamily: 'Helvetica-Bold' }}
-                    render={(props: any) => props.pageNumber > 1
-                        ? `Angebots-Nr.: ${offer.offerNumber}${offer.subjectExtra ? ` // ${offer.subjectExtra}` : ''}`
-                        : ''
-                    }
-                />
-                <Text
-                    fixed
-                    style={{ position: 'absolute', top: 125, right: 50, fontSize: 10 }}
-                    render={(props: any) => props.pageNumber > 1
-                        ? `Seite ${props.pageNumber} von ${props.totalPages}`
-                        : ''
-                    }
-                />
-                {/* Seite 1: Seitenzahl auf Höhe der Anschrift, rechtsbündig */}
-                <Text
-                    fixed
-                    style={{ position: 'absolute', top: 179, right: 50, fontSize: 10, fontFamily: 'Helvetica-Bold' }}
-                    render={(props: any) => props.pageNumber === 1
-                        ? `Seite ${props.pageNumber} von ${props.totalPages}`
-                        : ''
-                    }
-                />
-
-                {/* ── Recipient ── */}
+                {/* Recipient */}
                 <View style={styles.recipientSection}>
                     <View style={styles.recipientText}>
                         {customer?.type === 'business' ? (
@@ -345,53 +285,59 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
                             </Text>
                         )}
                     </View>
+                    <Text style={styles.pageLabel}>Seite 1</Text>
                 </View>
 
-                {/* ── Zusatzinformationen (bereinigt) ── */}
+                {/* Zusatzinformationen */}
                 <View>
                     <View style={styles.zusatzBadge}>
-                        <Text style={styles.zusatzBadgeText}>Zusatzinformationen</Text>
+                        <Text style={styles.zusatzBadgeText}>Auftragsinformationen</Text>
                     </View>
                     <View style={styles.zusatzGrid}>
-                        {/* Col 1: Baustelle + Gültig bis */}
                         <View style={styles.zusatzCol1}>
                             <View style={styles.infoRow}>
                                 <Text style={styles.infoLabelWide}>Baustelle:</Text>
-                                <Text style={styles.infoVal}>{offer.constructionProject || customer?.address?.street || '-'}</Text>
+                                <Text style={styles.infoVal}>{order.constructionProject || customer?.address?.street || '-'}</Text>
+                            </View>
+                            {order.deliveryDate && (
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.infoLabelWide}>Liefertermin:</Text>
+                                    <Text style={styles.infoVal}>{fmt(order.deliveryDate)}</Text>
+                                </View>
+                            )}
+                            {order.offerNumber && (
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.infoLabelWide}>Angebots-Ref:</Text>
+                                    <Text style={styles.infoVal}>{order.offerNumber}</Text>
+                                </View>
+                            )}
+                        </View>
+                        <View style={styles.zusatzCol2}>
+                            <View style={styles.infoRow}>
+                                <Text style={styles.infoLabelShort}>Datum:</Text>
+                                <Text style={styles.infoVal}>{fmt(order.issueDate)}</Text>
                             </View>
                             <View style={styles.infoRow}>
-                                <Text style={styles.infoLabelWide}>Gültig bis:</Text>
-                                <Text style={styles.infoVal}>{offer.validUntil ? fmt(offer.validUntil) : `${offerSettings?.defaultValidityDays || 20} Tage ab Ausstellungsdatum`}</Text>
+                                <Text style={styles.infoLabelShort}>Bearbeiter:</Text>
+                                <Text style={styles.infoVal}>{processor}</Text>
                             </View>
-                        </View>
-                        {/* Col 2: Datum + Bearbeiter */}
-                        <View style={styles.zusatzCol2}>
-                            {([
-                                ['Datum:', fmt(offer.issueDate)],
-                                ['Bearbeiter:', processor],
-                            ] as [string, string][]).map(([label, value]) => (
-                                <View key={label} style={styles.infoRow}>
-                                    <Text style={styles.infoLabelShort}>{label}</Text>
-                                    <Text style={styles.infoVal}>{value}</Text>
-                                </View>
-                            ))}
                         </View>
                     </View>
                 </View>
 
-                {/* ── Offer title ── */}
-                <Text style={styles.offerTitle}>
-                    {`Angebots-Nr.: ${offer.offerNumber}`}
-                    {offer.subjectExtra ? ` // ${offer.subjectExtra}` : ''}
+                {/* Order title */}
+                <Text style={styles.orderTitle}>
+                    {`Auftragsbestätigung Nr.: ${order.orderNumber}`}
+                    {order.subjectExtra ? ` // ${order.subjectExtra}` : ''}
                 </Text>
 
-                {/* ── Intro Text ── */}
+                {/* Intro Text */}
                 <Text style={styles.introText}>
                     {getSalutation() + '\n\n'}
-                    {offer.introText || ''}
+                    {order.introText || ''}
                 </Text>
 
-                {/* ── Table ── */}
+                {/* Table */}
                 <View>
                     <View style={styles.tableHeaderRow}>
                         <Text style={[styles.cPos, styles.thText]}>Pos.</Text>
@@ -403,12 +349,12 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
                     </View>
                     {(() => {
                         let pos = 0;
-                        return offer.items.map((item) => {
-                            const isTitle = item.itemType === 'title' || (!item.itemType && (item as any).isTitleOnly);
+                        return order.items.map((item) => {
+                            const isTitle = item.itemType === 'title';
                             if (!isTitle) pos++;
                             if (isTitle) {
                                 return (
-                                    <View key={item.id} wrap={false} style={[styles.tableRow, { backgroundColor: '#f5f5f5' }]}>
+                                    <View key={item.id} style={[styles.tableRow, { backgroundColor: '#f5f5f5' }]}>
                                         <Text style={[styles.cPos, styles.tdText, { color: '#aaaaaa' }]}>—</Text>
                                         <View style={{ width: '93%', paddingLeft: 8 }}>
                                             <Text style={{ fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#111111' }}>
@@ -419,20 +365,19 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
                                 );
                             }
                             return (
-                                <View key={item.id} wrap={false} style={styles.tableRow}>
+                                <View key={item.id} style={styles.tableRow}>
                                     <Text style={[styles.cPos, styles.tdText]}>{pos}</Text>
                                     <View style={styles.cDesc}>
                                         {item.title ? <Text style={{ fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#000000' }}>{item.title}</Text> : null}
-                                        {item.description ? <Text style={{ fontSize: 9, color: '#555555', marginTop: item.title ? 1 : 0 }}>{item.description}</Text> : null}
-                                        {!item.title && !item.description ? <Text style={{ color: '#aaaaaa' }}>—</Text> : null}
+                                        <Text style={{ fontSize: 9, color: '#555555', marginTop: item.title ? 1 : 0 }}>{item.description}</Text>
                                     </View>
-                                    <Text style={[styles.cUnit, styles.tdText]}>{item.unit === 'pauschal' ? 'PA' : item.unit}</Text>
+                                    <Text style={[styles.cUnit, styles.tdText]}>{item.unit}</Text>
                                     <Text style={[styles.cQty, styles.tdText]}>{item.quantity}</Text>
                                     <Text style={[styles.cPrice, styles.tdText]}>
-                                        {'€ ' + (Number(item.pricePerUnit) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                                        {'€ ' + (item.pricePerUnit || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                                     </Text>
                                     <Text style={[styles.cTotal, styles.tdBold]}>
-                                        {'€ ' + (Number(item.totalPrice) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                                        {'€ ' + (item.totalPrice || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                                     </Text>
                                 </View>
                             );
@@ -440,8 +385,8 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
                     })()}
                 </View>
 
-                {/* ── Summary ── */}
-                <View wrap={false} style={styles.summaryOuter}>
+                {/* Summary */}
+                <View style={styles.summaryOuter}>
                     <View style={styles.reverseChargeNote}>
                         {isRC && (
                             <Text>Übergang der Steuerschuld für Bauleistungen gem. §19 Abs. 1a UStG</Text>
@@ -451,32 +396,39 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
                         <View style={styles.summaryRow}>
                             <Text>Nettobetrag:</Text>
                             <Text style={styles.summaryBold}>
-                                {'€ ' + offer.subtotal.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                                {'€ ' + order.subtotal.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                             </Text>
                         </View>
                         <View style={styles.summaryRow}>
-                            <Text>{isRC ? '0% USt.:' : `${offer.taxRate}% USt.:`}</Text>
+                            <Text>{isRC ? '0% USt.:' : `${order.taxRate}% USt.:`}</Text>
                             <Text style={styles.summaryBold}>
-                                {'€ ' + offer.taxAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                                {'€ ' + order.taxAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                             </Text>
                         </View>
                         <View style={styles.summaryTotalRow}>
-                            <Text>Angebotssumme:</Text>
+                            <Text>Gesamtsumme:</Text>
                             <Text>
-                                {'€ ' + offer.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                                {'€ ' + order.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                             </Text>
                         </View>
                     </View>
                 </View>
 
-                {/* ── Signature ── */}
-                <View wrap={false} style={styles.signatureSection}>
+                {/* Terms */}
+                {order.terms && (
+                    <Text style={styles.termsBlock}>
+                        {order.terms}
+                    </Text>
+                )}
+
+                {/* Signature */}
+                <View style={styles.signatureSection}>
                     <Text>Mit freundlichen Grüßen</Text>
                     <Text style={styles.signatureName}>{ceoName}</Text>
                     <Text>Geschäftsführer</Text>
                 </View>
 
-                {/* ── Footer ── */}
+                {/* Footer */}
                 <View wrap={false}>
                     <View style={styles.footerGrid}>
                         <View style={styles.footerColLeft}>
