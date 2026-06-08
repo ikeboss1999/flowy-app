@@ -62,6 +62,7 @@ export interface Employee {
         classification: string;
         verwendung: string;
         annualLeave: number;
+        isActive?: boolean;
     };
     additionalInfo: {
         emergencyContactName?: string;

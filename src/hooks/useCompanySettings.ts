@@ -22,7 +22,9 @@ const initialData: CompanyData = {
     employerNumber: '',
     bankName: '',
     bic: '',
-    iban: ''
+    iban: '',
+    nextEmployeeNumber: '100001',
+    employeeNumberPrefix: 'MA-'
 };
 
 export function useCompanySettings() {

@@ -120,7 +120,6 @@ const menuGroups: MenuGroup[] = [
     {
         title: "Büro & Archiv",
         items: [
-            { icon: Mail, label: "Briefe", href: "/letters" },
             { icon: FolderOpen, label: "Dokumenten-Archiv", href: "/archive" },
         ]
     },

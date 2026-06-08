@@ -36,7 +36,6 @@ export async function POST(req: Request) {
             'project_folders',
             'archive_files',
             'archive_folders',
-            'letters',
             'offers', 
             'order_confirmations',
             'order_confirmation',
@@ -85,7 +84,7 @@ export async function POST(req: Request) {
                     if (items && items.length > 0) {
                         // Recursively delete files and folders
                         const deleteFolder = async (path: string) => {
-                            const { data: subItems, error: subError } = await supabaseAdmin.storage.from(bucketName).list(path);
+                            const { data: subItems, error: subError } = await supabaseAdmin!.storage.from(bucketName).list(path);
                             if (subError) return;
 
                             const filesToDelete = subItems
@@ -97,7 +96,7 @@ export async function POST(req: Request) {
                                 .map(item => item.name);
 
                             if (filesToDelete.length > 0) {
-                                await supabaseAdmin.storage.from(bucketName).remove(filesToDelete);
+                                await supabaseAdmin!.storage.from(bucketName).remove(filesToDelete);
                             }
 
                             for (const folder of folders) {
@@ -107,7 +106,7 @@ export async function POST(req: Request) {
 
                         await deleteFolder(userId);
                         // Finally remove the empty folder itself (some providers need this)
-                        await supabaseAdmin.storage.from(bucketName).remove([userId]);
+                        await supabaseAdmin!.storage.from(bucketName).remove([userId]);
                     }
                 } catch (storageError) {
                     console.error(`[AccountDeletion] Storage cleanup error in bucket ${bucketName}:`, storageError);

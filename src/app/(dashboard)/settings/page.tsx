@@ -6,9 +6,10 @@ import { InvoiceSettings } from "@/components/InvoiceSettings";
 import { OfferSettings } from "@/components/OfferSettings";
 import { OrderSettings } from "@/components/OrderSettings";
 import { ProjectSettings } from "@/components/ProjectSettings";
+import { EmployeeSettings } from "@/components/EmployeeSettings";
 import { AccountSettings } from "@/components/AccountSettings";
 import { AppSettings } from "@/components/AppSettings";
-import { Settings as SettingsIcon, FileText, Receipt, Briefcase, FileSignature } from "lucide-react";
+import { Settings as SettingsIcon, FileText, Receipt, Briefcase, FileSignature, Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -23,6 +24,7 @@ const DOC_SUBTABS = [
     { id: "order", label: "Auftrag", icon: FileSignature },
     { id: "invoice", label: "Rechnung", icon: Receipt },
     { id: "project", label: "Projekte", icon: Briefcase },
+    { id: "employee", label: "Mitarbeiter", icon: Users2 },
 ];
 
 export default function SettingsPage() {
@@ -102,6 +104,7 @@ export default function SettingsPage() {
                             {docSubTab === "order" && <OrderSettings />}
                             {docSubTab === "invoice" && <InvoiceSettings />}
                             {docSubTab === "project" && <ProjectSettings />}
+                            {docSubTab === "employee" && <EmployeeSettings />}
                         </div>
                     )}
 

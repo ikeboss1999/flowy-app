@@ -28,6 +28,8 @@ import {
     Bell,
     Check,
     RefreshCcw,
+    UserX,
+    UserCheck,
     X as CloseIcon
 } from "lucide-react";
 import { Employee, EmploymentStatus, EmployeeDocument } from "@/types/employee";
@@ -52,6 +54,12 @@ export default function EmployeesPage() {
     const [viewMode, setViewMode] = useState<'list' | 'archive'>('list');
     const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
 
+    // Archive & reactivation states
+    const [listTab, setListTab] = useState<'active' | 'inactive'>('active');
+    const [deactivatingEmployee, setDeactivatingEmployee] = useState<Employee | null>(null);
+    const [exitDate, setExitDate] = useState(new Date().toISOString().split('T')[0]);
+    const [exitReason, setExitReason] = useState("Vorübergehend / Winterpause");
+
     // PDF States
     const [pdfEmployee, setPdfEmployee] = useState<Employee | null>(null);
     const [contractEmployee, setContractEmployee] = useState<Employee | null>(null);
@@ -69,15 +77,22 @@ export default function EmployeesPage() {
 
     const filteredEmployees = useMemo(() => {
         return employees.filter(emp => {
+            const isActive = emp.employment.isActive !== false;
+            const matchesTab = listTab === 'active' ? isActive : !isActive;
+
             const matchesSearch =
                 `${emp.personalData.firstName} ${emp.personalData.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 emp.employment.position.toLowerCase().includes(searchQuery.toLowerCase());
 
             const matchesStatus = filterStatus === "all" || emp.employment.status === filterStatus;
 
-            return matchesSearch && matchesStatus;
+            return matchesTab && matchesSearch && matchesStatus;
+        }).sort((a, b) => {
+            const numA = parseInt(a.employeeNumber.replace(/\D/g, "")) || 0;
+            const numB = parseInt(b.employeeNumber.replace(/\D/g, "")) || 0;
+            return numA - numB;
         });
-    }, [employees, searchQuery, filterStatus]);
+    }, [employees, listTab, searchQuery, filterStatus]);
 
     const handleSaveEmployee = async (employee: Employee, skipContract?: boolean) => {
         if (editingEmployee) {
@@ -211,13 +226,57 @@ export default function EmployeesPage() {
 
     const handleDeleteEmployee = (id: string) => {
         showConfirm({
-            title: "Mitarbeiter löschen?",
-            message: "Möchten Sie diesen Mitarbeiter wirklich unwiderruflich löschen?",
+            title: "Mitarbeiter endgültig löschen?",
+            message: "Möchten Sie diesen Mitarbeiter und all seine Daten wirklich unwiderruflich aus der Datenbank löschen?",
             variant: "danger",
-            confirmLabel: "Jetzt löschen",
+            confirmLabel: "Jetzt endgültig löschen",
             onConfirm: () => {
                 deleteEmployee(id);
                 showToast("Mitarbeiter erfolgreich gelöscht.", "success");
+            }
+        });
+    };
+
+    const handleDeactivateConfirm = async () => {
+        if (!deactivatingEmployee) return;
+        const updatedEmployee: Employee = {
+            ...deactivatingEmployee,
+            employment: {
+                ...deactivatingEmployee.employment,
+                isActive: false,
+                endDate: exitDate,
+                exitReason: exitReason
+            }
+        };
+        updateEmployee(deactivatingEmployee.id, updatedEmployee);
+        showToast("Mitarbeiter erfolgreich abgemeldet und archiviert.", "success");
+        setDeactivatingEmployee(null);
+    };
+
+    const handleReactivateEmployee = async (employee: Employee) => {
+        showConfirm({
+            title: "Mitarbeiter reaktivieren?",
+            message: `Möchten Sie ${employee.personalData.firstName} ${employee.personalData.lastName} reaktivieren und einen frischen Dienstzettel generieren?`,
+            confirmLabel: "Reaktivieren",
+            cancelLabel: "Abbrechen",
+            variant: "primary",
+            onConfirm: async () => {
+                const updatedEmployee: Employee = {
+                    ...employee,
+                    employment: {
+                        ...employee.employment,
+                        isActive: true,
+                        endDate: undefined,
+                        exitReason: undefined,
+                        startDate: new Date().toISOString().split('T')[0]
+                    }
+                };
+                
+                updateEmployee(employee.id, updatedEmployee);
+                showToast("Mitarbeiter reaktiviert. Dienstzettel wird erstellt...", "info");
+                
+                // Let's generate a fresh Dienstzettel!
+                handleManualGenerateContract(updatedEmployee);
             }
         });
     };
@@ -407,9 +466,9 @@ export default function EmployeesPage() {
                     {/* Quick Stats */}
                     <div className="grid grid-cols-3 gap-6">
                         {[
-                            { label: "Gesamt", count: employees.length, color: "text-slate-600", bg: "bg-slate-100", icon: UserSquare2 },
-                            { label: "Vollzeit", count: employees.filter(e => e.employment.status === 'Vollzeit').length, color: "text-emerald-600", bg: "bg-emerald-50", icon: Briefcase },
-                            { label: "Teilzeit", count: employees.filter(e => e.employment.status === 'Teilzeit').length, color: "text-blue-600", bg: "bg-blue-50", icon: Users2 },
+                            { label: "Gesamt (Aktiv)", count: employees.filter(e => e.employment.isActive !== false).length, color: "text-slate-600", bg: "bg-slate-100", icon: UserSquare2 },
+                            { label: "Vollzeit", count: employees.filter(e => e.employment.isActive !== false && e.employment.status === 'Vollzeit').length, color: "text-emerald-600", bg: "bg-emerald-50", icon: Briefcase },
+                            { label: "Teilzeit", count: employees.filter(e => e.employment.isActive !== false && e.employment.status === 'Teilzeit').length, color: "text-blue-600", bg: "bg-blue-50", icon: Users2 },
                         ].map((stat) => {
                             const Icon = stat.icon;
                             return (
@@ -424,6 +483,32 @@ export default function EmployeesPage() {
                                 </div>
                             );
                         })}
+                    </div>
+
+                    {/* Active/Inactive List Tabs */}
+                    <div className="flex border-b border-slate-100 gap-6">
+                        <button
+                            onClick={() => setListTab('active')}
+                            className={cn(
+                                "pb-4 font-black text-sm transition-all border-b-2 relative",
+                                listTab === 'active'
+                                    ? "border-indigo-600 text-indigo-600 font-black"
+                                    : "border-transparent text-slate-400 hover:text-slate-600"
+                            )}
+                        >
+                            Aktiv ({employees.filter(e => e.employment.isActive !== false).length})
+                        </button>
+                        <button
+                            onClick={() => setListTab('inactive')}
+                            className={cn(
+                                "pb-4 font-black text-sm transition-all border-b-2 relative",
+                                listTab === 'inactive'
+                                    ? "border-indigo-600 text-indigo-600 font-black"
+                                    : "border-transparent text-slate-400 hover:text-slate-600"
+                            )}
+                        >
+                            Inaktiv / Archivierte Mitarbeiter ({employees.filter(e => e.employment.isActive === false).length})
+                        </button>
                     </div>
 
                     {/* Filters & Search */}
@@ -468,120 +553,134 @@ export default function EmployeesPage() {
                         </div>
                     </div>
 
-                    {/* Employee List */}
                     {filteredEmployees.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {filteredEmployees.map((emp) => (
-                                <div key={emp.id} className="glass-card p-6 flex flex-col group hover:border-indigo-500/30 transition-all duration-300">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div className={cn(
-                                            "h-14 w-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 overflow-hidden",
-                                            emp.avatar ? "ring-4 ring-indigo-50 border-2 border-white" : "bg-indigo-50 text-indigo-600 shadow-indigo-500/10"
-                                        )}>
-                                            {emp.avatar ? (
-                                                <img src={emp.avatar} alt={emp.personalData.firstName} className="h-full w-full object-cover" />
-                                            ) : (
-                                                <User className="h-7 w-7" />
-                                            )}
-                                        </div>
-                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button
-                                                onClick={() => handleEditEmployee(emp)}
-                                                className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-colors"
-                                                title="Bearbeiten"
-                                            >
-                                                <Edit2 className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDownloadPDF(emp)}
-                                                disabled={downloadingId === emp.id}
-                                                className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                title="Personaldatenblatt PDF"
-                                            >
-                                                {downloadingId === emp.id ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    <FileDown className="h-4 w-4" />
-                                                )}
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteEmployee(emp.id)}
-                                                className="h-10 w-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-colors"
-                                                title="Löschen"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4 flex-1">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className={cn(
-                                                    "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full",
-                                                    emp.employment.status === 'Vollzeit' ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"
-                                                )}>
-                                                    {emp.employment.status}
-                                                </span>
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                    {emp.employment.position}
-                                                </span>
-                                                {emp.employment.endDate && new Date(emp.employment.endDate) <= new Date() && (
-                                                    <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 border border-rose-200">
-                                                        Ausgetreten
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <h3 className="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
-                                                {emp.personalData.firstName} {emp.personalData.lastName}
-                                            </h3>
-                                        </div>
-
-                                        <div className="space-y-2.5 text-sm font-medium text-slate-500">
-                                            <div className="flex items-center gap-3">
-                                                <Mail className="h-4 w-4 text-slate-300" />
-                                                <span className="line-clamp-1">{emp.personalData.email}</span>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <Phone className="h-4 w-4 text-slate-300" />
-                                                <span>{emp.personalData.phone}</span>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <Briefcase className="h-4 w-4 text-slate-300" />
-                                                <span>Eintritt: {new Date(emp.employment.startDate).toLocaleDateString()}</span>
-                                            </div>
-                                            {emp.employment.endDate && (
-                                                <div className="flex items-center gap-3 text-rose-500 font-bold">
-                                                    <CalendarDays className="h-4 w-4" />
-                                                    <span>Austritt: {new Date(emp.employment.endDate).toLocaleDateString()}</span>
-                                                </div>
-                                            )}
-                                            {emp.employment.exitReason && (
-                                                <div className="flex items-center gap-3 text-slate-400 italic">
-                                                    <FileText className="h-4 w-4" />
-                                                    <span className="line-clamp-1">{emp.employment.exitReason}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-6 pt-6 border-t border-slate-50 flex items-center justify-between">
-                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                                            {emp.documents.length} Dokumente hinterlegt
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleEditEmployee(emp);
-                                            }}
-                                            className="relative z-10 text-xs font-bold text-indigo-600 flex items-center gap-1 group-hover:gap-2 transition-all p-2 hover:bg-slate-50 rounded-lg -mr-2"
-                                        >
-                                            Details <ExternalLink className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-left">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 bg-slate-50/50">
+                                            <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Mitarbeiter</th>
+                                            <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Personalnummer</th>
+                                            <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Position & Anstellung</th>
+                                            <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Kontakt</th>
+                                            <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                                            <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Aktionen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100/70">
+                                        {filteredEmployees.map((emp) => {
+                                            const name = `${emp.personalData.firstName} ${emp.personalData.lastName}`;
+                                            return (
+                                                <tr key={emp.id} className="group hover:bg-slate-50/50 transition-all duration-150">
+                                                    <td className="px-8 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className={cn(
+                                                                "h-11 w-11 rounded-xl flex items-center justify-center shadow-sm overflow-hidden shrink-0 border border-slate-100",
+                                                                emp.avatar ? "bg-white animate-in fade-in" : "bg-indigo-50 text-indigo-600"
+                                                            )}>
+                                                                {emp.avatar ? (
+                                                                    <img src={emp.avatar} alt={name} className="h-full w-full object-cover" />
+                                                                ) : (
+                                                                    <User className="h-5 w-5" />
+                                                                )}
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors text-sm">{name}</h4>
+                                                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">{emp.employment.workerType}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-700">
+                                                        #{emp.employeeNumber || "---"}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="text-sm font-bold text-slate-800">{emp.employment.position}</div>
+                                                        <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">{emp.employment.status}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex flex-col text-xs font-medium text-slate-500 gap-1">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <Mail className="h-3.5 w-3.5 text-slate-300" />
+                                                                <span>{emp.personalData.email || "keine E-Mail"}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <Phone className="h-3.5 w-3.5 text-slate-300" />
+                                                                <span>{emp.personalData.phone || "keine Tel."}</span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center gap-2">
+                                                            {emp.employment.isActive === false ? (
+                                                                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg bg-rose-50 text-rose-500 border border-rose-100">
+                                                                    Inaktiv
+                                                                </span>
+                                                            ) : emp.employment.endDate && new Date(emp.employment.endDate) <= new Date() ? (
+                                                                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 border border-rose-100">
+                                                                    Ausgetreten
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                                                    Aktiv
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-8 py-4 whitespace-nowrap text-right">
+                                                        <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button
+                                                                onClick={() => handleEditEmployee(emp)}
+                                                                className="h-9 w-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-colors"
+                                                                title="Bearbeiten"
+                                                            >
+                                                                <Edit2 className="h-4 w-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDownloadPDF(emp)}
+                                                                disabled={downloadingId === emp.id}
+                                                                className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                                                                title="Personaldatenblatt PDF"
+                                                            >
+                                                                {downloadingId === emp.id ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <FileDown className="h-4 w-4" />
+                                                                )}
+                                                            </button>
+                                                            {emp.employment.isActive !== false ? (
+                                                                <button
+                                                                    onClick={() => setDeactivatingEmployee(emp)}
+                                                                    className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-colors"
+                                                                    title="Abmelden (Deaktivieren)"
+                                                                >
+                                                                    <UserX className="h-4 w-4" />
+                                                                </button>
+                                                            ) : (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => handleReactivateEmployee(emp)}
+                                                                        className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition-colors"
+                                                                        title="Reaktivieren (Wieder anmelden)"
+                                                                    >
+                                                                        <UserCheck className="h-4 w-4" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDeleteEmployee(emp.id)}
+                                                                        className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-colors"
+                                                                        title="Endgültig löschen"
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     ) : (
                         <div className="glass-card py-24 flex flex-col items-center justify-center text-center space-y-4">
@@ -629,7 +728,11 @@ export default function EmployeesPage() {
                             (searchQuery === "" ||
                                 `${emp.personalData.firstName} ${emp.personalData.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                 emp.documents.some(d => d.name.toLowerCase().includes(searchQuery.toLowerCase())))
-                        ).map(emp => {
+                        ).sort((a, b) => {
+                            const numA = parseInt(a.employeeNumber.replace(/\D/g, "")) || 0;
+                            const numB = parseInt(b.employeeNumber.replace(/\D/g, "")) || 0;
+                            return numA - numB;
+                        }).map(emp => {
                             const isExpanded = expandedFolders[emp.id];
                             const docs = emp.documents.filter(d =>
                                 searchQuery === "" ||
@@ -650,7 +753,7 @@ export default function EmployeesPage() {
                                                 <Folder className="h-5 w-5" />
                                             </div>
                                             <div className="text-left">
-                                                <h3 className="font-bold text-slate-900">{emp.personalData.firstName} {emp.personalData.lastName}</h3>
+                                                <h3 className="font-bold text-slate-900">{emp.personalData.firstName} {emp.personalData.lastName} (#{emp.employeeNumber})</h3>
                                                 <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{emp.employment.position} • {docs.length} Dokumente</p>
                                             </div>
                                         </div>
@@ -757,6 +860,67 @@ export default function EmployeesPage() {
                 onClose={() => setIsPreviewOpen(false)}
                 document={previewDoc}
             />
+
+            {deactivatingEmployee && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[32px] border border-slate-100 shadow-2xl w-full max-w-md p-8 space-y-6 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="space-y-2 text-center">
+                            <div className="h-12 w-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 mx-auto">
+                                <UserX className="h-6 w-6" />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900">Mitarbeiter abmelden</h3>
+                            <p className="text-sm text-slate-500 font-medium">
+                                Melden Sie {deactivatingEmployee.personalData.firstName} {deactivatingEmployee.personalData.lastName} vom aktiven Dienst ab. Er wird ins Archiv verschoben.
+                            </p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Offizielles Austrittsdatum</label>
+                                <input
+                                    type="date"
+                                    value={exitDate}
+                                    onChange={(e) => setExitDate(e.target.value)}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium text-slate-950"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Austrittsgrund</label>
+                                <select
+                                    value={exitReason}
+                                    onChange={(e) => setExitReason(e.target.value)}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium text-slate-950"
+                                >
+                                    <option value="Vorübergehend / Winterpause">Vorübergehend / Winterpause</option>
+                                    <option value="Selbst gekündigt">Selbst gekündigt</option>
+                                    <option value="Wurde gekündigt">Wurde gekündigt</option>
+                                    <option value="Einvernehmliche Lösung">Einvernehmliche Lösung</option>
+                                    <option value="Rente / Pension">Rente / Pension</option>
+                                    <option value="Sonstiges">Sonstiges</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setDeactivatingEmployee(null)}
+                                className="flex-1 px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-sm transition-all"
+                            >
+                                Abbrechen
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDeactivateConfirm}
+                                className="flex-1 px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-sm shadow-md shadow-rose-500/10 transition-all"
+                            >
+                                Abmelden
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Hidden PDF Container */}
             <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', overflow: 'hidden', height: 0 }}>

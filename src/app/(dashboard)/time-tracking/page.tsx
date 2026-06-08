@@ -11,7 +11,7 @@ export default function TimeTrackingPage() {
     const [searchTerm, setSearchTerm] = useState("");
 
     const filteredEmployees = employees.filter((emp) => {
-        // emp.personalData is already an object from the API/Hook
+        if (emp.employment.isActive === false) return false;
         const fullName = `${emp.personalData.firstName} ${emp.personalData.lastName}`.toLowerCase();
         return fullName.includes(searchTerm.toLowerCase());
     });

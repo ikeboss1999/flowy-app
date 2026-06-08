@@ -23,7 +23,8 @@ import {
     Smartphone,
     Activity,
     LogOut,
-    Share2
+    Share2,
+    Camera
 } from "lucide-react";
 import { Employee, EmploymentStatus, EmployeeDocument } from "@/types/employee";
 import { cn } from "@/lib/utils";
@@ -46,7 +47,7 @@ const TABS = [
     { id: "schedule", label: "Zeiteinteilung", icon: Clock },
     { id: "bank", label: "Bankdaten", icon: CreditCard },
     { id: "documents", label: "Archiv", icon: FileText },
-    { id: "app-access", label: "Mobile App", icon: Smartphone },
+    { id: "app-access", label: "Mobile App", icon: Smartphone, disabled: true },
 ];
 
 const EU_EWR_COUNTRIES = [
@@ -404,14 +405,19 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
         reader.onloadend = async () => {
             const base64 = reader.result as string;
             const extension = file.name.split('.').pop();
-            const fileName = `${customName}.${extension}`;
+            
+            const existingCount = formData.documents.filter(d => d.subType === subType).length;
+            const suffix = existingCount > 0 ? `_${existingCount + 1}` : '';
+            const fileName = `${customName}${suffix}.${extension}`;
 
             const newDoc: EmployeeDocument = {
                 id: Math.random().toString(36).substr(2, 9),
                 name: fileName,
                 type: file.type || "application/octet-stream",
                 uploadDate: new Date().toISOString(),
-                fileSize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+                fileSize: file.size > 1024 * 1024
+                    ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+                    : `${(file.size / 1024).toFixed(0)} KB`,
                 content: base64,
                 category: 'upload',
                 subType: subType
@@ -419,16 +425,16 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
 
             setFormData(prev => ({
                 ...prev,
-                documents: [...prev.documents.filter(d => d.subType !== subType), newDoc]
+                documents: [...prev.documents, newDoc]
             }));
         };
         reader.readAsDataURL(file);
     };
 
-    const handleRemoveSlotDocument = (subType: string) => {
+    const handleRemoveSlotDocument = (docId: string) => {
         setFormData(prev => ({
             ...prev,
-            documents: prev.documents.filter(d => d.subType !== subType)
+            documents: prev.documents.filter(d => d.id !== docId)
         }));
     };
 
@@ -513,7 +519,19 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                             <h2 className="text-2xl font-bold text-slate-900 font-outfit leading-tight">
                                 {initialEmployee ? "Mitarbeiter bearbeiten" : "Neuer Mitarbeiter"}
                             </h2>
-                            <p className="text-slate-500 text-sm font-medium">#{formData.employeeNumber || "---"} • Personalakte</p>
+                            <div className="flex items-center gap-3">
+                                <p className="text-slate-500 text-sm font-medium">#{formData.employeeNumber || "---"} • Personalakte</p>
+                                {formData.avatar && (
+                                    <button
+                                        type="button"
+                                        onClick={handleAvatarDelete}
+                                        className="text-rose-500 hover:text-rose-700 text-xs font-bold flex items-center gap-1 transition-colors px-2 py-1 bg-rose-50 hover:bg-rose-100 rounded-lg"
+                                        title="Profilbild entfernen"
+                                    >
+                                        <Trash2 className="h-3 w-3" /> Bild entfernen
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                     <button
@@ -541,12 +559,21 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                             "flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-bold text-sm h-12 whitespace-nowrap md:whitespace-normal",
                                             active
                                                 ? "bg-white text-indigo-600 shadow-sm border border-slate-100"
-                                                : "text-slate-400 hover:text-slate-600 hover:bg-slate-100/50"
+                                                : tab.disabled
+                                                    ? "opacity-60 text-slate-400 hover:text-slate-500 hover:bg-slate-100/30"
+                                                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100/50"
                                         )}
                                     >
                                         <Icon className={cn("h-5 w-5 shrink-0", active ? "text-indigo-600" : "text-slate-300")} />
-                                        <span className="hidden md:block">{tab.label}</span>
-                                        <span className="md:hidden text-xs">{tab.label}</span>
+                                        <div className="flex flex-col items-start leading-none">
+                                            <span className="hidden md:block">{tab.label}</span>
+                                            <span className="md:hidden text-xs">{tab.label}</span>
+                                            {tab.disabled && (
+                                                <span className="text-[8px] text-amber-600 font-bold bg-amber-50 px-1 py-0.5 rounded-md mt-0.5">
+                                                    In Arbeit
+                                                </span>
+                                            )}
+                                        </div>
                                     </button>
                                 );
                             })}
@@ -567,6 +594,50 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                             <h3 className="text-lg font-black text-slate-800 tracking-tight">Basisinformationen</h3>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-[2.5rem] bg-slate-50/30 border border-slate-100">
+                                            {/* Profile Picture Uploader & Deletion UI */}
+                                            <div className="col-span-1 md:col-span-2 flex flex-col md:flex-row items-center gap-6 p-5 bg-white rounded-3xl border border-slate-100 shadow-sm mb-2">
+                                                <div 
+                                                    className="relative cursor-pointer group shrink-0" 
+                                                    onClick={() => avatarInputRef.current?.click()}
+                                                    title="Profilbild hochladen / ändern"
+                                                >
+                                                    {formData.avatar ? (
+                                                        <div className="h-24 w-24 rounded-2xl overflow-hidden shadow-md ring-4 ring-indigo-50 border-2 border-white group-hover:opacity-90 transition-opacity">
+                                                            <img src={formData.avatar} alt="Profile" className="h-full w-full object-cover" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="h-24 w-24 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-100 group-hover:bg-indigo-200 transition-colors">
+                                                            <User className="h-10 w-10" />
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center text-white">
+                                                        <Camera className="h-6 w-6" />
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1 text-center md:text-left space-y-2">
+                                                    <h4 className="font-bold text-slate-800 text-sm">Profilbild des Mitarbeiters</h4>
+                                                    <p className="text-xs text-slate-400 font-medium">Laden Sie ein Foto für das Mitarbeiterprofil hoch oder entfernen Sie das bestehende Bild.</p>
+                                                    <div className="flex flex-wrap gap-2 justify-center md:justify-start pt-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => avatarInputRef.current?.click()}
+                                                            className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors rounded-xl font-bold text-xs"
+                                                        >
+                                                            Bild hochladen
+                                                        </button>
+                                                        {formData.avatar && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleAvatarDelete}
+                                                                className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors rounded-xl font-bold text-xs flex items-center gap-1"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" /> Bild entfernen
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <div className="space-y-2 col-span-1 md:col-span-2">
                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Personalnummer</label>
                                                 <input
@@ -1127,7 +1198,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                     subType="passport"
                                                     documents={formData.documents}
                                                     onUpload={(e) => handleSlotUpload(e, 'passport', 'Reisepass')}
-                                                    onRemove={() => handleRemoveSlotDocument('passport')}
+                                                    onRemove={handleRemoveSlotDocument}
                                                     onPreview={handlePreview}
                                                 />
 
@@ -1137,7 +1208,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                         subType="id_card"
                                                         documents={formData.documents}
                                                         onUpload={(e) => handleSlotUpload(e, 'id_card', 'Personalausweis')}
-                                                        onRemove={() => handleRemoveSlotDocument('id_card')}
+                                                        onRemove={handleRemoveSlotDocument}
                                                         onPreview={handlePreview}
                                                     />
                                                 ) : (
@@ -1147,7 +1218,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                         subType="residence_permit"
                                                         documents={formData.documents}
                                                         onUpload={(e) => handleSlotUpload(e, 'residence_permit', 'Aufenthaltstitel')}
-                                                        onRemove={() => handleRemoveSlotDocument('residence_permit')}
+                                                        onRemove={handleRemoveSlotDocument}
                                                         onPreview={handlePreview}
                                                     />
                                                 )}
@@ -1162,7 +1233,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                     subType="meldezettel"
                                                     documents={formData.documents}
                                                     onUpload={(e) => handleSlotUpload(e, 'meldezettel', 'Meldezettel')}
-                                                    onRemove={() => handleRemoveSlotDocument('meldezettel')}
+                                                    onRemove={handleRemoveSlotDocument}
                                                     onPreview={handlePreview}
                                                 />
                                                 <DocumentSlot
@@ -1170,7 +1241,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                     subType="ecard"
                                                     documents={formData.documents}
                                                     onUpload={(e) => handleSlotUpload(e, 'ecard', 'E-Card')}
-                                                    onRemove={() => handleRemoveSlotDocument('ecard')}
+                                                    onRemove={handleRemoveSlotDocument}
                                                     onPreview={handlePreview}
                                                 />
                                                 <DocumentSlot
@@ -1178,7 +1249,37 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                     subType="bank_card"
                                                     documents={formData.documents}
                                                     onUpload={(e) => handleSlotUpload(e, 'bank_card', 'Bankomatkarte')}
-                                                    onRemove={() => handleRemoveSlotDocument('bank_card')}
+                                                    onRemove={handleRemoveSlotDocument}
+                                                    onPreview={handlePreview}
+                                                />
+                                            </div>
+                                        </section>
+
+                                        <section>
+                                            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1 mb-4">Benutzerdefinierte Dokumente & Archive</h5>
+                                            <div className="grid grid-cols-1 gap-4 p-6 rounded-[2.5rem] bg-slate-50/30 border border-slate-100">
+                                                <DocumentSlot
+                                                    label="Anmeldung / Abmeldung"
+                                                    subType="registration"
+                                                    documents={formData.documents}
+                                                    onUpload={(e) => handleSlotUpload(e, 'registration', 'Anmeldung_Abmeldung')}
+                                                    onRemove={handleRemoveSlotDocument}
+                                                    onPreview={handlePreview}
+                                                />
+                                                <DocumentSlot
+                                                    label="Krankmeldungen"
+                                                    subType="sick_leave"
+                                                    documents={formData.documents}
+                                                    onUpload={(e) => handleSlotUpload(e, 'sick_leave', 'Krankmeldung')}
+                                                    onRemove={handleRemoveSlotDocument}
+                                                    onPreview={handlePreview}
+                                                />
+                                                <DocumentSlot
+                                                    label="Sonstige Dokumente (z.B. Schulungen, Zertifikate)"
+                                                    subType="other_custom"
+                                                    documents={formData.documents}
+                                                    onUpload={(e) => handleSlotUpload(e, 'other_custom', 'Sonstiges')}
+                                                    onRemove={handleRemoveSlotDocument}
                                                     onPreview={handlePreview}
                                                 />
                                             </div>
@@ -1265,117 +1366,19 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
 
 
                             {activeTab === "app-access" && (
-                                <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-8">
-                                    {/* Section header */}
-                                    <section>
-                                        <div className="flex items-center gap-3 mb-6">
-                                            <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                                                <Smartphone className="h-4 w-4 text-indigo-600" />
-                                            </div>
-                                            <h3 className="text-lg font-black text-slate-800 tracking-tight">Mobile App Zugang</h3>
-                                        </div>
-
-                                        <div className="space-y-6 p-6 rounded-[2.5rem] bg-slate-50/30 border border-slate-100">
-                                            {/* Toggle: App-Zugang aktiv */}
-                                            <div className="flex items-center justify-between py-1">
-                                                <div>
-                                                    <p className="font-black text-slate-800 text-sm">App-Zugang aktiv</p>
-                                                    <p className="text-xs text-slate-400 font-medium mt-0.5">
-                                                        Erlaubt dem Mitarbeiter die Anmeldung in der mobilen App.
-                                                    </p>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setFormData(prev => ({
-                                                        ...prev,
-                                                        appAccess: {
-                                                            ...(prev.appAccess || { staffId: '', accessPIN: '', isAccessEnabled: false, permissions: { timeTracking: true, documents: false, personalData: true, projectDiary: false } }),
-                                                            isAccessEnabled: !prev.appAccess?.isAccessEnabled,
-                                                        }
-                                                    }))}
-                                                    className={cn(
-                                                        "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus:outline-none shadow-inner",
-                                                        formData.appAccess?.isAccessEnabled ? "bg-indigo-500" : "bg-slate-200"
-                                                    )}
-                                                >
-                                                    <span className={cn(
-                                                        "inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform",
-                                                        formData.appAccess?.isAccessEnabled ? "translate-x-6" : "translate-x-1"
-                                                    )} />
-                                                </button>
-                                            </div>
-
-                                            <div className="border-t border-slate-100" />
-
-                                            {/* Verfügernummer (read-only) */}
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
-                                                    Verfügernummer (Staff ID)
-                                                </label>
-                                                <input
-                                                    readOnly
-                                                    className="w-full px-5 py-4 bg-slate-100 border border-slate-200 rounded-2xl font-black text-indigo-600 outline-none cursor-not-allowed shadow-sm"
-                                                    value={formData.appAccess?.staffId || ''}
-                                                    placeholder="Wird automatisch vergeben"
-                                                />
-                                                <p className="text-[10px] text-slate-400 pl-1">
-                                                    Wird automatisch aus der Personalnummer übernommen.
-                                                </p>
-                                            </div>
-
-                                            {/* PIN */}
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
-                                                    Zugangs-PIN (6-stellig)
-                                                </label>
-                                                <div className="flex gap-3">
-                                                    <input
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        maxLength={6}
-                                                        className="flex-1 px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-black text-slate-900 shadow-sm tracking-[0.3em] text-lg"
-                                                        value={formData.appAccess?.accessPIN || ''}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                                                            setFormData(prev => ({
-                                                                ...prev,
-                                                                appAccess: {
-                                                                    ...(prev.appAccess || { staffId: '', isAccessEnabled: false, permissions: { timeTracking: true, documents: false, personalData: true, projectDiary: false } }),
-                                                                    accessPIN: val,
-                                                                }
-                                                            }));
-                                                        }}
-                                                        placeholder="••••••"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={generatePIN}
-                                                        className="px-5 py-3 bg-indigo-50 text-indigo-600 rounded-2xl font-bold text-sm hover:bg-indigo-100 transition-all whitespace-nowrap flex items-center gap-2 border border-indigo-100"
-                                                    >
-                                                        <Activity className="h-4 w-4" />
-                                                        Neuen PIN generieren
-                                                    </button>
-                                                </div>
-                                                <p className="text-[10px] text-slate-400 pl-1">
-                                                    Mit diesem PIN kann sich der Mitarbeiter in der App anmelden.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </section>
-
-                                    {/* Info-Banner */}
-                                    <div className="p-5 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex gap-4 items-start">
-                                        <div className="h-9 w-9 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0 mt-0.5">
-                                            <Smartphone className="h-4 w-4 text-indigo-600" />
-                                        </div>
-                                        <div>
-                                            <p className="font-black text-indigo-700 text-sm mb-1">Zugangsdaten sicher aufbewahren</p>
-                                            <p className="text-xs text-indigo-500 leading-relaxed">
-                                                Bitte teilen Sie dem Mitarbeiter seine Verfügernummer und den PIN persönlich mit.
-                                                Die Zugangsdaten ermöglichen die Anmeldung in der mobilen Zeiterfassungs-App.
-                                            </p>
-                                        </div>
+                                <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300 py-16 flex flex-col items-center justify-center text-center space-y-6">
+                                    <div className="h-24 w-24 rounded-[2rem] bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 shadow-inner">
+                                        <Smartphone className="h-10 w-10 text-slate-300 animate-pulse" />
                                     </div>
+                                    <div className="space-y-2 max-w-md">
+                                        <h3 className="text-xl font-black text-slate-800">Mobile App-Zugriff</h3>
+                                        <p className="text-sm text-slate-400 font-medium leading-relaxed">
+                                            Dieses Feature befindet sich aktuell in der Entwicklung und wird in Kürze freigeschaltet.
+                                        </p>
+                                    </div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-amber-50 text-amber-600 border border-amber-100 rounded-full animate-pulse">
+                                        In Arbeit
+                                    </span>
                                 </div>
                             )}
 
@@ -1417,83 +1420,96 @@ interface DocumentSlotProps {
     subType: string;
     documents: EmployeeDocument[];
     onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    onRemove: () => void;
+    onRemove: (id: string) => void;
     onPreview: (doc: EmployeeDocument) => void;
 }
 
 function DocumentSlot({ label, required, subType, documents = [], onUpload, onRemove, onPreview }: DocumentSlotProps) {
-    const doc = documents?.find(d => d.subType === subType);
+    const docs = documents?.filter(d => d.subType === subType) || [];
     const inputRef = useRef<HTMLInputElement>(null);
 
     return (
         <div className={cn(
-            "flex items-center justify-between p-5 rounded-[20px] transition-all border-2 border-dashed",
-            doc
+            "flex flex-col p-5 rounded-[20px] transition-all border-2 border-dashed gap-4",
+            docs.length > 0
                 ? "bg-slate-50 border-slate-200"
                 : required
                     ? "bg-rose-50/30 border-rose-200"
                     : "bg-white border-slate-100 hover:border-indigo-200"
         )}>
-            <div className="flex items-center gap-4">
-                <div className={cn(
-                    "h-12 w-12 rounded-2xl flex items-center justify-center transition-colors",
-                    doc ? "bg-indigo-600 text-white" : required ? "bg-rose-100 text-rose-500" : "bg-slate-100 text-slate-400"
-                )}>
-                    {doc ? <FileText className="h-6 w-6" /> : <Upload className="h-6 w-6" />}
-                </div>
-                <div>
-                    <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900">{label}</span>
-                        {required && !doc && <span className="text-[10px] font-black uppercase tracking-widest text-rose-500 bg-rose-50 px-2 py-0.5 rounded">Erforderlich</span>}
-                        {doc && <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded">Hochgeladen</span>}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className={cn(
+                        "h-12 w-12 rounded-2xl flex items-center justify-center transition-colors",
+                        docs.length > 0 ? "bg-indigo-600 text-white" : required ? "bg-rose-100 text-rose-500" : "bg-slate-100 text-slate-400"
+                    )}>
+                        {docs.length > 0 ? <FileText className="h-6 w-6" /> : <Upload className="h-6 w-6" />}
                     </div>
-                    {doc ? (
-                        <p className="text-xs text-slate-400 font-medium line-clamp-1 max-w-[250px]">{doc.name}</p>
-                    ) : (
-                        <p className="text-xs text-slate-400 font-medium">Noch keine Datei ausgewählt</p>
-                    )}
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900">{label}</span>
+                            {required && docs.length === 0 && <span className="text-[10px] font-black uppercase tracking-widest text-rose-500 bg-rose-50 px-2 py-0.5 rounded">Erforderlich</span>}
+                            {docs.length > 0 && <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded">{docs.length} Hochgeladen</span>}
+                        </div>
+                        <p className="text-xs text-slate-400 font-medium">
+                            {docs.length > 0 ? `${docs.length} Datei(en) hinterlegt` : "Noch keine Datei ausgewählt"}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => inputRef.current?.click()}
+                        className="px-4 py-2.5 bg-white text-slate-600 border border-slate-100 hover:bg-slate-50 rounded-xl font-bold text-xs shadow-sm transition-all"
+                    >
+                        {docs.length > 0 ? "Weitere hinzufügen" : "Hochladen"}
+                    </button>
+                    <input
+                        type="file"
+                        ref={inputRef}
+                        onChange={(e) => {
+                            onUpload(e);
+                            e.target.value = '';
+                        }}
+                        className="hidden"
+                    />
                 </div>
             </div>
 
-            <div className="flex items-center gap-2">
-                {doc ? (
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => onPreview(doc)}
-                            className="h-10 w-10 bg-white shadow-sm border border-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-all"
-                        >
-                            <Eye className="h-5 w-5" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onRemove}
-                            className="h-10 w-10 bg-white shadow-sm border border-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-600 hover:border-rose-200 transition-all"
-                        >
-                            <Trash2 className="h-5 w-5" />
-                        </button>
-                    </>
-                ) : (
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => inputRef.current?.click()}
-                            className={cn(
-                                "px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm",
-                                required ? "bg-rose-600 text-white hover:bg-rose-700" : "bg-white text-slate-600 border border-slate-100 hover:bg-slate-50"
-                            )}
-                        >
-                            Hochladen
-                        </button>
-                        <input
-                            type="file"
-                            ref={inputRef}
-                            onChange={onUpload}
-                            className="hidden"
-                        />
-                    </>
-                )}
-            </div>
+            {docs.length > 0 && (
+                <div className="grid grid-cols-1 gap-2 mt-2">
+                    {docs.map((doc) => (
+                        <div key={doc.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 group/item">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <div className="h-8 w-8 bg-slate-50 rounded-lg flex items-center justify-center shrink-0 border border-slate-100 text-indigo-400">
+                                    <FileText className="h-4 w-4" />
+                                </div>
+                                <div className="overflow-hidden">
+                                    <p className="text-xs font-bold text-slate-700 truncate">{doc.name}</p>
+                                    <p className="text-[9px] text-slate-400 font-medium">{doc.fileSize} • {new Date(doc.uploadDate).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                <button
+                                    type="button"
+                                    onClick={() => onPreview(doc)}
+                                    className="h-7 w-7 rounded-md flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-slate-50 transition-all"
+                                >
+                                    <Eye className="h-4 w-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onRemove(doc.id)}
+                                    className="h-7 w-7 rounded-md flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-slate-50 transition-all"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

@@ -27,4 +27,8 @@ export interface CompanyData {
     bankName: string;
     bic: string;
     iban: string;
+
+    // Nummernkreis Mitarbeiter
+    nextEmployeeNumber?: string;
+    employeeNumberPrefix?: string;
 }
