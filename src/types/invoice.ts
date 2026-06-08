@@ -51,6 +51,7 @@ export interface Invoice {
     performancePeriod: {
         from?: string;
         to?: string;
+        companySnapshot?: any;
     }; // Leistungszeitraum
     customerId: string;
     customerName: string;

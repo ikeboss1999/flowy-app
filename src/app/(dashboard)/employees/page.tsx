@@ -571,7 +571,11 @@ export default function EmployeesPage() {
                                         {filteredEmployees.map((emp) => {
                                             const name = `${emp.personalData.firstName} ${emp.personalData.lastName}`;
                                             return (
-                                                <tr key={emp.id} className="group hover:bg-slate-50/50 transition-all duration-150">
+                                                <tr 
+                                                    key={emp.id} 
+                                                    onClick={() => handleEditEmployee(emp)}
+                                                    className="group hover:bg-slate-50/50 transition-all duration-150 cursor-pointer"
+                                                >
                                                     <td className="px-8 py-4 whitespace-nowrap">
                                                         <div className="flex items-center gap-4">
                                                             <div className={cn(
@@ -629,14 +633,20 @@ export default function EmployeesPage() {
                                                     <td className="px-8 py-4 whitespace-nowrap text-right">
                                                         <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                             <button
-                                                                onClick={() => handleEditEmployee(emp)}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleEditEmployee(emp);
+                                                                }}
                                                                 className="h-9 w-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-colors"
                                                                 title="Bearbeiten"
                                                             >
                                                                 <Edit2 className="h-4 w-4" />
                                                             </button>
                                                             <button
-                                                                onClick={() => handleDownloadPDF(emp)}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDownloadPDF(emp);
+                                                                }}
                                                                 disabled={downloadingId === emp.id}
                                                                 className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition-colors disabled:opacity-50"
                                                                 title="Personaldatenblatt PDF"
@@ -649,7 +659,10 @@ export default function EmployeesPage() {
                                                             </button>
                                                             {emp.employment.isActive !== false ? (
                                                                 <button
-                                                                    onClick={() => setDeactivatingEmployee(emp)}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setDeactivatingEmployee(emp);
+                                                                    }}
                                                                     className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-colors"
                                                                     title="Abmelden (Deaktivieren)"
                                                                 >
@@ -658,14 +671,20 @@ export default function EmployeesPage() {
                                                             ) : (
                                                                 <>
                                                                     <button
-                                                                        onClick={() => handleReactivateEmployee(emp)}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleReactivateEmployee(emp);
+                                                                        }}
                                                                         className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition-colors"
                                                                         title="Reaktivieren (Wieder anmelden)"
                                                                     >
                                                                         <UserCheck className="h-4 w-4" />
                                                                     </button>
                                                                     <button
-                                                                        onClick={() => handleDeleteEmployee(emp.id)}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDeleteEmployee(emp.id);
+                                                                        }}
                                                                         className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-colors"
                                                                         title="Endgültig löschen"
                                                                     >
@@ -753,7 +772,7 @@ export default function EmployeesPage() {
                                                 <Folder className="h-5 w-5" />
                                             </div>
                                             <div className="text-left">
-                                                <h3 className="font-bold text-slate-900">{emp.personalData.firstName} {emp.personalData.lastName} (#{emp.employeeNumber})</h3>
+                                                <h3 className="font-bold text-slate-900">#{emp.employeeNumber || "---"} - {emp.personalData.firstName} {emp.personalData.lastName}</h3>
                                                 <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{emp.employment.position} • {docs.length} Dokumente</p>
                                             </div>
                                         </div>

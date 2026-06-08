@@ -112,27 +112,39 @@ export function TimesheetArchiveList() {
 
     return (
         <div className="space-y-4">
-            {Object.entries(groupedByEmployee).map(([employeeId, sheets]) => {
-                const isExpanded = expandedEmployees.includes(employeeId);
+            {Object.entries(groupedByEmployee)
+                .sort((a, b) => {
+                    const empA = getEmployee(a[0]);
+                    const empB = getEmployee(b[0]);
+                    const numA = empA ? parseInt(empA.employeeNumber.replace(/\D/g, "")) || 0 : 0;
+                    const numB = empB ? parseInt(empB.employeeNumber.replace(/\D/g, "")) || 0 : 0;
+                    return numA - numB;
+                })
+                .map(([employeeId, sheets]) => {
+                    const isExpanded = expandedEmployees.includes(employeeId);
+                    const emp = getEmployee(employeeId);
+                    const displayName = emp 
+                        ? `#${emp.employeeNumber || "---"} - ${emp.personalData.firstName} ${emp.personalData.lastName}`
+                        : "Unbekannt";
 
-                return (
-                    <div key={employeeId} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
-                        {/* Folder Header */}
-                        <button
-                            onClick={() => toggleEmployee(employeeId)}
-                            className="w-full flex items-center justify-between px-8 py-6 hover:bg-slate-50 transition-colors"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className={`p-3 rounded-2xl transition-colors ${isExpanded ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
-                                    <Folder className="h-6 w-6" />
+                    return (
+                        <div key={employeeId} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
+                            {/* Folder Header */}
+                            <button
+                                onClick={() => toggleEmployee(employeeId)}
+                                className="w-full flex items-center justify-between px-8 py-6 hover:bg-slate-50 transition-colors"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={`p-3 rounded-2xl transition-colors ${isExpanded ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
+                                        <Folder className="h-6 w-6" />
+                                    </div>
+                                    <div className="text-left">
+                                        <h3 className="text-lg font-black text-slate-900 leading-none mb-1">{displayName}</h3>
+                                        <p className="text-sm text-slate-500 font-medium">{sheets.length} Stundenzettel im Archiv</p>
+                                    </div>
                                 </div>
-                                <div className="text-left">
-                                    <h3 className="text-lg font-black text-slate-900 leading-none mb-1">{getEmployeeName(employeeId)}</h3>
-                                    <p className="text-sm text-slate-500 font-medium">{sheets.length} Stundenzettel im Archiv</p>
-                                </div>
-                            </div>
-                            {isExpanded ? <ChevronDown className="h-5 w-5 text-slate-400" /> : <ChevronRight className="h-5 w-5 text-slate-400" />}
-                        </button>
+                                {isExpanded ? <ChevronDown className="h-5 w-5 text-slate-400" /> : <ChevronRight className="h-5 w-5 text-slate-400" />}
+                            </button>
 
                         {/* Folder Content */}
                         {isExpanded && (

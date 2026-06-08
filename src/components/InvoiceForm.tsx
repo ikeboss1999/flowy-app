@@ -600,7 +600,11 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
       constructionProject,
       issueDate,
       paymentTerms,
-      performancePeriod: { from: perfFrom, to: perfTo },
+      performancePeriod: { 
+        from: perfFrom, 
+        to: perfTo,
+        companySnapshot: status !== "draft" ? (initialData?.performancePeriod?.companySnapshot || companySettings) : undefined
+      },
       customerId,
       customerName: customer?.name || "Unbekannter Kunde",
       processor,
@@ -635,7 +639,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
           <InvoiceReactPDF
             invoice={invoiceData}
             customer={customer}
-            companySettings={companySettings!}
+            companySettings={invoiceData.performancePeriod?.companySnapshot || companySettings!}
           />,
         ).toBlob();
         const safeInvoiceNumber = invoiceData.invoiceNumber.replace(/\//g, "-");

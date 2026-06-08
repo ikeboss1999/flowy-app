@@ -35,7 +35,11 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
             const { pdf } = await import('@react-pdf/renderer');
             const { InvoiceReactPDF } = await import('@/components/InvoiceReactPDF');
             const blob = await pdf(
-                React.createElement(InvoiceReactPDF, { invoice, customer, companySettings }) as any
+                React.createElement(InvoiceReactPDF, { 
+                    invoice, 
+                    customer, 
+                    companySettings: invoice.performancePeriod?.companySnapshot || companySettings 
+                }) as any
             ).toBlob();
             const url = URL.createObjectURL(blob);
             window.open(url, '_blank');
@@ -115,7 +119,7 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
                             ref={pdfRef}
                             invoice={invoice}
                             customer={customer}
-                            companySettings={companySettings}
+                            companySettings={invoice.performancePeriod?.companySnapshot || companySettings}
                         />
                     </div>
                 </div>

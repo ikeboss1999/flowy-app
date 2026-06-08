@@ -52,7 +52,11 @@ export default function InvoicesPage() {
             const { InvoiceReactPDF } = await import('@/components/InvoiceReactPDF');
             const customer = customers.find(c => c.id === invoice.customerId);
             const blob = await pdf(
-                React.createElement(InvoiceReactPDF, { invoice, customer, companySettings }) as any
+                React.createElement(InvoiceReactPDF, { 
+                    invoice, 
+                    customer, 
+                    companySettings: invoice.performancePeriod?.companySnapshot || companySettings 
+                }) as any
             ).toBlob();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -289,7 +293,17 @@ export default function InvoicesPage() {
                                         <div className="relative w-fit">
                                             <select
                                                 value={invoice.status}
-                                                onChange={(e) => updateInvoice(invoice.id, { ...invoice, status: e.target.value as any })}
+                                                onChange={(e) => {
+                                                    const nextStatus = e.target.value as any;
+                                                    const updatedInvoice = { ...invoice, status: nextStatus };
+                                                    if (nextStatus !== 'draft' && !invoice.performancePeriod?.companySnapshot) {
+                                                        updatedInvoice.performancePeriod = {
+                                                            ...invoice.performancePeriod,
+                                                            companySnapshot: companySettings
+                                                        };
+                                                    }
+                                                    updateInvoice(invoice.id, updatedInvoice);
+                                                }}
                                                 className={cn(
                                                     "appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all",
                                                     invoice.status === 'paid' ? "bg-emerald-50 text-emerald-600 border-emerald-100 focus:ring-emerald-500" :
