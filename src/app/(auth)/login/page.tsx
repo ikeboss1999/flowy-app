@@ -72,14 +72,10 @@ export default function LoginPage() {
                         body: JSON.stringify({ access_token: session.access_token })
                     })
                 }
-                // Hard navigation so the browser sends the newly-set
-                // session_token cookie on the very first request to "/".
-                // Client-side router.push causes a race condition in Safari
-                // because React state (user) lags behind the cookie.
-                // Navigate via the server-side redirect endpoint which
-                // verifies the session_token cookie before redirecting.
-                // This avoids the Safari race condition where the browser
-                // hasn't processed the Set-Cookie header yet.
+                // Clear any stale employee session so initAuth doesn't
+                // treat it as currentEmployee, which would pass AuthGuard
+                // but leave data hooks with user=null (empty dashboard on iOS).
+                localStorage.removeItem('flowy_employee_session')
                 window.location.href = "/api/auth/start"
             } else {
                 const { error } = await supabase.auth.signUp({
