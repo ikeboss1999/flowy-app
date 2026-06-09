@@ -38,7 +38,8 @@ export async function POST(request: NextRequest) {
 
         return response;
     } catch (error) {
-        console.error('[SyncSession] Error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('[SyncSession] Error:', message);
+        return NextResponse.json({ error: 'Internal server error', detail: message }, { status: 500 });
     }
 }
