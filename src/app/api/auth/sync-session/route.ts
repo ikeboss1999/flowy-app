@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { supabase } from '@/lib/supabase';
-import { createSessionToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +10,11 @@ export async function POST(request: NextRequest) {
         if (!accessToken) {
             return NextResponse.json({ error: 'No token provided' }, { status: 400 });
         }
+
+        // Lazy imports so any module-init errors are caught by try-catch
+        const { supabaseAdmin } = await import('@/lib/supabase-admin');
+        const { supabase } = await import('@/lib/supabase');
+        const { createSessionToken } = await import('@/lib/auth');
 
         const client = supabaseAdmin || supabase;
         const { data: { user }, error } = await client.auth.getUser(accessToken);

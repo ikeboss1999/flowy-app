@@ -1,6 +1,5 @@
 import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
-import { nanoid } from 'nanoid';
 
 const defaultWeakSecret = 'super-secret-default-key-change-this-in-production';
 
