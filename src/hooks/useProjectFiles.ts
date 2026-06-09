@@ -55,5 +55,5 @@ export function useProjectFiles(projectId: string) {
         return url;
     };
 
-    return { files, isLoading, uploadFile, deleteFile, getSignedUrl, updateFile };
+    return { files, isLoading, uploadFile, deleteFile, getSignedUrl, updateFile, mutate };
 }

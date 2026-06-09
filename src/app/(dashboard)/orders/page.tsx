@@ -22,7 +22,12 @@ import { useOrders } from "@/hooks/useOrders";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useOrderSettings } from "@/hooks/useOrderSettings";
-import { OrderPreviewModal } from "@/components/OrderPreviewModal";
+import nextDynamic from "next/dynamic";
+
+const OrderPreviewModal = nextDynamic(
+    () => import("@/components/OrderPreviewModal").then((mod) => mod.OrderPreviewModal),
+    { ssr: false, loading: () => null }
+);
 import { cn } from "@/lib/utils";
 import { OrderConfirmation, OrderStatus } from "@/types/order";
 import { useNotification } from "@/context/NotificationContext";

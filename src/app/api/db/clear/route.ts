@@ -5,6 +5,14 @@ import { getUserSession } from '@/lib/auth-server';
 export async function POST(request: Request) {
     const session = await getUserSession();
 
+    if (!session) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (session.role === 'employee') {
+        return NextResponse.json({ success: false, error: 'Mitarbeiter sind nicht berechtigt, diese Aktion auszuführen' }, { status: 403 });
+    }
+
     let userId = new URL(request.url).searchParams.get('userId');
     if (!userId) {
         try {
@@ -13,13 +21,13 @@ export async function POST(request: Request) {
         } catch (e) { /* ignore */ }
     }
 
-    // Ensure the requesting user can only wipe their own data
-    if (session?.userId && userId && session.userId !== userId) {
-        return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
-    }
-
     if (!userId) {
         return NextResponse.json({ success: false, error: 'User ID erforderlich' }, { status: 400 });
+    }
+
+    // Ensure the requesting user can only wipe their own data
+    if (session.userId !== userId) {
+        return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
     try {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getUserSession } from '@/lib/auth-server';
+import { isAllowed } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +49,11 @@ export async function GET(request: Request) {
 // ─── POST: upload a file ──────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
+    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+    if (!isAllowed(`upload-${ip}`, 20, 60 * 1000)) {
+        return NextResponse.json({ error: 'Zu viele Dateiuploads. Bitte warten Sie eine Minute.' }, { status: 429 });
+    }
+
     const session = await getUserSession();
     const userId = session?.userId;
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -144,7 +150,13 @@ export async function PATCH(request: Request) {
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
     try {
-        const updates = await request.json();
+        const body = await request.json();
+        const { name, folder } = body;
+        
+        const updates: Record<string, any> = {};
+        if (name !== undefined) updates.name = name;
+        if (folder !== undefined) updates.folder = folder;
+
         const client = supabaseAdmin || supabase;
 
         const { data, error } = await client

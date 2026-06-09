@@ -51,5 +51,5 @@ export function useProjectFolders(projectId: string) {
         await mutate();
     };
 
-    return { folders, isLoading, addFolder, renameFolder, deleteFolder };
+    return { folders, isLoading, addFolder, renameFolder, deleteFolder, mutate };
 }

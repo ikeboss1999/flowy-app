@@ -24,7 +24,12 @@ import {
 import { useOffers } from "@/hooks/useOffers";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { OfferPreviewModal } from "@/components/OfferPreviewModal";
+import nextDynamic from "next/dynamic";
+
+const OfferPreviewModal = nextDynamic(
+    () => import("@/components/OfferPreviewModal").then((mod) => mod.OfferPreviewModal),
+    { ssr: false, loading: () => null }
+);
 import { cn } from "@/lib/utils";
 import { Offer, OfferStatus } from "@/types/offer";
 import { useNotification } from "@/context/NotificationContext";

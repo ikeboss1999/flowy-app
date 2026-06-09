@@ -65,5 +65,5 @@ export function useArchiveFiles() {
         await mutate();
     };
 
-    return { files, isLoading, uploadFile, deleteFile, getSignedUrl, updateFile };
+    return { files, isLoading, uploadFile, deleteFile, getSignedUrl, updateFile, mutate };
 }

@@ -19,7 +19,7 @@ export async function getUserSession() {
                 return {
                     userId: user.id,
                     email: user.email,
-                    role: user.user_metadata?.role || 'user',
+                    role: user.app_metadata?.role || 'user',
                     name: user.user_metadata?.full_name || user.email?.split('@')[0],
                     accessToken: sbAccessToken
                 };

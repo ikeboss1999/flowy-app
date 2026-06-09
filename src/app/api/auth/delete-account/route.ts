@@ -28,7 +28,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'Ungültige oder fehlende Benutzer-ID' }, { status: 400 });
         }
 
-        console.log(`[AccountDeletion] Starting wipe for user: ${userId}`);
+        console.log(`[AccountDeletion] Starting account wipe procedure (masked ID: ${userId.slice(0, 8)}...)`);
 
         // 1. Database Cleanup (Ordered for Foreign Key safety)
         const tables = [

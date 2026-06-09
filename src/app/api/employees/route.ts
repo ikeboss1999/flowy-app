@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { nanoid } from 'nanoid';
 import { getUserSession } from '@/lib/auth-server';
+import { encryptEmployee, decryptEmployee } from '@/lib/encryption';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,8 @@ export async function GET(request: Request) {
             .order('createdAt', { ascending: false })
             .limit(200);
         if (error) throw error;
-        return NextResponse.json(employees);
+        const decryptedEmployees = (employees || []).map(decryptEmployee);
+        return NextResponse.json(decryptedEmployees);
     } catch (error) {
         console.error(error);
         return NextResponse.json({ message: 'Error' }, { status: 500 });
@@ -38,8 +40,9 @@ export async function POST(request: Request) {
     try {
         const payload = await request.json();
         const employee = payload.employee || payload;
-        const { id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, pendingChanges, sharedFolders, createdAt } = employee;
-        let { appAccess } = employee;
+        const encryptedEmployee = encryptEmployee(employee);
+        const { id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, pendingChanges, sharedFolders, createdAt } = encryptedEmployee;
+        let { appAccess } = encryptedEmployee;
 
         // Hash PIN if it's a new plain-text value (not already a bcrypt hash)
         if (appAccess?.accessPIN) {

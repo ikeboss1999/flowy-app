@@ -95,6 +95,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (mounted && session) {
+                    try {
+                        await fetch('/api/auth/sync-session', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ access_token: session.access_token })
+                        });
+                    } catch (e) {
+                        console.error('[Auth] Session sync failed', e);
+                    }
                     setSession(session);
                     setUser(session.user ?? null);
                 }
@@ -107,18 +116,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         initAuth();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!mounted) return;
-            setSession(session);
-            setUser(session?.user ?? null);
 
-            // Sync session to cookie for server-side access
             if (session?.access_token) {
+                // Sync with server BEFORE updating state so session_token cookie is ready
+                // before AuthGuard triggers navigation
+                try {
+                    await fetch('/api/auth/sync-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ access_token: session.access_token })
+                    });
+                } catch (e) {
+                    console.error('[Auth] Session sync failed', e);
+                }
                 const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
                 document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax${secureFlag}`;
+                localStorage.removeItem('flowy_employee_session');
+                document.cookie = 'session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                setCurrentEmployee(null);
             } else if (event === 'SIGNED_OUT') {
                 document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                document.cookie = 'session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             }
+
+            setSession(session);
+            setUser(session?.user ?? null);
         });
 
         // Global focus listener for auto-refresh
@@ -156,7 +180,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const signOut = async () => {
-        return await supabase.auth.signOut()
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+        } catch (e) {
+            console.error("Logout request failed", e);
+        }
+        localStorage.removeItem('flowy_employee_session');
+        document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = 'session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        setCurrentEmployee(null);
+        setUser(null);
+        setSession(null);
+        const res = await supabase.auth.signOut();
+        window.location.href = '/login';
+        return res;
     }
 
     const loginAsEmployee = async (staffId: string, pin: string) => {
@@ -184,6 +221,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const data = await response.json();
 
             if (data.success && data.employee) {
+                // Clear any active owner session and cookies first
+                document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                await supabase.auth.signOut();
+                setUser(null);
+                setSession(null);
+
                 setCurrentEmployee(data.employee);
                 localStorage.setItem('flowy_employee_session', JSON.stringify(data.employee));
                 return { success: true };
@@ -203,9 +246,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error("Logout failed", e);
         } finally {
             localStorage.removeItem('flowy_employee_session');
-            document.cookie = 'session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'; // Force client-side clear just in case
+            document.cookie = 'session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             setCurrentEmployee(null);
-            window.location.href = '/login'; // Hard navigation to clear any cached state
+            setUser(null);
+            setSession(null);
+            await supabase.auth.signOut();
+            window.location.href = '/login';
         }
     };
 

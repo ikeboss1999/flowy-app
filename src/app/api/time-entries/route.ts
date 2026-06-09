@@ -32,17 +32,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     const session = await getUserSession();
+    const userId = session?.userId;
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     try {
         const payload = await request.json();
-
-        let userId = session?.userId;
-        if (!userId) userId = payload.userId;
-        if (!userId && payload.entry) userId = payload.entry.userId;
-
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
 
         const entry = payload.entry || payload;
         const entryId = entry.id || nanoid();

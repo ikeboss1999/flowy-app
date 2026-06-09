@@ -22,7 +22,7 @@ export async function GET() {
             id: u.id,
             email: u.email,
             name: u.user_metadata?.full_name || u.email?.split('@')[0],
-            role: u.user_metadata?.role || 'user',
+            role: u.app_metadata?.role || u.user_metadata?.role || 'user',
             createdAt: u.created_at,
             updatedAt: u.updated_at || u.created_at,
             isVerified: !!u.email_confirmed_at
@@ -58,7 +58,10 @@ export async function PATCH(req: Request) {
 
         const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
             userId,
-            { user_metadata: { ...user.user_metadata, role } }
+            { 
+                app_metadata: { ...user.app_metadata, role },
+                user_metadata: { ...user.user_metadata, role } 
+            }
         );
         if (updateError) throw updateError;
 

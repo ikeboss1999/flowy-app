@@ -46,3 +46,6 @@ data/*.db-journal
 # editors
 .vscode
 .idea
+
+# scratch scripts
+/scratch

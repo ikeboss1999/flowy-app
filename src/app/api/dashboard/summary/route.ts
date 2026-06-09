@@ -14,6 +14,26 @@ export async function GET() {
     const endDate = `${year}-12-31`;
     const client = supabaseAdmin || supabase;
 
+    try {
+        // Try calling the single aggregation RPC first for maximum performance
+        const { data: rpcData, error: rpcError } = await client.rpc('get_dashboard_summary', {
+            p_user_id: session.userId,
+            p_year: year
+        });
+
+        if (!rpcError && rpcData) {
+            const summary = typeof rpcData === 'string' ? JSON.parse(rpcData) : rpcData;
+            return NextResponse.json(summary);
+        }
+        
+        if (rpcError) {
+            console.warn('[DashboardSummary] RPC get_dashboard_summary not found or failed, falling back to query aggregation. Error:', rpcError.message);
+        }
+    } catch (e) {
+        console.warn('[DashboardSummary] Exception during RPC call, falling back to query aggregation:', e);
+    }
+
+    // Fallback: perform individual queries and aggregate in-memory
     const [invoiceResult, offerResult] = await Promise.all([
         client
             .from('invoices')

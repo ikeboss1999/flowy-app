@@ -1,8 +1,36 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySessionToken } from './lib/auth';
+import { jwtVerify } from 'jose';
 
-export function middleware(request: NextRequest) {
+async function verifySupabaseToken(token: string): Promise<boolean> {
+    try {
+        const rawSupabaseSecret = process.env.SUPABASE_JWT_SECRET;
+        if (!rawSupabaseSecret) return false;
+
+        let secret: Uint8Array;
+        if (rawSupabaseSecret.includes('/') || rawSupabaseSecret.includes('+') || rawSupabaseSecret.endsWith('=')) {
+            try {
+                const binaryString = atob(rawSupabaseSecret);
+                secret = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    secret[i] = binaryString.charCodeAt(i);
+                }
+            } catch (e) {
+                secret = new TextEncoder().encode(rawSupabaseSecret);
+            }
+        } else {
+            secret = new TextEncoder().encode(rawSupabaseSecret);
+        }
+
+        await jwtVerify(token, secret);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+export async function middleware(request: NextRequest) {
     const sessionToken = request.cookies.get('session_token')?.value;
     const sbAccessToken = request.cookies.get('sb-access-token')?.value;
 
@@ -19,27 +47,37 @@ export function middleware(request: NextRequest) {
     // 1. Skip static files
     if (isStaticFile) return NextResponse.next();
 
+    // Verify tokens cryptographically
+    let isSessionValid = false;
+    let isSbValid = false;
+
+    if (sessionToken) {
+        const payload = await verifySessionToken(sessionToken);
+        if (payload) isSessionValid = true;
+    }
+
+    if (sbAccessToken) {
+        isSbValid = await verifySupabaseToken(sbAccessToken);
+    }
+
+    const isAuthenticated = isSessionValid || isSbValid;
+    console.log("[Middleware Debug]", {
+        pathname,
+        hasSessionToken: !!sessionToken,
+        hasSbAccessToken: !!sbAccessToken,
+        isSessionValid,
+        isSbValid,
+        isAuthenticated
+    });
+
     // 2. Protect API Routes (except auth)
     if (isApiRoute) {
-        if (!isPublicApi && !sessionToken && !sbAccessToken) {
-            const debugInfo = {
-                path: pathname,
-                hasSessionToken: !!sessionToken,
-                hasSbToken: !!sbAccessToken,
-                allCookies: request.cookies.getAll().map(c => c.name)
-            };
-
-            // writeLog('Middleware', `Unauthorized API access to ${pathname}. Debug: ${JSON.stringify(debugInfo)}`);
-
-            console.warn(`[Middleware] Unauthorized API access to ${pathname}. Cookies:`, debugInfo);
+        if (!isPublicApi && !isAuthenticated) {
+            console.warn(`[Middleware] Unauthorized API access to ${pathname}.`);
             return new NextResponse(
                 JSON.stringify({
                     error: 'Unauthorized',
-                    message: 'Valid session required',
-                    debug: {
-                        path: pathname,
-                        cookies: request.cookies.getAll().map(c => c.name)
-                    }
+                    message: 'Valid session required'
                 }),
                 { status: 401, headers: { 'Content-Type': 'application/json' } }
             );
@@ -48,7 +86,6 @@ export function middleware(request: NextRequest) {
     }
 
     // 3. Protect UI Pages
-    const isAuthenticated = !!(sessionToken || sbAccessToken);
     if (!isAuthenticated) {
         if (!isAuthPage && !isWelcomePage) {
             return NextResponse.redirect(new URL('/welcome', request.url));

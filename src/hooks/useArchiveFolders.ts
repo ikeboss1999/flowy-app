@@ -50,5 +50,5 @@ export function useArchiveFolders() {
         await mutate();
     };
 
-    return { folders, isLoading, addFolder, renameFolder, deleteFolder };
+    return { folders, isLoading, addFolder, renameFolder, deleteFolder, mutate };
 }

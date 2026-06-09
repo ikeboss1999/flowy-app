@@ -191,7 +191,7 @@ export default function PositionPresetsPage() {
             updateService(service.id, service);
         } else {
             // Add to currently selected folder when creating a new one
-            addService({ ...service, category: 'Position', folder: selectedFolder });
+            addService({ ...service, category: 'Position', folder: selectedFolder || undefined });
         }
     };
 
@@ -269,7 +269,7 @@ export default function PositionPresetsPage() {
             return;
         }
 
-        updateService(preset.id, { ...preset, folder: targetFolderName });
+        updateService(preset.id, { ...preset, folder: targetFolderName || undefined });
         showToast(targetFolderName ? `In ${targetFolderName} verschoben` : `Aus Ordner entfernt`, "success");
     };
 
@@ -369,7 +369,7 @@ export default function PositionPresetsPage() {
                                         }}
                                         onDelete={() => handleDeletePreset(preset.id)}
                                         onRemoveFromFolder={() => {
-                                            updateService(preset.id, { ...preset, folder: null });
+                                            updateService(preset.id, { ...preset, folder: undefined });
                                             showToast("Aus Ordner entfernt", "success");
                                         }}
                                     />

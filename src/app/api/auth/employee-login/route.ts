@@ -3,11 +3,18 @@ import bcrypt from 'bcryptjs';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { Employee } from '@/types/employee';
+import { isAllowed } from '@/lib/rate-limit';
+import { decryptEmployee } from '@/lib/encryption';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
     try {
+        const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+        if (!isAllowed(`login-${ip}`, 5, 60 * 1000)) {
+            return NextResponse.json({ message: 'Zu viele Login-Versuche. Bitte versuchen Sie es in einer Minute erneut.' }, { status: 429 });
+        }
+
         const body = await request.json();
         const staffId = body.staffId?.toString().trim();
         const pin = body.pin?.toString().trim();
@@ -23,7 +30,7 @@ export async function POST(request: Request) {
 
         const { data, error } = await client
             .from('employees')
-            .select('*')
+            .select('id, userId, personalData, appAccess')
             .filter('appAccess->>staffId', 'eq', staffId)
             .single();
 
@@ -31,7 +38,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Mitarbeiter nicht gefunden' }, { status: 404 });
         }
 
-        const employee = data as Employee;
+        const employee = decryptEmployee(data as Employee);
 
         // Verify Access Status
         if (!employee.appAccess?.isAccessEnabled) {
@@ -82,7 +89,7 @@ export async function POST(request: Request) {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7,
+            maxAge: 60 * 60 * 24, // 24 hours (aligns with JWT expiration)
             path: '/'
         });
 

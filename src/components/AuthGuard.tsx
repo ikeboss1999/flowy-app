@@ -8,7 +8,7 @@ import { Loader2 } from "lucide-react"
 const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/welcome"]
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-    const { user, isLoading } = useAuth()
+    const { user, currentEmployee, isLoading } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
     const [forceShow, setForceShow] = useState(false)
@@ -29,9 +29,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
         const handleRouting = async () => {
             const isPublic = PUBLIC_ROUTES.includes(pathname)
+            const hasUser = !!user || !!currentEmployee
 
             if (isPublic) {
-                if (user) {
+                if (hasUser) {
                     setIsRedirecting(true)
                     router.push("/")
                 } else {
@@ -39,7 +40,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
                 }
             } else {
                 // Protected routes
-                if (!user) {
+                if (!hasUser) {
                     if (isLoading && forceShow) {
                         setIsRedirecting(false)
                         return

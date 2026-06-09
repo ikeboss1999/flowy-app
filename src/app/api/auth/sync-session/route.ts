@@ -1,0 +1,44 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
+import { createSessionToken } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
+
+export async function POST(request: NextRequest) {
+    try {
+        const body = await request.json();
+        const accessToken = body.access_token;
+
+        if (!accessToken) {
+            return NextResponse.json({ error: 'No token provided' }, { status: 400 });
+        }
+
+        const client = supabaseAdmin || supabase;
+        const { data: { user }, error } = await client.auth.getUser(accessToken);
+
+        if (error || !user) {
+            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+        }
+
+        const sessionToken = await createSessionToken({
+            userId: user.id,
+            email: user.email || '',
+            role: 'owner'
+        });
+
+        const response = NextResponse.json({ success: true });
+        response.cookies.set('session_token', sessionToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24,
+            path: '/'
+        });
+
+        return response;
+    } catch (error) {
+        console.error('[SyncSession] Error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}

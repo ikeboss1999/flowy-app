@@ -19,7 +19,12 @@ import {
 import { useInvoices } from "@/hooks/useInvoices";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { InvoicePreviewModal } from "@/components/InvoicePreviewModal";
+import nextDynamic from "next/dynamic";
+
+const InvoicePreviewModal = nextDynamic(
+    () => import("@/components/InvoicePreviewModal").then((mod) => mod.InvoicePreviewModal),
+    { ssr: false, loading: () => null }
+);
 import { cn } from "@/lib/utils";
 import { Invoice, InvoiceStatus } from "@/types/invoice";
 import { useNotification } from "@/context/NotificationContext";
