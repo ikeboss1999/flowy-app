@@ -1,7 +1,19 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifySessionToken } from './lib/auth';
 import { jwtVerify } from 'jose';
+
+// Edge-compatible JWT verification (no bcryptjs dependency)
+async function verifySessionTokenEdge(token: string): Promise<any | null> {
+    try {
+        const rawSecret = process.env.JWT_SECRET;
+        if (!rawSecret) return null;
+        const secret = new TextEncoder().encode(rawSecret);
+        const { payload } = await jwtVerify(token, secret);
+        return payload as { userId: string; email: string; role: string };
+    } catch {
+        return null;
+    }
+}
 
 async function verifySupabaseToken(token: string): Promise<boolean> {
     try {
@@ -52,7 +64,7 @@ export async function middleware(request: NextRequest) {
     let isSbValid = false;
 
     if (sessionToken) {
-        const payload = await verifySessionToken(sessionToken);
+        const payload = await verifySessionTokenEdge(sessionToken);
         if (payload) isSessionValid = true;
     }
 
