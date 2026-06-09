@@ -96,16 +96,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (mounted && session) {
                     try {
-                        await fetch('/api/auth/sync-session', {
+                        const syncRes = await fetch('/api/auth/sync-session', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ access_token: session.access_token })
                         });
+                        // Only authenticate if cookie was actually set.
+                        // Calling setUser without a valid cookie causes an
+                        // AuthGuard → /api/auth/start → /welcome redirect loop.
+                        if (syncRes.ok) {
+                            setSession(session);
+                            setUser(session.user ?? null);
+                        }
                     } catch (e) {
                         console.error('[Auth] Session sync failed', e);
                     }
-                    setSession(session);
-                    setUser(session.user ?? null);
                 }
             } catch (err) {
                 console.error("Supabase session error:", err);
@@ -119,30 +124,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!mounted) return;
 
+            if (event === 'SIGNED_OUT') {
+                document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                setSession(null);
+                setUser(null);
+                return;
+            }
+
             if (session?.access_token) {
-                // Sync with server BEFORE updating state so session_token cookie is ready
-                // before AuthGuard triggers navigation
                 try {
-                    await fetch('/api/auth/sync-session', {
+                    const syncRes = await fetch('/api/auth/sync-session', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ access_token: session.access_token })
                     });
+                    if (syncRes.ok) {
+                        localStorage.removeItem('flowy_employee_session');
+                        setCurrentEmployee(null);
+                        setSession(session);
+                        setUser(session.user ?? null);
+                    }
                 } catch (e) {
                     console.error('[Auth] Session sync failed', e);
                 }
-                const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-                document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax${secureFlag}`;
-                localStorage.removeItem('flowy_employee_session');
-                document.cookie = 'session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-                setCurrentEmployee(null);
-            } else if (event === 'SIGNED_OUT') {
-                document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-                document.cookie = 'session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             }
-
-            setSession(session);
-            setUser(session?.user ?? null);
         });
 
         // Global focus listener for auto-refresh

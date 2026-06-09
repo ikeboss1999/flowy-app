@@ -33,16 +33,24 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
             if (isPublic) {
                 if (hasUser) {
+                    // Loop guard: if we've bounced back to a public page
+                    // more than 3 times, sync-session is broken — stop looping.
+                    const attempts = parseInt(sessionStorage.getItem('__auth_attempts') || '0')
+                    if (attempts >= 3) {
+                        sessionStorage.removeItem('__auth_attempts')
+                        setIsRedirecting(false)
+                        return
+                    }
+                    sessionStorage.setItem('__auth_attempts', String(attempts + 1))
                     setIsRedirecting(true)
-                    // Navigate via the server-side redirect endpoint which
-                    // verifies the cookie before redirecting to "/".
-                    // Prevents the Safari race condition and redirect loops.
                     window.location.href = "/api/auth/start"
                 } else {
                     setIsRedirecting(false)
                 }
             } else {
-                // Protected routes
+                // Protected routes: clear loop counter on successful entry
+                sessionStorage.removeItem('__auth_attempts')
+
                 if (!hasUser) {
                     if (isLoading && forceShow) {
                         setIsRedirecting(false)
