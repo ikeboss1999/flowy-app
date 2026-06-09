@@ -34,7 +34,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             if (isPublic) {
                 if (hasUser) {
                     setIsRedirecting(true)
-                    router.push("/")
+                    // Hard navigation so the browser sends the session_token
+                    // cookie on the very first request to "/".
+                    // Client-side router.push skips the cookie in Safari/iOS.
+                    window.location.href = "/"
                 } else {
                     setIsRedirecting(false)
                 }

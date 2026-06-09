@@ -72,7 +72,11 @@ export default function LoginPage() {
                         body: JSON.stringify({ access_token: session.access_token })
                     })
                 }
-                router.push("/")
+                // Hard navigation so the browser sends the newly-set
+                // session_token cookie on the very first request to "/".
+                // Client-side router.push causes a race condition in Safari
+                // because React state (user) lags behind the cookie.
+                window.location.href = "/"
             } else {
                 const { error } = await supabase.auth.signUp({
                     email,
