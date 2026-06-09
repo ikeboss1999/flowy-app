@@ -95,22 +95,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (mounted && session) {
-                    try {
-                        const syncRes = await fetch('/api/auth/sync-session', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ access_token: session.access_token })
-                        });
-                        // Only authenticate if cookie was actually set.
-                        // Calling setUser without a valid cookie causes an
-                        // AuthGuard → /api/auth/start → /welcome redirect loop.
-                        if (syncRes.ok) {
-                            setSession(session);
-                            setUser(session.user ?? null);
-                        }
-                    } catch (e) {
-                        console.error('[Auth] Session sync failed', e);
-                    }
+                    // Set user immediately — session_token from login is already in
+                    // the cookie jar. The sync-session call here just refreshes it;
+                    // if it fails the existing 24h cookie still authenticates API calls.
+                    setSession(session);
+                    setUser(session.user ?? null);
+                    // Fire-and-forget cookie refresh (don't block on it)
+                    fetch('/api/auth/sync-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ access_token: session.access_token })
+                    }).catch(e => console.warn('[Auth] Background session refresh failed:', e));
                 }
             } catch (err) {
                 console.error("Supabase session error:", err);
