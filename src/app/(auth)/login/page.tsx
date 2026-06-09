@@ -76,7 +76,11 @@ export default function LoginPage() {
                 // session_token cookie on the very first request to "/".
                 // Client-side router.push causes a race condition in Safari
                 // because React state (user) lags behind the cookie.
-                window.location.href = "/"
+                // Navigate via the server-side redirect endpoint which
+                // verifies the session_token cookie before redirecting.
+                // This avoids the Safari race condition where the browser
+                // hasn't processed the Set-Cookie header yet.
+                window.location.href = "/api/auth/start"
             } else {
                 const { error } = await supabase.auth.signUp({
                     email,
