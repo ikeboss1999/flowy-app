@@ -55,13 +55,24 @@ export default function LoginPage() {
 
         try {
             if (isLogin) {
-                const { error } = await supabase.auth.signInWithPassword({
+                const { data: { session }, error } = await supabase.auth.signInWithPassword({
                     email,
                     password,
                 })
                 if (error) throw error
+
+                // Explicitly sync session BEFORE navigating so the
+                // middleware sees the httpOnly session_token cookie.
+                // Relying on onAuthStateChange alone causes a race condition
+                // where router.push fires before the cookie is set.
+                if (session?.access_token) {
+                    await fetch('/api/auth/sync-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ access_token: session.access_token })
+                    })
+                }
                 router.push("/")
-                router.refresh()
             } else {
                 const { error } = await supabase.auth.signUp({
                     email,
