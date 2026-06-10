@@ -24,7 +24,7 @@
 | **SB-05** | Sicherheit | Admin-Rolle in `user_metadata` statt `app_metadata` | HOCH | ✅ Behoben | Rollen-Berechtigungen werden nun im server-verwalteten `app_metadata` des Supabase-Benutzers hinterlegt und verifiziert, wodurch clientseitige Manipulationen verhindert werden. |
 | **SB-06** | Sicherheit | `time-entries` POST: userId aus Request-Body übernommen | HOCH | ✅ Behoben | Authentifizierungspflicht für POST `/api/time-entries` eingeführt und die `userId` streng aus der verifizierten Server-Session übernommen, statt dem Payload zu vertrauen. |
 | **SB-07** | Sicherheit | Project Files PATCH ohne Feldwhitelist | MITTEL | ✅ Behoben | whitelist-basierte Filterung in den PATCH-Routen für `/api/project-files` und `/api/archive-files` implementiert, um unbefugtes Überschreiben sensibler Dateimetadaten zu blockieren. |
-| **SB-08** | Sicherheit | Fehlende Security-Headers | MITTEL | ✅ Behoben | Vollständige Suite von Sicherheitsheadern (HSTS, CSP, X-Frame-Options, Referrer-Policy, etc.) in `next.config.mjs` und `vercel.json` implementiert. |
+| **SB-08** | Sicherheit | Fehlende Security-Headers | MITTEL | ⏩ Revertiert | Auf Nutzeranweisung revertiert, da die restriktiven Header (insb. CSP) die PDF-Vorschau blockiert haben. |
 | **SB-09** | Sicherheit | TypeScript- und ESLint-Fehler im Build unterdrückt | MITTEL | ✅ Behoben | Build-Konfiguration angepasst (`ignoreBuildErrors: false`, `ignoreDuringBuilds: false`) und alle TypeScript-Typfehler im Code sowie der tsconfig-Ausschluss des scratch-Ordners behoben. |
 | **SB-10** | Sicherheit | Cookie-Diskrepanz: 7-Tage Cookie, 24h JWT | MITTEL | ✅ Behoben | Cookie-Lebensdauer von `session_token` auf 24 Stunden angepasst, um mit der JWT-Ablaufzeit übereinzustimmen und verwaiste Cookies zu vermeiden. |
 | **SB-11** | Sicherheit | Keine vercel.json | MITTEL | ✅ Behoben | `vercel.json` im Stammverzeichnis mit grundlegenden Header- und Sicherheitsrichtlinien hinzugefügt. |
@@ -132,15 +132,9 @@
 * **Ergebnis & Verifikation:** Ein Überschreiben sensibler Tabellenspalten (wie `storagePath`, `mimeType`, `size` oder `userId`) durch manipulierte Request-Bodies ist ausgeschlossen.
 
 ### SB-08 — Fehlende Security-Headers
-* **Status:** ✅ Behoben
-* **Geplante Maßnahme:** Konfiguration globaler Sicherheitsheader in `next.config.mjs` und `vercel.json`, einschließlich:
-  - `Content-Security-Policy` (CSP)
-  - `Strict-Transport-Security` (HSTS)
-  - `X-Frame-Options` (Clickjacking-Schutz)
-  - `X-Content-Type-Options` (MIME-Sniffing-Schutz)
-  - `Referrer-Policy`
-  - `Permissions-Policy`
-* **Ergebnis & Verifikation:** Alle HTTP-Antworten der Applikation enthalten nun die empfohlenen Standard-Sicherheitsheader.
+* **Status:** ⏩ Revertiert (Auf Nutzeranweisung)
+* **Geplante Maßnahme:** Konfiguration globaler Sicherheitsheader in `next.config.mjs` und `vercel.json`.
+* **Ergebnis & Verifikation:** Auf explizite Nutzeranweisung revertiert, da die strengen Sicherheitsheader (insbesondere Content-Security-Policy) die Anzeige und Generierung von dynamischen In-Memory PDF-Vorschauen (Angebote, Dienstzettel etc.) beeinträchtigten. Die Header wurden aus `next.config.mjs` entfernt.
 
 ### SB-09 — TypeScript- und ESLint-Fehler im Build unterdrückt
 * **Status:** ✅ Behoben

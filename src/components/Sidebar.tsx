@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     BarChart3,
     Users,
@@ -11,7 +11,6 @@ import {
     Settings,
     LayoutDashboard,
     LogOut,
-    PlusCircle,
     Plus,
     Briefcase,
     Wrench,
@@ -24,16 +23,16 @@ import {
     FileSignature,
     BookOpen,
     CalendarDays,
-    Mail,
-    FolderOpen
+    FolderOpen,
+    Inbox,
+    FileCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/context/AuthContext";
 import { useSWRConfig } from "swr";
-import { Cloud, CheckCircle2, RefreshCcw, Menu, X } from "lucide-react";
+import { CheckCircle2, RefreshCcw, Menu, X } from "lucide-react";
 import { useDevice } from "@/hooks/useDevice";
-import { useEffect } from "react";
 
 interface MenuItem {
     icon: any;
@@ -58,8 +57,16 @@ const menuGroups: MenuGroup[] = [
         ]
     },
     {
-        title: "Kerngeschäft",
+        title: "Vertrieb & CRM",
         items: [
+            { icon: Inbox, label: "Anfragen (CRM)", href: "/crm" },
+            { icon: Users, label: "Kunden", href: "/customers" },
+        ]
+    },
+    {
+        title: "Ausführung & Stammdaten",
+        items: [
+            { icon: Briefcase, label: "Projekte", href: "/projects" },
             {
                 icon: BookOpen,
                 label: "Katalog",
@@ -68,53 +75,37 @@ const menuGroups: MenuGroup[] = [
                     { icon: FileText, label: "Positions-Vorlagen", href: "/position-presets" },
                 ]
             },
-            { icon: Users, label: "Kunden", href: "/customers" },
-            { icon: UserSquare2, label: "Mitarbeiter", href: "/employees" },
             { icon: Car, label: "Fahrzeuge", href: "/vehicles" },
         ]
     },
     {
-        title: "Ausführung",
+        title: "Personal",
         items: [
-            { icon: Briefcase, label: "Projekte", href: "/projects" },
             {
-                icon: Clock,
-                label: "Zeiterfassung",
+                icon: UserSquare2,
+                label: "Personal & Zeiten",
                 children: [
-                    { icon: Plus, label: "Zeiten erfassen", href: "/time-tracking" },
+                    { icon: Users, label: "Mitarbeiter", href: "/employees" },
+                    { icon: Clock, label: "Zeiten erfassen", href: "/time-tracking" },
                     { icon: FileText, label: "Zeit-Archiv", href: "/time-tracking/archive" },
                 ]
-            },
+            }
         ]
     },
     {
-        title: "Buchhaltung",
+        title: "Finanzen",
         items: [
             {
                 icon: FileSignature,
-                label: "Angebote",
+                label: "Finanzen",
                 children: [
-                    { icon: PlusCircle, label: "Neues Angebot", href: "/offers/new" },
-                    { icon: FileSignature, label: "Angebotsarchiv", href: "/offers" },
+                    { icon: FileSignature, label: "Angebote", href: "/offers" },
+                    { icon: FileCheck, label: "Aufträge", href: "/orders" },
+                    { icon: FileText, label: "Rechnungen", href: "/invoices" },
+                    { icon: AlertTriangle, label: "Mahnwesen", href: "/invoices/dunning" },
+                    { icon: BarChart3, label: "Auswertungen", href: "/reports" },
                 ]
-            },
-            {
-                icon: FileSignature,
-                label: "Aufträge",
-                children: [
-                    { icon: FileSignature, label: "Auftragsarchiv", href: "/orders" },
-                ]
-            },
-            {
-                icon: FileText,
-                label: "Rechnungen",
-                children: [
-                    { icon: PlusCircle, label: "Neue Rechnung", href: "/invoices/new" },
-                    { icon: FileText, label: "Rechnungsarchiv", href: "/invoices" },
-                    { icon: AlertTriangle, label: "Mahnungen", href: "/invoices/dunning" },
-                ]
-            },
-            { icon: BarChart3, label: "Auswertungen", href: "/reports" },
+            }
         ]
     },
     {
@@ -139,13 +130,13 @@ export function Sidebar() {
     const { mutate: mutateAll } = useSWRConfig();
     const [isRefreshing, setIsRefreshing] = useState(false);
     const { isIPad, isTouchDevice } = useDevice();
+    const [isOpen, setIsOpen] = useState(false);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
         await mutateAll(() => true);
         setIsRefreshing(false);
     };
-    const [isOpen, setIsOpen] = useState(false);
 
     // Close sidebar on path change (for mobile/iPad drawer)
     useEffect(() => {
@@ -157,7 +148,6 @@ export function Sidebar() {
     const handleLogout = async () => {
         try {
             // DATA PERSISTENCE: We no longer wipe local data on logout.
-            // This allows for offline access and faster loading upon re-login.
         } catch (e) {
             console.error("Logout sync failed:", e);
         }
@@ -179,6 +169,29 @@ export function Sidebar() {
         );
     };
 
+    // Auto-expand parents of active children on path change
+    useEffect(() => {
+        const parentsToExpand: string[] = [];
+        menuGroups.forEach(group => {
+            group.items.forEach(item => {
+                if (item.children?.some(child => child.href === path)) {
+                    parentsToExpand.push(item.label);
+                }
+            });
+        });
+        if (parentsToExpand.length > 0) {
+            setExpandedItems(prev => {
+                const newExpanded = [...prev];
+                parentsToExpand.forEach(label => {
+                    if (!newExpanded.includes(label)) {
+                        newExpanded.push(label);
+                    }
+                });
+                return newExpanded;
+            });
+        }
+    }, [path]);
+
     const renderMenuItem = (item: MenuItem, depth = 0) => {
         const { user } = useAuth();
 
@@ -199,7 +212,7 @@ export function Sidebar() {
                     <button
                         onClick={() => toggleExpand(item.label)}
                         className={cn(
-                            "flex items-center justify-between w-full gap-4 px-5 py-3 rounded-2xl transition-all duration-300 group text-sm font-bold",
+                            "flex items-center justify-between w-full gap-4 px-5 py-2.5 rounded-2xl transition-all duration-300 group text-sm font-bold",
                             isParentActive
                                 ? "bg-white/10 text-white"
                                 : "hover:bg-white/5 text-sidebar-foreground/60 hover:text-white"
@@ -231,7 +244,7 @@ export function Sidebar() {
                 key={item.label}
                 href={item.href!}
                 className={cn(
-                    "flex items-center gap-4 px-5 py-3 rounded-2xl transition-all duration-300 group text-sm font-bold",
+                    "flex items-center gap-4 px-5 py-2.5 rounded-2xl transition-all duration-300 group text-sm font-bold",
                     depth > 0 && "ml-2",
                     isActive
                         ? "bg-primary-gradient text-white shadow-xl shadow-purple-900/40 translate-x-1"
@@ -301,21 +314,20 @@ export function Sidebar() {
                     </div>
                 </div>
 
-                <nav className="flex-1 space-y-8">
+                <nav className="flex-1 space-y-4">
                     {menuGroups.map((group) => {
                         const filteredItems = group.items.filter(item => {
-                            // Home/Welcome is now always allowed if the user wants it back
                             return true;
                         });
 
                         if (filteredItems.length === 0) return null;
 
                         return (
-                            <div key={group.title} className="space-y-2">
-                                <div className="px-5 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">
+                            <div key={group.title} className="space-y-1">
+                                <div className="px-5 text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-1">
                                     {group.title}
                                 </div>
-                                <div className="space-y-1">
+                                <div className="space-y-0.5">
                                     {filteredItems.map(item => renderMenuItem(item))}
                                 </div>
                             </div>

@@ -10,7 +10,11 @@
       "Bash(Write-Host \"Deleted\")",
       "Bash(npx tsc *)",
       "Bash(Copy-Item \"c:\\\\Users\\\\faceb\\\\Desktop\\\\FlowY\\\\src\\\\components\\\\OfferPreviewModal.tsx\" \"c:\\\\Users\\\\faceb\\\\Desktop\\\\FlowY\\\\src\\\\components\\\\OfferPreviewModal.tsx.backup\")",
-      "PowerShell(Copy-Item \"c:\\\\Users\\\\faceb\\\\Desktop\\\\FlowY\\\\src\\\\components\\\\OfferPreviewModal.tsx\" \"c:\\\\Users\\\\faceb\\\\Desktop\\\\FlowY\\\\src\\\\components\\\\OfferPreviewModal.tsx.backup\")"
+      "PowerShell(Copy-Item \"c:\\\\Users\\\\faceb\\\\Desktop\\\\FlowY\\\\src\\\\components\\\\OfferPreviewModal.tsx\" \"c:\\\\Users\\\\faceb\\\\Desktop\\\\FlowY\\\\src\\\\components\\\\OfferPreviewModal.tsx.backup\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\('nanoid:', p.dependencies.nanoid\\); console.log\\('next:', p.dependencies.next\\);\")"
     ]
   }
 }

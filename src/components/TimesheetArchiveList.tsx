@@ -10,8 +10,8 @@ import { TimeTrackingPreviewModal } from './TimeTrackingPreviewModal';
 import { Employee } from '@/types/employee';
 
 export function TimesheetArchiveList() {
-    const { timesheets, entries } = useTimeEntries();
-    const { employees } = useEmployees();
+    const { timesheets, entries, isLoading: timeEntriesLoading } = useTimeEntries();
+    const { employees, isLoading: employeesLoading } = useEmployees();
     const { data: companySettings } = useCompanySettings();
     const router = useRouter();
 
@@ -97,6 +97,15 @@ export function TimesheetArchiveList() {
             .filter(e => e.employeeId === selectedEmployee.id && e.date.startsWith(selectedMonth))
             .sort((a, b) => a.date.localeCompare(b.date));
     };
+
+    if (employeesLoading || timeEntriesLoading) {
+        return (
+            <div className="h-64 flex flex-col items-center justify-center gap-3 text-slate-400">
+                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                <p className="text-sm font-medium">Archivdaten werden geladen...</p>
+            </div>
+        );
+    }
 
     if (finalized.length === 0) {
         return (
