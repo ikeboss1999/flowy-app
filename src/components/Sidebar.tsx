@@ -99,9 +99,9 @@ const menuGroups: MenuGroup[] = [
                 icon: FileSignature,
                 label: "Finanzen",
                 children: [
-                    { icon: FileSignature, label: "Angebote", href: "/offers" },
-                    { icon: FileCheck, label: "Aufträge", href: "/orders" },
-                    { icon: FileText, label: "Rechnungen", href: "/invoices" },
+                    { icon: FileSignature, label: "Angebotsarchiv", href: "/offers" },
+                    { icon: FileCheck, label: "Auftragsarchiv", href: "/orders" },
+                    { icon: FileText, label: "Rechnungsarchiv", href: "/invoices" },
                     { icon: AlertTriangle, label: "Mahnwesen", href: "/invoices/dunning" },
                     { icon: BarChart3, label: "Auswertungen", href: "/reports" },
                 ]

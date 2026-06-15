@@ -75,7 +75,8 @@ export default function OffersPage() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Angebot_${offer.offerNumber.replace(/\//g, '-')}.pdf`;
+            const prefix = offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot';
+            a.download = `${prefix}_${offer.offerNumber.replace(/\//g, '-')}.pdf`;
             a.click();
             URL.revokeObjectURL(url);
         } catch (err) {

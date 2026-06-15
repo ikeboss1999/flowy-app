@@ -21,6 +21,7 @@ export interface OfferSettings {
 export interface Offer {
     id: string;
     offerNumber: string;
+    documentType?: 'offer' | 'estimate';
     subjectExtra?: string;
     constructionProject?: string;
     issueDate: string;

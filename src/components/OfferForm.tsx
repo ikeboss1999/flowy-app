@@ -13,6 +13,7 @@ import {
   AlignLeft,
   GripVertical,
   Bookmark,
+  Copy,
 } from "lucide-react";
 import { useNotification } from "@/context/NotificationContext";
 import {
@@ -148,6 +149,9 @@ export function OfferForm({ initialData }: OfferFormProps) {
     isProjectsLoading;
 
   // Form State
+  const [documentType, setDocumentType] = useState<'offer' | 'estimate'>(
+    initialData?.documentType || 'offer'
+  );
   const [offerNumber, setOfferNumber] = useState(
     initialData?.offerNumber || "",
   );
@@ -283,6 +287,20 @@ export function OfferForm({ initialData }: OfferFormProps) {
     if (items.length > 1) setItems(items.filter((item) => item.id !== id));
   };
 
+  const duplicateItem = (item: OfferItem) => {
+    setItems((prev) => {
+      const idx = prev.findIndex((i) => i.id === item.id);
+      if (idx === -1) return prev;
+      const duplicated: OfferItem = {
+        ...item,
+        id: Math.random().toString(36).substring(2, 11),
+      };
+      const next = [...prev];
+      next.splice(idx + 1, 0, duplicated);
+      return next;
+    });
+  };
+
   const moveItem = (id: string, direction: "up" | "down") => {
     setItems((prev) => {
       const idx = prev.findIndex((i) => i.id === id);
@@ -347,6 +365,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
       const offerData: Offer = {
         id: initialData?.id || Math.random().toString(36).substring(2, 11),
         offerNumber,
+        documentType,
         subjectExtra,
         constructionProject,
         issueDate,
@@ -492,10 +511,14 @@ export function OfferForm({ initialData }: OfferFormProps) {
           Angebotserstellung
         </div>
         <h1 className="text-3xl xl:text-5xl font-black text-slate-900 tracking-tight font-outfit">
-          {initialData?.id ? "Angebot bearbeiten" : "Neues Angebot"}
+          {initialData?.id 
+            ? (documentType === 'estimate' ? "Kostenvoranschlag bearbeiten" : "Angebot bearbeiten") 
+            : (documentType === 'estimate' ? "Neuer Kostenvoranschlag" : "Neues Angebot")}
         </h1>
         <p className="text-slate-500 font-medium">
-          Erstellen Sie ein neues Angebot für Ihre Kunden
+          {documentType === 'estimate' 
+            ? "Erstellen Sie einen neuen Kostenvoranschlag für Ihre Kunden" 
+            : "Erstellen Sie ein neues Angebot für Ihre Kunden"}
         </p>
       </div>
 
@@ -509,7 +532,21 @@ export function OfferForm({ initialData }: OfferFormProps) {
             Angebotsdaten
           </h2>
 
-          <div className="grid grid-cols-2 gap-6 xl:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 xl:gap-8">
+            <div>
+              <label className={labelClasses}>Dokumententyp</label>
+              <select
+                value={documentType}
+                onChange={(e) => setDocumentType(e.target.value as 'offer' | 'estimate')}
+                className={cn(
+                  inputClasses,
+                  "appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22m19%209-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1.25rem_center] bg-no-repeat",
+                )}
+              >
+                <option value="offer">Angebot</option>
+                <option value="estimate">Kostenvoranschlag</option>
+              </select>
+            </div>
             <div>
               <label className={labelClasses}>Angebotsnummer</label>
               <input
@@ -851,13 +888,25 @@ export function OfferForm({ initialData }: OfferFormProps) {
                                 </>
                               )}
                             </div>
-                            <button
-                              onClick={() => removeItem(item.id)}
-                              disabled={items.length === 1}
-                              className="h-9 w-9 mt-1 rounded-xl flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all disabled:opacity-0 shrink-0"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center gap-1 shrink-0 mt-1">
+                              <button
+                                type="button"
+                                onClick={() => duplicateItem(item)}
+                                className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 transition-all"
+                                title="Position duplizieren"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeItem(item.id)}
+                                disabled={items.length === 1}
+                                className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all disabled:opacity-0"
+                                title="Position löschen"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
 
                           {type !== "title" && (

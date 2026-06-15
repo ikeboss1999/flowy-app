@@ -95,7 +95,8 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Angebot_${offer.offerNumber.replace(/\//g, '-')}.pdf`;
+            const prefix = offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot';
+            a.download = `${prefix}_${offer.offerNumber.replace(/\//g, '-')}.pdf`;
             a.click();
             URL.revokeObjectURL(url);
         } catch (e) {
@@ -222,7 +223,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                 <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
                     <div>
                         <h2 className="text-lg font-black text-slate-900 tracking-tight leading-none">
-                            Angebot #{offer.offerNumber}
+                            {offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot'} #{offer.offerNumber}
                         </h2>
                         <p className="text-sm text-slate-400 font-medium mt-0.5">
                             {offer.customerName} · {fmt(offer.issueDate)}

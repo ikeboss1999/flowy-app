@@ -18,10 +18,7 @@ const styles = StyleSheet.create({
     },
 
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 35,
+        marginBottom: 0,
     },
     logoImg: {
         maxHeight: 72,
@@ -59,7 +56,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginTop: 24,
+        marginTop: 0,
         marginBottom: 14,
     },
     recipientText: {
@@ -217,6 +214,24 @@ const styles = StyleSheet.create({
     footerBold: { fontFamily: 'Helvetica-Bold', color: '#000000' },
 });
 
+const wrapText = (text: string, maxLength: number): string[] => {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+    for (const word of words) {
+        if (currentLine.length + word.length + 1 > maxLength) {
+            lines.push(currentLine);
+            currentLine = word;
+        } else {
+            currentLine = currentLine ? `${currentLine} ${word}` : word;
+        }
+    }
+    if (currentLine) {
+        lines.push(currentLine);
+    }
+    return lines;
+};
+
 interface OrderReactPDFProps {
     order: OrderConfirmation;
     customer?: Customer;
@@ -244,41 +259,61 @@ export const OrderReactPDF: React.FC<OrderReactPDFProps> = ({ order, customer, c
 
                 {/* Header (fixed: repeats on every page) */}
                 <View fixed style={styles.header}>
-                    <View>
-                        {companySettings.logo ? (
-                            <Image src={companySettings.logo} style={styles.logoImg} />
-                        ) : (
-                            <View>
-                                <Text style={styles.companyName}>
-                                    <Text style={styles.companySlash}>//</Text>
-                                    {(companySettings.companyName || 'FIRMA').toUpperCase()}
-                                </Text>
-                                <Text style={styles.companyTagline}>Ihr Partner für Bauprojekte</Text>
-                            </View>
-                        )}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <View>
+                            {companySettings.logo ? (
+                                <Image src={companySettings.logo} style={styles.logoImg} />
+                            ) : (
+                                <View>
+                                    <Text style={styles.companyName}>
+                                        <Text style={styles.companySlash}>//</Text>
+                                        {(companySettings.companyName || 'FIRMA').toUpperCase()}
+                                    </Text>
+                                    <Text style={styles.companyTagline}>Ihr Partner für Bauprojekte</Text>
+                                </View>
+                            )}
+                        </View>
+                        <View style={styles.headerAddress}>
+                            <Text>
+                                {companySettings.street} | {companySettings.zipCode} {companySettings.city}
+                            </Text>
+                            <Text>
+                                {companySettings.email} | Tel.: {companySettings.phone}
+                            </Text>
+                        </View>
                     </View>
-                    <View style={styles.headerAddress}>
-                        <Text>
-                            {companySettings.street} | {companySettings.zipCode} {companySettings.city}
-                        </Text>
-                        <Text>
-                            {companySettings.email} | Tel.: {companySettings.phone}
-                        </Text>
-                    </View>
+                    <View style={{ height: 65 }} />
                 </View>
 
-                {/* Ab Seite 2: Betreff links + Seitenzahl rechts (absolut, direkt unter dem Header) */}
+                {/* Ab Seite 2: Betreff Zeile 1 */}
                 <Text
                     fixed
-                    style={{ position: 'absolute', top: 125, left: 50, fontSize: 10, fontFamily: 'Helvetica-Bold' }}
-                    render={(props: any) => props.pageNumber > 1
-                        ? `Auftragsbestätigung Nr.: ${order.orderNumber}${order.subjectExtra ? ` // ${order.subjectExtra}` : ''}`
-                        : ''
-                    }
+                    style={{ position: 'absolute', top: 125, left: 50, right: 160, fontSize: 10, fontFamily: 'Helvetica-Bold' }}
+                    render={(props: any) => {
+                        if (props.pageNumber <= 1) return ' ';
+                        const lines = wrapText(`Auftragsbestätigung Nr.: ${order.orderNumber}${order.subjectExtra ? ` // ${order.subjectExtra}` : ''}`, 60);
+                        return lines[0] || '';
+                    }}
+                />
+                {/* Ab Seite 2: Betreff Zeile 2 (falls vorhanden) */}
+                <Text
+                    fixed
+                    style={{ position: 'absolute', top: 138, left: 50, right: 160, fontSize: 10, fontFamily: 'Helvetica-Bold' }}
+                    render={(props: any) => {
+                        if (props.pageNumber <= 1) return '';
+                        const lines = wrapText(`Auftragsbestätigung Nr.: ${order.orderNumber}${order.subjectExtra ? ` // ${order.subjectExtra}` : ''}`, 60);
+                        return lines[1] || '';
+                    }}
                 />
                 <Text
                     fixed
-                    style={{ position: 'absolute', top: 125, right: 50, fontSize: 10 }}
+                    style={{
+                        position: 'absolute',
+                        top: 125,
+                        right: 50,
+                        fontSize: 10,
+                        fontFamily: 'Helvetica-Bold',
+                    }}
                     render={(props: any) => props.pageNumber > 1
                         ? `Seite ${props.pageNumber} von ${props.totalPages}`
                         : ''
