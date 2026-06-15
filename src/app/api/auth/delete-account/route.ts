@@ -56,7 +56,10 @@ export async function POST(req: Request) {
             'service_folders',
             'einsaetze', 
             'project_photos', 
-            'settings'
+            'settings',
+            'credentials',
+            'crm_inquiries',
+            'letters'
         ];
 
         const client = supabaseAdmin || supabase;

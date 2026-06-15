@@ -25,7 +25,8 @@ import {
     CalendarDays,
     FolderOpen,
     Inbox,
-    FileCheck
+    FileCheck,
+    KeyRound
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
@@ -112,6 +113,7 @@ const menuGroups: MenuGroup[] = [
         title: "Büro & Archiv",
         items: [
             { icon: FolderOpen, label: "Dokumenten-Archiv", href: "/archive" },
+            { icon: KeyRound, label: "Zugangsdaten", href: "/credentials" },
         ]
     },
     {
