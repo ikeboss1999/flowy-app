@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { Employee, EmploymentStatus, EmployeeDocument } from "@/types/employee";
 import { EmployeeModal } from "@/components/EmployeeModal";
+import { EmployeeDetailModal } from "@/components/EmployeeDetailModal";
 import { EmployeeDataSheetPDF } from "@/components/EmployeeDataSheetPDF";
 import { DienstzettelPDF } from "@/components/DienstzettelPDF";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
@@ -51,6 +52,7 @@ export default function EmployeesPage() {
     const [filterStatus, setFilterStatus] = useState<EmploymentStatus | "all">("all");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>(undefined);
+    const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
     const [viewMode, setViewMode] = useState<'list' | 'archive'>('list');
     const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
 
@@ -93,6 +95,11 @@ export default function EmployeesPage() {
             return numA - numB;
         });
     }, [employees, listTab, searchQuery, filterStatus]);
+ 
+    const activeSelectedEmployee = useMemo(() => {
+        if (!selectedEmployee) return null;
+        return employees.find(e => e.id === selectedEmployee.id) || null;
+    }, [selectedEmployee, employees]);
 
     const handleSaveEmployee = async (employee: Employee, skipContract?: boolean) => {
         if (editingEmployee) {
@@ -573,7 +580,7 @@ export default function EmployeesPage() {
                                             return (
                                                 <tr 
                                                     key={emp.id} 
-                                                    onClick={() => handleEditEmployee(emp)}
+                                                    onClick={() => setSelectedEmployee(emp)}
                                                     className="group hover:bg-slate-50/50 transition-all duration-150 cursor-pointer"
                                                 >
                                                     <td className="px-8 py-4 whitespace-nowrap">
@@ -786,17 +793,23 @@ export default function EmployeesPage() {
                                         <div className="border-t border-slate-100 bg-slate-50/30 p-4">
                                             <div className="grid grid-cols-1 gap-2">
                                                 {docs.map(doc => (
-                                                    <div key={doc.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl group hover:border-indigo-200 transition-all">
+                                                    <div 
+                                                        key={doc.id} 
+                                                        onClick={() => handlePreview(doc)}
+                                                        className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl group hover:border-indigo-200 transition-all cursor-pointer group/doc"
+                                                    >
                                                         <div className="flex items-center gap-4">
                                                             <div className={cn(
-                                                                "h-9 w-9 rounded-lg flex items-center justify-center",
-                                                                doc.category === 'system' ? "bg-emerald-50 text-emerald-500" : "bg-rose-50 text-rose-500"
+                                                                "h-9 w-9 rounded-lg flex items-center justify-center transition-colors",
+                                                                doc.category === 'system' 
+                                                                    ? "bg-emerald-50 text-emerald-500 group-hover/doc:bg-emerald-100 group-hover/doc:text-emerald-600" 
+                                                                    : "bg-rose-50 text-rose-500 group-hover/doc:bg-rose-100 group-hover/doc:text-rose-600"
                                                             )}>
                                                                 <FileText className="h-4 w-4" />
                                                             </div>
                                                             <div>
                                                                 <div className="flex items-center gap-2">
-                                                                    <p className="text-sm font-bold text-slate-700">{doc.name}</p>
+                                                                    <p className="text-sm font-bold text-slate-700 group-hover/doc:text-indigo-650 transition-colors">{doc.name}</p>
                                                                     <span className={cn(
                                                                         "text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded",
                                                                         doc.category === 'system' ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"
@@ -809,13 +822,8 @@ export default function EmployeesPage() {
                                                         </div>
                                                         <div className="flex gap-2">
                                                             <button
-                                                                onClick={() => handlePreview(doc)}
-                                                                className="h-8 px-3 bg-indigo-50 text-indigo-600 rounded-lg font-bold text-[10px] flex items-center gap-1.5 hover:bg-indigo-100 transition-colors"
-                                                            >
-                                                                <Eye className="h-3 w-3" /> Vorschau
-                                                            </button>
-                                                            <button
-                                                                onClick={() => {
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
                                                                     if (doc.content) {
                                                                         const link = document.createElement('a');
                                                                         link.href = doc.content;
@@ -825,17 +833,20 @@ export default function EmployeesPage() {
                                                                         document.body.removeChild(link);
                                                                     }
                                                                 }}
-                                                                className="h-8 px-3 bg-slate-50 text-slate-600 rounded-lg font-bold text-[10px] flex items-center gap-1.5 hover:bg-slate-100 transition-colors"
+                                                                className="h-8 px-3 bg-slate-50 hover:bg-slate-100 text-slate-650 border border-slate-100/50 rounded-lg font-bold text-[10px] flex items-center gap-1.5 transition-colors"
                                                                 title="Download"
                                                             >
-                                                                <Download className="h-3 w-3" />
+                                                                <Download className="h-3 w-3" /> Download
                                                             </button>
                                                             <button
-                                                                onClick={() => handleDeleteDocument(emp.id, doc.id)}
-                                                                className="h-8 px-3 bg-slate-50 text-rose-600 rounded-lg font-bold text-[10px] flex items-center gap-1.5 hover:bg-rose-100 transition-colors"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteDocument(emp.id, doc.id);
+                                                                }}
+                                                                className="h-8 px-3 bg-slate-50 hover:bg-rose-50 text-rose-600 border border-slate-100/50 rounded-lg font-bold text-[10px] flex items-center gap-1.5 transition-colors"
                                                                 title="Löschen"
                                                             >
-                                                                <Trash2 className="h-3 w-3" />
+                                                                <Trash2 className="h-3 w-3" /> Löschen
                                                             </button>
                                                         </div>
                                                     </div>
@@ -879,6 +890,36 @@ export default function EmployeesPage() {
                 onClose={() => setIsPreviewOpen(false)}
                 document={previewDoc}
             />
+
+            {activeSelectedEmployee && (
+                <EmployeeDetailModal
+                    isOpen={!!activeSelectedEmployee}
+                    onClose={() => setSelectedEmployee(null)}
+                    employee={activeSelectedEmployee}
+                    onStartEdit={(emp) => {
+                        setSelectedEmployee(null);
+                        handleEditEmployee(emp);
+                    }}
+                    onDownloadPDF={(emp) => handleDownloadPDF(emp)}
+                    onDeactivate={(emp) => {
+                        setSelectedEmployee(null);
+                        setDeactivatingEmployee(emp);
+                    }}
+                    onReactivate={(emp) => {
+                        setSelectedEmployee(null);
+                        handleReactivateEmployee(emp);
+                    }}
+                    onDelete={(id) => {
+                        setSelectedEmployee(null);
+                        handleDeleteEmployee(id);
+                    }}
+                    onDeleteDocument={(empId, docId) => {
+                        handleDeleteDocument(empId, docId);
+                    }}
+                    onPreviewDocument={(doc) => handlePreview(doc)}
+                    isDownloadingPDF={downloadingId === activeSelectedEmployee.id}
+                />
+            )}
 
             {deactivatingEmployee && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">

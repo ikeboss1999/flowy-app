@@ -21,7 +21,17 @@ import { useServices } from "@/hooks/useServices";
 import { useServiceFolders, ServiceFolder } from "@/hooks/useServiceFolders";
 import { useNotification } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
-import { DndContext, DragEndEvent, useDraggable, useDroppable, closestCenter } from '@dnd-kit/core';
+import {
+    DndContext,
+    DragEndEvent,
+    DragOverlay,
+    useDraggable,
+    useDroppable,
+    pointerWithin,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
 
 // --- Helper Components for Drag & Drop ---
 
@@ -75,25 +85,19 @@ function DroppableFolder({ folder, isSelected, onClick, onRename, onDelete }: { 
 }
 
 function DraggablePresetCard({ preset, onEdit, onDelete, onRemoveFromFolder }: { preset: Service, onEdit: () => void, onDelete: () => void, onRemoveFromFolder?: () => void }) {
-    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: preset.id,
         data: { type: 'preset', preset }
     });
 
-    const style = transform ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-        zIndex: 50,
-    } : undefined;
-
     return (
         <div
             ref={setNodeRef}
-            style={style}
             {...listeners}
             {...attributes}
             className={cn(
                 "glass-card p-6 flex flex-col group hover:border-indigo-500/30 transition-all duration-300 cursor-grab active:cursor-grabbing",
-                isDragging && "opacity-50 shadow-2xl scale-105 border-indigo-500"
+                isDragging && "opacity-30 border-indigo-300"
             )}
         >
             <div className="flex justify-between items-start mb-6">
@@ -166,11 +170,16 @@ export default function PositionPresetsPage() {
     const { services, addService, updateService, deleteService, isLoading: isServicesLoading } = useServices();
     const { folders, addFolder, renameFolder, deleteFolder, isLoading: isFoldersLoading } = useServiceFolders();
     const { showToast, showConfirm, showPrompt } = useNotification();
-    
+
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingService, setEditingService] = useState<Service | undefined>(undefined);
+    const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    );
 
     const positionPresets = useMemo(() => {
         return services.filter(service => {
@@ -254,8 +263,13 @@ export default function PositionPresetsPage() {
         });
     };
 
+    const handleDragStart = (event: { active: { id: string | number } }) => {
+        setActiveDragId(event.active.id as string);
+    };
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
+        setActiveDragId(null);
         if (!over) return;
 
         const presetId = active.id as string;
@@ -278,7 +292,7 @@ export default function PositionPresetsPage() {
     }
 
     return (
-        <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
             <div className="flex-1 p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* Header Area */}
                 <div className="flex justify-between items-end">
@@ -397,6 +411,33 @@ export default function PositionPresetsPage() {
                     folders={folders.map(f => f.name)}
                 />
             </div>
+
+            <DragOverlay dropAnimation={null}>
+                {activeDragId && (() => {
+                    const preset = services.find(s => s.id === activeDragId);
+                    if (!preset) return null;
+                    return (
+                        <div className="glass-card p-6 flex flex-col border-2 border-indigo-400 shadow-2xl rotate-1 w-72 cursor-grabbing">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className={cn(
+                                    "h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg",
+                                    (preset.itemType || 'standard') === 'standard' ? "bg-indigo-50 text-indigo-500" : "bg-emerald-50 text-emerald-500"
+                                )}>
+                                    {(preset.itemType || 'standard') === 'standard' ? <Layers className="h-6 w-6" /> : <Layout className="h-6 w-6" />}
+                                </div>
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 line-clamp-1">{preset.title}</h3>
+                            {preset.description && (
+                                <p className="text-sm text-slate-500 line-clamp-2 mt-1">{preset.description}</p>
+                            )}
+                            <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">pro {preset.unit === 'pauschal' ? 'PA' : preset.unit}</span>
+                                <span className="text-xl font-black text-slate-900">€ {preset.price.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        </div>
+                    );
+                })()}
+            </DragOverlay>
         </DndContext>
     );
 }

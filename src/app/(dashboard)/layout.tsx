@@ -23,7 +23,7 @@ export default function DashboardLayout({
             <GlobalTodoWidget />
             <main className={cn(
                 "flex-1 min-h-screen text-lg transition-all duration-300",
-                isDrawerMode ? "ml-0 pt-20 px-4" : "ml-[var(--sidebar-width,20rem)]"
+                isDrawerMode ? "ml-0 pt-20 px-4" : "ml-[var(--sidebar-width,20rem)] [.sidebar-collapsed_&]:ml-0"
             )}>
                 {children}
             </main>

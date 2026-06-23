@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useArchiveFiles, ArchiveFile } from "@/hooks/useArchiveFiles";
 import { useArchiveFolders } from "@/hooks/useArchiveFolders";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DocumentPreviewModal } from "../DocumentPreviewModal";
 
 const ACCEPT_ALL = '.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,image/jpeg,image/png,image/gif,image/webp';
 
@@ -76,7 +77,8 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
 
     // Signed URL cache
     const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
-    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+    const [previewDoc, setPreviewDoc] = useState<any | null>(null);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -283,9 +285,21 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
         }
     };
 
-    const openLightbox = async (file: ArchiveFile) => {
-        let url = signedUrls[file.id] || await getSignedUrl(file.storagePath);
-        setLightboxUrl(url);
+    const handlePreviewFile = async (file: ArchiveFile) => {
+        try {
+            const url = signedUrls[file.id] || await getSignedUrl(file.storagePath);
+            setPreviewDoc({
+                id: file.id,
+                name: file.name,
+                type: file.mimeType || "application/octet-stream",
+                uploadDate: file.createdAt,
+                fileSize: formatBytes(file.size),
+                content: url
+            });
+            setIsPreviewOpen(true);
+        } catch (e) {
+            console.error("Vorschau konnte nicht geladen werden:", e);
+        }
     };
 
     const handleFiles = useCallback(async (fileList: FileList) => {
@@ -591,10 +605,17 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                                                 const isDeleting = deletingId === file.id;
                                                 
                                                 return (
-                                                    <tr key={file.id} className={cn("group hover:bg-slate-50/30 transition-colors border-b border-slate-50 last:border-0", isDeleting && "opacity-40")}>
+                                                    <tr 
+                                                        key={file.id} 
+                                                        onClick={() => handlePreviewFile(file)}
+                                                        className={cn(
+                                                            "group hover:bg-slate-50/50 hover:border-indigo-150 transition-colors border-b border-slate-50 last:border-0 cursor-pointer group/doc", 
+                                                            isDeleting && "opacity-40"
+                                                        )}
+                                                    >
                                                         <td className="py-4 px-6">
                                                             <div className="flex items-center gap-3">
-                                                                <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors cursor-pointer shrink-0" onClick={() => isImage ? openLightbox(file) : resolveAndOpen(file)}>
+                                                                <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors shrink-0">
                                                                     {isImage && signedUrls[file.id] ? (
                                                                         <img src={signedUrls[file.id]} alt={file.name} className="h-full w-full object-cover rounded-xl" />
                                                                     ) : (
@@ -616,7 +637,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                                                                             <button onClick={() => setRenamingFileId(null)} className="p-1.5 bg-slate-50 text-slate-400 rounded-lg hover:bg-slate-100 transition-colors"><X className="h-4 w-4" /></button>
                                                                         </div>
                                                                     ) : (
-                                                                        <p className="text-sm font-bold text-slate-700 truncate cursor-pointer hover:text-indigo-600 transition-colors font-outfit" onClick={() => isImage ? openLightbox(file) : resolveAndOpen(file)}>
+                                                                        <p className="text-sm font-bold text-slate-750 truncate hover:text-indigo-600 transition-colors font-outfit">
                                                                             {file.name}
                                                                         </p>
                                                                     )}
@@ -631,16 +652,16 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                                                         </td>
                                                         <td className="py-4 px-6 text-right">
                                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <button onClick={() => setMovingFile(file)} title="Verschieben" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
+                                                                <button onClick={(e) => { e.stopPropagation(); setMovingFile(file); }} title="Verschieben" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
                                                                     <ArrowRightLeft className="h-4 w-4" />
                                                                 </button>
-                                                                <button onClick={() => resolveAndOpen(file)} title="Download" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
+                                                                <button onClick={(e) => { e.stopPropagation(); resolveAndOpen(file); }} title="Download" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
                                                                     <Download className="h-4 w-4" />
                                                                 </button>
-                                                                <button onClick={() => { setRenamingFileId(file.id); setNewFileName(file.name); }} title="Umbenennen" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
+                                                                <button onClick={(e) => { e.stopPropagation(); setRenamingFileId(file.id); setNewFileName(file.name); }} title="Umbenennen" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
                                                                     <Edit2 className="h-4 w-4" />
                                                                 </button>
-                                                                <button onClick={() => handleDelete(file)} title="Löschen" className="p-2 bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-600 rounded-xl border border-slate-100 transition-colors">
+                                                                <button onClick={(e) => { e.stopPropagation(); handleDelete(file); }} title="Löschen" className="p-2 bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-600 rounded-xl border border-slate-100 transition-colors">
                                                                     {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                                                 </button>
                                                             </div>
@@ -713,8 +734,6 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                 </div>
             )}
 
-            {lightboxUrl && <div className="fixed inset-0 z-[400] bg-black/90 flex items-center justify-center p-4" onClick={() => setLightboxUrl(null)}><img src={lightboxUrl} alt="Vorschau" className="max-w-full max-h-full rounded-lg object-contain" /></div>}
-
             <ConfirmDialog 
                 isOpen={confirmDialog.isOpen}
                 title={confirmDialog.title}
@@ -724,6 +743,12 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                 variant="danger"
                 onConfirm={confirmDialog.onConfirm}
                 onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+            />
+
+            <DocumentPreviewModal
+                isOpen={isPreviewOpen}
+                onClose={() => setIsPreviewOpen(false)}
+                document={previewDoc}
             />
         </div>
     );

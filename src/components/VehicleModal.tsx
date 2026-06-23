@@ -20,6 +20,7 @@ import {
 import { Vehicle, VehicleStatus, VehicleDocument } from "@/types/vehicle";
 import { cn } from "@/lib/utils";
 import { useRef } from "react";
+import { DocumentPreviewModal } from "./DocumentPreviewModal";
 
 interface VehicleModalProps {
     isOpen: boolean;
@@ -57,6 +58,8 @@ export function VehicleModal({ isOpen, onClose, onSave, initialVehicle }: Vehicl
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState("basic");
     const [isOtherMake, setIsOtherMake] = useState(false);
+    const [previewDoc, setPreviewDoc] = useState<any | null>(null);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [formData, setFormData] = useState<Vehicle>(() => initialVehicle || {
         id: Math.random().toString(36).substr(2, 9),
         basicInfo: {
@@ -136,17 +139,25 @@ export function VehicleModal({ isOpen, onClose, onSave, initialVehicle }: Vehicl
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const newDoc: VehicleDocument = {
-            id: Math.random().toString(36).substr(2, 9),
-            name: file.name,
-            type: file.type || "application/octet-stream",
-            uploadDate: new Date().toISOString(),
-            fileSize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64 = reader.result as string;
+            const newDoc: VehicleDocument = {
+                id: Math.random().toString(36).substr(2, 9),
+                name: file.name,
+                type: file.type || "application/octet-stream",
+                uploadDate: new Date().toISOString(),
+                fileSize: file.size > 1024 * 1024
+                    ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+                    : `${(file.size / 1024).toFixed(0)} KB`,
+                content: base64
+            };
+            setFormData(prev => ({
+                ...prev,
+                documents: [...prev.documents, newDoc]
+            }));
         };
-        setFormData(prev => ({
-            ...prev,
-            documents: [...prev.documents, newDoc]
-        }));
+        reader.readAsDataURL(file);
 
         // Reset input
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -413,23 +424,47 @@ export function VehicleModal({ isOpen, onClose, onSave, initialVehicle }: Vehicl
                                     </div>
                                 ) : (
                                     formData.documents.map((doc) => (
-                                        <div key={doc.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl group hover:border-indigo-200 transition-all">
+                                        <div 
+                                            key={doc.id} 
+                                            onClick={() => {
+                                                setPreviewDoc(doc);
+                                                setIsPreviewOpen(true);
+                                            }}
+                                            className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl group hover:border-indigo-200 transition-all cursor-pointer group/doc"
+                                        >
                                             <div className="flex items-center gap-4">
-                                                <div className="h-10 w-10 bg-rose-50 rounded-xl flex items-center justify-center text-rose-500">
+                                                <div className="h-10 w-10 bg-rose-50 rounded-xl flex items-center justify-center text-rose-500 group-hover/doc:bg-rose-100 group-hover/doc:text-rose-600 transition-colors">
                                                     <FileText className="h-5 w-5" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-slate-900 font-bold text-sm">{doc.name}</p>
+                                                    <p className="text-slate-900 font-bold text-sm group-hover/doc:text-indigo-650 transition-colors">{doc.name}</p>
                                                     <p className="text-slate-400 text-xs font-medium">Hochgeladen am {new Date(doc.uploadDate).toLocaleDateString()} • {doc.fileSize}</p>
                                                 </div>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button type="button" className="h-9 w-9 bg-slate-50 text-slate-400 flex items-center justify-center rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all">
+                                                <button 
+                                                    type="button" 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (doc.content) {
+                                                            const link = window.document.createElement('a');
+                                                            link.href = doc.content;
+                                                            link.download = doc.name;
+                                                            window.document.body.appendChild(link);
+                                                            link.click();
+                                                            window.document.body.removeChild(link);
+                                                        }
+                                                    }}
+                                                    className="h-9 w-9 bg-slate-50 text-slate-400 flex items-center justify-center rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                                                >
                                                     <Download className="h-4 w-4" />
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() => removeDocument(doc.id)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        removeDocument(doc.id);
+                                                    }}
                                                     className="h-9 w-9 bg-slate-50 text-slate-400 flex items-center justify-center rounded-lg hover:bg-rose-50 hover:text-rose-600 transition-all"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
@@ -461,6 +496,12 @@ export function VehicleModal({ isOpen, onClose, onSave, initialVehicle }: Vehicl
                     </button>
                 </div>
             </div>
+
+            <DocumentPreviewModal
+                isOpen={isPreviewOpen}
+                onClose={() => setIsPreviewOpen(false)}
+                document={previewDoc}
+            />
         </div>
     );
 }

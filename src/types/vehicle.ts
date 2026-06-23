@@ -6,6 +6,7 @@ export interface VehicleDocument {
     type: string;
     uploadDate: string;
     fileSize?: string;
+    content?: string;
 }
 
 export interface Vehicle {

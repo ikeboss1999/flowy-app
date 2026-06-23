@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { InquiryDetailModal } from '@/components/InquiryDetailModal';
 
 const STATUS_CONFIG: Record<InquiryStatus, { label: string; color: string; bg: string; border: string; dot: string }> = {
     new: { label: 'Neu', color: 'text-blue-600', bg: 'bg-blue-50/50', border: 'border-blue-100', dot: 'bg-blue-500' },
@@ -478,169 +479,80 @@ export default function CRMPage() {
                 </div>
             )}
 
-            {/* Details & Notes Drawer (Slide-out Panel) */}
-            {selectedInquiry && (
-                <div className="fixed inset-0 z-[250] bg-black/40 backdrop-blur-sm flex justify-end">
-                    <div className="w-full max-w-xl bg-white h-full shadow-2xl flex flex-col p-6 overflow-y-auto animate-in slide-in-from-right duration-300">
-                        {/* Drawer Header */}
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6 shrink-0">
+            {/* Details Modal */}
+            {selectedInquiry && !isEditMode && (
+                <InquiryDetailModal
+                    isOpen={!!selectedInquiry}
+                    onClose={() => setSelectedInquiry(null)}
+                    inquiry={selectedInquiry}
+                    onStartEdit={(inq) => handleStartEdit(inq)}
+                    onDelete={() => setConfirmDeleteOpen(true)}
+                />
+            )}
+
+            {/* Edit Inquiry Modal */}
+            {selectedInquiry && isEditMode && (
+                <div className="fixed inset-0 z-[300] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[24px] p-8 w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+                            <h3 className="text-xl font-black text-slate-900 font-outfit">Anfrage bearbeiten</h3>
+                            <button onClick={() => setIsEditMode(false)} className="p-1.5 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-lg transition-colors">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
                             <div>
-                                <h3 className="text-lg font-black text-slate-900 font-outfit">Anfrage-Details</h3>
-                                <p className="text-xs text-slate-400 font-medium font-outfit">Erfasst am {new Date(selectedInquiry.createdAt).toLocaleDateString('de-DE')} um {new Date(selectedInquiry.createdAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</p>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Kundenname *</label>
+                                <input type="text" value={clientName} onChange={e => setClientName(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" />
                             </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => {
-                                        if (isEditMode) {
-                                            setIsEditMode(false);
-                                        } else {
-                                            handleStartEdit(selectedInquiry);
-                                        }
-                                    }}
-                                    className="p-2 border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 hover:bg-indigo-50/50 rounded-xl transition-all"
-                                    title="Bearbeiten"
-                                >
-                                    <Edit2 className="h-4 w-4" />
-                                </button>
-                                <button
-                                    onClick={() => setConfirmDeleteOpen(true)}
-                                    className="p-2 border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-100 hover:bg-rose-50/50 rounded-xl transition-all"
-                                    title="Löschen"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </button>
-                                <button onClick={() => { setSelectedInquiry(null); setIsEditMode(false); }} className="p-2 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-xl transition-all ml-2">
-                                    <X className="h-4 w-4" />
-                                </button>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Telefon</label>
+                                    <input type="text" value={clientPhone} onChange={e => setClientPhone(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">E-Mail</label>
+                                    <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Ort / PLZ</label>
+                                    <input type="text" value={location} onChange={e => setLocation(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Kanal *</label>
+                                    <select value={channel} onChange={e => setChannel(e.target.value as InquiryChannel)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit">
+                                        {CHANNELS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Status *</label>
+                                    <select value={status} onChange={e => setStatus(e.target.value as InquiryStatus)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit">
+                                        {(Object.keys(STATUS_CONFIG) as InquiryStatus[]).map(s => <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Budget (€)</label>
+                                    <input type="number" value={budget} onChange={e => setBudget(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Bauvorhaben / Beschreibung</label>
+                                <textarea rows={3} value={projectDescription} onChange={e => setProjectDescription(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" />
                             </div>
                         </div>
 
-                        {/* Drawer Content Area */}
-                        <div className="flex-1 overflow-y-auto space-y-6 scrollbar-thin">
-                            {isEditMode ? (
-                                // Edit Form
-                                <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Kundenname *</label>
-                                        <input type="text" value={clientName} onChange={e => setClientName(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1 font-outfit" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Telefon</label>
-                                            <input type="text" value={clientPhone} onChange={e => setClientPhone(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1 font-outfit" />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">E-Mail</label>
-                                            <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1 font-outfit" />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Ort / PLZ</label>
-                                            <input type="text" value={location} onChange={e => setLocation(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1 font-outfit" />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Kanal *</label>
-                                            <select value={channel} onChange={e => setChannel(e.target.value as InquiryChannel)} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1 font-outfit">
-                                                {CHANNELS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Status *</label>
-                                            <select value={status} onChange={e => setStatus(e.target.value as InquiryStatus)} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1 font-outfit">
-                                                {(Object.keys(STATUS_CONFIG) as InquiryStatus[]).map(s => <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Budget (€)</label>
-                                            <input type="number" value={budget} onChange={e => setBudget(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1 font-outfit" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Bauvorhaben / Beschreibung</label>
-                                        <textarea rows={3} value={projectDescription} onChange={e => setProjectDescription(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1 font-outfit" />
-                                    </div>
-                                    <div className="flex gap-2 pt-4">
-                                        <button onClick={() => setIsEditMode(false)} className="flex-1 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors font-outfit text-sm">Abbrechen</button>
-                                        <button onClick={handleSaveInquiryEdit} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors font-outfit text-sm">Speichern</button>
-                                    </div>
-                                </div>
-                            ) : (
-                                // Details View
-                                <div className="space-y-4">
-                                    <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100/80 space-y-4">
-                                        <div className="flex justify-between items-start flex-wrap gap-2">
-                                            <div>
-                                                <h4 className="text-xl font-black text-slate-800 font-outfit">{selectedInquiry.clientName}</h4>
-                                            </div>
-                                            <span className={cn("px-2.5 py-1 rounded-xl text-xs font-bold font-outfit uppercase tracking-wider border", STATUS_CONFIG[selectedInquiry.status].bg, STATUS_CONFIG[selectedInquiry.status].color, STATUS_CONFIG[selectedInquiry.status].border)}>
-                                                {STATUS_CONFIG[selectedInquiry.status].label}
-                                            </span>
-                                        </div>
-
-                                        {selectedInquiry.projectDescription && (
-                                            <div className="pt-2">
-                                                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-outfit">Bauvorhaben</h5>
-                                                <p className="text-sm font-semibold text-slate-600 mt-1 font-outfit leading-relaxed">{selectedInquiry.projectDescription}</p>
-                                            </div>
-                                        )}
-
-                                        <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-100/50">
-                                            {selectedInquiry.clientPhone && (
-                                                <div>
-                                                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-outfit">Telefon</h5>
-                                                    <a href={`tel:${selectedInquiry.clientPhone}`} className="text-sm font-bold text-indigo-600 hover:underline flex items-center gap-1.5 mt-1 font-outfit">
-                                                        <Phone className="h-4 w-4 shrink-0" />
-                                                        {selectedInquiry.clientPhone}
-                                                    </a>
-                                                </div>
-                                            )}
-                                            {selectedInquiry.clientEmail && (
-                                                <div>
-                                                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-outfit">E-Mail</h5>
-                                                    <a href={`mailto:${selectedInquiry.clientEmail}`} className="text-sm font-bold text-indigo-600 hover:underline flex items-center gap-1.5 mt-1 font-outfit">
-                                                        <Mail className="h-4 w-4 shrink-0" />
-                                                        {selectedInquiry.clientEmail}
-                                                    </a>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-100/50">
-                                            <div>
-                                                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-outfit">Ort / Baustelle</h5>
-                                                <p className="text-sm font-bold text-slate-600 mt-1 flex items-center gap-1.5 font-outfit">
-                                                    <MapPin className="h-4 w-4 text-slate-400" />
-                                                    {selectedInquiry.location || '—'}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-outfit">Kanal</h5>
-                                                <p className="text-sm font-bold text-slate-600 mt-1 font-outfit">
-                                                    <span className={cn("px-2 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider", CHANNELS.find(c => c.id === selectedInquiry.channel)?.bg, CHANNELS.find(c => c.id === selectedInquiry.channel)?.color)}>
-                                                        {CHANNELS.find(c => c.id === selectedInquiry.channel)?.label}
-                                                    </span>
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {selectedInquiry.budget && (
-                                            <div className="pt-3 border-t border-slate-100/50">
-                                                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-outfit">Geschätztes Budget</h5>
-                                                <p className="text-lg font-black text-slate-700 mt-1 font-outfit flex items-center gap-0.5">
-                                                    <DollarSign className="h-4 w-4 text-slate-400" />
-                                                    {selectedInquiry.budget.toLocaleString('de-DE')} €
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Timeline Notes */}
-                            {!isEditMode && <InquiryNotesTimeline inquiryId={selectedInquiry.id} />}
+                        <div className="flex gap-3 mt-8 border-t border-slate-100 pt-6">
+                            <button onClick={() => setIsEditMode(false)} className="flex-1 px-4 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors font-outfit">Abbrechen</button>
+                            <button onClick={handleSaveInquiryEdit} className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors font-outfit">Speichern</button>
                         </div>
                     </div>
                 </div>

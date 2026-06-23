@@ -1480,27 +1480,27 @@ function DocumentSlot({ label, required, subType, documents = [], onUpload, onRe
             {docs.length > 0 && (
                 <div className="grid grid-cols-1 gap-2 mt-2">
                     {docs.map((doc) => (
-                        <div key={doc.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 group/item">
+                        <div 
+                            key={doc.id} 
+                            onClick={() => onPreview(doc)}
+                            className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 hover:border-indigo-150 transition-all duration-150 cursor-pointer group/item group/doc"
+                        >
                             <div className="flex items-center gap-3 overflow-hidden">
-                                <div className="h-8 w-8 bg-slate-50 rounded-lg flex items-center justify-center shrink-0 border border-slate-100 text-indigo-400">
+                                <div className="h-8 w-8 bg-slate-50 rounded-lg flex items-center justify-center shrink-0 border border-slate-100 text-indigo-400 group-hover/doc:text-indigo-600 transition-colors">
                                     <FileText className="h-4 w-4" />
                                 </div>
                                 <div className="overflow-hidden">
-                                    <p className="text-xs font-bold text-slate-700 truncate">{doc.name}</p>
+                                    <p className="text-xs font-bold text-slate-700 truncate group-hover/doc:text-indigo-650 transition-colors">{doc.name}</p>
                                     <p className="text-[9px] text-slate-400 font-medium">{doc.fileSize} • {new Date(doc.uploadDate).toLocaleDateString()}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
                                 <button
                                     type="button"
-                                    onClick={() => onPreview(doc)}
-                                    className="h-7 w-7 rounded-md flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-slate-50 transition-all"
-                                >
-                                    <Eye className="h-4 w-4" />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => onRemove(doc.id)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onRemove(doc.id);
+                                    }}
                                     className="h-7 w-7 rounded-md flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-slate-50 transition-all"
                                 >
                                     <Trash2 className="h-4 w-4" />
@@ -1580,27 +1580,27 @@ function FolderSection({ title, folder, documents, onUpload, onDeleteDoc, onDele
                 {documents.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {documents.map(doc => (
-                            <div key={doc.id} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-100 group">
+                            <div 
+                                key={doc.id} 
+                                onClick={() => onPreview(doc)}
+                                className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-100 hover:border-indigo-150 transition-all duration-150 cursor-pointer group/doc"
+                            >
                                 <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center shrink-0 shadow-sm text-indigo-400">
+                                    <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center shrink-0 shadow-sm text-indigo-400 group-hover/doc:text-indigo-600 transition-colors">
                                         <FileText className="h-4 w-4" />
                                     </div>
                                     <div className="overflow-hidden">
-                                        <p className="text-xs font-bold text-slate-700 truncate">{doc.name}</p>
+                                        <p className="text-xs font-bold text-slate-700 truncate group-hover/doc:text-indigo-650 transition-colors">{doc.name}</p>
                                         <p className="text-[9px] text-slate-400 font-medium">{doc.fileSize}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button
                                         type="button"
-                                        onClick={() => onPreview(doc)}
-                                        className="h-7 w-7 rounded-md flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white transition-all"
-                                    >
-                                        <Eye className="h-3.5 w-3.5" />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => onDeleteDoc(doc.id)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDeleteDoc(doc.id);
+                                        }}
                                         className="h-7 w-7 rounded-md flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-white transition-all"
                                     >
                                         <Trash2 className="h-3.5 w-3.5" />

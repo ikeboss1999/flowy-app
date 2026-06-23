@@ -14,6 +14,9 @@ import {
   GripVertical,
   Bookmark,
   Copy,
+  Search,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { useNotification } from "@/context/NotificationContext";
 import {
@@ -24,6 +27,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  useDraggable,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -44,6 +48,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useOffers } from "@/hooks/useOffers";
 import { useOfferSettings } from "@/hooks/useOfferSettings";
 import { useServices } from "@/hooks/useServices";
+import { useServiceFolders } from "@/hooks/useServiceFolders";
 import { useProjects } from "@/hooks/useProjects";
 import { useRouter } from "next/navigation";
 import { DatePicker } from "@/components/DatePicker";
@@ -57,6 +62,66 @@ import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 
 interface OfferFormProps {
   initialData?: Partial<Offer>;
+}
+
+function DraggablePresetItem({
+  service,
+  onAdd,
+}: {
+  service: Service;
+  onAdd: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: `preset-${service.id}`,
+    });
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        zIndex: 1000,
+      }
+    : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-indigo-200 hover:shadow transition-all flex flex-col gap-1 cursor-grab active:cursor-grabbing group relative",
+        isDragging && "opacity-50"
+      )}
+    >
+      <div className="flex justify-between items-start gap-2 pr-6">
+        <span className="font-bold text-slate-700 text-sm group-hover:text-indigo-600 transition-colors line-clamp-1 select-none">
+          {service.title}
+        </span>
+        <span className="text-xs font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded whitespace-nowrap select-none">
+          € {service.price.toFixed(2)}
+        </span>
+      </div>
+      {service.description && (
+        <p className="text-xs text-slate-400 line-clamp-2 pr-6 select-none">
+          {service.description}
+        </p>
+      )}
+
+      {/* Quick Add Button */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onAdd();
+        }}
+        className="absolute bottom-2 right-2 h-6 w-6 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+        title="Als Position anhängen"
+      >
+        <Plus className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
 }
 
 function SortableItem({
@@ -139,7 +204,24 @@ export function OfferForm({ initialData }: OfferFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedPresetIds, setSavedPresetIds] = useState<string[]>([]);
+  const { folders: serviceFolders } = useServiceFolders();
+  const [isPresetDrawerOpen, setIsPresetDrawerOpen] = useState(false);
+  const [activePresetTab, setActivePresetTab] = useState<'services' | 'positions'>('services');
+  const [presetSearchTerm, setPresetSearchTerm] = useState('');
+  const [expandedPresetFolders, setExpandedPresetFolders] = useState<Record<string, boolean>>({});
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const { showToast } = useNotification();
+
+  useEffect(() => {
+    if (isPresetDrawerOpen) {
+      document.documentElement.classList.add("sidebar-collapsed");
+    } else {
+      document.documentElement.classList.remove("sidebar-collapsed");
+    }
+    return () => {
+      document.documentElement.classList.remove("sidebar-collapsed");
+    };
+  }, [isPresetDrawerOpen]);
 
   const isLoading =
     isCustomersLoading ||
@@ -468,6 +550,52 @@ export function OfferForm({ initialData }: OfferFormProps) {
     }, 2000);
   };
 
+  const addServiceAsItem = (service: Service) => {
+    const newItem: OfferItem = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      itemType: service.itemType || "standard",
+      title: service.title,
+      description: service.description || "",
+      quantity: 1,
+      unit: (service.unit as any) || "Stk",
+      pricePerUnit: service.price || 0,
+      totalPrice: service.price || 0,
+    };
+    setItems((prev) => [...prev, newItem]);
+    showToast("Vorlage als neue Position hinzugefügt", "success");
+  };
+
+  const togglePresetFolder = (folderName: string) => {
+    setExpandedPresetFolders((prev) => ({
+      ...prev,
+      [folderName]: !prev[folderName],
+    }));
+  };
+
+  const filteredServices = useMemo(() => {
+    return services.filter((s) => {
+      const matchesSearch =
+        s.title.toLowerCase().includes(presetSearchTerm.toLowerCase()) ||
+        s.description?.toLowerCase().includes(presetSearchTerm.toLowerCase());
+      const isPosition = s.category === "Position";
+      const matchesTab =
+        activePresetTab === "positions" ? isPosition : !isPosition;
+      return matchesSearch && matchesTab;
+    });
+  }, [services, presetSearchTerm, activePresetTab]);
+
+  const groupedServices = useMemo(() => {
+    const groups: Record<string, Service[]> = {};
+    filteredServices.forEach((s) => {
+      const folderName = s.folder || "Allgemein";
+      if (!groups[folderName]) {
+        groups[folderName] = [];
+      }
+      groups[folderName].push(s);
+    });
+    return groups;
+  }, [filteredServices]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -479,8 +607,46 @@ export function OfferForm({ initialData }: OfferFormProps) {
     }),
   );
 
+  const handleDragStart = (event: any) => {
+    setActiveDragId(event.active.id);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveDragId(null);
+
+    if (active.id.toString().startsWith("preset-")) {
+      const serviceId = active.id.toString().replace("preset-", "");
+      const service = services.find((s) => s.id === serviceId);
+      if (service) {
+        const newItem: OfferItem = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          itemType: service.itemType || "standard",
+          title: service.title,
+          description: service.description || "",
+          quantity: 1,
+          unit: (service.unit as any) || "Stk",
+          pricePerUnit: service.price || 0,
+          totalPrice: service.price || 0,
+        };
+
+        setItems((items) => {
+          if (!over) {
+            return [...items, newItem];
+          }
+          const overIndex = items.findIndex((i) => i.id === over.id);
+          if (overIndex === -1) {
+            return [...items, newItem];
+          }
+          const newItems = [...items];
+          newItems.splice(overIndex, 0, newItem);
+          return newItems;
+        });
+        showToast("Vorlage an Position eingefügt", "success");
+      }
+      return;
+    }
+
     if (over && active.id !== over.id) {
       setItems((items) => {
         const oldIndex = items.findIndex((i) => i.id === active.id);
@@ -500,7 +666,10 @@ export function OfferForm({ initialData }: OfferFormProps) {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-10">
+    <div className={cn(
+      "mx-auto space-y-10 transition-all duration-300",
+      isPresetDrawerOpen ? "max-w-[1664px]" : "max-w-6xl"
+    )}>
       {/* Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-slate-400 font-bold uppercase tracking-widest text-xs mb-1">
@@ -522,8 +691,27 @@ export function OfferForm({ initialData }: OfferFormProps) {
         </p>
       </div>
 
-      <div className="glass-card p-6 xl:p-12 space-y-8 xl:space-y-12">
-        {/* ── Section 1: Kopfdaten ── */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        modifiers={activeDragId?.toString().startsWith('preset-') ? [] : [restrictToVerticalAxis, restrictToParentElement]}
+      >
+        <div className={cn(
+          "grid gap-8 items-start w-full transition-all duration-300",
+          isPresetDrawerOpen 
+            ? "grid-cols-1 xl:grid-cols-[minmax(0,1152px)_480px] justify-center" 
+            : "grid-cols-1 max-w-6xl mx-auto"
+        )}>
+          {/* Left Column: Form Cards */}
+          <div className="space-y-8 xl:col-start-1 w-full">
+            {/* Card 1: Kopfdaten */}
+            <div className={cn(
+              "glass-card p-6 xl:p-12 space-y-8 xl:space-y-12 transition-all duration-300",
+              isPresetDrawerOpen ? "w-full max-w-6xl" : "w-full"
+            )}>
+            {/* ── Section 1: Kopfdaten ── */}
         <div className="space-y-6 xl:space-y-8">
           <h2 className={sectionTitleClasses}>
             <div className="h-8 xl:h-10 w-8 xl:w-10 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
@@ -709,9 +897,13 @@ export function OfferForm({ initialData }: OfferFormProps) {
             />
           </div>
         </div>
+          </div>
 
-        <hr className="border-slate-100" />
-
+          {/* Card 2: Positionen */}
+          <div className={cn(
+            "glass-card p-6 xl:p-12 space-y-8 xl:space-y-12 transition-all duration-300",
+            isPresetDrawerOpen ? "w-full max-w-6xl" : "w-full"
+          )}>
         {/* ── Section 4: Positionen ── */}
         <div className="space-y-8">
           <div className="flex justify-between items-center">
@@ -742,243 +934,356 @@ export function OfferForm({ initialData }: OfferFormProps) {
               >
                 <Plus className="h-3.5 w-3.5" /> Detail-Pos.
               </button>
+              <div className="w-px h-4 bg-slate-200" />
+              <button
+                type="button"
+                onClick={() => setIsPresetDrawerOpen(!isPresetDrawerOpen)}
+                className={cn(
+                  "px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                  isPresetDrawerOpen
+                    ? "bg-indigo-50 text-indigo-600 shadow-sm"
+                    : "text-indigo-600 hover:bg-white hover:shadow-sm"
+                )}
+              >
+                <Bookmark className="h-3.5 w-3.5" /> Vorlagen {isPresetDrawerOpen ? "schließen" : "öffnen"}
+              </button>
             </div>
           </div>
 
           <div className="space-y-2">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-              modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+            <SortableContext
+              items={items.map((i) => i.id)}
+              strategy={verticalListSortingStrategy}
             >
-              <SortableContext
-                items={items.map((i) => i.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {(() => {
-                  let posCounter = 0;
-                  return items.map((item, idx) => {
-                    const type =
-                      item.itemType ??
-                      ((item as any).isTitleOnly ? "title" : "standard");
-                    if (type !== "title") posCounter++;
-                    const pos = posCounter;
-                    return (
-                      <SortableItem key={item.id} id={item.id}>
-                        <div
-                          className={cn(
-                            "rounded-2xl border transition-colors bg-white",
-                            type === "title"
-                              ? "bg-slate-50 border-slate-200"
-                              : "border-slate-100 hover:border-slate-200",
-                          )}
-                        >
-                          <div className="flex items-start gap-3 p-3">
-                            <div className="flex items-center self-stretch mr-1">
-                              <DragHandle id={item.id} />
-                            </div>
-                            <span className="mt-3.5 w-6 text-center text-xs font-black text-slate-400 shrink-0">
-                              {type === "title" ? "—" : pos}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              {type === "title" && (
-                                <input
-                                  type="text"
-                                  value={item.title || ""}
-                                  onChange={(e) =>
-                                    updateItem(item.id, "title", e.target.value)
-                                  }
-                                  className={cn(
-                                    inputClasses,
-                                    "py-3 px-4 border-slate-100 font-bold bg-slate-100/60 text-slate-800",
-                                  )}
-                                  placeholder="Überschrift / Kapitel"
-                                />
+                    {(() => {
+                      let posCounter = 0;
+                      return items.map((item, idx) => {
+                        const type =
+                          item.itemType ??
+                          ((item as any).isTitleOnly ? "title" : "standard");
+                        if (type !== "title") posCounter++;
+                        const pos = posCounter;
+                        return (
+                          <SortableItem key={item.id} id={item.id}>
+                            <div
+                              className={cn(
+                                "rounded-2xl border transition-colors bg-white",
+                                type === "title"
+                                  ? "bg-slate-50 border-slate-200"
+                                  : "border-slate-100 hover:border-slate-200",
                               )}
-                              {type === "standard" && (
-                                <div className="flex items-start gap-2">
-                                  <input
-                                    type="text"
-                                    value={item.description}
-                                    onChange={(e) =>
-                                      updateItem(
-                                        item.id,
-                                        "description",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className={cn(
-                                      inputClasses,
-                                      "py-3 px-4 border-slate-100",
-                                    )}
-                                    placeholder="Positionsbeschreibung"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setActiveServiceItemId(item.id)
-                                    }
-                                    className="mt-0.5 h-11 w-11 shrink-0 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-slate-100"
-                                    title="Aus Vorlage wählen"
-                                  >
-                                    <Book className="h-5 w-5" />
-                                  </button>
+                            >
+                              <div className="flex items-start gap-3 p-3">
+                                <div className="flex items-center self-stretch mr-1">
+                                  <DragHandle id={item.id} />
                                 </div>
-                              )}
-                              {type === "detailed" && (
-                                <>
-                                  <input
-                                    type="text"
-                                    value={item.title || ""}
-                                    onChange={(e) =>
-                                      updateItem(
-                                        item.id,
-                                        "title",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className={cn(
-                                      inputClasses,
-                                      "py-3 px-4 border-slate-100 font-bold",
-                                    )}
-                                    placeholder="Titel der Position"
-                                  />
-                                  <div className="flex items-start gap-2 mt-2">
-                                    <textarea
-                                      rows={2}
-                                      value={item.description}
+                                <span className="mt-3.5 w-6 text-center text-xs font-black text-slate-400 shrink-0">
+                                  {type === "title" ? "—" : pos}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  {type === "title" && (
+                                    <input
+                                      type="text"
+                                      value={item.title || ""}
                                       onChange={(e) =>
-                                        updateItem(
-                                          item.id,
-                                          "description",
-                                          e.target.value,
-                                        )
+                                        updateItem(item.id, "title", e.target.value)
                                       }
                                       className={cn(
                                         inputClasses,
-                                        "py-2.5 px-4 border-slate-100 text-sm resize-none flex-1",
+                                        "py-3 px-4 border-slate-100 font-bold bg-slate-100/60 text-slate-800",
                                       )}
-                                      placeholder="Detaillierte Beschreibung (optional)"
+                                      placeholder="Überschrift / Kapitel"
                                     />
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setActiveServiceItemId(item.id)
-                                      }
-                                      className="mt-0.5 h-11 w-11 shrink-0 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-slate-100"
-                                      title="Aus Vorlage wählen"
-                                    >
-                                      <Book className="h-5 w-5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSaveAsPreset(item)}
-                                      className={cn(
-                                        "mt-0.5 h-11 w-11 shrink-0 flex items-center justify-center rounded-xl transition-all border",
-                                        savedPresetIds.includes(item.id)
-                                          ? "bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-500/20"
-                                          : "bg-slate-50 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 border-slate-100"
-                                      )}
-                                      title="Als Vorlage speichern"
-                                    >
-                                      {savedPresetIds.includes(item.id) ? <CheckCircle2 className="h-5 w-5 animate-in zoom-in" /> : <Bookmark className="h-5 w-5" />}
-                                    </button>
+                                  )}
+                                  {type === "standard" && (
+                                    <div className="flex items-start gap-2">
+                                      <input
+                                        type="text"
+                                        value={item.description}
+                                        onChange={(e) =>
+                                          updateItem(
+                                            item.id,
+                                            "description",
+                                            e.target.value,
+                                          )
+                                        }
+                                        className={cn(
+                                          inputClasses,
+                                          "py-3 px-4 border-slate-100",
+                                        )}
+                                        placeholder="Positionsbeschreibung"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setActiveServiceItemId(item.id)
+                                        }
+                                        className="mt-0.5 h-11 w-11 shrink-0 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-slate-100"
+                                        title="Aus Vorlage wählen"
+                                      >
+                                        <Book className="h-5 w-5" />
+                                      </button>
+                                    </div>
+                                  )}
+                                  {type === "detailed" && (
+                                    <>
+                                      <input
+                                        type="text"
+                                        value={item.title || ""}
+                                        onChange={(e) =>
+                                          updateItem(
+                                            item.id,
+                                            "title",
+                                            e.target.value,
+                                          )
+                                        }
+                                        className={cn(
+                                          inputClasses,
+                                          "py-3 px-4 border-slate-100 font-bold",
+                                        )}
+                                        placeholder="Titel der Position"
+                                      />
+                                      <div className="flex items-start gap-2 mt-2">
+                                        <textarea
+                                          rows={2}
+                                          value={item.description}
+                                          onChange={(e) =>
+                                            updateItem(
+                                              item.id,
+                                              "description",
+                                              e.target.value,
+                                            )
+                                          }
+                                          className={cn(
+                                            inputClasses,
+                                            "py-2.5 px-4 border-slate-100 text-sm resize-none flex-1",
+                                          )}
+                                          placeholder="Detaillierte Beschreibung (optional)"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setActiveServiceItemId(item.id)
+                                          }
+                                          className="mt-0.5 h-11 w-11 shrink-0 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-slate-100"
+                                          title="Aus Vorlage wählen"
+                                        >
+                                          <Book className="h-5 w-5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSaveAsPreset(item)}
+                                          className={cn(
+                                            "mt-0.5 h-11 w-11 shrink-0 flex items-center justify-center rounded-xl transition-all border",
+                                            savedPresetIds.includes(item.id)
+                                              ? "bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-500/20"
+                                              : "bg-slate-50 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 border-slate-100"
+                                          )}
+                                          title="Als Vorlage speichern"
+                                        >
+                                          {savedPresetIds.includes(item.id) ? <CheckCircle2 className="h-5 w-5 animate-in zoom-in" /> : <Bookmark className="h-5 w-5" />}
+                                        </button>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => removeItem(item.id)}
+                                  disabled={items.length === 1}
+                                  className="h-9 w-9 mt-1 rounded-xl flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all disabled:opacity-0 shrink-0"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+
+                              {type !== "title" && (
+                                <div className="flex items-center gap-3 px-3 pb-3 pl-14">
+                                  <input
+                                    type="number"
+                                    value={item.quantity}
+                                    onChange={(e) =>
+                                      updateItem(
+                                        item.id,
+                                        "quantity",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className={cn(
+                                      inputClasses,
+                                      "py-2.5 px-4 border-slate-100 text-center no-spinner w-24 shrink-0",
+                                    )}
+                                    placeholder="Menge"
+                                  />
+                                  <select
+                                    value={item.unit}
+                                    onChange={(e) =>
+                                      updateItem(item.id, "unit", e.target.value)
+                                    }
+                                    className={cn(
+                                      inputClasses,
+                                      "py-2.5 px-4 border-slate-100 w-40 shrink-0",
+                                    )}
+                                  >
+                                    <option value="PA">PA (Pauschal)</option>
+                                    <option value="h">h (Stunden)</option>
+                                    <option value="Stk">Stk (Stück)</option>
+                                    <option value="m">m (Meter)</option>
+                                    <option value="m²">m² (Quadratmeter)</option>
+                                    <option value="m³">m³ (Kubikmeter)</option>
+                                    <option value="kg">kg (Kilogramm)</option>
+                                    <option value="Tag">Tag (Tage)</option>
+                                  </select>
+                                  <input
+                                    type="number"
+                                    value={item.pricePerUnit}
+                                    onChange={(e) =>
+                                      updateItem(
+                                        item.id,
+                                        "pricePerUnit",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className={cn(
+                                      inputClasses,
+                                      "py-2.5 px-4 border-slate-100 text-right no-spinner flex-1",
+                                    )}
+                                    placeholder="Einzelpreis"
+                                  />
+                                  <div className="text-right font-black text-slate-900 whitespace-nowrap w-36 shrink-0">
+                                    €{" "}
+                                    {item.totalPrice.toLocaleString("de-DE", {
+                                      minimumFractionDigits: 2,
+                                    })}
                                   </div>
-                                </>
+                                </div>
                               )}
                             </div>
-                            <div className="flex items-center gap-1 shrink-0 mt-1">
-                              <button
-                                type="button"
-                                onClick={() => duplicateItem(item)}
-                                className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 transition-all"
-                                title="Position duplizieren"
-                              >
-                                <Copy className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeItem(item.id)}
-                                disabled={items.length === 1}
-                                className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all disabled:opacity-0"
-                                title="Position löschen"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
+                          </SortableItem>
+                        );
+                      });
+                    })()}
+                  </SortableContext>
+          </div>
+        </div>
+      </div>
 
-                          {type !== "title" && (
-                            <div className="flex items-center gap-3 px-3 pb-3 pl-14">
-                              <input
-                                type="number"
-                                value={item.quantity}
-                                onChange={(e) =>
-                                  updateItem(
-                                    item.id,
-                                    "quantity",
-                                    e.target.value,
-                                  )
-                                }
-                                className={cn(
-                                  inputClasses,
-                                  "py-2.5 px-4 border-slate-100 text-center no-spinner w-24 shrink-0",
-                                )}
-                                placeholder="Menge"
-                              />
-                              <select
-                                value={item.unit}
-                                onChange={(e) =>
-                                  updateItem(item.id, "unit", e.target.value)
-                                }
-                                className={cn(
-                                  inputClasses,
-                                  "py-2.5 px-4 border-slate-100 w-40 shrink-0",
-                                )}
-                              >
-                                <option value="PA">PA (Pauschal)</option>
-                                <option value="h">h (Stunden)</option>
-                                <option value="Stk">Stk (Stück)</option>
-                                <option value="m">m (Meter)</option>
-                                <option value="m²">m² (Quadratmeter)</option>
-                                <option value="m³">m³ (Kubikmeter)</option>
-                                <option value="kg">kg (Kilogramm)</option>
-                                <option value="Tag">Tag (Tage)</option>
-                              </select>
-                              <input
-                                type="number"
-                                value={item.pricePerUnit}
-                                onChange={(e) =>
-                                  updateItem(
-                                    item.id,
-                                    "pricePerUnit",
-                                    e.target.value,
-                                  )
-                                }
-                                className={cn(
-                                  inputClasses,
-                                  "py-2.5 px-4 border-slate-100 text-right no-spinner flex-1",
-                                )}
-                                placeholder="Einzelpreis"
-                              />
-                              <div className="text-right font-black text-slate-900 whitespace-nowrap w-36 shrink-0">
-                                €{" "}
-                                {item.totalPrice.toLocaleString("de-DE", {
-                                  minimumFractionDigits: 2,
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </SortableItem>
-                    );
-                  });
-                })()}
-              </SortableContext>
-            </DndContext>
+      {/* Separate Vorlagen Card */}
+      {isPresetDrawerOpen && (
+        <div className="xl:col-start-2 xl:row-start-1 w-full lg:w-[480px] xl:w-[500px] shrink-0 glass-card p-6 xl:p-8 flex flex-col h-[calc(100vh-12rem)] min-h-[600px] sticky top-6 overflow-hidden">
+          {/* Header */}
+          <div className="flex justify-between items-center pb-4 border-b border-slate-200/60">
+            <div>
+              <h4 className="font-black text-slate-800 text-lg flex items-center gap-1.5 font-outfit">
+                <Bookmark className="h-5 w-5 text-indigo-600 animate-pulse" />
+                Vorlagen-Bibliothek
+              </h4>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Ziehen zum Einfügen</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsPresetDrawerOpen(false)}
+              className="text-xs text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl font-bold transition-all"
+            >
+              Schließen
+            </button>
           </div>
 
+          {/* Search & Tabs */}
+          <div className="space-y-4 pt-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Vorlagen durchsuchen..."
+                value={presetSearchTerm}
+                onChange={(e) => setPresetSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400 font-medium"
+              />
+            </div>
+
+            <div className="flex p-1 bg-slate-200/60 rounded-xl text-xs">
+              <button
+                type="button"
+                onClick={() => setActivePresetTab('services')}
+                className={cn(
+                  "flex-1 py-2 font-bold rounded-lg transition-all",
+                  activePresetTab === 'services'
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                Leistungen
+              </button>
+              <button
+                type="button"
+                onClick={() => setActivePresetTab('positions')}
+                className={cn(
+                  "flex-1 py-2 font-bold rounded-lg transition-all",
+                  activePresetTab === 'positions'
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                Positions-Vorlagen
+              </button>
+            </div>
+          </div>
+
+          {/* Scrollable list */}
+          <div className="flex-1 overflow-y-auto pr-1 mt-4 space-y-3 min-h-0 custom-scrollbar">
+            {Object.keys(groupedServices).length === 0 ? (
+              <div className="py-12 text-center text-slate-400 text-sm font-medium">
+                Keine Vorlagen gefunden
+              </div>
+            ) : (
+              Object.keys(groupedServices)
+                .sort()
+                .map((folderName) => {
+                  const isExpanded = expandedPresetFolders[folderName] !== false;
+                  const folderServices = groupedServices[folderName];
+
+                  return (
+                    <div key={folderName} className="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => togglePresetFolder(folderName)}
+                        className="w-full flex items-center justify-between text-xs font-bold text-slate-550 hover:text-slate-700 py-1"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                          {folderName} ({folderServices.length})
+                        </span>
+                        {isExpanded ? (
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="space-y-2 pl-2">
+                          {folderServices.map((service) => (
+                            <DraggablePresetItem
+                              key={service.id}
+                              service={service}
+                              onAdd={() => addServiceAsItem(service)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Card 3: Totals & Footer */}
+      <div className={cn(
+        "glass-card p-6 xl:p-12 space-y-8 xl:space-y-12 transition-all duration-305",
+        isPresetDrawerOpen ? "w-full max-w-6xl" : "w-full"
+      )}>
           {/* Totals */}
           <div className="flex justify-end pt-4">
             <div className="w-auto min-w-[24rem] bg-indigo-50/50 rounded-[2rem] p-8 space-y-4 border border-indigo-100/50">
@@ -1017,7 +1322,6 @@ export function OfferForm({ initialData }: OfferFormProps) {
               </div>
             </div>
           </div>
-        </div>
 
         <hr className="border-slate-100" />
 
@@ -1067,6 +1371,9 @@ export function OfferForm({ initialData }: OfferFormProps) {
           </div>
         </div>
       </div>
+    </div>
+  </div>
+  </DndContext>
 
       <CustomerModal
         isOpen={isCustomerModalOpen}
