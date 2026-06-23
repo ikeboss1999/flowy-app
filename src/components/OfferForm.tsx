@@ -17,6 +17,7 @@ import {
   Search,
   ChevronUp,
   ChevronDown,
+  Info,
 } from "lucide-react";
 import { useNotification } from "@/context/NotificationContext";
 import {
@@ -28,6 +29,8 @@ import {
   useSensors,
   DragEndEvent,
   useDraggable,
+  useDroppable,
+  DragOverlay,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -37,10 +40,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  restrictToVerticalAxis,
-  restrictToParentElement,
-} from "@dnd-kit/modifiers";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { cn } from "@/lib/utils";
 import { Offer, OfferItem, OfferStatus } from "@/types/offer";
 import { useCustomers } from "@/hooks/useCustomers";
@@ -71,27 +71,19 @@ function DraggablePresetItem({
   service: Service;
   onAdd: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
+  const { attributes, listeners, setNodeRef, isDragging } =
     useDraggable({
       id: `preset-${service.id}`,
     });
 
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-        zIndex: 1000,
-      }
-    : undefined;
-
   return (
     <div
       ref={setNodeRef}
-      style={style}
       {...listeners}
       {...attributes}
       className={cn(
         "p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-indigo-200 hover:shadow transition-all flex flex-col gap-1 cursor-grab active:cursor-grabbing group relative",
-        isDragging && "opacity-50"
+        isDragging && "opacity-30 border-indigo-300"
       )}
     >
       <div className="flex justify-between items-start gap-2 pr-6">
@@ -359,11 +351,23 @@ export function OfferForm({ initialData }: OfferFormProps) {
     totalPrice: 0,
   });
 
+  const newInfoItem = (): OfferItem => ({
+    id: Math.random().toString(36).substring(2, 11),
+    itemType: "info",
+    title: "",
+    description: "",
+    quantity: 0,
+    unit: "Stk",
+    pricePerUnit: 0,
+    totalPrice: 0,
+  });
+
   const addStandardItem = () =>
     setItems((prev) => [...prev, newStandardItem()]);
   const addTitleItem = () => setItems((prev) => [...prev, newTitleItem()]);
   const addDetailedItem = () =>
     setItems((prev) => [...prev, newDetailedItem()]);
+  const addInfoItem = () => setItems((prev) => [...prev, newInfoItem()]);
 
   const removeItem = (id: string) => {
     if (items.length > 1) setItems(items.filter((item) => item.id !== id));
@@ -596,6 +600,10 @@ export function OfferForm({ initialData }: OfferFormProps) {
     return groups;
   }, [filteredServices]);
 
+  const { setNodeRef: setPositionsDropRef, isOver: isOverPositions } = useDroppable({
+    id: "offer-positions-drop-zone",
+  });
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -616,6 +624,11 @@ export function OfferForm({ initialData }: OfferFormProps) {
     setActiveDragId(null);
 
     if (active.id.toString().startsWith("preset-")) {
+      if (!over) return;
+      const isOnDropZone = over.id === "offer-positions-drop-zone";
+      const isOnItem = items.some((i) => i.id === over.id);
+      if (!isOnDropZone && !isOnItem) return;
+
       const serviceId = active.id.toString().replace("preset-", "");
       const service = services.find((s) => s.id === serviceId);
       if (service) {
@@ -629,20 +642,14 @@ export function OfferForm({ initialData }: OfferFormProps) {
           pricePerUnit: service.price || 0,
           totalPrice: service.price || 0,
         };
-
-        setItems((items) => {
-          if (!over) {
-            return [...items, newItem];
-          }
-          const overIndex = items.findIndex((i) => i.id === over.id);
-          if (overIndex === -1) {
-            return [...items, newItem];
-          }
-          const newItems = [...items];
-          newItems.splice(overIndex, 0, newItem);
-          return newItems;
+        setItems((prev) => {
+          const overIndex = prev.findIndex((i) => i.id === over.id);
+          if (overIndex === -1) return [...prev, newItem];
+          const next = [...prev];
+          next.splice(overIndex, 0, newItem);
+          return next;
         });
-        showToast("Vorlage an Position eingefügt", "success");
+        showToast("Vorlage eingefügt", "success");
       }
       return;
     }
@@ -666,10 +673,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
   }
 
   return (
-    <div className={cn(
-      "mx-auto space-y-10 transition-all duration-300",
-      isPresetDrawerOpen ? "max-w-[1664px]" : "max-w-6xl"
-    )}>
+    <div className="mx-auto space-y-10 transition-all duration-300 max-w-6xl">
       {/* Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-slate-400 font-bold uppercase tracking-widest text-xs mb-1">
@@ -696,21 +700,11 @@ export function OfferForm({ initialData }: OfferFormProps) {
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        modifiers={activeDragId?.toString().startsWith('preset-') ? [] : [restrictToVerticalAxis, restrictToParentElement]}
+        modifiers={activeDragId?.toString().startsWith('preset-') ? [] : [restrictToVerticalAxis]}
       >
-        <div className={cn(
-          "grid gap-8 items-start w-full transition-all duration-300",
-          isPresetDrawerOpen 
-            ? "grid-cols-1 xl:grid-cols-[minmax(0,1152px)_480px] justify-center" 
-            : "grid-cols-1 max-w-6xl mx-auto"
-        )}>
-          {/* Left Column: Form Cards */}
-          <div className="space-y-8 xl:col-start-1 w-full">
+        <div className="space-y-8 w-full">
             {/* Card 1: Kopfdaten */}
-            <div className={cn(
-              "glass-card p-6 xl:p-12 space-y-8 xl:space-y-12 transition-all duration-300",
-              isPresetDrawerOpen ? "w-full max-w-6xl" : "w-full"
-            )}>
+            <div className="glass-card p-6 xl:p-12 space-y-8 xl:space-y-12">
             {/* ── Section 1: Kopfdaten ── */}
         <div className="space-y-6 xl:space-y-8">
           <h2 className={sectionTitleClasses}>
@@ -900,10 +894,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
           </div>
 
           {/* Card 2: Positionen */}
-          <div className={cn(
-            "glass-card p-6 xl:p-12 space-y-8 xl:space-y-12 transition-all duration-300",
-            isPresetDrawerOpen ? "w-full max-w-6xl" : "w-full"
-          )}>
+          <div className="glass-card p-6 xl:p-12 space-y-8 xl:space-y-12">
         {/* ── Section 4: Positionen ── */}
         <div className="space-y-8">
           <div className="flex justify-between items-center">
@@ -937,6 +928,14 @@ export function OfferForm({ initialData }: OfferFormProps) {
               <div className="w-px h-4 bg-slate-200" />
               <button
                 type="button"
+                onClick={addInfoItem}
+                className="px-3 py-2 rounded-lg text-xs font-bold text-slate-600 hover:bg-white hover:shadow-sm transition-all flex items-center gap-1.5"
+              >
+                <Info className="h-3.5 w-3.5" /> Info
+              </button>
+              <div className="w-px h-4 bg-slate-200" />
+              <button
+                type="button"
                 onClick={() => setIsPresetDrawerOpen(!isPresetDrawerOpen)}
                 className={cn(
                   "px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
@@ -950,7 +949,13 @@ export function OfferForm({ initialData }: OfferFormProps) {
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div
+            ref={setPositionsDropRef}
+            className={cn(
+              "space-y-2 rounded-2xl transition-all min-h-[80px]",
+              isOverPositions && activeDragId?.toString().startsWith("preset-") && "ring-2 ring-indigo-300 bg-indigo-50/40"
+            )}
+          >
             <SortableContext
               items={items.map((i) => i.id)}
               strategy={verticalListSortingStrategy}
@@ -961,7 +966,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
                         const type =
                           item.itemType ??
                           ((item as any).isTitleOnly ? "title" : "standard");
-                        if (type !== "title") posCounter++;
+                        if (type !== "title" && type !== "info") posCounter++;
                         const pos = posCounter;
                         return (
                           <SortableItem key={item.id} id={item.id}>
@@ -970,7 +975,9 @@ export function OfferForm({ initialData }: OfferFormProps) {
                                 "rounded-2xl border transition-colors bg-white",
                                 type === "title"
                                   ? "bg-slate-50 border-slate-200"
-                                  : "border-slate-100 hover:border-slate-200",
+                                  : type === "info"
+                                    ? "bg-amber-50/40 border-amber-100"
+                                    : "border-slate-100 hover:border-slate-200",
                               )}
                             >
                               <div className="flex items-start gap-3 p-3">
@@ -978,9 +985,23 @@ export function OfferForm({ initialData }: OfferFormProps) {
                                   <DragHandle id={item.id} />
                                 </div>
                                 <span className="mt-3.5 w-6 text-center text-xs font-black text-slate-400 shrink-0">
-                                  {type === "title" ? "—" : pos}
+                                  {type === "title" || type === "info" ? "—" : pos}
                                 </span>
                                 <div className="flex-1 min-w-0">
+                                  {type === "info" && (
+                                    <textarea
+                                      rows={2}
+                                      value={item.description || ""}
+                                      onChange={(e) =>
+                                        updateItem(item.id, "description", e.target.value)
+                                      }
+                                      className={cn(
+                                        inputClasses,
+                                        "py-3 px-4 border-amber-100 text-sm resize-y bg-transparent",
+                                      )}
+                                      placeholder="Informationstext / Hinweis..."
+                                    />
+                                  )}
                                   {type === "title" && (
                                     <input
                                       type="text"
@@ -1096,7 +1117,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
                                 </button>
                               </div>
 
-                              {type !== "title" && (
+                              {type !== "title" && type !== "info" && (
                                 <div className="flex items-center gap-3 px-3 pb-3 pl-14">
                                   <input
                                     type="number"
@@ -1169,7 +1190,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
 
       {/* Separate Vorlagen Card */}
       {isPresetDrawerOpen && (
-        <div className="xl:col-start-2 xl:row-start-1 w-full lg:w-[480px] xl:w-[500px] shrink-0 glass-card p-6 xl:p-8 flex flex-col h-[calc(100vh-12rem)] min-h-[600px] sticky top-6 overflow-hidden">
+        <div className="fixed right-0 top-16 h-[calc(100vh-4rem)] w-[420px] bg-white border-l border-slate-200 shadow-2xl flex flex-col overflow-hidden z-[110] p-6">
           {/* Header */}
           <div className="flex justify-between items-center pb-4 border-b border-slate-200/60">
             <div>
@@ -1280,10 +1301,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
       )}
 
       {/* Card 3: Totals & Footer */}
-      <div className={cn(
-        "glass-card p-6 xl:p-12 space-y-8 xl:space-y-12 transition-all duration-305",
-        isPresetDrawerOpen ? "w-full max-w-6xl" : "w-full"
-      )}>
+      <div className="glass-card p-6 xl:p-12 space-y-8 xl:space-y-12">
           {/* Totals */}
           <div className="flex justify-end pt-4">
             <div className="w-auto min-w-[24rem] bg-indigo-50/50 rounded-[2rem] p-8 space-y-4 border border-indigo-100/50">
@@ -1371,8 +1389,25 @@ export function OfferForm({ initialData }: OfferFormProps) {
           </div>
         </div>
       </div>
-    </div>
   </div>
+        <DragOverlay dropAnimation={null}>
+          {activeDragId?.toString().startsWith("preset-") && (() => {
+            const serviceId = activeDragId.toString().replace("preset-", "");
+            const service = services.find((s) => s.id === serviceId);
+            if (!service) return null;
+            return (
+              <div className="p-3 bg-white border-2 border-indigo-400 rounded-xl shadow-2xl w-[260px] cursor-grabbing rotate-1">
+                <div className="flex justify-between items-start gap-2">
+                  <span className="font-bold text-slate-700 text-sm line-clamp-1">{service.title}</span>
+                  <span className="text-xs font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded whitespace-nowrap">€ {service.price.toFixed(2)}</span>
+                </div>
+                {service.description && (
+                  <p className="text-xs text-slate-400 line-clamp-2 mt-1">{service.description}</p>
+                )}
+              </div>
+            );
+          })()}
+        </DragOverlay>
   </DndContext>
 
       <CustomerModal

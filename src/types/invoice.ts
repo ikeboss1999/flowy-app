@@ -34,7 +34,7 @@ export interface InvoiceItem {
     id: string;
     title?: string;
     description: string;
-    itemType?: 'title' | 'standard' | 'detailed';
+    itemType?: 'title' | 'standard' | 'detailed' | 'info';
     quantity: number;
     unit: InvoiceUnit;
     pricePerUnit: number;

@@ -123,7 +123,11 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                 issueDate: new Date().toISOString().split('T')[0],
                 processor: offer.processor,
                 introText: orderSettings.defaultIntroText,
-                items: offer.items.map(item => ({ ...item, id: nanoid() })),
+                items: offer.items.map(item => ({
+                    ...item,
+                    id: nanoid(),
+                    itemType: (item.itemType === 'info' ? 'standard' : item.itemType) as 'title' | 'standard' | 'detailed' | undefined,
+                })),
                 subtotal: offer.subtotal,
                 taxRate: offer.taxRate,
                 taxAmount: offer.taxAmount,

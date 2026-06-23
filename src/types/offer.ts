@@ -5,7 +5,7 @@ export interface OfferItem {
     id: string;
     title?: string;
     description: string;
-    itemType?: 'title' | 'standard' | 'detailed';
+    itemType?: 'title' | 'standard' | 'detailed' | 'info';
     quantity: number;
     unit: OfferUnit;
     pricePerUnit: number;

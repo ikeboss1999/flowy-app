@@ -20,6 +20,7 @@ import {
   GripVertical,
   Bookmark,
   Search,
+  Info,
 } from "lucide-react";
 import { useNotification } from "@/context/NotificationContext";
 import {
@@ -588,11 +589,23 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     totalPrice: 0,
   });
 
+  const newInfoItem = (): InvoiceItem => ({
+    id: Math.random().toString(36).substring(2, 11),
+    itemType: "info",
+    title: "",
+    description: "",
+    quantity: 0,
+    unit: "Stk",
+    pricePerUnit: 0,
+    totalPrice: 0,
+  });
+
   const addStandardItem = () =>
     setItems((prev) => [...prev, newStandardItem()]);
   const addTitleItem = () => setItems((prev) => [...prev, newTitleItem()]);
   const addDetailedItem = () =>
     setItems((prev) => [...prev, newDetailedItem()]);
+  const addInfoItem = () => setItems((prev) => [...prev, newInfoItem()]);
 
   const removeItem = (id: string) => {
     if (items.length > 1) {
@@ -1270,6 +1283,14 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
               <div className="w-px h-4 bg-slate-200" />
               <button
                 type="button"
+                onClick={addInfoItem}
+                className="px-3 py-2 rounded-lg text-xs font-bold text-slate-600 hover:bg-white hover:shadow-sm transition-all flex items-center gap-1.5"
+              >
+                <Info className="h-3.5 w-3.5" /> Info
+              </button>
+              <div className="w-px h-4 bg-slate-200" />
+              <button
+                type="button"
                 onClick={() => setIsPresetDrawerOpen(!isPresetDrawerOpen)}
                 className={cn(
                   "px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
@@ -1300,7 +1321,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                         const type =
                           item.itemType ??
                           ((item as any).isTitleOnly ? "title" : "standard");
-                        if (type !== "title") posCounter++;
+                        if (type !== "title" && type !== "info") posCounter++;
                         const pos = posCounter;
                         return (
                           <SortableItem key={item.id} id={item.id}>
@@ -1309,7 +1330,9 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                                 "rounded-2xl border transition-colors bg-white",
                                 type === "title"
                                   ? "bg-slate-50 border-slate-200"
-                                  : "border-slate-100 hover:border-slate-200",
+                                  : type === "info"
+                                    ? "bg-amber-50/40 border-amber-100"
+                                    : "border-slate-100 hover:border-slate-200",
                               )}
                             >
                               <div className="flex items-start gap-3 p-3">
@@ -1317,9 +1340,23 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                                   <DragHandle id={item.id} />
                                 </div>
                                 <span className="mt-3.5 w-6 text-center text-xs font-black text-slate-400 shrink-0">
-                                  {type === "title" ? "—" : pos}
+                                  {type === "title" || type === "info" ? "—" : pos}
                                 </span>
                                 <div className="flex-1 min-w-0">
+                                  {type === "info" && (
+                                    <textarea
+                                      rows={2}
+                                      value={item.description || ""}
+                                      onChange={(e) =>
+                                        updateItem(item.id, "description", e.target.value)
+                                      }
+                                      className={cn(
+                                        inputClasses,
+                                        "py-3 px-4 border-amber-100 text-sm resize-y bg-transparent",
+                                      )}
+                                      placeholder="Informationstext / Hinweis..."
+                                    />
+                                  )}
                                   {type === "title" && (
                                     <input
                                       type="text"
@@ -1417,7 +1454,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                                 </button>
                               </div>
 
-                              {type !== "title" && (
+                              {type !== "title" && type !== "info" && (
                                 <div className="flex items-center gap-3 px-3 pb-3 pl-14">
                                   <input
                                     type="number"
