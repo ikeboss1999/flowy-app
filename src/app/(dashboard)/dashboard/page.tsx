@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useTodos } from '@/hooks/useTodos';
@@ -22,6 +23,7 @@ import { useDashboardSummary } from '@/hooks/useDashboardSummary';
 import { Invoice } from '@/types/invoice';
 import { InvoicePreviewModal } from '@/components/InvoicePreviewModal';
 import { CalendarWidget } from '@/components/CalendarWidget';
+import { useAuth } from '@/context/AuthContext';
 
 export default function DashboardPage() {
     const currentYear = new Date().getFullYear();
@@ -31,6 +33,15 @@ export default function DashboardPage() {
     const { data: companySettings } = useCompanySettings();
     const { data: accountSettings } = useAccountSettings();
     const { summary } = useDashboardSummary();
+    const { profile } = useAuth();
+    const router = useRouter();
+
+    React.useEffect(() => {
+        if (profile?.role === 'developer') {
+            router.push("/admin");
+        }
+    }, [profile, router]);
+
     const [newTodo, setNewTodo] = useState("");
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [isTodoMinimized, setIsTodoMinimized] = useState(false);
@@ -78,6 +89,13 @@ export default function DashboardPage() {
         openOffersAmount: summary?.openOffersAmount ?? 0,
     };
 
+    const isAdminOrDev = profile?.role === 'admin' || profile?.role === 'developer';
+    const showOffersBtn = isAdminOrDev || !!profile?.permissions?.offers_write;
+    const showInvoicesBtn = isAdminOrDev || !!profile?.permissions?.invoices_write;
+    const showInvoicesStat = isAdminOrDev || !!profile?.permissions?.invoices_read;
+    const showOffersStat = isAdminOrDev || !!profile?.permissions?.offers_read;
+    const showCalendarWidget = isAdminOrDev || !!profile?.permissions?.calendar_use;
+
     return (
         <div className="p-8 lg:p-12 space-y-12 animate-in fade-in duration-1000">
             {/* Header section - Premium & Clean */}
@@ -91,28 +109,32 @@ export default function DashboardPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <Link
-                        href="/offers/new"
-                        className="h-14 px-8 bg-white border-2 border-slate-100 text-slate-700 rounded-[1.25rem] flex items-center gap-3 font-black text-xs uppercase tracking-[0.15em] shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-all active:scale-95"
-                    >
-                        <FileSignature className="h-5 w-5" /> Angebot
-                    </Link>
-                    <Link
-                        href="/invoices/new"
-                        className="h-14 px-8 bg-primary-gradient text-white rounded-[1.25rem] flex items-center gap-3 font-black text-xs uppercase tracking-[0.15em] shadow-2xl shadow-indigo-500/30 hover:scale-[1.05] active:scale-95 transition-all"
-                    >
-                        <Plus className="h-5 w-5 text-white" /> Rechnung
-                    </Link>
+                    {showOffersBtn && (
+                        <Link
+                            href="/offers/new"
+                            className="h-14 px-8 bg-white border-2 border-slate-100 text-slate-700 rounded-[1.25rem] flex items-center gap-3 font-black text-xs uppercase tracking-[0.15em] shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-all active:scale-95"
+                        >
+                            <FileSignature className="h-5 w-5" /> Angebot
+                        </Link>
+                    )}
+                    {showInvoicesBtn && (
+                        <Link
+                            href="/invoices/new"
+                            className="h-14 px-8 bg-primary-gradient text-white rounded-[1.25rem] flex items-center gap-3 font-black text-xs uppercase tracking-[0.15em] shadow-2xl shadow-indigo-500/30 hover:scale-[1.05] active:scale-95 transition-all"
+                        >
+                            <Plus className="h-5 w-5 text-white" /> Rechnung
+                        </Link>
+                    )}
                 </div>
             </div>
 
             {/* Stats Grid - Premium Glass Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
                 {[
-                    { label: "Gesamtumsatz", value: stats.totalRevenue, sub: "Bezahlt dieses Jahr", color: "indigo", icon: TrendingUp, href: "/reports" },
-                    { label: "Offener Betrag", value: stats.openAmount, sub: "Gesamte Außenstände", color: "rose", icon: AlertCircle, dark: true },
-                    { label: "Angebote", value: stats.openOffersAmount, sub: `${stats.openOffersCount} offene Angebote`, color: "emerald", icon: FileSignature, href: "/offers" },
-                ].map((stat, i) => {
+                    { label: "Gesamtumsatz", value: stats.totalRevenue, sub: "Bezahlt dieses Jahr", color: "indigo", icon: TrendingUp, href: "/reports", show: showInvoicesStat },
+                    { label: "Offener Betrag", value: stats.openAmount, sub: "Gesamte Außenstände", color: "rose", icon: AlertCircle, dark: true, show: showInvoicesStat },
+                    { label: "Angebote", value: stats.openOffersAmount, sub: `${stats.openOffersCount} offene Angebote`, color: "emerald", icon: FileSignature, href: "/offers", show: showOffersStat },
+                ].filter(s => s.show).map((stat, i) => {
                     const CardWrapper = stat.href ? Link : 'div';
                     return (
                         <CardWrapper
@@ -148,87 +170,92 @@ export default function DashboardPage() {
                 })}
             </div>
 
-            {/* Main Content Area - 2:1 Split */}
+            {/* Main Content Area - Dynamic Split */}
             <div className="grid grid-cols-1 2xl:grid-cols-12 gap-12 items-start">
-                {/* Recent Invoices - Left (8/12 = 2/3) */}
-                <div className="2xl:col-span-8 space-y-8">
-                    <div className="flex items-center justify-between px-4">
-                        <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500">
-                                <FileText className="h-5 w-5" />
+                {/* Recent Invoices */}
+                {showInvoicesStat && (
+                    <div className={cn("space-y-8", showCalendarWidget ? "2xl:col-span-8" : "2xl:col-span-12")}>
+                        <div className="flex items-center justify-between px-4">
+                            <div className="flex items-center gap-4">
+                                <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500">
+                                    <FileText className="h-5 w-5" />
+                                </div>
+                                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Letzte Rechnungen</h3>
                             </div>
-                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Letzte Rechnungen</h3>
+                            <div className="flex items-center gap-6">
+                                <Link href="/invoices" className="text-xs font-black text-indigo-600 hover:text-indigo-800 tracking-widest uppercase flex items-center gap-2">
+                                    Alle ansehen <ArrowUpRight className="h-4 w-4" />
+                                </Link>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-6">
-                            <Link href="/invoices" className="text-xs font-black text-indigo-600 hover:text-indigo-800 tracking-widest uppercase flex items-center gap-2">
-                                Alle ansehen <ArrowUpRight className="h-4 w-4" />
+
+                        <div className="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-x-auto">
+                            <table className="w-full text-left min-w-[600px]">
+                                <thead>
+                                    <tr className="bg-slate-50/50">
+                                        <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Rechnung</th>
+                                        <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Kunde</th>
+                                        <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
+                                        <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Betrag</th>
+                                        <th className="px-10 py-6 w-24"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {isLoading ? (
+                                        <tr><td colSpan={5} className="py-24 text-center font-black text-slate-300 uppercase tracking-[0.2em] text-[11px]">Ladevorgang...</td></tr>
+                                    ) : sortedInvoices.length === 0 ? (
+                                        <tr><td colSpan={5} className="py-24 text-center font-black text-slate-300 uppercase tracking-[0.2em] text-[11px]">Keine Rechnungen gefunden</td></tr>
+                                    ) : (
+                                        sortedInvoices.slice(-6).map((invoice) => (
+                                            <tr key={invoice.id} className="group hover:bg-slate-50/50 transition-all duration-300 cursor-pointer" onClick={() => setSelectedInvoice(invoice)}>
+                                                <td className="px-10 py-8">
+                                                    <p className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors">#{invoice.invoiceNumber}</p>
+                                                    <p className="text-xs text-slate-400 font-bold mt-1">Vom {new Date(invoice.issueDate).toLocaleDateString('de-DE')}</p>
+                                                </td>
+                                                <td className="px-10 py-8 text-base font-bold text-slate-700">{invoice.customerName}</td>
+                                                <td className="px-10 py-8">
+                                                    <span className={cn(
+                                                        "px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                                                        invoice.status === 'paid' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                                                        invoice.status === 'overdue' ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-amber-50 text-amber-600 border-amber-100"
+                                                    )}>
+                                                        {invoice.status === 'paid' ? 'Bezahlt' : invoice.status === 'overdue' ? 'Fällig' : 'Offen'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-10 py-8 text-right">
+                                                    <p className="text-lg font-black text-slate-900">{invoice.totalAmount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+                                                </td>
+                                                <td className="px-10 py-8 text-right">
+                                                    <div className="h-12 w-12 rounded-2xl bg-slate-50 text-slate-300 flex items-center justify-center group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
+                                                        <Eye className="h-6 w-6" />
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Tagesplan */}
+                {showCalendarWidget && (
+                    <div className={cn("space-y-8", showInvoicesStat ? "2xl:col-span-4" : "2xl:col-span-12")}>
+                        <div className="flex items-center justify-between px-4">
+                            <div className="flex items-center gap-4">
+                                <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500">
+                                    <CalendarIcon className="h-5 w-5" />
+                                </div>
+                                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Tagesplan</h3>
+                            </div>
+                            <Link href="/calendar" className="text-xs font-black text-indigo-600 hover:text-indigo-800 tracking-widest uppercase flex items-center gap-2">
+                                Kalender <ArrowUpRight className="h-4 w-4" />
                             </Link>
                         </div>
+                        <CalendarWidget isCompact={true} />
                     </div>
-
-                    <div className="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-x-auto">
-                        <table className="w-full text-left min-w-[600px]">
-                            <thead>
-                                <tr className="bg-slate-50/50">
-                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Rechnung</th>
-                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Kunde</th>
-                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
-                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Betrag</th>
-                                    <th className="px-10 py-6 w-24"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {isLoading ? (
-                                    <tr><td colSpan={5} className="py-24 text-center font-black text-slate-300 uppercase tracking-[0.2em] text-[11px]">Ladevorgang...</td></tr>
-                                ) : sortedInvoices.length === 0 ? (
-                                    <tr><td colSpan={5} className="py-24 text-center font-black text-slate-300 uppercase tracking-[0.2em] text-[11px]">Keine Rechnungen gefunden</td></tr>
-                                ) : (
-                                    sortedInvoices.slice(-6).map((invoice) => (
-                                        <tr key={invoice.id} className="group hover:bg-slate-50/50 transition-all duration-300 cursor-pointer" onClick={() => setSelectedInvoice(invoice)}>
-                                            <td className="px-10 py-8">
-                                                <p className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors">#{invoice.invoiceNumber}</p>
-                                                <p className="text-xs text-slate-400 font-bold mt-1">Vom {new Date(invoice.issueDate).toLocaleDateString('de-DE')}</p>
-                                            </td>
-                                            <td className="px-10 py-8 text-base font-bold text-slate-700">{invoice.customerName}</td>
-                                            <td className="px-10 py-8">
-                                                <span className={cn(
-                                                    "px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
-                                                    invoice.status === 'paid' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-                                                    invoice.status === 'overdue' ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-amber-50 text-amber-600 border-amber-100"
-                                                )}>
-                                                    {invoice.status === 'paid' ? 'Bezahlt' : invoice.status === 'overdue' ? 'Fällig' : 'Offen'}
-                                                </span>
-                                            </td>
-                                            <td className="px-10 py-8 text-right">
-                                                <p className="text-lg font-black text-slate-900">{invoice.totalAmount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
-                                            </td>
-                                            <td className="px-10 py-8 text-right">
-                                                <div className="h-12 w-12 rounded-2xl bg-slate-50 text-slate-300 flex items-center justify-center group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
-                                                    <Eye className="h-6 w-6" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div className="2xl:col-span-4 space-y-8">
-                    <div className="flex items-center justify-between px-4">
-                        <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500">
-                                <CalendarIcon className="h-5 w-5" />
-                            </div>
-                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Tagesplan</h3>
-                        </div>
-                        <Link href="/calendar" className="text-xs font-black text-indigo-600 hover:text-indigo-800 tracking-widest uppercase flex items-center gap-2">
-                            Kalender <ArrowUpRight className="h-4 w-4" />
-                        </Link>
-                    </div>
-                    <CalendarWidget isCompact={true} />
-                </div>
+                )}
             </div>
 
             <InvoicePreviewModal

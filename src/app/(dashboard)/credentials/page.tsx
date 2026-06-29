@@ -26,8 +26,10 @@ import { Credential } from "@/types/credential";
 import { cn } from "@/lib/utils";
 import { useNotification } from "@/context/NotificationContext";
 import { nanoid } from "nanoid";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 export default function CredentialsPage() {
+    usePermissionGuard(null);
     const [isUnlocked, setIsUnlocked] = useState(false);
     const { credentials = [], addCredential, updateCredential, deleteCredential, isLoading } = useCredentials();
     const { showToast } = useNotification();

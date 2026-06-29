@@ -9,12 +9,12 @@ interface EmployeeDetailModalProps {
     isOpen: boolean;
     onClose: () => void;
     employee: Employee;
-    onStartEdit: (employee: Employee) => void;
+    onStartEdit?: (employee: Employee) => void;
     onDownloadPDF: (employee: Employee) => void;
-    onDeactivate: (employee: Employee) => void;
-    onReactivate: (employee: Employee) => void;
-    onDelete: (id: string) => void;
-    onDeleteDocument: (employeeId: string, docId: string) => void;
+    onDeactivate?: (employee: Employee) => void;
+    onReactivate?: (employee: Employee) => void;
+    onDelete?: (id: string) => void;
+    onDeleteDocument?: (employeeId: string, docId: string) => void;
     onPreviewDocument: (doc: EmployeeDocument) => void;
     isDownloadingPDF: boolean;
 }
@@ -185,37 +185,45 @@ export function EmployeeDetailModal({
                                 <FileDown className="h-4 w-4" />
                             )}
                         </button>
-                        <button
-                            onClick={() => onStartEdit(employee)}
-                            className="p-2 border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 hover:bg-indigo-50/50 rounded-xl transition-all"
-                            title="Bearbeiten"
-                        >
-                            <Edit2 className="h-4 w-4" />
-                        </button>
-                        {isActive ? (
+                        {onStartEdit && (
                             <button
-                                onClick={() => onDeactivate(employee)}
-                                className="p-2 border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-100 hover:bg-rose-50/50 rounded-xl transition-all"
-                                title="Abmelden (Archivieren)"
+                                onClick={() => onStartEdit(employee)}
+                                className="p-2 border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 hover:bg-indigo-50/50 rounded-xl transition-all"
+                                title="Bearbeiten"
                             >
-                                <UserX className="h-4 w-4" />
+                                <Edit2 className="h-4 w-4" />
                             </button>
+                        )}
+                        {isActive ? (
+                            onDeactivate && (
+                                <button
+                                    onClick={() => onDeactivate(employee)}
+                                    className="p-2 border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-100 hover:bg-rose-50/50 rounded-xl transition-all"
+                                    title="Abmelden (Archivieren)"
+                                >
+                                    <UserX className="h-4 w-4" />
+                                </button>
+                            )
                         ) : (
                             <>
-                                <button
-                                    onClick={() => onReactivate(employee)}
-                                    className="p-2 border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-100 hover:bg-emerald-50/50 rounded-xl transition-all"
-                                    title="Reaktivieren (Wieder anmelden)"
-                                >
-                                    <UserCheck className="h-4 w-4" />
-                                </button>
-                                <button
-                                    onClick={() => onDelete(employee.id)}
-                                    className="p-2 border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-100 hover:bg-rose-50/50 rounded-xl transition-all"
-                                    title="Endgültig löschen"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </button>
+                                {onReactivate && (
+                                    <button
+                                        onClick={() => onReactivate(employee)}
+                                        className="p-2 border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-100 hover:bg-emerald-50/50 rounded-xl transition-all"
+                                        title="Reaktivieren (Wieder anmelden)"
+                                    >
+                                        <UserCheck className="h-4 w-4" />
+                                    </button>
+                                )}
+                                {onDelete && (
+                                    <button
+                                        onClick={() => onDelete(employee.id)}
+                                        className="p-2 border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-100 hover:bg-rose-50/50 rounded-xl transition-all"
+                                        title="Endgültig löschen"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                )}
                             </>
                         )}
                         <button onClick={onClose} className="p-2 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-xl transition-all ml-2">
@@ -423,16 +431,18 @@ export function EmployeeDetailModal({
                                                         >
                                                             <Download className="h-3.5 w-3.5" />
                                                         </button>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                onDeleteDocument(employee.id, doc.id);
-                                                            }}
-                                                            className="p-1.5 text-slate-450 hover:text-rose-600 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-100/50 shadow-sm bg-white"
-                                                            title="Löschen"
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </button>
+                                                        {onDeleteDocument && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onDeleteDocument(employee.id, doc.id);
+                                                                }}
+                                                                className="p-1.5 text-slate-450 hover:text-rose-600 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-100/50 shadow-sm bg-white"
+                                                                title="Löschen"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))}

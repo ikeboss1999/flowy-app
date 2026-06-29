@@ -2,8 +2,10 @@
 
 import { TimesheetArchiveList } from "@/components/TimesheetArchiveList";
 import { FileText, Clock } from "lucide-react";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 export default function TimesheetArchivePage() {
+    usePermissionGuard("time_tracking_use");
     return (
         <div className="p-10 min-h-screen">
             <div className="max-w-6xl mx-auto space-y-12">

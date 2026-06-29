@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { X, User, Briefcase, Mail, Phone, MapPin, FileText, Save, Clock, ShieldAlert } from "lucide-react";
 import { Customer, CustomerType, CustomerStatus } from "@/types/customer";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
-import { cn } from "@/lib/utils";
+import { cn, generateUUID } from "@/lib/utils";
 
 interface CustomerModalProps {
     isOpen: boolean;
@@ -120,7 +120,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
         }
 
         const customer: Customer = {
-            id: initialCustomer?.id || crypto.randomUUID(),
+            id: initialCustomer?.id || generateUUID(),
             type,
             status,
             salutation: formData.salutation,

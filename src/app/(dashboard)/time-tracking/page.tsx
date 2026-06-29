@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, UserCircle, Users, ArrowRight, Clock } from "lucide-react";
 import { useEmployees } from "@/hooks/useEmployees";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 export default function TimeTrackingPage() {
+    usePermissionGuard("time_tracking_use");
     const router = useRouter();
     const { employees, isLoading } = useEmployees();
     const [searchTerm, setSearchTerm] = useState("");

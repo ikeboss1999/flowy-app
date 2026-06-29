@@ -12,8 +12,10 @@ import { ProjectList } from "@/components/projects/ProjectList";
 import { ProjectModal } from "@/components/projects/ProjectModal";
 import { ProjectDetails } from "@/components/projects/ProjectDetails";
 import { useRouter } from "next/navigation";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 export default function ProjectsPage() {
+    usePermissionGuard("projects_read");
     const router = useRouter();
     const { projects, addProject, updateProject, deleteProject } = useProjects();
     const { customers, addCustomer } = useCustomers();

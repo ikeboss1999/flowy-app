@@ -12,6 +12,7 @@ import {
     Euro
 } from "lucide-react";
 import { useInvoices } from "@/hooks/useInvoices";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { useCustomers } from "@/hooks/useCustomers";
 import { DeviationModal } from "@/components/DeviationModal";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ interface QuarterData {
 }
 
 export default function ReportsPage() {
+    usePermissionGuard("reports_read");
     const { invoices, updateInvoice, isLoading } = useInvoices();
     const { customers } = useCustomers();
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());

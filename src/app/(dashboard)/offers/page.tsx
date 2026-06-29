@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { Offer, OfferStatus } from "@/types/offer";
 import { useNotification } from "@/context/NotificationContext";
 import { useRouter } from "next/navigation";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,7 @@ const STATUS_CONFIG: Record<OfferStatus, { label: string; color: string; bg: str
 };
 
 export default function OffersPage() {
+    usePermissionGuard("offers_read");
     const router = useRouter();
     const { offers, updateOffer, deleteOffer, isLoading } = useOffers();
     const { customers } = useCustomers();

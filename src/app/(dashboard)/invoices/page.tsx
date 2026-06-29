@@ -29,10 +29,12 @@ import { cn } from "@/lib/utils";
 import { Invoice, InvoiceStatus } from "@/types/invoice";
 import { useNotification } from "@/context/NotificationContext";
 import { useRouter } from "next/navigation";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 export const dynamic = 'force-dynamic';
 
 export default function InvoicesPage() {
+    usePermissionGuard("invoices_read");
     const router = useRouter();
     const { invoices, updateInvoice, deleteInvoice, isLoading } = useInvoices();
     const { customers } = useCustomers();

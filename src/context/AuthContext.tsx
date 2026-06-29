@@ -5,16 +5,24 @@ import { User, Session } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import { Employee } from "@/types/employee"
 
+type AuthProfile = {
+    role: string
+    permissions: any
+    companyOwnerId: string
+} | null
+
 type AuthContextType = {
     user: User | null
     session: Session | null
     currentEmployee: Employee | null
+    profile: AuthProfile
     isLoading: boolean
     signIn: (email: string) => Promise<{ error: any }>
     signOut: () => Promise<{ error: any }>
     loginAsEmployee: (staffId: string, pin: string) => Promise<{ success: boolean, error?: string }>
     logoutEmployee: () => void
     refreshEmployee: () => Promise<void>
+    refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -23,7 +31,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
     const [session, setSession] = useState<Session | null>(null)
     const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null)
+    const [profile, setProfile] = useState<AuthProfile>(null)
     const [isLoading, setIsLoading] = useState(true);
+
+    const refreshProfile = async () => {
+        try {
+            const res = await fetch('/api/auth/me');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.user) {
+                    setProfile({
+                        role: data.user.role,
+                        permissions: data.user.permissions || {},
+                        companyOwnerId: data.user.companyOwnerId
+                    });
+                } else {
+                    setProfile(null);
+                }
+            } else {
+                setProfile(null);
+            }
+        } catch (e) {
+            console.error("[AuthContext] Failed to fetch profile:", e);
+            setProfile(null);
+        }
+    };
 
     const refreshEmployee = async () => {
         const savedEmployee = localStorage.getItem('flowy_employee_session');
@@ -77,12 +109,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             await refreshEmployee();
                         } catch (e) {
                             console.error("Session restore failed", e);
-                            // Optional: Could logout here if strict, but maybe offline? 
-                            // For now let's keep optimistic state, middleware will handle rejection if online.
-                            // BUT: If middleware rejects, we loop.
-                            // So we MUST clear if refresh fails and we are ONLINE?
-                            // Let's rely on refreshEmployee's internal error handling?
-                            // modify refreshEmployee to return success/fail?
                         }
                     }
                 } catch (e) {
@@ -101,12 +127,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ access_token: session.access_token })
                         });
-                        // Only authenticate if cookie was actually set.
-                        // Calling setUser without a valid cookie causes an
-                        // AuthGuard → /api/auth/start → /welcome redirect loop.
                         if (syncRes.ok) {
                             setSession(session);
                             setUser(session.user ?? null);
+                            await refreshProfile();
                         }
                     } catch (e) {
                         console.error('[Auth] Session sync failed', e);
@@ -128,6 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
                 setSession(null);
                 setUser(null);
+                setProfile(null);
                 return;
             }
 
@@ -143,6 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         setCurrentEmployee(null);
                         setSession(session);
                         setUser(session.user ?? null);
+                        await refreshProfile();
                     }
                 } catch (e) {
                     console.error('[Auth] Session sync failed', e);
@@ -196,6 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCurrentEmployee(null);
         setUser(null);
         setSession(null);
+        setProfile(null);
         const res = await supabase.auth.signOut();
         window.location.href = '/login';
         return res;
@@ -231,6 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 await supabase.auth.signOut();
                 setUser(null);
                 setSession(null);
+                setProfile(null);
 
                 setCurrentEmployee(data.employee);
                 localStorage.setItem('flowy_employee_session', JSON.stringify(data.employee));
@@ -256,6 +284,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setCurrentEmployee(null);
             setUser(null);
             setSession(null);
+            setProfile(null);
             await supabase.auth.signOut();
             window.location.href = '/login';
         }
@@ -266,12 +295,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             user,
             session,
             currentEmployee,
+            profile,
             isLoading,
             signIn,
             signOut,
             loginAsEmployee,
             logoutEmployee,
-            refreshEmployee
+            refreshEmployee,
+            refreshProfile
         }}>
             {children}
         </AuthContext.Provider>
@@ -285,3 +316,4 @@ export function useAuth() {
     }
     return context
 }
+

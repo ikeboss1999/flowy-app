@@ -27,8 +27,10 @@ import { CustomerDetailModal } from "@/components/CustomerDetailModal";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useNotification } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 export default function CustomersPage() {
+    usePermissionGuard("customers_read");
     const { customers, addCustomer, updateCustomer, deleteCustomer, isLoading } = useCustomers();
     const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");

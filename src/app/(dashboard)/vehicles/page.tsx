@@ -23,9 +23,12 @@ import { useVehicles } from "@/hooks/useVehicles";
 import { useNotification } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
 
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
+
 const MOCK_VEHICLES: Vehicle[] = [];
 
 export default function VehiclesPage() {
+    usePermissionGuard("vehicles_use");
     const { vehicles, addVehicle, updateVehicle, deleteVehicle, isLoading: hookLoading } = useVehicles();
     const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");

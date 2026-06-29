@@ -2,16 +2,21 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { nanoid } from 'nanoid';
-import { getUserSession } from '@/lib/auth-server';
+import { getUserSession, hasPermission } from '@/lib/auth-server';
+import { safeGetCreatedBy, safeUpsert } from '@/lib/supabase-helper';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
+    const companyOwnerId = session?.companyOwnerId;
 
-    if (!userId) {
+    if (!companyOwnerId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!hasPermission(session, 'invoices_read')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     try {
@@ -19,7 +24,7 @@ export async function GET(request: Request) {
         const { data: invoices, error } = await client
             .from('invoices')
             .select('*')
-            .eq('userId', userId)
+            .eq('userId', companyOwnerId)
             .order('issueDate', { ascending: false })
             .limit(500);
         if (error) throw error;
@@ -32,10 +37,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
+    const companyOwnerId = session?.companyOwnerId;
 
-    if (!userId) {
+    if (!companyOwnerId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!hasPermission(session, 'invoices_write')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     try {
@@ -45,14 +54,20 @@ export async function POST(request: Request) {
         const now = new Date().toISOString();
 
         const client = supabaseAdmin || supabase;
-        const result = await client
-            .from('invoices')
-            .upsert({
-                ...invoice,
-                id: invoiceId,
-                userId,
-                updatedAt: now
-            });
+
+        // Check if record exists for created_by
+        const createdBy = invoice.id ? await safeGetCreatedBy(client, 'invoices', invoice.id) : null;
+
+        const invoiceData = {
+            ...invoice,
+            id: invoiceId,
+            userId: companyOwnerId,
+            updatedAt: now,
+            updated_by: session.userId,
+            created_by: createdBy || session.userId
+        };
+
+        const result = await safeUpsert(client, 'invoices', invoiceData);
         if (result.error) {
             console.error('SUPABASE UPSERT ERROR:', result.error);
             throw result.error;
@@ -67,10 +82,14 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
+    const companyOwnerId = session?.companyOwnerId;
 
-    if (!userId) {
+    if (!companyOwnerId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!hasPermission(session, 'invoices_write')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -82,7 +101,11 @@ export async function DELETE(request: Request) {
 
     try {
         const client = supabaseAdmin || supabase;
-        const { error } = await client.from('invoices').delete().eq('id', id).eq('userId', userId);
+        const { error } = await client
+            .from('invoices')
+            .delete()
+            .eq('id', id)
+            .eq('userId', companyOwnerId);
         if (error) throw error;
         return NextResponse.json({ success: true });
     } catch (e) {
@@ -90,3 +113,4 @@ export async function DELETE(request: Request) {
         return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }
+

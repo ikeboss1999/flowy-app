@@ -31,10 +31,12 @@ const OrderPreviewModal = nextDynamic(
 import { cn } from "@/lib/utils";
 import { OrderConfirmation, OrderStatus } from "@/types/order";
 import { useNotification } from "@/context/NotificationContext";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 export const dynamic = 'force-dynamic';
 
 export default function OrdersPage() {
+    usePermissionGuard("orders_read");
     const { orders, updateOrder, deleteOrder, isLoading } = useOrders();
     const { customers } = useCustomers();
     const { data: companySettings } = useCompanySettings();

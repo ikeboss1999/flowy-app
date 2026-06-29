@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { useRef } from "react";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import { useNotification } from "@/context/NotificationContext";
+import { useUsers } from "@/hooks/useUsers";
 
 interface EmployeeModalProps {
     isOpen: boolean;
@@ -72,6 +73,13 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState("personal");
     const [previewDoc, setPreviewDoc] = useState<EmployeeDocument | null>(null);
+    const { users } = useUsers();
+
+    const getUserDisplayName = (userId?: string) => {
+        if (!userId) return "System";
+        const found = users?.find((u: any) => u.user_id === userId);
+        return found ? `${found.name} (${found.email})` : `Benutzer: ${userId.substring(0, 8)}`;
+    };
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [showAvatarMenu, setShowAvatarMenu] = useState(false);
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -841,6 +849,30 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                             </div>
                                         </div>
                                     </section>
+
+                                    {/* Systemprotokoll */}
+                                    {formData.created_by && (
+                                        <section className="animate-in fade-in slide-in-from-bottom-2 duration-500 mt-10">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="h-8 w-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center">
+                                                    <Activity className="h-4 w-4 text-slate-500" />
+                                                </div>
+                                                <h3 className="text-lg font-black text-slate-800 tracking-tight">Systemprotokoll</h3>
+                                            </div>
+                                            <div className="p-6 rounded-[2.5rem] bg-slate-50/30 border border-slate-100/80 space-y-4 text-xs font-bold text-slate-500">
+                                                <div className="flex justify-between items-center py-2 border-b border-slate-100/50">
+                                                    <span>Erstellt von:</span>
+                                                    <span className="text-slate-700">{getUserDisplayName(formData.created_by)}</span>
+                                                </div>
+                                                {formData.updated_by && (
+                                                    <div className="flex justify-between items-center py-2">
+                                                        <span>Zuletzt bearbeitet von:</span>
+                                                        <span className="text-slate-700">{getUserDisplayName(formData.updated_by)}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </section>
+                                    )}
                                 </div>
                             )}
 

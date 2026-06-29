@@ -5,8 +5,10 @@ import { DunningList } from "@/components/DunningList";
 import { DunningArchive } from "@/components/DunningArchive";
 import { AlertTriangle, History } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 export default function DunningPage() {
+    usePermissionGuard("dunning_read");
     const [activeTab, setActiveTab] = useState<"active" | "archive">("active");
 
     return (

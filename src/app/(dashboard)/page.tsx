@@ -15,8 +15,10 @@ import Link from "next/link";
 import { RealtimeClock } from "@/components/RealtimeClock";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAccountSettings } from "@/hooks/useAccountSettings";
+import { useAuth } from "@/context/AuthContext";
 import { Modal } from "@/components/ui/Modal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 // Re-using cn helper for icons
 function cn(...inputs: any[]) {
@@ -26,7 +28,15 @@ function cn(...inputs: any[]) {
 export default function Home() {
   const { data: companySettings, isLoading: companyLoading } = useCompanySettings();
   const { data: accountSettings, isLoading: accountLoading } = useAccountSettings();
+  const { profile } = useAuth();
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (profile?.role === 'developer') {
+      router.push("/admin");
+    }
+  }, [profile, router]);
 
   const today = new Date();
   const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' };
@@ -35,6 +45,7 @@ export default function Home() {
   // Fallback values if data is loading or empty
   const companyName = companySettings?.companyName || "FlowY Professional";
   const userName = accountSettings?.name || "Benutzer";
+  const showName = !profile || profile.role === 'admin' || profile.role === 'developer';
 
   const features = [
     {
@@ -201,7 +212,9 @@ export default function Home() {
               <Clock className="h-7 w-7 md:h-8 md:w-8 text-indigo-500" />
             </div>
             <h3 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">Willkommen</h3>
-            <p className="text-base text-slate-500 font-semibold tracking-wide uppercase">{userName}</p>
+            {showName && (
+              <p className="text-base text-slate-500 font-semibold tracking-wide uppercase">{userName}</p>
+            )}
           </div>
 
           <div className="glass-card p-8 md:p-12 flex flex-col items-center text-center space-y-4 hover:-translate-y-2 duration-300">

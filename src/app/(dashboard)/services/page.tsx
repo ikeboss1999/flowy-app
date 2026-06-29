@@ -19,8 +19,10 @@ import { ServiceModal } from "@/components/ServiceModal";
 import { useServices } from "@/hooks/useServices";
 import { useNotification } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 export default function ServicesPage() {
+    usePermissionGuard(["invoices_write", "offers_write"]);
     const { services, addService, updateService, deleteService, isLoading } = useServices();
     const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");

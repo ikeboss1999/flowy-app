@@ -442,7 +442,8 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
                         let pos = 0;
                         return offer.items.map((item) => {
                             const isTitle = item.itemType === 'title' || (!item.itemType && (item as any).isTitleOnly);
-                            if (!isTitle) pos++;
+                            const isInfo = item.itemType === 'info';
+                            if (!isTitle && !isInfo) pos++;
                             if (isTitle) {
                                 return (
                                     <View key={item.id} wrap={false} style={[styles.tableRow, { backgroundColor: '#f5f5f5' }]}>
@@ -450,6 +451,18 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
                                         <View style={{ width: '93%', paddingLeft: 8 }}>
                                             <Text style={{ fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#111111' }}>
                                                 {item.title || item.description}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                );
+                            }
+                            if (isInfo) {
+                                return (
+                                    <View key={item.id} wrap={false} style={styles.tableRow}>
+                                        <Text style={[styles.cPos, styles.tdText, { color: '#aaaaaa' }]}>—</Text>
+                                        <View style={{ width: '93%', paddingLeft: 8 }}>
+                                            <Text style={{ fontSize: 9.5, color: '#333333' }}>
+                                                {item.description}
                                             </Text>
                                         </View>
                                     </View>

@@ -128,7 +128,7 @@ const menuGroups: MenuGroup[] = [
 
 export function Sidebar() {
     const path = usePathname();
-    const { signOut, currentEmployee, logoutEmployee } = useAuth();
+    const { signOut, currentEmployee, logoutEmployee, profile } = useAuth();
     const { mutate: mutateAll } = useSWRConfig();
     const [isRefreshing, setIsRefreshing] = useState(false);
     const { isIPad, isTouchDevice } = useDevice();
@@ -194,14 +194,108 @@ export function Sidebar() {
         }
     }, [path]);
 
-    const renderMenuItem = (item: MenuItem, depth = 0) => {
-        const { user } = useAuth();
-
-        const role = (user as any)?.user_metadata?.role || (user as any)?.role;
-        if (item.adminOnly && role !== 'admin') {
-            return null;
+    // Dynamic visibility check based on profile and permissions
+    const isMenuItemVisible = (item: MenuItem): boolean => {
+        if (!profile) {
+            if (currentEmployee) {
+                // PIN Employee fallback
+                const perms = currentEmployee.appAccess?.permissions;
+                if (item.adminOnly) return false;
+                if (item.href === '/credentials' || item.href === '/settings') return false;
+                
+                if (item.href === '/time-tracking') return true;
+                if (item.href === '/archive') return !!perms?.documents;
+                if (item.href === '/projects') return !!perms?.projectDiary;
+                
+                if (item.href === '/' || item.label === "Startseite") return true;
+                
+                if (item.children && item.children.length > 0) {
+                    return item.children.some(child => isMenuItemVisible(child));
+                }
+                return false;
+            }
+            return false;
         }
 
+        const role = profile.role;
+
+        // 1. Developer Role
+        if (role === 'developer') {
+            return !!item.adminOnly;
+        }
+
+        // 2. Admin/Employee Role - Hide developer links
+        if (item.adminOnly) {
+            return false;
+        }
+
+        // 3. Admin has access to all remaining links
+        if (role === 'admin') {
+            return true;
+        }
+
+        // 4. Employee Permissions
+        if (role === 'employee') {
+            const perms = profile.permissions || {};
+
+            // Hard exclusions
+            if (item.href === '/credentials' || item.href === '/settings') {
+                return false;
+            }
+
+            // Check specific routes
+            if (item.href === '/calendar' && !perms.calendar_use) return false;
+            if (item.href === '/crm' && !perms.crm_read) return false;
+            if (item.href === '/customers' && !perms.customers_read) return false;
+            if (item.href === '/projects' && !perms.projects_read) return false;
+            if (item.href === '/vehicles' && !perms.vehicles_use) return false;
+            if (item.href === '/archive' && !perms.archive_read) return false;
+
+            // Katalog check
+            if (item.label === 'Katalog') {
+                return !!(perms.invoices_write || perms.offers_write);
+            }
+
+            // Personal & Zeiten children check
+            if (item.href === '/time-tracking' && !perms.time_tracking_use) return false;
+            if (item.href === '/time-tracking/archive' && !perms.time_tracking_use) return false;
+            if (item.href === '/employees' && !perms.employees_read) return false;
+
+            // Finanzen children checks
+            if (item.href === '/offers' && !perms.offers_read) return false;
+            if (item.href === '/orders' && !perms.orders_read) return false;
+            if (item.href === '/invoices' && !perms.invoices_read) return false;
+            if (item.href === '/invoices/dunning' && !perms.dunning_read) return false;
+            if (item.href === '/reports' && !perms.reports_read) return false;
+
+            // Parent check
+            if (item.children && item.children.length > 0) {
+                return item.children.some(child => isMenuItemVisible(child));
+            }
+        }
+
+        return true;
+    };
+
+    const filterMenuItem = (item: MenuItem): MenuItem | null => {
+        if (!isMenuItemVisible(item)) return null;
+
+        if (item.children) {
+            const visibleChildren = item.children
+                .map(child => filterMenuItem(child))
+                .filter((child): child is MenuItem => child !== null);
+            
+            if (visibleChildren.length === 0) return null;
+            return {
+                ...item,
+                children: visibleChildren
+            };
+        }
+
+        return item;
+    };
+
+    const renderMenuItem = (item: MenuItem, depth = 0) => {
         const Icon = item.icon;
         const hasChildren = item.children && item.children.length > 0;
         const isExpanded = expandedItems.includes(item.label);
@@ -287,7 +381,7 @@ export function Sidebar() {
                 isDrawerMode ? (isOpen ? "translate-x-0 overflow-y-auto" : "-translate-x-full") : "translate-x-0 [.sidebar-collapsed_&]:-translate-x-full"
             )}>
                 <div className="flex flex-col items-center justify-center gap-3 xl:gap-4 px-3 py-6 xl:py-8 mb-6 xl:mb-8 text-center">
-                    <img src="/logo.png" alt="Logo" className="h-12 w-12 xl:h-16 xl:w-16 object-contain bg-white/10 rounded-2xl p-1" />
+                    <img src={companySettings?.logo || "/logo.png"} alt="Logo" className="h-12 w-12 xl:h-16 xl:w-16 object-contain bg-white/10 rounded-2xl p-1" />
                     <div className="flex flex-col items-center">
                         <span className="font-black text-xl xl:text-2xl text-white tracking-tight leading-none break-words">
                             {companySettings?.companyName || "FlowY"}
@@ -318,9 +412,9 @@ export function Sidebar() {
 
                 <nav className="flex-1 space-y-4">
                     {menuGroups.map((group) => {
-                        const filteredItems = group.items.filter(item => {
-                            return true;
-                        });
+                        const filteredItems = group.items
+                            .map(item => filterMenuItem(item))
+                            .filter((item): item is MenuItem => item !== null);
 
                         if (filteredItems.length === 0) return null;
 
@@ -336,6 +430,7 @@ export function Sidebar() {
                         );
                     })}
                 </nav>
+
 
                 <div className="mt-12 border-t border-white/10 pt-8 pb-4">
                     <button

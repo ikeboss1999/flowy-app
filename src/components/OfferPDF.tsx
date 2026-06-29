@@ -152,13 +152,24 @@ export const OfferPDF = forwardRef<HTMLDivElement, OfferPDFProps>(({ offer, cust
                         let pos = 0;
                         return offer.items.map((item) => {
                             const isTitle = item.itemType === 'title' || (!item.itemType && (item as any).isTitleOnly);
-                            if (!isTitle) pos++;
+                            const isInfo = item.itemType === 'info';
+                            if (!isTitle && !isInfo) pos++;
                             if (isTitle) {
                                 return (
                                     <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f5f5f5' }}>
                                         <td style={{ padding: '9px 5px', textAlign: 'center', color: '#aaa', fontSize: '9pt' }}>—</td>
                                         <td colSpan={5} style={{ padding: '9px 10px', fontWeight: 'bold', fontSize: '10.5pt', color: '#111' }}>
                                             {item.title || item.description}
+                                        </td>
+                                    </tr>
+                                );
+                            }
+                            if (isInfo) {
+                                return (
+                                    <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
+                                        <td style={{ padding: '10px 5px', textAlign: 'center', color: '#aaa', fontSize: '9pt' }}>—</td>
+                                        <td colSpan={5} style={{ padding: '10px 10px', fontSize: '10pt', color: '#333' }}>
+                                            {item.description}
                                         </td>
                                     </tr>
                                 );

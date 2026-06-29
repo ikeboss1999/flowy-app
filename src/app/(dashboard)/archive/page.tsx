@@ -3,8 +3,10 @@
 import React from "react";
 import { FolderOpen } from "lucide-react";
 import { ArchiveFiles } from "@/components/archive/ArchiveFiles";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 export default function ArchivePage() {
+    usePermissionGuard("archive_read");
     return (
         <div className="flex-1 p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Header Area */}

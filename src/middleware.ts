@@ -48,7 +48,7 @@ export async function middleware(request: NextRequest) {
 
     const { pathname } = request.nextUrl;
 
-    const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
+    const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/auth/callback');
     const isWelcomePage = pathname === '/welcome';
     const isApiRoute = pathname.startsWith('/api');
     const isPublicApi =
@@ -103,8 +103,8 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/welcome', request.url));
         }
     } else {
-        // Authenticated users on login/register go to the app home
-        if (isAuthPage) {
+        // Authenticated users on login/register/callback go to the app home if not resetting password
+        if (isAuthPage && !pathname.startsWith('/auth/callback') && pathname !== '/login/reset-password') {
             return NextResponse.redirect(new URL('/', request.url));
         }
     }

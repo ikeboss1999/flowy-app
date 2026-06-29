@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getUserSession } from '@/lib/auth-server';
+import { getUserSession, hasPermission } from '@/lib/auth-server';
 import { nanoid } from 'nanoid';
 import { isAllowed } from '@/lib/rate-limit';
+import { safeInsert } from '@/lib/supabase-helper';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,14 +25,19 @@ const getClient = () => supabaseAdmin || supabase;
 
 export async function GET(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const companyOwnerId = session?.companyOwnerId;
+
+    if (!companyOwnerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    if (!hasPermission(session, 'archive_read')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     try {
         const { data, error } = await getClient()
             .from('archive_files')
             .select('*')
-            .eq('userId', userId)
+            .eq('userId', companyOwnerId)
             .order('createdAt', { ascending: false });
 
         if (error) {
@@ -52,8 +58,14 @@ export async function POST(request: Request) {
     }
 
     const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const companyOwnerId = session?.companyOwnerId;
+
+    if (!companyOwnerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Mitarbeiter dürfen im Archiv keine Dateien hochladen (nur ansehen)
+    if (session?.role === 'employee') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     try {
         const formData = await request.formData();
@@ -81,7 +93,7 @@ export async function POST(request: Request) {
             .replace(/ß/g, 'ss')
             .replace(/[^a-z0-9]/g, '_');
 
-        const storagePath = `${userId}/archive/${sanitizedFolder}/${Date.now()}-${sanitizedName}`;
+        const storagePath = `${companyOwnerId}/archive/${sanitizedFolder}/${Date.now()}-${sanitizedName}`;
 
         // Upload to project-files bucket in archive subfolder
         const buffer = Buffer.from(await file.arrayBuffer());
@@ -96,21 +108,19 @@ export async function POST(request: Request) {
 
         // Insert metadata
         const fileId = nanoid();
-        const { data, error: dbError } = await getClient()
-            .from('archive_files')
-            .insert({
-                id: fileId,
-                userId,
-                folder,
-                name: file.name,
-                storagePath,
-                mimeType: file.type,
-                size: file.size,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            })
-            .select()
-            .single();
+        const { data, error: dbError } = await safeInsert(getClient(), 'archive_files', {
+            id: fileId,
+            userId: companyOwnerId,
+            folder,
+            name: file.name,
+            storagePath,
+            mimeType: file.type,
+            size: file.size,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            created_by: session.userId,
+            updated_by: session.userId
+        });
 
         if (dbError) {
             // Cleanup storage on error
@@ -128,8 +138,14 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const companyOwnerId = session?.companyOwnerId;
+
+    if (!companyOwnerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Mitarbeiter dürfen im Archiv keine Dateien bearbeiten
+    if (session?.role === 'employee') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -149,10 +165,11 @@ export async function PATCH(request: Request) {
             .from('archive_files')
             .update({
                 ...updates,
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                updated_by: session.userId
             })
             .eq('id', id)
-            .eq('userId', userId)
+            .eq('userId', companyOwnerId)
             .select()
             .single();
 
@@ -166,8 +183,14 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const companyOwnerId = session?.companyOwnerId;
+
+    if (!companyOwnerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Mitarbeiter dürfen im Archiv keine Dateien löschen
+    if (session?.role === 'employee') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -179,7 +202,7 @@ export async function DELETE(request: Request) {
             .from('archive_files')
             .select('storagePath')
             .eq('id', id)
-            .eq('userId', userId)
+            .eq('userId', companyOwnerId)
             .single();
 
         if (fetchError || !file) {
@@ -191,7 +214,7 @@ export async function DELETE(request: Request) {
             .from('archive_files')
             .delete()
             .eq('id', id)
-            .eq('userId', userId);
+            .eq('userId', companyOwnerId);
 
         if (dbError) throw dbError;
 
@@ -204,3 +227,4 @@ export async function DELETE(request: Request) {
         return NextResponse.json({ error: 'Failed to delete file' }, { status: 500 });
     }
 }
+

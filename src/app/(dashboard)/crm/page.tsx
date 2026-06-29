@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useCRM, useInquiryNotes } from '@/hooks/useCRM';
 import { Inquiry, InquiryStatus, InquiryChannel } from '@/types/crm';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import {
     Inbox,
     Phone,
@@ -44,6 +45,7 @@ const CHANNELS: { id: InquiryChannel; label: string; color: string; bg: string }
 ];
 
 export default function CRMPage() {
+    usePermissionGuard("crm_read");
     const { user } = useAuth();
     const { inquiries, addInquiry, updateInquiry, deleteInquiry, isLoading } = useCRM();
 

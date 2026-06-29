@@ -3,8 +3,10 @@
 import React from 'react';
 import { CalendarWidget } from '@/components/CalendarWidget';
 import { CalendarDays } from 'lucide-react';
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 export default function CalendarPage() {
+    usePermissionGuard("calendar_use");
     return (
         <div className="p-8 lg:p-12 space-y-12 animate-in fade-in duration-700">
             {/* Header section */}

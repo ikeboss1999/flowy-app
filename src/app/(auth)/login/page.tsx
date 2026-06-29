@@ -78,6 +78,8 @@ export default function LoginPage() {
                 localStorage.removeItem('flowy_employee_session')
                 window.location.href = "/api/auth/start"
             } else {
+                const redirectUrl = `${window.location.origin}/auth/callback`;
+
                 const { error } = await supabase.auth.signUp({
                     email,
                     password,
@@ -85,6 +87,7 @@ export default function LoginPage() {
                         data: {
                             full_name: fullName,
                         },
+                        emailRedirectTo: redirectUrl
                     },
                 })
                 if (error) throw error

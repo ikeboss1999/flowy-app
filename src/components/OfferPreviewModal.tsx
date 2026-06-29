@@ -14,6 +14,7 @@ import { useOffers } from "@/hooks/useOffers";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { useNotification } from "@/context/NotificationContext";
+import { useAuth } from "@/context/AuthContext";
 import { nanoid } from "nanoid";
 import { useRouter } from "next/navigation";
 
@@ -69,7 +70,11 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     const { invoices, addInvoice } = useInvoices();
     const { data: invoiceSettings, updateData: updateInvoiceSettings } = useInvoiceSettings();
     const { showToast } = useNotification();
+    const { profile } = useAuth();
     const router = useRouter();
+
+    const canConfirmOrder = !profile || profile.role === 'admin' || profile.role === 'developer' || !!profile.permissions?.orders_write;
+    const canCreateInvoice = !profile || profile.role === 'admin' || profile.role === 'developer' || !!profile.permissions?.invoices_write;
 
     const alreadyInvoiced = React.useMemo(() => {
         if (!offer || !invoices) return false;
@@ -235,7 +240,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        {showSuccess ? (
+                        {canConfirmOrder && (showSuccess ? (
                             <div className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-200 animate-in zoom-in duration-300">
                                 <CheckCircle2 className="h-4 w-4" />
                                 Auftrag erstellt!
@@ -254,9 +259,9 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                                 {isConverting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSignature className="h-4 w-4" />}
                                 {offer.status === 'accepted' ? 'Bereits bestätigt' : 'Auftrag bestätigen'}
                             </button>
-                        )}
+                        ))}
 
-                        {showInvoiceSuccess ? (
+                        {canCreateInvoice && (showInvoiceSuccess ? (
                             <div className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-200 animate-in zoom-in duration-300">
                                 <CheckCircle2 className="h-4 w-4" />
                                 Rechnung erstellt!
@@ -282,7 +287,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                                 {isConvertingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
                                 {alreadyInvoiced ? "Rechnung bereits erstellt" : "Rechnung erstellen"}
                             </button>
-                        )}
+                        ))}
                         <button
                             onClick={handleDownloadPDF}
                             disabled={isDownloading}

@@ -3,23 +3,28 @@ import bcrypt from 'bcryptjs';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { nanoid } from 'nanoid';
-import { getUserSession } from '@/lib/auth-server';
+import { getUserSession, hasPermission } from '@/lib/auth-server';
 import { encryptEmployee, decryptEmployee } from '@/lib/encryption';
+import { safeGetCreatedBy, safeUpsert } from '@/lib/supabase-helper';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
+    const companyOwnerId = session?.companyOwnerId;
 
-    if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    if (!companyOwnerId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+
+    if (!hasPermission(session, 'employees_read')) {
+        return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    }
 
     try {
         const client = supabaseAdmin || supabase;
         const { data: employees, error } = await client
             .from('employees')
             .select('*')
-            .eq('userId', userId)
+            .eq('userId', companyOwnerId)
             .order('createdAt', { ascending: false })
             .limit(200);
         if (error) throw error;
@@ -33,13 +38,20 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
+    const companyOwnerId = session?.companyOwnerId;
 
-    if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    if (!companyOwnerId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     try {
         const payload = await request.json();
         const employee = payload.employee || payload;
+
+        const isNew = !employee.id;
+        const requiredPermission = isNew ? 'employees_create' : 'employees_write';
+        if (!hasPermission(session, requiredPermission)) {
+            return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+        }
+
         const encryptedEmployee = encryptEmployee(employee);
         const { id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, pendingChanges, sharedFolders, createdAt } = encryptedEmployee;
         let { appAccess } = encryptedEmployee;
@@ -53,26 +65,31 @@ export async function POST(request: Request) {
         }
 
         const empId = id || nanoid();
-
         const client = supabaseAdmin || supabase;
-        const { error } = await client
-            .from('employees')
-            .upsert({
-                id: empId,
-                employeeNumber,
-                personalData,
-                bankDetails,
-                employment,
-                additionalInfo,
-                weeklySchedule,
-                documents,
-                avatar,
-                appAccess,
-                pendingChanges,
-                sharedFolders,
-                createdAt: createdAt || new Date().toISOString(),
-                userId
-            });
+
+        // Check if record exists for created_by
+        const createdBy = employee.id ? await safeGetCreatedBy(client, 'employees', employee.id) : null;
+
+        const employeeData = {
+            id: empId,
+            employeeNumber,
+            personalData,
+            bankDetails,
+            employment,
+            additionalInfo,
+            weeklySchedule,
+            documents,
+            avatar,
+            appAccess,
+            pendingChanges,
+            sharedFolders,
+            createdAt: createdAt || new Date().toISOString(),
+            userId: companyOwnerId,
+            updated_by: session.userId,
+            created_by: createdBy || session.userId
+        };
+
+        const { error } = await safeUpsert(client, 'employees', employeeData);
         if (error) throw error;
 
         return NextResponse.json({ success: true, id: empId });
@@ -84,9 +101,13 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
+    const companyOwnerId = session?.companyOwnerId;
 
-    if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    if (!companyOwnerId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+
+    if (!hasPermission(session, 'employees_write')) {
+        return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    }
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -95,7 +116,11 @@ export async function DELETE(request: Request) {
 
     try {
         const client = supabaseAdmin || supabase;
-        const { error } = await client.from('employees').delete().eq('id', id).eq('userId', userId);
+        const { error } = await client
+            .from('employees')
+            .delete()
+            .eq('id', id)
+            .eq('userId', companyOwnerId);
         if (error) throw error;
         return NextResponse.json({ success: true });
     } catch (error) {
@@ -103,3 +128,4 @@ export async function DELETE(request: Request) {
         return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }
+

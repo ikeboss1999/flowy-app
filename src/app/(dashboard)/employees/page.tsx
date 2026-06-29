@@ -42,11 +42,17 @@ import { cn } from "@/lib/utils";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useNotification } from "@/context/NotificationContext";
+import { useAuth } from "@/context/AuthContext";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { useSWRConfig } from "swr";
 
 export default function EmployeesPage() {
     const { employees, addEmployee, updateEmployee, deleteEmployee, getNextEmployeeNumber, isLoading } = useEmployees();
     const { data: companySettings } = useCompanySettings();
+    usePermissionGuard("employees_read");
+    const { profile } = useAuth();
+    const canCreate = profile?.role === 'admin' || profile?.role === 'developer' || !!profile?.permissions?.employees_create;
+    const canWrite = profile?.role === 'admin' || profile?.role === 'developer' || !!profile?.permissions?.employees_write;
     const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState<EmploymentStatus | "all">("all");
@@ -453,7 +459,7 @@ export default function EmployeesPage() {
                             <RefreshCcw className={cn("h-5 w-5", isRefreshing && "animate-spin")} />
                         </button>
 
-                        {viewMode === 'list' && (
+                        {viewMode === 'list' && canCreate && (
                             <button
                                 onClick={() => {
                                     setEditingEmployee(undefined);
@@ -639,16 +645,18 @@ export default function EmployeesPage() {
                                                     </td>
                                                     <td className="px-8 py-4 whitespace-nowrap text-right">
                                                         <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleEditEmployee(emp);
-                                                                }}
-                                                                className="h-9 w-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-colors"
-                                                                title="Bearbeiten"
-                                                            >
-                                                                <Edit2 className="h-4 w-4" />
-                                                            </button>
+                                                            {canWrite && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleEditEmployee(emp);
+                                                                    }}
+                                                                    className="h-9 w-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-colors"
+                                                                    title="Bearbeiten"
+                                                                >
+                                                                    <Edit2 className="h-4 w-4" />
+                                                                </button>
+                                                            )}
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
@@ -664,7 +672,7 @@ export default function EmployeesPage() {
                                                                     <FileDown className="h-4 w-4" />
                                                                 )}
                                                             </button>
-                                                            {emp.employment.isActive !== false ? (
+                                                            {canWrite && (emp.employment.isActive !== false ? (
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
@@ -698,7 +706,7 @@ export default function EmployeesPage() {
                                                                         <Trash2 className="h-4 w-4" />
                                                                     </button>
                                                                 </>
-                                                            )}
+                                                            ))}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -838,16 +846,18 @@ export default function EmployeesPage() {
                                                             >
                                                                 <Download className="h-3 w-3" /> Download
                                                             </button>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleDeleteDocument(emp.id, doc.id);
-                                                                }}
-                                                                className="h-8 px-3 bg-slate-50 hover:bg-rose-50 text-rose-600 border border-slate-100/50 rounded-lg font-bold text-[10px] flex items-center gap-1.5 transition-colors"
-                                                                title="Löschen"
-                                                            >
-                                                                <Trash2 className="h-3 w-3" /> Löschen
-                                                            </button>
+                                                            {canWrite && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDeleteDocument(emp.id, doc.id);
+                                                                    }}
+                                                                    className="h-8 px-3 bg-slate-50 hover:bg-rose-50 text-rose-600 border border-slate-100/50 rounded-lg font-bold text-[10px] flex items-center gap-1.5 transition-colors"
+                                                                    title="Löschen"
+                                                                >
+                                                                    <Trash2 className="h-3 w-3" /> Löschen
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ))}
@@ -896,26 +906,26 @@ export default function EmployeesPage() {
                     isOpen={!!activeSelectedEmployee}
                     onClose={() => setSelectedEmployee(null)}
                     employee={activeSelectedEmployee}
-                    onStartEdit={(emp) => {
+                    onStartEdit={canWrite ? (emp) => {
                         setSelectedEmployee(null);
                         handleEditEmployee(emp);
-                    }}
+                    } : undefined}
                     onDownloadPDF={(emp) => handleDownloadPDF(emp)}
-                    onDeactivate={(emp) => {
+                    onDeactivate={canWrite ? (emp) => {
                         setSelectedEmployee(null);
                         setDeactivatingEmployee(emp);
-                    }}
-                    onReactivate={(emp) => {
+                    } : undefined}
+                    onReactivate={canWrite ? (emp) => {
                         setSelectedEmployee(null);
                         handleReactivateEmployee(emp);
-                    }}
-                    onDelete={(id) => {
+                    } : undefined}
+                    onDelete={canWrite ? (id) => {
                         setSelectedEmployee(null);
                         handleDeleteEmployee(id);
-                    }}
-                    onDeleteDocument={(empId, docId) => {
+                    } : undefined}
+                    onDeleteDocument={canWrite ? (empId, docId) => {
                         handleDeleteDocument(empId, docId);
-                    }}
+                    } : undefined}
                     onPreviewDocument={(doc) => handlePreview(doc)}
                     isDownloadingPDF={downloadingId === activeSelectedEmployee.id}
                 />

@@ -25,6 +25,7 @@ import { TimeEntry, TimeEntryType } from "@/types/time-tracking";
 import { Employee } from "@/types/employee";
 import { TimeTrackingPreviewModal } from "@/components/TimeTrackingPreviewModal";
 import { isAustrianHoliday } from "@/lib/holidays";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 // Memoized Row Component for extreme performance
 const TimeEntryRow = memo(({
@@ -211,6 +212,7 @@ function getDaysInMonth(year: number, month: number) {
 }
 
 export default function EmployeeTimeTrackingPage() {
+    usePermissionGuard("time_tracking_use");
     const params = useParams();
     const router = useRouter();
     const employeeId = params.employeeId as string;

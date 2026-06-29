@@ -2,14 +2,15 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getUserSession } from '@/lib/auth-server';
+import { safeUpsert } from '@/lib/supabase-helper';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
+    const companyOwnerId = session?.companyOwnerId;
 
-    if (!userId) {
+    if (!companyOwnerId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -18,12 +19,17 @@ export async function GET(request: Request) {
         const { data, error } = await client
             .from('settings')
             .select('*')
-            .eq('userId', userId)
+            .eq('userId', companyOwnerId)
             .single();
 
         if (error && error.code !== 'PGRST116') throw error;
 
         if (data) {
+            // Employees only get companyData (needed for document headers), no account/financial settings
+            if (session?.role === 'employee') {
+                return NextResponse.json({ companyData: data.companyData || {} });
+            }
+
             const processed = { ...data };
             if (processed.companyData && Object.keys(processed.companyData).length === 0) processed.companyData = null;
             if (processed.accountSettings && Object.keys(processed.accountSettings).length === 0) processed.accountSettings = null;
@@ -43,10 +49,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
+    const companyOwnerId = session?.companyOwnerId;
 
-    if (!userId) {
+    if (!companyOwnerId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Einstellungen sind für Mitarbeiter grundsätzlich unsichtbar/gesperrt
+    if (session?.role === 'employee') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     try {
@@ -56,11 +67,24 @@ export async function POST(request: Request) {
         const client = supabaseAdmin || supabase;
 
         // 1. Fetch Existing Settings
-        const { data } = await client.from('settings').select('*').eq('userId', userId).single();
+        const { data } = await client
+            .from('settings')
+            .select('*')
+            .eq('userId', companyOwnerId)
+            .single();
         const currentSettings: any = data || {};
 
         // 2. Merge New Data
-        let updatedSettings = { ...currentSettings, updatedAt: now, userId };
+        let updatedSettings = {
+            ...currentSettings,
+            updatedAt: now,
+            userId: companyOwnerId,
+            updated_by: session.userId
+        };
+
+        if (!currentSettings.userId) {
+            updatedSettings.created_by = session.userId;
+        }
 
         if (payload.type && payload.data) {
             if (payload.type === 'company') updatedSettings.companyData = payload.data;
@@ -79,7 +103,7 @@ export async function POST(request: Request) {
         }
 
         // 3. Save
-        const { error } = await client.from('settings').upsert(updatedSettings);
+        const { error } = await safeUpsert(client, 'settings', updatedSettings);
         if (error) throw error;
 
         return NextResponse.json({ success: true });
@@ -88,3 +112,4 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
     }
 }
+

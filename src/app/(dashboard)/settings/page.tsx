@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { CompanySettings } from "@/components/CompanySettings";
 import { InvoiceSettings } from "@/components/InvoiceSettings";
 import { OfferSettings } from "@/components/OfferSettings";
@@ -9,12 +10,14 @@ import { ProjectSettings } from "@/components/ProjectSettings";
 import { EmployeeSettings } from "@/components/EmployeeSettings";
 import { AccountSettings } from "@/components/AccountSettings";
 import { AppSettings } from "@/components/AppSettings";
+import { UserManagement } from "@/components/UserManagement";
 import { Settings as SettingsIcon, FileText, Receipt, Briefcase, FileSignature, Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
     { id: "Stammdaten", label: "Stammdaten" },
     { id: "Dokumente", label: "Dokumente & Projekte" },
+    { id: "Mitarbeiterrechte", label: "Benutzerverwaltung" },
     { id: "Neuigkeiten", label: "Neuigkeiten" },
     { id: "Mein Konto", label: "Mein Konto" },
 ];
@@ -28,6 +31,7 @@ const DOC_SUBTABS = [
 ];
 
 export default function SettingsPage() {
+    usePermissionGuard(null);
     const [activeTab, setActiveTab] = useState("Stammdaten");
     const [docSubTab, setDocSubTab] = useState("offer");
 
@@ -60,7 +64,8 @@ export default function SettingsPage() {
                                     activeTab === tab.id
                                         ? "bg-white text-indigo-600 shadow-xl shadow-indigo-200/40 -translate-y-0.5 scale-[1.02]"
                                         : "text-slate-500 hover:text-indigo-400 hover:bg-white/50"
-                                )}
+                                    )
+                                }
                             >
                                 {tab.label}
                                 {activeTab === tab.id && (
@@ -105,6 +110,12 @@ export default function SettingsPage() {
                             {docSubTab === "invoice" && <InvoiceSettings />}
                             {docSubTab === "project" && <ProjectSettings />}
                             {docSubTab === "employee" && <EmployeeSettings />}
+                        </div>
+                    )}
+
+                    {activeTab === "Mitarbeiterrechte" && (
+                        <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
+                            <UserManagement />
                         </div>
                     )}
 

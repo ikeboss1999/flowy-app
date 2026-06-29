@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { X, Briefcase, MapPin, Banknote, Save, Plus, ChevronDown, ChevronUp, Trash2, ListChecks } from "lucide-react";
 import { Project, ProjectStatus, PaymentPlanItem } from "@/types/project";
 import { Customer } from "@/types/customer";
-import { cn } from "@/lib/utils";
+import { cn, generateUUID } from "@/lib/utils";
 import { CustomerModal } from "@/components/CustomerModal";
 import { CustomerSearchSelect } from "@/components/CustomerSearchSelect";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
@@ -101,7 +101,7 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
     const addPaymentPlanItem = () => {
         const hasFinal = paymentPlan.some(item => item.type === 'final');
         setPaymentPlan(prev => [...prev, {
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             name: hasFinal ? `${prev.length + 1}. Teilrechnung` : (prev.length === 0 ? 'Anzahlung' : `${prev.length + 1}. Teilrechnung`),
             amount: 0,
             status: 'planned',
@@ -141,7 +141,7 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
         if (!isFormValid) return;
 
         const project: Project = {
-            id: initialProject?.id || crypto.randomUUID(),
+            id: initialProject?.id || generateUUID(),
             projectNumber: initialProject?.projectNumber,
             name: formData.name,
             customerId: formData.customerId,

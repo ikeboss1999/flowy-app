@@ -86,4 +86,6 @@ export interface Employee {
     appAccess?: EmployeeAppAccess;
     pendingChanges?: Partial<Employee>;
     sharedFolders?: string[];
+    created_by?: string;
+    updated_by?: string;
 }

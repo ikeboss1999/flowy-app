@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getUserSession } from '@/lib/auth-server';
+import { getUserSession, hasPermission } from '@/lib/auth-server';
 import { nanoid } from 'nanoid';
+import { safeInsert, safeUpdate } from '@/lib/supabase-helper';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,14 +11,19 @@ const getClient = () => supabaseAdmin || supabase;
 
 export async function GET(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const companyOwnerId = session?.companyOwnerId;
+
+    if (!companyOwnerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    if (!hasPermission(session, 'archive_read')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     try {
         const { data, error } = await getClient()
             .from('archive_folders')
             .select('*')
-            .eq('userId', userId)
+            .eq('userId', companyOwnerId)
             .order('name', { ascending: true });
 
         if (error) {
@@ -33,25 +39,29 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const companyOwnerId = session?.companyOwnerId;
+
+    if (!companyOwnerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Mitarbeiter dürfen im Archiv keine Ordner erstellen
+    if (session?.role === 'employee') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     try {
         const { name } = await request.json();
         if (!name) return NextResponse.json({ error: 'Missing folder name' }, { status: 400 });
 
         const folderId = nanoid();
-        const { data, error } = await getClient()
-            .from('archive_folders')
-            .insert({
-                id: folderId,
-                userId,
-                name: name.trim(),
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            })
-            .select()
-            .single();
+        const { data, error } = await safeInsert(getClient(), 'archive_folders', {
+            id: folderId,
+            userId: companyOwnerId,
+            name: name.trim(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            created_by: session.userId,
+            updated_by: session.userId
+        });
 
         if (error) throw error;
         return NextResponse.json(data, { status: 201 });
@@ -63,8 +73,14 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const companyOwnerId = session?.companyOwnerId;
+
+    if (!companyOwnerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Mitarbeiter dürfen im Archiv keine Ordner bearbeiten
+    if (session?.role === 'employee') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -80,23 +96,20 @@ export async function PATCH(request: Request) {
             .eq('id', id)
             .single();
 
-        const { data: folder, error: folderError } = await client
-            .from('archive_folders')
-            .update({ name: name.trim(), updatedAt: new Date().toISOString() })
-            .eq('id', id)
-            .eq('userId', userId)
-            .select()
-            .single();
+        const { data: folder, error: folderError } = await safeUpdate(client, 'archive_folders', {
+            name: name.trim(),
+            updatedAt: new Date().toISOString(),
+            updated_by: session.userId
+        }, { id, userId: companyOwnerId });
 
         if (folderError) throw folderError;
 
         if (oldFolder) {
             // Cascade update files in this folder
-            await client
-                .from('archive_files')
-                .update({ folder: name.trim() })
-                .eq('folder', oldFolder.name)
-                .eq('userId', userId);
+            await safeUpdate(client, 'archive_files', { 
+                folder: name.trim(), 
+                updated_by: session.userId 
+            }, { folder: oldFolder.name, userId: companyOwnerId });
         }
 
         return NextResponse.json(folder);
@@ -108,8 +121,14 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const companyOwnerId = session?.companyOwnerId;
+
+    if (!companyOwnerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Mitarbeiter dürfen im Archiv keine Ordner löschen
+    if (session?.role === 'employee') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -127,7 +146,7 @@ export async function DELETE(request: Request) {
             .from('archive_folders')
             .delete()
             .eq('id', id)
-            .eq('userId', userId);
+            .eq('userId', companyOwnerId);
 
         if (error) throw error;
 
@@ -135,9 +154,9 @@ export async function DELETE(request: Request) {
         if (folder) {
             await client
                 .from('archive_files')
-                .update({ folder: 'Allgemein' })
+                .update({ folder: 'Allgemein', updated_by: session.userId })
                 .eq('folder', folder.name)
-                .eq('userId', userId);
+                .eq('userId', companyOwnerId);
         }
 
         return NextResponse.json({ success: true });
@@ -146,3 +165,4 @@ export async function DELETE(request: Request) {
         return NextResponse.json({ error: 'Failed to delete folder' }, { status: 500 });
     }
 }
+

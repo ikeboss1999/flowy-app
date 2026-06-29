@@ -16,7 +16,9 @@ export async function GET() {
                 id: session.userId,
                 name: session.name || session.email?.split('@')[0],
                 email: session.email,
-                role: session.role
+                role: session.role,
+                companyOwnerId: session.companyOwnerId,
+                permissions: session.permissions
             }
         }, { status: 200 });
     } catch (error) {
@@ -24,3 +26,4 @@ export async function GET() {
         return NextResponse.json({ user: null }, { status: 200 });
     }
 }
+

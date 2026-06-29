@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -51,6 +52,7 @@ const MOCK_CUSTOMERS: Customer[] = [
 ];
 
 export default function CustomerDetailPage() {
+    usePermissionGuard("customers_read");
     const params = useParams();
     const id = params.id as string;
 
