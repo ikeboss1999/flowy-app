@@ -35,8 +35,18 @@ import { Offer, OfferStatus } from "@/types/offer";
 import { useNotification } from "@/context/NotificationContext";
 import { useRouter } from "next/navigation";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
+import { useAuth } from "@/context/AuthContext";
 
 export const dynamic = 'force-dynamic';
+
+async function fetchSignedOfferPdfUrl(offerId: string) {
+    const response = await fetch(`/api/offers/pdf-url?id=${encodeURIComponent(offerId)}`);
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
+    const data = await response.json();
+    return data.url as string;
+}
 
 const STATUS_CONFIG: Record<OfferStatus, { label: string; color: string; bg: string; border: string }> = {
     draft:    { label: 'Entwurf',    color: 'text-slate-600',   bg: 'bg-slate-50',   border: 'border-slate-100' },
@@ -53,6 +63,8 @@ export default function OffersPage() {
     const { customers } = useCustomers();
     const { data: companySettings } = useCompanySettings();
     const { showToast, showConfirm } = useNotification();
+    const { profile } = useAuth();
+    const canReopenOffer = profile?.role === 'admin' || profile?.role === 'developer';
 
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState<OfferStatus | "all">("all");
@@ -68,6 +80,28 @@ export default function OffersPage() {
         e.stopPropagation();
         setDownloadingIds(prev => new Set(prev).add(offer.id));
         try {
+            const prefix = offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot';
+            const fileName = `${prefix}_${offer.offerNumber.replace(/\//g, '-')}.pdf`;
+
+            if (offer.status !== 'draft' && offer.pdfUrl) {
+                try {
+                    const pdfUrl = await fetchSignedOfferPdfUrl(offer.id);
+                    const response = await fetch(pdfUrl);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                } catch {
+                    const pdfUrl = await fetchSignedOfferPdfUrl(offer.id);
+                    window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+                }
+                return;
+            }
+
             const { pdf } = await import('@react-pdf/renderer');
             const { OfferReactPDF } = await import('@/components/OfferReactPDF');
             const customer = customers.find(c => c.id === offer.customerId);
@@ -77,8 +111,7 @@ export default function OffersPage() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            const prefix = offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot';
-            a.download = `${prefix}_${offer.offerNumber.replace(/\//g, '-')}.pdf`;
+            a.download = fileName;
             a.click();
             URL.revokeObjectURL(url);
         } catch (err) {
@@ -322,13 +355,40 @@ export default function OffersPage() {
                                         <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
                                             <select
                                                 value={offer.status}
-                                                onChange={(e) => updateOffer(offer.id, { status: e.target.value as OfferStatus })}
+                                                onChange={(e) => {
+                                                    const nextStatus = e.target.value as OfferStatus;
+
+                                                    if (offer.status === 'draft' && nextStatus !== 'draft') {
+                                                        showToast("Bitte öffnen Sie den Entwurf und finalisieren Sie das Angebot dort, damit eine fixe PDF gespeichert wird.", "error");
+                                                        return;
+                                                    }
+
+                                                    if (nextStatus === 'draft' && offer.status !== 'draft') {
+                                                        if (!canReopenOffer) {
+                                                            showToast("Nur Admins können fertige Angebote wieder als Entwurf öffnen.", "error");
+                                                            return;
+                                                        }
+
+                                                        showConfirm({
+                                                            title: "Angebot wieder als Entwurf öffnen?",
+                                                            message: "Die gespeicherte PDF bleibt bis zur erneuten Finalisierung erhalten. Beim erneuten Finalisieren wird die sichtbare PDF des Angebots ersetzt.",
+                                                            confirmLabel: "In Entwurf öffnen",
+                                                            variant: "danger",
+                                                            onConfirm: () => updateOffer(offer.id, { status: 'draft' })
+                                                        });
+                                                        return;
+                                                    }
+
+                                                    updateOffer(offer.id, { status: nextStatus });
+                                                }}
                                                 className={cn(
                                                     "appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all",
                                                     sc.color, sc.bg, sc.border
                                                 )}
                                             >
-                                                <option value="draft">Entwurf</option>
+                                                {(offer.status === 'draft' || canReopenOffer) && (
+                                                    <option value="draft">Entwurf</option>
+                                                )}
                                                 <option value="sent">Gesendet</option>
                                                 <option value="accepted">Angenommen</option>
                                                 <option value="rejected">Abgelehnt</option>

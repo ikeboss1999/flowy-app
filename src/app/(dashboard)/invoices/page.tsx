@@ -14,7 +14,8 @@ import {
     ChevronDown,
     ArrowUpDown,
     Edit2,
-    Loader2
+    Loader2,
+    Plus
 } from "lucide-react";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useCustomers } from "@/hooks/useCustomers";
@@ -150,18 +151,29 @@ export default function InvoicesPage() {
                     <p className="text-xl text-slate-500 font-medium">Alle erstellten Rechnungen im Überblick.</p>
                 </div>
 
-                {/* Year Selector */}
-                <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-slate-400" />
-                    <select
-                        value={selectedYear}
-                        onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                        className="px-6 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                {/* Actions: Year Selector & New Invoice Button */}
+                <div className="flex items-center gap-4">
+                    {/* Year Selector */}
+                    <div className="flex items-center gap-3">
+                        <Calendar className="h-5 w-5 text-slate-400" />
+                        <select
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                            className="px-6 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer"
+                        >
+                            {availableYears.map(year => (
+                                <option key={year} value={year}>{year}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Neue Rechnung Button */}
+                    <button
+                        onClick={() => router.push("/invoices/new")}
+                        className="bg-primary-gradient text-white px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all shrink-0"
                     >
-                        {availableYears.map(year => (
-                            <option key={year} value={year}>{year}</option>
-                        ))}
-                    </select>
+                        <Plus className="h-5 w-5" /> Rechnung erstellen
+                    </button>
                 </div>
             </div>
 

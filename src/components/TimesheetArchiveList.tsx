@@ -1,29 +1,55 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTimeEntries } from '@/hooks/useTimeEntries';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { FileText, Calendar, CheckCircle, Download, Folder, ChevronRight, ChevronDown, Eye, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { FileText, Calendar, CheckCircle, Download, Folder, ChevronRight, ChevronDown, Eye, Loader2, X } from 'lucide-react';
 import { TimeTrackingPreviewModal } from './TimeTrackingPreviewModal';
 import { Employee } from '@/types/employee';
+import { TimesheetMeta } from '@/types/time-tracking';
 
 export function TimesheetArchiveList() {
     const { timesheets, entries, isLoading: timeEntriesLoading } = useTimeEntries();
     const { employees, isLoading: employeesLoading } = useEmployees();
     const { data: companySettings } = useCompanySettings();
-    const router = useRouter();
 
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
     const [selectedMonth, setSelectedMonth] = useState<string>('');
     const [expandedEmployees, setExpandedEmployees] = useState<string[]>([]);
     const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+    const [storedPreviewUrl, setStoredPreviewUrl] = useState<string | null>(null);
+    const [storedPreviewTitle, setStoredPreviewTitle] = useState('');
+    const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [yearFilter, setYearFilter] = useState('all');
+    const [employeeFilter, setEmployeeFilter] = useState('all');
 
-    const finalized = timesheets
-        .filter(t => t.status === 'finalized')
-        .sort((a, b) => new Date(b.month).getTime() - new Date(a.month).getTime());
+    const getEmployee = (id: string) => employees.find(e => e.id === id) ?? null;
+
+    const finalized = useMemo(() => {
+        return timesheets
+            .filter(t => t.status === 'finalized')
+            .filter(t => yearFilter === 'all' || t.month.startsWith(yearFilter))
+            .filter(t => employeeFilter === 'all' || t.employeeId === employeeFilter)
+            .filter(t => {
+                if (!searchTerm.trim()) return true;
+                const emp = getEmployee(t.employeeId);
+                const employeeName = emp ? `${emp.employeeNumber} ${emp.personalData.firstName} ${emp.personalData.lastName}`.toLowerCase() : '';
+                const monthLabel = new Date(t.month).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' }).toLowerCase();
+                return employeeName.includes(searchTerm.toLowerCase()) || monthLabel.includes(searchTerm.toLowerCase());
+            })
+            .sort((a, b) => new Date(b.month).getTime() - new Date(a.month).getTime());
+    }, [timesheets, employees, searchTerm, yearFilter, employeeFilter]);
+
+    const years = useMemo(() => {
+        return Array.from(new Set(
+            timesheets
+                .filter(t => t.status === 'finalized')
+                .map(t => t.month.slice(0, 4))
+        )).sort((a, b) => b.localeCompare(a));
+    }, [timesheets]);
 
     const groupedByEmployee = finalized.reduce((acc, sheet) => {
         if (!acc[sheet.employeeId]) acc[sheet.employeeId] = [];
@@ -31,7 +57,6 @@ export function TimesheetArchiveList() {
         return acc;
     }, {} as Record<string, typeof finalized>);
 
-    const getEmployee = (id: string) => employees.find(e => e.id === id) ?? null;
     const getEmployeeName = (id: string) => {
         const emp = getEmployee(id);
         return emp ? `${emp.personalData.firstName} ${emp.personalData.lastName}` : 'Unbekannt';
@@ -43,29 +68,74 @@ export function TimesheetArchiveList() {
         );
     };
 
-    // Opens the employee's time-tracking management page directly
-    const handleOpen = (_month: string, employeeId: string) => {
-        router.push(`/time-tracking/${employeeId}`);
+    const fetchSignedTimesheetPdfUrl = async (timesheetId: string, download = false) => {
+        const res = await fetch(`/api/timesheets/pdf-url?id=${encodeURIComponent(timesheetId)}${download ? '&download=1' : ''}`);
+        if (!res.ok) {
+            const text = await res.text().catch(() => String(res.status));
+            throw new Error(`PDF URL failed: ${res.status} ${text}`);
+        }
+        const data = await res.json();
+        return data.url as string;
     };
 
-    // Opens the HTML preview modal
-    const handlePreview = (month: string, employeeId: string) => {
-        setSelectedEmployee(getEmployee(employeeId));
-        setSelectedMonth(month.slice(0, 7));
+    // Opens the locked PDF if available, otherwise falls back to HTML preview.
+    const handlePreview = async (sheet: TimesheetMeta) => {
+        const emp = getEmployee(sheet.employeeId);
+        const title = emp
+            ? `Stundenzettel ${emp.personalData.firstName} ${emp.personalData.lastName} - ${sheet.month}`
+            : `Stundenzettel ${sheet.month}`;
+
+        if (sheet.pdfUrl) {
+            setPreviewLoadingId(sheet.id);
+            try {
+                const url = await fetchSignedTimesheetPdfUrl(sheet.id);
+                setStoredPreviewUrl(url);
+                setStoredPreviewTitle(title);
+                return;
+            } catch (err) {
+                console.error('[Timesheet PDF Preview]', err);
+            } finally {
+                setPreviewLoadingId(null);
+            }
+        }
+
+        setStoredPreviewUrl(null);
+        setStoredPreviewTitle('');
+        setSelectedEmployee(emp);
+        setSelectedMonth(sheet.month.slice(0, 7));
         setIsPreviewModalOpen(true);
     };
 
+    const closeStoredPreview = () => {
+        setStoredPreviewUrl(null);
+        setStoredPreviewTitle('');
+    };
+
     // Directly generates and downloads the PDF without opening the modal
-    const handleDownload = async (month: string, employeeId: string) => {
-        const sheetKey = `${employeeId}-${month}`;
-        const emp = getEmployee(employeeId);
+    const handleDownload = async (sheet: TimesheetMeta) => {
+        const sheetKey = `${sheet.employeeId}-${sheet.month}`;
+        const emp = getEmployee(sheet.employeeId);
         if (!emp || !companySettings) return;
 
         setDownloadingIds(prev => new Set(prev).add(sheetKey));
         try {
-            const normalizedMonth = month.slice(0, 7);
+            if (sheet.pdfUrl) {
+                const pdfUrl = await fetchSignedTimesheetPdfUrl(sheet.id, true);
+                const response = await fetch(pdfUrl);
+                if (!response.ok) throw new Error(`PDF download failed: ${response.status}`);
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Stundenzettel_${emp.personalData.lastName}_${sheet.month}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+                return;
+            }
+
+            const normalizedMonth = sheet.month.slice(0, 7);
             const sheetEntries = entries
-                .filter(e => e.employeeId === employeeId && e.date.startsWith(normalizedMonth))
+                .filter(e => e.employeeId === sheet.employeeId && e.date.startsWith(normalizedMonth))
                 .sort((a, b) => a.date.localeCompare(b.date));
 
             const { pdf } = await import('@react-pdf/renderer');
@@ -107,7 +177,7 @@ export function TimesheetArchiveList() {
         );
     }
 
-    if (finalized.length === 0) {
+    if (timesheets.filter(t => t.status === 'finalized').length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
                 <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
@@ -121,6 +191,45 @@ export function TimesheetArchiveList() {
 
     return (
         <div className="space-y-4">
+            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 grid grid-cols-1 md:grid-cols-[1fr_180px_240px] gap-3">
+                <input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Archiv durchsuchen..."
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none font-bold text-slate-700 placeholder:text-slate-400"
+                />
+                <select
+                    value={yearFilter}
+                    onChange={(e) => setYearFilter(e.target.value)}
+                    className="px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none font-bold text-slate-700"
+                >
+                    <option value="all">Alle Jahre</option>
+                    {years.map(year => <option key={year} value={year}>{year}</option>)}
+                </select>
+                <select
+                    value={employeeFilter}
+                    onChange={(e) => setEmployeeFilter(e.target.value)}
+                    className="px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none font-bold text-slate-700"
+                >
+                    <option value="all">Alle Mitarbeiter</option>
+                    {employees
+                        .filter(emp => timesheets.some(t => t.status === 'finalized' && t.employeeId === emp.id))
+                        .sort((a, b) => (a.employeeNumber || '').localeCompare(b.employeeNumber || ''))
+                        .map(emp => (
+                            <option key={emp.id} value={emp.id}>
+                                #{emp.employeeNumber || '---'} {emp.personalData.firstName} {emp.personalData.lastName}
+                            </option>
+                        ))}
+                </select>
+            </div>
+
+            {finalized.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 bg-white rounded-3xl border border-slate-100 shadow-sm text-slate-400">
+                    <FileText className="h-10 w-10 mb-3 opacity-30" />
+                    <p className="font-bold">Keine Stundenzettel für diese Filter gefunden.</p>
+                </div>
+            )}
+
             {Object.entries(groupedByEmployee)
                 .sort((a, b) => {
                     const empA = getEmployee(a[0]);
@@ -174,10 +283,13 @@ export function TimesheetArchiveList() {
                                             return (
                                                 <tr key={sheet.id} className="hover:bg-slate-50/50 transition-colors group">
                                                     <td className="px-8 py-5 font-bold text-slate-900 text-sm">
-                                                        <div className="flex items-center gap-3">
+                                                        <button
+                                                            onClick={() => handlePreview(sheet)}
+                                                            className="flex items-center gap-3 hover:text-indigo-600 transition-colors text-left"
+                                                        >
                                                             <Calendar className="h-4 w-4 text-indigo-500" />
                                                             {new Date(sheet.month).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}
-                                                        </div>
+                                                        </button>
                                                     </td>
                                                     <td className="px-8 py-5 text-slate-500 text-sm">
                                                         {sheet.finalizedAt ? new Date(sheet.finalizedAt).toLocaleDateString('de-DE') : '-'}
@@ -192,16 +304,19 @@ export function TimesheetArchiveList() {
                                                         <div className="flex justify-end items-center gap-2">
                                                             {/* Vorschau: opens HTML preview modal */}
                                                             <button
-                                                                onClick={() => handlePreview(sheet.month, sheet.employeeId)}
+                                                                onClick={() => handlePreview(sheet)}
+                                                                disabled={previewLoadingId === sheet.id}
                                                                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-[11px] hover:bg-indigo-100 transition-all"
                                                                 title="Vorschau anzeigen"
                                                             >
-                                                                <Eye className="h-3.5 w-3.5" />
+                                                                {previewLoadingId === sheet.id
+                                                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                                    : <Eye className="h-3.5 w-3.5" />}
                                                                 Vorschau
                                                             </button>
                                                             {/* Download: directly saves PDF */}
                                                             <button
-                                                                onClick={() => handleDownload(sheet.month, sheet.employeeId)}
+                                                                onClick={() => handleDownload(sheet)}
                                                                 disabled={isDownloading}
                                                                 className="h-9 w-9 flex items-center justify-center bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm disabled:opacity-50"
                                                                 title="PDF herunterladen"
@@ -209,13 +324,6 @@ export function TimesheetArchiveList() {
                                                                 {isDownloading
                                                                     ? <Loader2 className="h-4 w-4 animate-spin" />
                                                                     : <Download className="h-4 w-4" />}
-                                                            </button>
-                                                            {/* Öffnen: navigates to the employee's time-tracking page */}
-                                                            <button
-                                                                onClick={() => handleOpen(sheet.month, sheet.employeeId)}
-                                                                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold text-[11px] hover:bg-slate-200 transition-all"
-                                                            >
-                                                                Öffnen
                                                             </button>
                                                         </div>
                                                     </td>
@@ -229,6 +337,32 @@ export function TimesheetArchiveList() {
                     </div>
                 );
             })}
+
+            {storedPreviewUrl && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-5xl h-[90vh] rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col animate-in zoom-in-95 duration-200">
+                        <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
+                            <div>
+                                <h2 className="text-xl font-black text-slate-900 tracking-tight">{storedPreviewTitle}</h2>
+                                <p className="text-sm text-slate-500 font-medium mt-1">Gespeicherte PDF-Vorschau</p>
+                            </div>
+                            <button
+                                onClick={closeStoredPreview}
+                                className="h-10 w-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 bg-slate-100">
+                            <iframe
+                                src={storedPreviewUrl}
+                                title={storedPreviewTitle}
+                                className="w-full h-full border-0"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <TimeTrackingPreviewModal
                 isOpen={isPreviewModalOpen}

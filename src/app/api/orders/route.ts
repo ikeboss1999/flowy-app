@@ -7,6 +7,31 @@ import { safeGetCreatedBy, safeUpsert } from '@/lib/supabase-helper';
 
 export const dynamic = 'force-dynamic';
 
+const orderMutableAfterFinalization = ['status'];
+
+function pickMutableOrderFields(order: any) {
+    return orderMutableAfterFinalization.reduce((fields, key) => {
+        if (Object.prototype.hasOwnProperty.call(order, key)) {
+            fields[key] = order[key];
+        }
+        return fields;
+    }, {} as Record<string, any>);
+}
+
+function isStoredOrderPdfReference(order: any, companyOwnerId: string) {
+    const reference = order.pdfPath || order.pdfUrl;
+    if (!reference || typeof reference !== 'string') return false;
+    if (!reference.startsWith('http')) return reference.startsWith(`${companyOwnerId}/`);
+
+    try {
+        const url = new URL(reference);
+        return url.origin === process.env.NEXT_PUBLIC_SUPABASE_URL
+            && url.pathname.includes('/storage/v1/object/public/orders/');
+    } catch {
+        return false;
+    }
+}
+
 export async function GET(request: Request) {
     const session = await getUserSession();
     const companyOwnerId = session?.companyOwnerId;
@@ -54,8 +79,43 @@ export async function POST(request: Request) {
 
         const client = supabaseAdmin || supabase;
 
+        const { data: existingOrder, error: existingError } = payload.id
+            ? await client
+                .from('order_confirmations')
+                .select('*')
+                .eq('id', payload.id)
+                .eq('userId', companyOwnerId)
+                .maybeSingle()
+            : { data: null, error: null };
+
+        if (existingError) throw existingError;
+
         // Check if record exists for created_by
-        const createdBy = payload.id ? await safeGetCreatedBy(client, 'order_confirmations', payload.id) : null;
+        const createdBy = existingOrder?.created_by || (payload.id ? await safeGetCreatedBy(client, 'order_confirmations', payload.id) : null);
+
+        if (existingOrder) {
+            const mutableOrderData = {
+                ...existingOrder,
+                ...pickMutableOrderFields(payload),
+                id: existingOrder.id,
+                userId: companyOwnerId,
+                updatedAt: now,
+                updated_by: session.userId,
+                created_by: createdBy || existingOrder.created_by || session.userId
+            };
+
+            const result = await safeUpsert(client, 'order_confirmations', mutableOrderData);
+            if (result.error) {
+                console.error('SUPABASE UPSERT ERROR:', result.error);
+                throw result.error;
+            }
+
+            return NextResponse.json({ success: true, id: orderId });
+        }
+
+        if (!isStoredOrderPdfReference(payload, companyOwnerId)) {
+            return NextResponse.json({ error: 'Orders require a stored PDF' }, { status: 400 });
+        }
 
         const orderData = {
             ...payload,
@@ -99,14 +159,7 @@ export async function DELETE(request: Request) {
     }
 
     try {
-        const client = supabaseAdmin || supabase;
-        const { error } = await client
-            .from('order_confirmations')
-            .delete()
-            .eq('id', id)
-            .eq('userId', companyOwnerId);
-        if (error) throw error;
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ error: 'Orders cannot be deleted; use cancelled status instead' }, { status: 403 });
     } catch (e) {
         console.error(e);
         return NextResponse.json({ error: 'Failed' }, { status: 500 });

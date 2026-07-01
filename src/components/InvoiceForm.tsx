@@ -74,7 +74,6 @@ import { Service } from "@/types/service";
 import { CustomerSearchSelect } from "@/components/CustomerSearchSelect";
 import { pdf } from "@react-pdf/renderer";
 import { InvoiceReactPDF } from "@/components/InvoiceReactPDF";
-import { supabase } from "@/lib/supabase";
 
 interface InvoiceFormProps {
   initialData?: Partial<Invoice>;
@@ -727,23 +726,28 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
             companySettings={invoiceData.performancePeriod?.companySnapshot || companySettings!}
           />,
         ).toBlob();
-        const safeInvoiceNumber = invoiceData.invoiceNumber.replace(/\//g, "-");
-        const fileName = `RE-${safeInvoiceNumber}-${Date.now()}.pdf`;
 
-        // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
-          .from("invoices")
-          .upload(fileName, blob, { contentType: "application/pdf" });
+        const pdfFile = new File([blob], "invoice.pdf", { type: "application/pdf" });
+        const formData = new FormData();
+        formData.append("file", pdfFile);
+        formData.append("invoiceId", invoiceData.id);
+        formData.append("invoiceNumber", invoiceData.invoiceNumber);
+        const previousPdfPath = initialData?.pdfPath || (initialData?.pdfUrl && !initialData.pdfUrl.startsWith("http") ? initialData.pdfUrl : undefined);
+        if (previousPdfPath) {
+          formData.append("previousPdfPath", previousPdfPath);
+        }
 
-        if (error) throw error;
+        const uploadResponse = await fetch("/api/invoices/pdf-upload", {
+          method: "POST",
+          body: formData,
+        });
 
-        // Get Public URL
-        const { data: urlData } = supabase.storage
-          .from("invoices")
-          .getPublicUrl(fileName);
+        if (!uploadResponse.ok) {
+          throw new Error(await uploadResponse.text());
+        }
 
-        // Add PDF URL to invoice data
-        invoiceData.pdfUrl = urlData.publicUrl;
+        const uploadData = await uploadResponse.json();
+        invoiceData.pdfUrl = uploadData.pdfPath;
 
         // Save to database
         if (initialData?.id) {
@@ -760,17 +764,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
       } catch (e) {
         console.error("PDF Upload Failed", e);
         setIsGeneratingPDF(false);
-
-        // Save anyway without PDF if it fails
-        if (initialData?.id) {
-          await updateInvoice(initialData.id, invoiceData);
-        } else {
-          await addInvoice(invoiceData);
-          await updateSettings({
-            nextInvoiceNumber: settings.nextInvoiceNumber + 1,
-          });
-        }
-        router.push("/dashboard");
+        setError("Die Rechnung konnte nicht finalisiert werden, weil die PDF nicht gespeichert wurde. Bitte versuche es erneut.");
       }
       return;
     }

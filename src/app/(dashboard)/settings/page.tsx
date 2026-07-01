@@ -11,18 +11,22 @@ import { EmployeeSettings } from "@/components/EmployeeSettings";
 import { AccountSettings } from "@/components/AccountSettings";
 import { AppSettings } from "@/components/AppSettings";
 import { UserManagement } from "@/components/UserManagement";
+import { AppInfo } from "@/components/AppInfo";
+import { CustomerSettings } from "@/components/CustomerSettings";
 import { Settings as SettingsIcon, FileText, Receipt, Briefcase, FileSignature, Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
     { id: "Stammdaten", label: "Stammdaten" },
-    { id: "Dokumente", label: "Dokumente & Projekte" },
+    { id: "Dokumente", label: "Nummern & Dokumente" },
     { id: "Mitarbeiterrechte", label: "Benutzerverwaltung" },
     { id: "Neuigkeiten", label: "Neuigkeiten" },
     { id: "Mein Konto", label: "Mein Konto" },
+    { id: "App Info", label: "App Info" },
 ];
 
 const DOC_SUBTABS = [
+    { id: "customer", label: "Kunden", icon: Users2 },
     { id: "offer", label: "Angebot", icon: FileText },
     { id: "order", label: "Auftrag", icon: FileSignature },
     { id: "invoice", label: "Rechnung", icon: Receipt },
@@ -33,7 +37,7 @@ const DOC_SUBTABS = [
 export default function SettingsPage() {
     usePermissionGuard(null);
     const [activeTab, setActiveTab] = useState("Stammdaten");
-    const [docSubTab, setDocSubTab] = useState("offer");
+    const [docSubTab, setDocSubTab] = useState("customer");
 
     return (
         <div className="p-10 min-h-screen">
@@ -105,6 +109,7 @@ export default function SettingsPage() {
                                 ))}
                             </div>
 
+                            {docSubTab === "customer" && <CustomerSettings />}
                             {docSubTab === "offer" && <OfferSettings />}
                             {docSubTab === "order" && <OrderSettings />}
                             {docSubTab === "invoice" && <InvoiceSettings />}
@@ -128,6 +133,12 @@ export default function SettingsPage() {
                     {activeTab === "Mein Konto" && (
                         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
                             <AccountSettings />
+                        </div>
+                    )}
+
+                    {activeTab === "App Info" && (
+                        <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
+                            <AppInfo />
                         </div>
                     )}
                 </div>

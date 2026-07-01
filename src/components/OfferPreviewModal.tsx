@@ -56,12 +56,48 @@ interface OfferPreviewModalProps {
     companySettings: CompanyData;
 }
 
+async function fetchSignedOfferPdfUrl(offerId: string) {
+    const response = await fetch(`/api/offers/pdf-url?id=${encodeURIComponent(offerId)}`);
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
+    const data = await response.json();
+    return data.url as string;
+}
+
+async function uploadOrderPdf(order: any, customer: Customer | undefined, companySettings: CompanyData, orderSettings: any) {
+    const { pdf } = await import('@react-pdf/renderer');
+    const { OrderReactPDF } = await import('@/components/OrderReactPDF');
+    const blob = await pdf(
+        React.createElement(OrderReactPDF, { order, customer, companySettings, orderSettings }) as any
+    ).toBlob();
+
+    const pdfFile = new File([blob], "order.pdf", { type: "application/pdf" });
+    const formData = new FormData();
+    formData.append("file", pdfFile);
+    formData.append("orderId", order.id);
+    formData.append("orderNumber", order.orderNumber);
+
+    const uploadResponse = await fetch("/api/orders/pdf-upload", {
+        method: "POST",
+        body: formData,
+    });
+
+    if (!uploadResponse.ok) {
+        throw new Error(await uploadResponse.text());
+    }
+
+    return uploadResponse.json();
+}
+
 export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySettings }: OfferPreviewModalProps) {
     const [isDownloading, setIsDownloading] = React.useState(false);
     const [isConverting, setIsConverting] = React.useState(false);
     const [showSuccess, setShowSuccess] = React.useState(false);
     const [isConvertingInvoice, setIsConvertingInvoice] = React.useState(false);
     const [showInvoiceSuccess, setShowInvoiceSuccess] = React.useState(false);
+    const [signedPdfUrl, setSignedPdfUrl] = React.useState<string | null>(null);
+    const [signedPdfError, setSignedPdfError] = React.useState<string | null>(null);
 
     const { data: offerSettings } = useOfferSettings();
     const { data: orderSettings, updateData: updateOrderSettings } = useOrderSettings();
@@ -76,6 +112,30 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     const canConfirmOrder = !profile || profile.role === 'admin' || profile.role === 'developer' || !!profile.permissions?.orders_write;
     const canCreateInvoice = !profile || profile.role === 'admin' || profile.role === 'developer' || !!profile.permissions?.invoices_write;
 
+    React.useEffect(() => {
+        setSignedPdfUrl(null);
+        setSignedPdfError(null);
+
+        if (!isOpen || !offer || offer.status === 'draft' || !offer.pdfUrl) {
+            return;
+        }
+
+        let cancelled = false;
+
+        fetchSignedOfferPdfUrl(offer.id)
+            .then((url) => {
+                if (!cancelled) setSignedPdfUrl(url);
+            })
+            .catch((error) => {
+                console.error('[OfferPDFUrl]', error);
+                if (!cancelled) setSignedPdfError("Die gespeicherte PDF konnte nicht geladen werden.");
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isOpen, offer?.id, offer?.status, offer?.pdfUrl]);
+
     const alreadyInvoiced = React.useMemo(() => {
         if (!offer || !invoices) return false;
         return invoices.some(inv => inv.notes?.includes(`Bezug auf Angebot: ${offer.offerNumber}`));
@@ -84,6 +144,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     if (!isOpen || !offer) return null;
 
     const fmt = (d?: string) => d ? new Date(d).toLocaleDateString('de-DE') : '-';
+    const isStoredOffer = offer.status !== 'draft' && !!offer.pdfUrl;
 
     const generatePDF = async () => {
         const { pdf } = await import('@react-pdf/renderer');
@@ -96,16 +157,37 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     const handleDownloadPDF = async () => {
         setIsDownloading(true);
         try {
+            const prefix = offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot';
+            const fileName = `${prefix}_${offer.offerNumber.replace(/\//g, '-')}.pdf`;
+
+            if (isStoredOffer) {
+                const pdfUrl = signedPdfUrl || await fetchSignedOfferPdfUrl(offer.id);
+                try {
+                    const response = await fetch(pdfUrl);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                } catch {
+                    window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+                }
+                return;
+            }
+
             const blob = await generatePDF();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            const prefix = offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot';
-            a.download = `${prefix}_${offer.offerNumber.replace(/\//g, '-')}.pdf`;
+            a.download = fileName;
             a.click();
             URL.revokeObjectURL(url);
         } catch (e) {
             console.error('[PDF Download]', e);
+            showToast("Die PDF konnte nicht geöffnet werden.", "error");
         } finally {
             setIsDownloading(false);
         }
@@ -113,6 +195,10 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
 
     const handleCreateOrder = async () => {
         if (!offer || isConverting) return;
+        if (offer.status !== 'sent') {
+            showToast("Nur gesendete Angebote können als Auftrag bestätigt werden.", "error");
+            return;
+        }
         setIsConverting(true);
         try {
             const orderNum = `${orderSettings.prefix}${String(orderSettings.nextOrderNumber).padStart(3, '0')}`;
@@ -144,7 +230,11 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                 updatedAt: new Date().toISOString(),
                 constructionProject: offer.constructionProject,
                 subjectExtra: offer.subjectExtra,
+                pdfUrl: undefined as string | undefined,
             };
+
+            const uploadData = await uploadOrderPdf(newOrder, customer, companySettings, orderSettings);
+            newOrder.pdfUrl = uploadData.pdfPath;
 
             await addOrder(newOrder);
             await updateOffer(offer.id, { status: 'accepted' });
@@ -157,6 +247,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
             }, 2000);
         } catch (e) {
             console.error('[Order Creation]', e);
+            showToast("Auftrag konnte nicht erstellt werden, weil die PDF nicht gespeichert wurde.", "error");
         } finally {
             setIsConverting(false);
         }
@@ -248,10 +339,10 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                         ) : (
                             <button
                                 onClick={handleCreateOrder}
-                                disabled={isConverting}
+                                disabled={isConverting || offer.status !== 'sent'}
                                 className={cn(
                                     "px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all flex items-center gap-2 disabled:opacity-50",
-                                    offer.status === 'accepted'
+                                    offer.status !== 'sent'
                                         ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
                                         : "bg-indigo-600 text-white shadow-indigo-200 hover:scale-[1.02] active:scale-95"
                                 )}
@@ -307,12 +398,33 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
 
                 {/* ── Document Preview (echtes PDF-Rendering) ── */}
                 <div className="flex-1 min-h-0 bg-slate-100">
-                    <OfferPDFPreview
-                        offer={offer}
-                        customer={customer}
-                        companySettings={companySettings}
-                        offerSettings={offerSettings}
-                    />
+                    {isStoredOffer ? (
+                        signedPdfUrl ? (
+                            <iframe
+                                src={signedPdfUrl}
+                                title={`${offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot'} ${offer.offerNumber}`}
+                                className="w-full h-full border-none bg-white"
+                            />
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-slate-400 gap-2">
+                                {signedPdfError ? (
+                                    <span className="text-sm font-bold text-rose-500">{signedPdfError}</span>
+                                ) : (
+                                    <>
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        <span className="text-sm font-medium">PDF wird geladen ...</span>
+                                    </>
+                                )}
+                            </div>
+                        )
+                    ) : (
+                        <OfferPDFPreview
+                            offer={offer}
+                            customer={customer}
+                            companySettings={companySettings}
+                            offerSettings={offerSettings}
+                        />
+                    )}
                 </div>
 
             </div>

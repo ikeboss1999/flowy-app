@@ -16,6 +16,18 @@ const styles = StyleSheet.create({
         color: '#000000',
         lineHeight: 1.3,
     },
+    draftWatermark: {
+        position: 'absolute',
+        top: 360,
+        left: 40,
+        right: 40,
+        textAlign: 'center',
+        fontSize: 82,
+        fontFamily: 'Helvetica-Bold',
+        color: '#94a3b8',
+        opacity: 0.22,
+        transform: 'rotate(-32deg)',
+    },
 
     // ─── Header ─────────────────────────────────────
     header: {
@@ -288,6 +300,9 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
     return (
         <Document>
             <Page size="A4" style={styles.page}>
+                {offer.status === 'draft' && (
+                    <Text fixed style={styles.draftWatermark}>ENTWURF</Text>
+                )}
 
                 {/* ── Header (fixed: repeats on every page) ── */}
                 <View fixed style={styles.header}>

@@ -21,6 +21,7 @@ export interface Customer {
     reverseChargeEnabled?: boolean; // Only for business customers
     notes?: string;
     defaultPaymentTermId?: string; // Reference to custom payment terms in settings
+    customer_number?: string; // Auto-generated or custom customer number
     createdAt: string;
     updatedAt: string;
     lastActivity?: string; // Added last activity

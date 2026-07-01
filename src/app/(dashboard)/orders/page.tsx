@@ -35,9 +35,18 @@ import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 
 export const dynamic = 'force-dynamic';
 
+async function fetchSignedOrderPdfUrl(orderId: string) {
+    const response = await fetch(`/api/orders/pdf-url?id=${encodeURIComponent(orderId)}`);
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
+    const data = await response.json();
+    return data.url as string;
+}
+
 export default function OrdersPage() {
     usePermissionGuard("orders_read");
-    const { orders, updateOrder, deleteOrder, isLoading } = useOrders();
+    const { orders, updateOrder, isLoading } = useOrders();
     const { customers } = useCustomers();
     const { data: companySettings } = useCompanySettings();
     const { data: orderSettings } = useOrderSettings();
@@ -56,6 +65,27 @@ export default function OrdersPage() {
         e.stopPropagation();
         setDownloadingIds(prev => new Set(prev).add(order.id));
         try {
+            const fileName = `Auftrag_${order.orderNumber.replace(/\//g, '-')}.pdf`;
+
+            if (order.pdfUrl) {
+                try {
+                    const pdfUrl = await fetchSignedOrderPdfUrl(order.id);
+                    const response = await fetch(pdfUrl);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                } catch {
+                    const pdfUrl = await fetchSignedOrderPdfUrl(order.id);
+                    window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+                }
+                return;
+            }
+
             const { pdf } = await import('@react-pdf/renderer');
             const { OrderReactPDF } = await import('@/components/OrderReactPDF');
             const customer = customers.find(c => c.id === order.customerId);
@@ -65,7 +95,7 @@ export default function OrdersPage() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Auftrag_${order.orderNumber}.pdf`;
+            a.download = fileName;
             a.click();
             URL.revokeObjectURL(url);
         } catch (err) {
@@ -308,23 +338,26 @@ export default function OrdersPage() {
                                             >
                                                 {downloadingIds.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                                             </button>
+                                            {order.status !== 'cancelled' && (
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     showConfirm({
-                                                        title: "Auftrag löschen?",
-                                                        message: "Möchten Sie diesen Auftrag wirklich löschen?",
+                                                        title: "Auftrag stornieren?",
+                                                        message: "Der Auftrag bleibt als gespeicherte PDF erhalten und wird als storniert markiert.",
                                                         variant: "danger",
                                                         onConfirm: () => {
-                                                            deleteOrder(order.id);
-                                                            showToast("Auftrag gelöscht.", "success");
+                                                            updateOrder(order.id, { status: 'cancelled' });
+                                                            showToast("Auftrag storniert.", "success");
                                                         }
                                                     });
                                                 }}
                                                 className="p-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all"
+                                                title="Auftrag stornieren"
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

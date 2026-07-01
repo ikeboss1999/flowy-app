@@ -13,7 +13,10 @@ import {
     Clock,
     MapPin,
     Trash2,
-    AlertCircle
+    AlertCircle,
+    CheckCircle2,
+    CircleDashed,
+    Copy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEmployees } from "@/hooks/useEmployees";
@@ -211,6 +214,24 @@ function getDaysInMonth(year: number, month: number) {
     return new Date(year, month, 0).getDate();
 }
 
+function formatHours(value: number) {
+    return value.toFixed(2).replace('.', ',');
+}
+
+function getPreviousMonthValue() {
+    const date = new Date();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - 1);
+    return date.toISOString().slice(0, 7);
+}
+
+function getPreviousMonth(month: string) {
+    const [year, monthIndex] = month.split('-').map(Number);
+    const date = new Date(year, monthIndex - 1, 1);
+    date.setMonth(date.getMonth() - 1);
+    return date.toISOString().slice(0, 7);
+}
+
 export default function EmployeeTimeTrackingPage() {
     usePermissionGuard("time_tracking_use");
     const params = useParams();
@@ -218,16 +239,17 @@ export default function EmployeeTimeTrackingPage() {
     const employeeId = params.employeeId as string;
 
     // Hooks
-    const { user, currentEmployee } = useAuth();
+    const { user, currentEmployee, profile } = useAuth();
     const { employees, isLoading: employeesLoading } = useEmployees();
     const { entries, deleteEntry, isLoading: entriesLoading, timesheets, finalizeMonth, reopenMonth, refreshEntries } = useTimeEntries();
     const { data: companySettings } = useCompanySettings();
     const { showToast, showConfirm } = useNotification();
 
     const activeUserId = user?.id ?? currentEmployee?.userId;
+    const canReopenFinalizedMonth = profile?.role === 'admin' || profile?.role === 'developer';
 
     // State
-    const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7));
+    const [selectedMonth, setSelectedMonth] = useState<string>(getPreviousMonthValue());
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
     // Buffered edits: state drives UI, ref drives save (no stale-closure risk)
@@ -277,6 +299,88 @@ export default function EmployeeTimeTrackingPage() {
     const isFinalized = useMemo(() => {
         return timesheets.some(t => t.employeeId === employeeId && t.month === selectedMonth && t.status === 'finalized');
     }, [timesheets, employeeId, selectedMonth]);
+
+    const currentTimesheet = useMemo(() => {
+        return timesheets.find(t => t.employeeId === employeeId && t.month === selectedMonth);
+    }, [timesheets, employeeId, selectedMonth]);
+
+    const displayedMonthEntries = useMemo(() => {
+        const merged = new Map<string, TimeEntry>();
+        monthEntries.forEach(entry => merged.set(entry.date, entry));
+        Object.values(unsavedChanges)
+            .filter(entry => entry.employeeId === employeeId && entry.date.startsWith(selectedMonth))
+            .forEach(entry => merged.set(entry.date, entry));
+        return Array.from(merged.values()).sort((a, b) => a.date.localeCompare(b.date));
+    }, [monthEntries, unsavedChanges, employeeId, selectedMonth]);
+
+    const missingWorkDays = useMemo(() => {
+        if (!employee?.weeklySchedule) return [];
+
+        const [year, month] = selectedMonth.split('-').map(Number);
+        const dayMap: Record<number, keyof NonNullable<Employee['weeklySchedule']>> = {
+            1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday', 0: 'sunday'
+        };
+        const existingDates = new Set(displayedMonthEntries.map(entry => entry.date));
+        const missing: string[] = [];
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month - 1, day);
+            const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+            const schedule = employee.weeklySchedule[dayMap[date.getDay()]];
+            const holiday = isAustrianHoliday(dateStr, companySettings?.state);
+
+            if (schedule?.enabled && !holiday && !existingDates.has(dateStr)) {
+                missing.push(dateStr);
+            }
+        }
+
+        return missing;
+    }, [employee, selectedMonth, daysInMonth, displayedMonthEntries, companySettings?.state]);
+
+    const monthTotals = useMemo(() => {
+        const getDurationHours = (entry: TimeEntry) => {
+            if (typeof entry.duration === 'number') return entry.duration / 60;
+            if (!entry.startTime || !entry.endTime) return 0;
+            const start = new Date(`1970-01-01T${entry.startTime}`);
+            const end = new Date(`1970-01-01T${entry.endTime}`);
+            return Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+        };
+
+        const getWorkHours = (entry: TimeEntry) => {
+            if (entry.type !== 'WORK' && entry.type !== 'WORK_BAD_WEATHER') return 0;
+            const total = getDurationHours(entry);
+            if (entry.type !== 'WORK_BAD_WEATHER') return total;
+            const badWeather = typeof entry.badWeatherDuration === 'number'
+                ? entry.badWeatherDuration / 60
+                : total / 2;
+            return Math.max(0, total - badWeather);
+        };
+
+        const getBadWeatherHours = (entry: TimeEntry) => {
+            if (entry.type !== 'BAD_WEATHER' && entry.type !== 'WORK_BAD_WEATHER') return 0;
+            if (entry.type === 'BAD_WEATHER') return getDurationHours(entry);
+            if (typeof entry.badWeatherDuration === 'number') return entry.badWeatherDuration / 60;
+            return getDurationHours(entry) / 2;
+        };
+
+        return displayedMonthEntries.reduce((totals, entry) => {
+            const workHours = getWorkHours(entry);
+
+            return {
+                workHours: totals.workHours + workHours,
+                badWeatherHours: totals.badWeatherHours + getBadWeatherHours(entry),
+                overtimeHours: totals.overtimeHours + (entry.overtime || 0),
+                normalWorkDays: totals.normalWorkDays + (workHours > 3 && workHours < 9 ? 1 : 0),
+                longWorkDays: totals.longWorkDays + (workHours >= 9 ? 1 : 0)
+            };
+        }, {
+            workHours: 0,
+            badWeatherHours: 0,
+            overtimeHours: 0,
+            normalWorkDays: 0,
+            longWorkDays: 0
+        });
+    }, [displayedMonthEntries]);
 
     const handleUpdateEntry = useMemo(() => (date: string, field: keyof TimeEntry, value: any) => {
         if (isFinalized) return;
@@ -355,6 +459,28 @@ export default function EmployeeTimeTrackingPage() {
         return <div className="p-10 text-center text-red-500">Mitarbeiter nicht gefunden.</div>;
     }
 
+    if (employee.additionalInfo?.noTimeTrackingRequired === true) {
+        return (
+            <div className="p-10 min-h-screen flex items-center justify-center">
+                <div className="max-w-lg w-full bg-white border border-slate-100 rounded-[2rem] shadow-sm p-8 text-center">
+                    <div className="h-12 w-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                        <Clock className="h-6 w-6 text-slate-500" />
+                    </div>
+                    <h1 className="text-2xl font-black text-slate-900 mb-2">Keine Zeiterfassung nötig</h1>
+                    <p className="text-slate-500 font-medium mb-6">
+                        Dieser Mitarbeiter ist in der Zeiteinteilung von der Zeiterfassung ausgenommen.
+                    </p>
+                    <button
+                        onClick={() => router.push('/time-tracking')}
+                        className="px-5 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors"
+                    >
+                        Zurück zur Auswahl
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     // Handlers
 
     const performSave = async (): Promise<boolean> => {
@@ -407,6 +533,70 @@ export default function EmployeeTimeTrackingPage() {
         }
     };
 
+    const generateAndUploadTimesheetPdf = async () => {
+        if (!employee || !companySettings) {
+            throw new Error("Mitarbeiter- oder Firmendaten fehlen.");
+        }
+
+        const { pdf } = await import('@react-pdf/renderer');
+        const { TimesheetReactPDF } = await import('@/components/TimesheetReactPDF');
+        const timesheetId = `${employeeId}-${selectedMonth}`;
+        const blob = await pdf(
+            <TimesheetReactPDF
+                entries={displayedMonthEntries}
+                employee={employee}
+                month={selectedMonth}
+                companySettings={companySettings}
+            /> as any
+        ).toBlob();
+
+        const formData = new FormData();
+        formData.append('file', blob, `Stundenzettel-${employee.personalData.lastName}-${selectedMonth}.pdf`);
+        formData.append('timesheetId', timesheetId);
+        formData.append('employeeName', `${employee.personalData.firstName}-${employee.personalData.lastName}`);
+        formData.append('month', selectedMonth);
+        if (currentTimesheet?.pdfUrl && !currentTimesheet.pdfUrl.startsWith('http')) {
+            formData.append('previousPdfPath', currentTimesheet.pdfUrl);
+        }
+
+        const res = await fetch('/api/timesheets/pdf-upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!res.ok) {
+            const text = await res.text().catch(() => String(res.status));
+            throw new Error(`PDF konnte nicht gespeichert werden: ${res.status} ${text}`);
+        }
+
+        const data = await res.json();
+        if (!data.pdfPath) {
+            throw new Error("PDF wurde hochgeladen, aber kein Speicherpfad wurde zurückgegeben.");
+        }
+
+        return data.pdfPath as string;
+    };
+
+    const handleExport = async () => {
+        if (isFinalized && currentTimesheet?.pdfUrl) {
+            try {
+                const res = await fetch(`/api/timesheets/pdf-url?id=${encodeURIComponent(currentTimesheet.id)}`);
+                if (!res.ok) {
+                    const text = await res.text().catch(() => String(res.status));
+                    throw new Error(`HTTP ${res.status}: ${text}`);
+                }
+                const data = await res.json();
+                window.open(data.url, '_blank', 'noopener,noreferrer');
+                return;
+            } catch (e) {
+                console.error('[Timesheet Stored PDF Preview]', e);
+                showToast("Gespeicherte PDF konnte nicht geöffnet werden.", "error");
+            }
+        }
+
+        setIsPreviewModalOpen(true);
+    };
+
     const handleFinalize = () => {
         showConfirm({
             title: "Monat abschließen?",
@@ -418,8 +608,11 @@ export default function EmployeeTimeTrackingPage() {
                     const saveSuccess = await performSave();
                     if (!saveSuccess) return;
 
-                    // 2. Finalize
-                    await finalizeMonth(employeeId, selectedMonth);
+                    // 2. Render and store locked PDF
+                    const pdfPath = await generateAndUploadTimesheetPdf();
+
+                    // 3. Finalize
+                    await finalizeMonth(employeeId, selectedMonth, pdfPath);
                     showToast("Monat erfolgreich abgeschlossen!", "success");
                 } catch (e) {
                     console.error("Finalization failed", e);
@@ -495,6 +688,49 @@ export default function EmployeeTimeTrackingPage() {
                 showToast("Monat befüllt! Bitte speichern Sie Ihre Änderungen.", "info");
             }
         });
+    };
+
+    const handleCopyPreviousMonth = () => {
+        if (isFinalized) return;
+
+        const previousMonth = getPreviousMonth(selectedMonth);
+        const [targetYear, targetMonth] = selectedMonth.split('-').map(Number);
+        const targetDays = getDaysInMonth(targetYear, targetMonth);
+        const previousEntries = entries
+            .filter(entry => entry.employeeId === employeeId && entry.date.startsWith(previousMonth))
+            .sort((a, b) => a.date.localeCompare(b.date));
+
+        if (previousEntries.length === 0) {
+            showToast("Im Vormonat wurden keine Zeiten gefunden.", "info");
+            return;
+        }
+
+        const updates: Record<string, TimeEntry> = {};
+        let copiedCount = 0;
+
+        previousEntries.forEach(entry => {
+            const day = Number(entry.date.slice(-2));
+            if (!day || day > targetDays) return;
+
+            const targetDate = `${targetYear}-${targetMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+            if (monthEntries.some(e => e.date === targetDate) || unsavedChanges[targetDate]) return;
+
+            updates[targetDate] = {
+                ...entry,
+                id: Math.random().toString(36).substr(2, 9),
+                date: targetDate,
+                createdAt: new Date().toISOString()
+            };
+            copiedCount += 1;
+        });
+
+        if (copiedCount === 0) {
+            showToast("Es gibt keine freien Tage, die übernommen werden können.", "info");
+            return;
+        }
+
+        setUnsaved(prev => ({ ...prev, ...updates }));
+        showToast(`${copiedCount} Tage aus dem Vormonat übernommen. Bitte speichern.`, "success");
     };
 
     const handleResetMonth = async () => {
@@ -591,13 +827,28 @@ export default function EmployeeTimeTrackingPage() {
                                     // Only add if month is at or after employee's start date
                                     if (value >= startMonthStr) {
                                         const label = date.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-                                        options.push(<option key={value} value={value}>{label}</option>);
+                                        const status = timesheets.find(t => t.employeeId === employeeId && t.month === value)?.status;
+                                        options.push(
+                                            <option key={value} value={value}>
+                                                {label} - {status === 'finalized' ? 'abgeschlossen' : 'offen'}
+                                            </option>
+                                        );
                                     }
                                 }
                                 return options;
                             })()}
                         </select>
                         <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+                    </div>
+
+                    <div className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-black",
+                        isFinalized
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                            : "bg-slate-50 text-slate-600 border-slate-200"
+                    )}>
+                        {isFinalized ? <CheckCircle2 className="h-4 w-4" /> : <CircleDashed className="h-4 w-4" />}
+                        {isFinalized ? "Abgeschlossen" : "Offen"}
                     </div>
 
                     {isFinalized && (
@@ -609,6 +860,20 @@ export default function EmployeeTimeTrackingPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleCopyPreviousMonth}
+                        disabled={isFinalized}
+                        className={cn(
+                            "flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all",
+                            isFinalized
+                                ? "opacity-50 cursor-not-allowed bg-slate-50 text-slate-400"
+                                : "bg-white border-2 border-slate-100 text-slate-700 hover:bg-slate-50 hover:border-indigo-100"
+                        )}
+                    >
+                        <Copy className="h-4 w-4" />
+                        Vormonat übernehmen
+                    </button>
+
                     <button
                         onClick={handleAutoFill}
                         disabled={isFinalized}
@@ -660,7 +925,7 @@ export default function EmployeeTimeTrackingPage() {
                     </button>
 
                     <button
-                        onClick={() => setIsPreviewModalOpen(true)}
+                        onClick={handleExport}
                         className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm bg-white border-2 border-slate-100 text-slate-700 hover:bg-slate-50 hover:border-slate-200 transition-all hover:scale-105 shadow-sm"
                     >
                         <Printer className="h-4 w-4" />
@@ -676,7 +941,7 @@ export default function EmployeeTimeTrackingPage() {
                             <Save className="h-4 w-4" />
                             {isSaving ? "Wird verarbeitet..." : "Abschließen"}
                         </button>
-                    ) : (
+                    ) : canReopenFinalizedMonth ? (
                         <button
                             onClick={() => {
                                 showConfirm({
@@ -697,10 +962,35 @@ export default function EmployeeTimeTrackingPage() {
                             <Save className="h-4 w-4" />
                             Wieder öffnen
                         </button>
+                    ) : (
+                        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-50 text-slate-400 font-bold text-sm border border-slate-100">
+                            Nur Admin kann wieder öffnen
+                        </div>
                     )}
                 </div>
 
             </div>
+
+            {missingWorkDays.length > 0 && !isFinalized && (
+                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4 text-amber-800">
+                    <AlertCircle className="h-5 w-5 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-black">
+                            Noch {missingWorkDays.length} Arbeitstage ohne Eintrag
+                        </p>
+                        <p className="text-xs font-bold text-amber-700/80">
+                            {missingWorkDays.slice(0, 8).map(date => new Date(date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })).join(', ')}
+                            {missingWorkDays.length > 8 ? ' ...' : ''}
+                        </p>
+                    </div>
+                    <button
+                        onClick={handleAutoFill}
+                        className="rounded-xl bg-white px-4 py-2 text-xs font-black text-amber-700 shadow-sm border border-amber-100 hover:bg-amber-100 transition-colors"
+                    >
+                        Fehlende Tage füllen
+                    </button>
+                </div>
+            )}
 
 
             {/* Main Table */}
@@ -722,11 +1012,41 @@ export default function EmployeeTimeTrackingPage() {
                 </table>
             </div>
 
+            <div className="sticky bottom-4 z-30 mt-2 rounded-[1.75rem] bg-white/90 p-3 shadow-2xl shadow-slate-200/70 ring-1 ring-slate-200/70 backdrop-blur-xl">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div className="bg-white border border-indigo-100 rounded-2xl p-4 shadow-sm">
+                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.16em]">Tage 3-8 Std.</p>
+                        <p className="text-2xl font-black text-indigo-700 mt-2">{monthTotals.normalWorkDays}</p>
+                        <p className="text-xs font-bold text-slate-400 mt-1">Arbeitstage</p>
+                    </div>
+                    <div className="bg-white border border-rose-100 rounded-2xl p-4 shadow-sm">
+                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-[0.16em]">Tage ab 9 Std.</p>
+                        <p className="text-2xl font-black text-rose-700 mt-2">{monthTotals.longWorkDays}</p>
+                        <p className="text-xs font-bold text-slate-400 mt-1">Lange Tage</p>
+                    </div>
+                    <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-sm">
+                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.16em]">Stunden</p>
+                        <p className="text-2xl font-black text-emerald-700 mt-2">{formatHours(monthTotals.workHours)}</p>
+                        <p className="text-xs font-bold text-slate-400 mt-1">Arbeitsstunden</p>
+                    </div>
+                    <div className="bg-white border border-sky-100 rounded-2xl p-4 shadow-sm">
+                        <p className="text-[10px] font-black text-sky-500 uppercase tracking-[0.16em]">SW Stunden</p>
+                        <p className="text-2xl font-black text-sky-700 mt-2">{formatHours(monthTotals.badWeatherHours)}</p>
+                        <p className="text-xs font-bold text-slate-400 mt-1">Schlechtwetter</p>
+                    </div>
+                    <div className="bg-white border border-amber-100 rounded-2xl p-4 shadow-sm">
+                        <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.16em]">Überstunden</p>
+                        <p className="text-2xl font-black text-amber-700 mt-2">{formatHours(monthTotals.overtimeHours)}</p>
+                        <p className="text-xs font-bold text-slate-400 mt-1">Manuell/automatisch</p>
+                    </div>
+                </div>
+            </div>
+
             {/* Export Modal */}
             <TimeTrackingPreviewModal
                 isOpen={isPreviewModalOpen}
                 onClose={() => setIsPreviewModalOpen(false)}
-                entries={monthEntries.sort((a, b) => a.date.localeCompare(b.date))}
+                entries={displayedMonthEntries}
                 employee={employee}
                 month={selectedMonth}
                 companySettings={companySettings}

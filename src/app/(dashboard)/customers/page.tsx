@@ -46,7 +46,7 @@ export default function CustomersPage() {
     };
 
     const filteredCustomers = useMemo(() => {
-        return customers.filter(customer => {
+        const filtered = customers.filter(customer => {
             const matchesSearch =
                 (customer.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (customer.email || "").toLowerCase().includes(searchQuery.toLowerCase());
@@ -54,6 +54,13 @@ export default function CustomersPage() {
             const matchesType = filterType === "all" || customer.type === filterType;
 
             return matchesSearch && matchesType;
+        });
+
+        // Aufsteigende Sortierung nach Kundennummer (natürliche Sortierung)
+        return [...filtered].sort((a, b) => {
+            const numA = a.customer_number || "";
+            const numB = b.customer_number || "";
+            return numA.localeCompare(numB, undefined, { numeric: true, sensitivity: 'base' });
         });
     }, [customers, searchQuery, filterType]);
 
@@ -190,125 +197,136 @@ export default function CustomersPage() {
                         <div 
                             key={customer.id} 
                             onClick={() => handleOpenDetail(customer)}
-                            className="glass-card p-6 grid grid-cols-1 lg:grid-cols-12 items-center gap-6 group hover:border-indigo-500/30 hover:shadow-md transition-all duration-300 cursor-pointer"
+                            className="glass-card p-6 flex flex-col gap-4 group hover:border-indigo-500/30 hover:shadow-md transition-all duration-300 cursor-pointer"
                         >
-                            {/* Spalte 1: Name, Typ & UID/FN (col-span-3) */}
-                            <div className="lg:col-span-3 flex items-center gap-4">
-                                <div className={cn(
-                                    "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm transition-transform group-hover:scale-105",
-                                    customer.type === 'private' 
-                                        ? "bg-purple-50/70 border-purple-100 text-purple-500" 
-                                        : "bg-emerald-50/70 border-emerald-100 text-emerald-500"
-                                )}>
-                                    {customer.type === 'private' ? <User className="h-5.5 w-5.5" /> : <Briefcase className="h-5.5 w-5.5" />}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <h3 className="font-extrabold text-slate-800 text-base leading-snug group-hover:text-indigo-600 transition-colors truncate">
-                                            {customer.name}
-                                        </h3>
+                            {/* Obere Zeile: Avatar, Typ-Badge, Name, Status & Aktionen */}
+                            <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4">
+                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                    {/* Avatar */}
+                                    <div className={cn(
+                                        "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm transition-transform group-hover:scale-105",
+                                        customer.type === 'private' 
+                                            ? "bg-purple-50/70 border-purple-100 text-purple-500" 
+                                            : "bg-emerald-50/70 border-emerald-100 text-emerald-500"
+                                    )}>
+                                        {customer.type === 'private' ? <User className="h-5.5 w-5.5" /> : <Briefcase className="h-5.5 w-5.5" />}
+                                    </div>
+
+                                    {/* Badge & Name */}
+                                    <div className="flex flex-wrap items-center gap-2.5 min-w-0">
                                         <span className={cn(
                                             "text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md shrink-0",
                                             customer.type === 'private' ? "bg-purple-100 text-purple-600" : "bg-emerald-100 text-emerald-600"
                                         )}>
                                             {customer.type === 'private' ? "Privat" : "Firma"}
                                         </span>
+                                        {customer.customer_number && (
+                                            <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md shrink-0 border border-slate-250">
+                                                {customer.customer_number}
+                                            </span>
+                                        )}
+                                        <h3 className="font-extrabold text-slate-800 text-base leading-snug group-hover:text-indigo-600 transition-colors truncate max-w-[250px] sm:max-w-[400px] md:max-w-none" title={customer.name}>
+                                            {customer.name}
+                                        </h3>
+                                        {(customer.taxId || customer.commercialRegisterNumber) && (
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                {customer.taxId && (
+                                                    <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                                                        UID: {customer.taxId}
+                                                    </span>
+                                                )}
+                                                {customer.commercialRegisterNumber && (
+                                                    <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                                                        FN: {customer.commercialRegisterNumber}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
-                                    {(customer.taxId || customer.commercialRegisterNumber) && (
-                                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                                            {customer.taxId && (
-                                                <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-                                                    UID: {customer.taxId}
-                                                </span>
-                                            )}
-                                            {customer.commercialRegisterNumber && (
-                                                <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-                                                    FN: {customer.commercialRegisterNumber}
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
+                                </div>
+
+                                {/* Status & Aktionen */}
+                                <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end w-full sm:w-auto pt-3 sm:pt-0 border-t border-slate-50 sm:border-none">
+                                    <div className={cn(
+                                        "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9.5px] font-bold uppercase tracking-wider shrink-0",
+                                        customer.status === 'active' ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                                            customer.status === 'inactive' ? "bg-amber-50 text-amber-600 border border-amber-100" :
+                                                "bg-rose-50 text-rose-600 border border-rose-100"
+                                    )}>
+                                        <div className={cn("h-1.5 w-1.5 rounded-full shrink-0",
+                                            customer.status === 'active' ? "bg-emerald-500 animate-pulse" :
+                                                customer.status === 'inactive' ? "bg-amber-500" : "bg-rose-500"
+                                        )} />
+                                        {customer.status === 'active' ? 'Aktiv' : customer.status === 'inactive' ? 'Inaktiv' : 'Gesperrt'}
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEditCustomer(customer);
+                                            }}
+                                            className="h-9 w-9 rounded-xl bg-slate-50 border border-slate-200/60 text-slate-500 flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                                            title="Bearbeiten"
+                                        >
+                                            <Edit2 className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteCustomer(customer.id);
+                                            }}
+                                            className="h-9 w-9 rounded-xl bg-slate-50 border border-slate-200/60 text-slate-500 flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                                            title="Löschen"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Spalte 2: E-Mail (col-span-3) */}
-                            <div className="lg:col-span-3 flex items-center justify-between lg:justify-start gap-2 min-w-0">
+                            {/* Untere Zeile: Kontaktdaten aufgeteilt auf die Breite */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-100/80 text-slate-500 text-sm">
+                                {/* E-Mail */}
+                                <div className="flex items-center justify-between md:justify-start gap-2 min-w-0">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <Mail className="h-4.5 w-4.5 text-slate-400 shrink-0" />
+                                        <span className="truncate text-slate-600 font-semibold text-sm">{customer.email}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleCopyEmail(customer.email);
+                                            }}
+                                            className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50/50 transition-colors"
+                                            title="Email kopieren"
+                                        >
+                                            <Copy className="h-3.5 w-3.5" />
+                                        </button>
+                                        <a
+                                            href={`mailto:${customer.email}`}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50/50 transition-colors"
+                                            title="E-Mail schreiben"
+                                        >
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                        </a>
+                                    </div>
+                                </div>
+
+                                {/* Telefon */}
                                 <div className="flex items-center gap-2.5 min-w-0">
-                                    <Mail className="h-4.5 w-4.5 text-slate-300 shrink-0" />
-                                    <span className="truncate text-slate-600 font-semibold text-sm">{customer.email}</span>
-                                </div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleCopyEmail(customer.email);
-                                        }}
-                                        className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50/50 transition-colors"
-                                        title="Email kopieren"
-                                    >
-                                        <Copy className="h-3.5 w-3.5" />
-                                    </button>
-                                    <a
-                                        href={`mailto:${customer.email}`}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50/50 transition-colors"
-                                        title="E-Mail schreiben"
-                                    >
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                    </a>
-                                </div>
-                            </div>
-
-                            {/* Spalte 3: Telefon (col-span-2) */}
-                            <div className="lg:col-span-2 flex items-center gap-2.5 min-w-0">
-                                <Phone className="h-4.5 w-4.5 text-slate-300 shrink-0" />
-                                <span className="truncate text-slate-600 font-semibold text-sm">{customer.phone || "-"}</span>
-                            </div>
-
-                            {/* Spalte 4: Ort/Adresse (col-span-2) */}
-                            <div className="lg:col-span-2 flex items-center gap-2.5 min-w-0">
-                                <MapPin className="h-4.5 w-4.5 text-slate-300 shrink-0" />
-                                <span className="truncate text-slate-600 font-semibold text-sm" title={customer.address.street}>
-                                    {customer.address.city}
-                                </span>
-                            </div>
-
-                            {/* Spalte 5: Status & Aktionen (col-span-2 / justify-end) */}
-                            <div className="lg:col-span-2 flex items-center justify-between lg:justify-end gap-4 shrink-0 pt-4 lg:pt-0 border-t border-slate-50 lg:border-none">
-                                <div className={cn(
-                                    "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9.5px] font-bold uppercase tracking-wider shrink-0",
-                                    customer.status === 'active' ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
-                                        customer.status === 'inactive' ? "bg-amber-50 text-amber-600 border border-amber-100" :
-                                            "bg-rose-50 text-rose-600 border border-rose-100"
-                                )}>
-                                    <div className={cn("h-1.5 w-1.5 rounded-full shrink-0",
-                                        customer.status === 'active' ? "bg-emerald-500 animate-pulse" :
-                                            customer.status === 'inactive' ? "bg-amber-500" : "bg-rose-500"
-                                    )} />
-                                    {customer.status === 'active' ? 'Aktiv' : customer.status === 'inactive' ? 'Inaktiv' : 'Gesperrt'}
+                                    <Phone className="h-4.5 w-4.5 text-slate-400 shrink-0" />
+                                    <span className="truncate text-slate-600 font-semibold text-sm">{customer.phone || "-"}</span>
                                 </div>
 
-                                <div className="flex items-center gap-1.5">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleEditCustomer(customer);
-                                        }}
-                                        className="h-9 w-9 rounded-xl bg-slate-50 border border-slate-200/60 text-slate-500 flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
-                                        title="Bearbeiten"
-                                    >
-                                        <Edit2 className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteCustomer(customer.id);
-                                        }}
-                                        className="h-9 w-9 rounded-xl bg-slate-50 border border-slate-200/60 text-slate-500 flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                                        title="Löschen"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
+                                {/* Ort */}
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <MapPin className="h-4.5 w-4.5 text-slate-400 shrink-0" />
+                                    <span className="truncate text-slate-600 font-semibold text-sm" title={customer.address.street}>
+                                        {customer.address.zip} {customer.address.city}
+                                    </span>
                                 </div>
                             </div>
                         </div>

@@ -122,6 +122,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
             annualLeave: 25,
         },
         additionalInfo: {
+            noTimeTrackingRequired: false,
         },
         weeklySchedule: {
             monday: { enabled: true, hours: 8 },
@@ -146,6 +147,10 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     classification: initialEmployee.employment.classification || "",
                     verwendung: initialEmployee.employment.verwendung || "",
                     annualLeave: initialEmployee.employment.annualLeave ?? 25,
+                },
+                additionalInfo: {
+                    ...initialEmployee.additionalInfo,
+                    noTimeTrackingRequired: initialEmployee.additionalInfo?.noTimeTrackingRequired ?? false,
                 },
                 documents: initialEmployee.documents || [],
                 appAccess: initialEmployee.appAccess ? {
@@ -209,6 +214,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     annualLeave: 25,
                 },
                 additionalInfo: {
+                    noTimeTrackingRequired: false,
                 },
                 weeklySchedule: {
                     monday: { enabled: true, hours: 8 },
@@ -1033,6 +1039,27 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                         </div>
                                         <p className="text-indigo-600/70 font-medium ml-14">Hinterlegen Sie hier die vertraglichen Arbeitszeiten für die automatische Abrechnung.</p>
                                     </div>
+
+                                    <label className="flex items-center justify-between gap-6 p-6 rounded-[2rem] bg-white border border-slate-100 shadow-sm cursor-pointer hover:border-indigo-100 transition-colors">
+                                        <div>
+                                            <h5 className="text-base font-black text-slate-900">Keine Zeiterfassung nötig</h5>
+                                            <p className="text-sm font-medium text-slate-500 mt-1">
+                                                Wenn aktiviert, erscheint dieser Mitarbeiter nicht in der Zeiterfassung.
+                                            </p>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.additionalInfo?.noTimeTrackingRequired === true}
+                                            onChange={(e) => setFormData(prev => ({
+                                                ...prev,
+                                                additionalInfo: {
+                                                    ...prev.additionalInfo,
+                                                    noTimeTrackingRequired: e.target.checked
+                                                }
+                                            }))}
+                                            className="h-6 w-6 rounded-lg border-slate-200 text-indigo-600 focus:ring-indigo-500/20 transition-all cursor-pointer"
+                                        />
+                                    </label>
 
                                     <div className="grid grid-cols-1 gap-4 p-6 rounded-[2.5rem] bg-slate-50/30 border border-slate-100">
                                         {[

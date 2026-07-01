@@ -16,6 +16,18 @@ const styles = StyleSheet.create({
         color: '#000000',
         lineHeight: 1.3,
     },
+    draftWatermark: {
+        position: 'absolute',
+        top: 360,
+        left: 40,
+        right: 40,
+        textAlign: 'center',
+        fontSize: 82,
+        fontFamily: 'Helvetica-Bold',
+        color: '#94a3b8',
+        opacity: 0.22,
+        transform: 'rotate(-32deg)',
+    },
 
     // ─── Header ─────────────────────────────────────
     header: {
@@ -255,6 +267,9 @@ export const InvoiceReactPDF: React.FC<InvoiceReactPDFProps> = ({ invoice, custo
     return (
         <Document>
             <Page size="A4" style={styles.page}>
+                {invoice.status === 'draft' && (
+                    <Text fixed style={styles.draftWatermark}>ENTWURF</Text>
+                )}
 
                 {/* ── Header ── */}
                 <View style={styles.header}>

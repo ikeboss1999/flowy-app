@@ -32,4 +32,5 @@ export interface TimesheetMeta {
     status: 'draft' | 'finalized';
     finalizedAt?: string;
     userId?: string; // Owner of the timesheet
+    pdfUrl?: string; // Private Storage path for finalized PDF
 }

@@ -83,14 +83,15 @@ export function useTimeEntries() {
         }
     };
 
-    const finalizeMonth = async (employeeId: string, month: string) => {
+    const finalizeMonth = async (employeeId: string, month: string, pdfUrl?: string) => {
         if (!activeUserId) throw new Error("Not authenticated");
         const id = `${employeeId}-${month}`;
         const newTimesheet: TimesheetMeta = {
             id, employeeId, month,
             status: 'finalized',
             finalizedAt: new Date().toISOString(),
-            userId: activeUserId
+            userId: activeUserId,
+            pdfUrl
         };
         const updated = [...timesheets.filter(t => t.id !== id), newTimesheet];
         mutateTimesheets(updated, false);

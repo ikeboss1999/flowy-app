@@ -68,6 +68,7 @@ export interface Employee {
         emergencyContactName?: string;
         emergencyContactPhone?: string;
         notes?: string;
+        noTimeTrackingRequired?: boolean;
     };
     weeklySchedule?: {
         monday: { enabled: boolean; hours: number };

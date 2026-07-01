@@ -42,5 +42,6 @@ export interface Offer {
     createdAt: string;
     updatedAt: string;
     userId?: string;
-    pdfUrl?: string;
+    pdfUrl?: string; // Stored PDF reference: private Storage path for new PDFs, legacy public URL for older PDFs
+    pdfPath?: string; // Optional future/private Storage path field
 }

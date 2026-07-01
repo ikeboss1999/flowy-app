@@ -381,7 +381,7 @@ export function Sidebar() {
                 isDrawerMode ? (isOpen ? "translate-x-0 overflow-y-auto" : "-translate-x-full") : "translate-x-0 [.sidebar-collapsed_&]:-translate-x-full"
             )}>
                 <div className="flex flex-col items-center justify-center gap-3 xl:gap-4 px-3 py-6 xl:py-8 mb-6 xl:mb-8 text-center">
-                    <img src={companySettings?.logo || "/logo.png"} alt="Logo" className="h-12 w-12 xl:h-16 xl:w-16 object-contain bg-white/10 rounded-2xl p-1" />
+                    <img src="/logo.png" alt="Logo" className="h-12 w-12 xl:h-16 xl:w-16 object-contain bg-white/10 rounded-2xl p-1" />
                     <div className="flex flex-col items-center">
                         <span className="font-black text-xl xl:text-2xl text-white tracking-tight leading-none break-words">
                             {companySettings?.companyName || "FlowY"}

@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, User, Briefcase, Mail, Phone, MapPin, FileText, Save, Clock, ShieldAlert } from "lucide-react";
+import { X, User, Briefcase, Mail, Phone, MapPin, FileText, Save, Clock, ShieldAlert, Hash } from "lucide-react";
 import { Customer, CustomerType, CustomerStatus } from "@/types/customer";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
+import { useCustomerSettings } from "@/hooks/useCustomerSettings";
 import { cn, generateUUID } from "@/lib/utils";
 
 interface CustomerModalProps {
@@ -18,6 +19,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
     const [type, setType] = useState<CustomerType>('private');
     const [status, setStatus] = useState<CustomerStatus>('active');
     const { data: invoiceSettings } = useInvoiceSettings();
+    const { data: customerSettings, updateData: updateCustomerSettings } = useCustomerSettings();
     const [error, setError] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         name: "",
@@ -31,7 +33,8 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
         commercialRegisterNumber: "",
         reverseChargeEnabled: false,
         defaultPaymentTermId: "",
-        notes: ""
+        notes: "",
+        customer_number: ""
     });
 
     useEffect(() => {
@@ -50,7 +53,8 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                 commercialRegisterNumber: initialCustomer.commercialRegisterNumber || "",
                 reverseChargeEnabled: initialCustomer.reverseChargeEnabled || false,
                 defaultPaymentTermId: initialCustomer.defaultPaymentTermId || "",
-                notes: initialCustomer.notes || ""
+                notes: initialCustomer.notes || "",
+                customer_number: initialCustomer.customer_number || ""
             });
         } else {
             setStatus('active');
@@ -66,11 +70,29 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                 commercialRegisterNumber: "",
                 reverseChargeEnabled: false,
                 defaultPaymentTermId: "",
-                notes: ""
+                notes: "",
+                customer_number: ""
             });
         }
         setError(null);
     }, [initialCustomer, isOpen]);
+
+    // Automatisches Generieren der Kundennummer bei Neuanlage
+    useEffect(() => {
+        if (!initialCustomer && isOpen && customerSettings) {
+            const numStr = String(customerSettings.nextNumber || 10000);
+            const padding = Math.max(0, (customerSettings.mindestLaenge || 5) - numStr.length);
+            const formattedNum = "0".repeat(padding) + numStr;
+            const generated = `${customerSettings.prefix || ''}${formattedNum}`;
+            setFormData(prev => {
+                // Nur setzen, wenn noch keine manuelle Eingabe erfolgt ist
+                if (!prev.customer_number) {
+                    return { ...prev, customer_number: generated };
+                }
+                return prev;
+            });
+        }
+    }, [customerSettings, initialCustomer, isOpen]);
 
     // Auto-set salutation for business
     useEffect(() => {
@@ -87,6 +109,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
 
         // Validation logic
         const missingFields = [];
+        if (!formData.customer_number) missingFields.push("Kundennummer");
         if (!formData.salutation) missingFields.push("Anrede");
         if (!formData.name) missingFields.push(type === 'private' ? "Name" : "Firmenname");
         if (!formData.street) missingFields.push("Straße");
@@ -103,20 +126,29 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
             return;
         }
 
-        // Duplicate Check
-        const isDuplicate = existingCustomers.some(c => {
-            const sameId = c.id === initialCustomer?.id;
-            if (sameId) return false;
+        // Duplicate Check (Name, E-Mail und Kundennummer)
+        const nameDuplicate = existingCustomers.some(c => c.id !== initialCustomer?.id && c.name?.trim().toLowerCase() === formData.name.trim().toLowerCase());
+        const emailDuplicate = formData.email && existingCustomers.some(c => c.id !== initialCustomer?.id && c.email?.trim().toLowerCase() === formData.email.trim().toLowerCase());
+        const numberDuplicate = formData.customer_number && existingCustomers.some(c => c.id !== initialCustomer?.id && c.customer_number?.trim().toLowerCase() === formData.customer_number.trim().toLowerCase());
 
-            const nameMatch = c.name?.trim().toLowerCase() === formData.name.trim().toLowerCase();
-            const emailMatch = formData.email && c.email?.trim().toLowerCase() === formData.email.trim().toLowerCase();
-
-            return nameMatch || emailMatch;
-        });
-
-        if (isDuplicate) {
-            setError("Ein Kunde mit diesem Namen oder dieser E-Mail existiert bereits in Ihrer Liste.");
+        if (nameDuplicate || emailDuplicate || numberDuplicate) {
+            if (numberDuplicate) {
+                setError("Diese Kundennummer ist bereits vergeben. Bitte wählen Sie eine andere.");
+            } else {
+                setError("Ein Kunde mit diesem Namen oder dieser E-Mail existiert bereits in Ihrer Liste.");
+            }
             return;
+        }
+
+        // Falls wir eine neue Kundennummer generiert haben und diese gespeichert wird, inkrementieren wir den Zähler
+        if (!initialCustomer && customerSettings) {
+            const numStr = String(customerSettings.nextNumber || 10000);
+            const padding = Math.max(0, (customerSettings.mindestLaenge || 5) - numStr.length);
+            const formattedNum = "0".repeat(padding) + numStr;
+            const generated = `${customerSettings.prefix || ''}${formattedNum}`;
+            if (formData.customer_number === generated) {
+                updateCustomerSettings({ nextNumber: customerSettings.nextNumber + 1 });
+            }
         }
 
         const customer: Customer = {
@@ -136,6 +168,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
             commercialRegisterNumber: type === 'business' ? formData.commercialRegisterNumber : undefined,
             reverseChargeEnabled: type === 'business' ? formData.reverseChargeEnabled : false,
             defaultPaymentTermId: formData.defaultPaymentTermId || undefined,
+            customer_number: formData.customer_number,
             notes: formData.notes,
             createdAt: initialCustomer?.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -262,6 +295,25 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                                     value={formData.name}
                                     onChange={handleChange}
                                     placeholder={type === 'private' ? "z.B. Max Mustermann" : "z.B. Muster GmbH"}
+                                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
+                                Kundennummer <span className="text-rose-500">*</span>
+                            </label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Hash className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                                </div>
+                                <input
+                                    required
+                                    name="customer_number"
+                                    value={formData.customer_number}
+                                    onChange={handleChange}
+                                    placeholder="z.B. KD-10000"
                                     className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
                                 />
                             </div>

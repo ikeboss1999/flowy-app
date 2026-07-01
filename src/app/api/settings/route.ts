@@ -37,6 +37,7 @@ export async function GET(request: Request) {
             if (processed.offerSettings && Object.keys(processed.offerSettings).length === 0) processed.offerSettings = null;
             if (processed.orderSettings && Object.keys(processed.orderSettings).length === 0) processed.orderSettings = null;
             if (processed.projectSettings && Object.keys(processed.projectSettings).length === 0) processed.projectSettings = null;
+            if (processed.customerSettings && Object.keys(processed.customerSettings).length === 0) processed.customerSettings = null;
             return NextResponse.json(processed);
         }
 
@@ -93,12 +94,14 @@ export async function POST(request: Request) {
             if (payload.type === 'offer') updatedSettings.offerSettings = payload.data;
             if (payload.type === 'order') updatedSettings.orderSettings = payload.data;
             if (payload.type === 'project') updatedSettings.projectSettings = payload.data;
+            if (payload.type === 'customer') updatedSettings.customerSettings = payload.data;
         } else {
             updatedSettings = {
                 ...updatedSettings,
                 companyData: payload.companyData || currentSettings.companyData || {},
                 accountSettings: payload.accountSettings || currentSettings.accountSettings || {},
-                invoiceSettings: payload.invoiceSettings || currentSettings.invoiceSettings || {}
+                invoiceSettings: payload.invoiceSettings || currentSettings.invoiceSettings || {},
+                customerSettings: payload.customerSettings || currentSettings.customerSettings || {}
             };
         }
 

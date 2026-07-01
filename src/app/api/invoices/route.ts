@@ -7,6 +7,38 @@ import { safeGetCreatedBy, safeUpsert } from '@/lib/supabase-helper';
 
 export const dynamic = 'force-dynamic';
 
+const invoiceMutableAfterFinalization = [
+    'status',
+    'paidAmount',
+    'paymentDeviation',
+    'dunningLevel',
+    'lastDunningDate',
+    'dunningHistory',
+];
+
+function pickMutableInvoiceFields(invoice: any) {
+    return invoiceMutableAfterFinalization.reduce((fields, key) => {
+        if (Object.prototype.hasOwnProperty.call(invoice, key)) {
+            fields[key] = invoice[key];
+        }
+        return fields;
+    }, {} as Record<string, any>);
+}
+
+function isStoredInvoicePdfReference(invoice: any, companyOwnerId: string) {
+    const reference = invoice.pdfPath || invoice.pdfUrl;
+    if (!reference || typeof reference !== 'string') return false;
+    if (!reference.startsWith('http')) return reference.startsWith(`${companyOwnerId}/`);
+
+    try {
+        const url = new URL(reference);
+        return url.origin === process.env.NEXT_PUBLIC_SUPABASE_URL
+            && url.pathname.includes('/storage/v1/object/public/invoices/');
+    } catch {
+        return false;
+    }
+}
+
 export async function GET(request: Request) {
     const session = await getUserSession();
     const companyOwnerId = session?.companyOwnerId;
@@ -55,8 +87,65 @@ export async function POST(request: Request) {
 
         const client = supabaseAdmin || supabase;
 
+        const { data: existingInvoice, error: existingError } = invoice.id
+            ? await client
+                .from('invoices')
+                .select('*')
+                .eq('id', invoice.id)
+                .eq('userId', companyOwnerId)
+                .maybeSingle()
+            : { data: null, error: null };
+
+        if (existingError) throw existingError;
+
         // Check if record exists for created_by
-        const createdBy = invoice.id ? await safeGetCreatedBy(client, 'invoices', invoice.id) : null;
+        const createdBy = existingInvoice?.created_by || (invoice.id ? await safeGetCreatedBy(client, 'invoices', invoice.id) : null);
+
+        if (existingInvoice && existingInvoice.status !== 'draft') {
+            if (invoice.status === 'draft') {
+                if (session.role !== 'admin' && session.role !== 'developer') {
+                    return NextResponse.json({ error: 'Only admins can reopen finalized invoices' }, { status: 403 });
+                }
+
+                const reopenData = {
+                    ...existingInvoice,
+                    status: 'draft',
+                    updatedAt: now,
+                    updated_by: session.userId,
+                    created_by: createdBy || existingInvoice.created_by || session.userId
+                };
+
+                const result = await safeUpsert(client, 'invoices', reopenData);
+                if (result.error) {
+                    console.error('SUPABASE UPSERT ERROR:', result.error);
+                    throw result.error;
+                }
+
+                return NextResponse.json({ success: true, id: invoiceId });
+            }
+
+            const mutableInvoiceData = {
+                ...existingInvoice,
+                ...pickMutableInvoiceFields(invoice),
+                id: existingInvoice.id,
+                userId: companyOwnerId,
+                updatedAt: now,
+                updated_by: session.userId,
+                created_by: createdBy || existingInvoice.created_by || session.userId
+            };
+
+            const result = await safeUpsert(client, 'invoices', mutableInvoiceData);
+            if (result.error) {
+                console.error('SUPABASE UPSERT ERROR:', result.error);
+                throw result.error;
+            }
+
+            return NextResponse.json({ success: true, id: invoiceId });
+        }
+
+        if (invoice.status !== 'draft' && !isStoredInvoicePdfReference(invoice, companyOwnerId)) {
+            return NextResponse.json({ error: 'Finalized invoices require a stored PDF' }, { status: 400 });
+        }
 
         const invoiceData = {
             ...invoice,
@@ -101,6 +190,21 @@ export async function DELETE(request: Request) {
 
     try {
         const client = supabaseAdmin || supabase;
+        const { data: existingInvoice, error: fetchError } = await client
+            .from('invoices')
+            .select('id, status')
+            .eq('id', id)
+            .eq('userId', companyOwnerId)
+            .maybeSingle();
+
+        if (fetchError) throw fetchError;
+        if (!existingInvoice) {
+            return NextResponse.json({ error: 'Not found' }, { status: 404 });
+        }
+        if (existingInvoice.status !== 'draft') {
+            return NextResponse.json({ error: 'Finalized invoices cannot be deleted' }, { status: 403 });
+        }
+
         const { error } = await client
             .from('invoices')
             .delete()

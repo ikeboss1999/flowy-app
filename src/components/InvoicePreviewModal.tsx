@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
-import { X, Download, Loader2, AlertTriangle } from "lucide-react";
+import { X, Download, Loader2, AlertTriangle, RotateCcw } from "lucide-react";
 import { Invoice } from "@/types/invoice";
 import { Customer } from "@/types/customer";
 import { CompanyData } from "@/types/company";
@@ -9,6 +9,8 @@ import { InvoicePDF } from "@/components/InvoicePDF";
 import { DunningModal } from "@/components/DunningModal";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { useInvoices } from "@/hooks/useInvoices";
+import { useAuth } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 
 interface InvoicePreviewModalProps {
     isOpen: boolean;
@@ -18,18 +20,72 @@ interface InvoicePreviewModalProps {
     companySettings: CompanyData;
 }
 
+async function fetchSignedInvoicePdfUrl(invoiceId: string) {
+    const response = await fetch(`/api/invoices/pdf-url?id=${encodeURIComponent(invoiceId)}`);
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
+    const data = await response.json();
+    return data.url as string;
+}
+
 export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, companySettings }: InvoicePreviewModalProps) {
     const pdfRef = useRef<HTMLDivElement>(null);
     const [isPrinting, setIsPrinting] = React.useState(false);
     const [isDunningModalOpen, setIsDunningModalOpen] = React.useState(false);
+    const [signedPdfUrl, setSignedPdfUrl] = React.useState<string | null>(null);
+    const [signedPdfError, setSignedPdfError] = React.useState<string | null>(null);
 
     // Hooks for Dunning System
     const { data: invoiceSettings } = useInvoiceSettings();
     const { updateInvoice } = useInvoices();
+    const { profile } = useAuth();
+    const { showConfirm, showToast } = useNotification();
+
+    React.useEffect(() => {
+        setSignedPdfUrl(null);
+        setSignedPdfError(null);
+
+        if (!isOpen || !invoice || invoice.status === 'draft' || (!invoice.pdfPath && !invoice.pdfUrl)) {
+            return;
+        }
+
+        let cancelled = false;
+
+        fetchSignedInvoicePdfUrl(invoice.id)
+            .then((url) => {
+                if (!cancelled) setSignedPdfUrl(url);
+            })
+            .catch((error) => {
+                console.error('[InvoicePDFUrl]', error);
+                if (!cancelled) setSignedPdfError("Die gespeicherte PDF konnte nicht geladen werden.");
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isOpen, invoice?.id, invoice?.status, invoice?.pdfPath, invoice?.pdfUrl]);
 
     if (!isOpen || !invoice) return null;
 
+    const isStoredInvoice = invoice.status !== 'draft' && (!!invoice.pdfPath || !!invoice.pdfUrl);
+    const canReopenInvoice = profile?.role === 'admin' || profile?.role === 'developer';
+
     const handlePrint = async () => {
+        if (isStoredInvoice) {
+            setIsPrinting(true);
+            try {
+                const url = signedPdfUrl || await fetchSignedInvoicePdfUrl(invoice.id);
+                window.open(url, '_blank', 'noopener,noreferrer');
+            } catch (e) {
+                console.error('[InvoicePDFUrl]', e);
+                showToast("Die gespeicherte PDF konnte nicht geöffnet werden.", "error");
+            } finally {
+                setIsPrinting(false);
+            }
+            return;
+        }
+
         setIsPrinting(true);
         try {
             const { pdf } = await import('@react-pdf/renderer');
@@ -48,6 +104,22 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
         } finally {
             setIsPrinting(false);
         }
+    };
+
+    const handleReopenAsDraft = () => {
+        if (!canReopenInvoice) return;
+
+        showConfirm({
+            title: "Rechnung wieder als Entwurf öffnen?",
+            message: "Die gespeicherte PDF bleibt bis zur erneuten Finalisierung erhalten. Beim erneuten Finalisieren wird die sichtbare PDF der Rechnung ersetzt.",
+            confirmLabel: "In Entwurf öffnen",
+            variant: "danger",
+            onConfirm: async () => {
+                await updateInvoice(invoice.id, { status: 'draft' });
+                showToast("Rechnung wurde wieder als Entwurf geöffnet.", "success");
+                onClose();
+            }
+        });
     };
 
     const handleDunningConfirm = (level: number, date: string) => {
@@ -82,13 +154,23 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
                     <div className="flex items-center gap-2">
                         {/* Dunning Button */}
                         {/* Dunning Button */}
-                        {invoice.status !== 'paid' && (
+                        {invoice.status !== 'draft' && invoice.status !== 'paid' && (
                             <button
                                 onClick={() => setIsDunningModalOpen(true)}
                                 className="px-4 py-3 bg-orange-50 text-orange-600 rounded-xl font-bold hover:bg-orange-100 transition-all flex items-center gap-2 mr-2"
                             >
                                 <AlertTriangle className="h-4 w-4" />
                                 Mahnung
+                            </button>
+                        )}
+
+                        {invoice.status !== 'draft' && canReopenInvoice && (
+                            <button
+                                onClick={handleReopenAsDraft}
+                                className="px-4 py-3 bg-amber-50 text-amber-700 rounded-xl font-bold hover:bg-amber-100 transition-all flex items-center gap-2 mr-2"
+                            >
+                                <RotateCcw className="h-4 w-4" />
+                                In Entwurf
                             </button>
                         )}
 
@@ -100,7 +182,7 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
                             {isPrinting ? (
                                 <><Loader2 className="h-4 w-4 animate-spin" /> PDF wird erstellt...</>
                             ) : (
-                                <><Download className="h-4 w-4" /> PDF Erstellen</>
+                                <><Download className="h-4 w-4" /> {isStoredInvoice ? 'PDF öffnen' : 'PDF Erstellen'}</>
                             )}
                         </button>
                         <button
@@ -114,14 +196,40 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
 
                 {/* PDF Preview */}
                 <div className="flex-1 overflow-y-auto bg-slate-50 p-8 no-print">
-                    <div className="max-w-[210mm] mx-auto bg-white shadow-xl">
-                        <InvoicePDF
-                            ref={pdfRef}
-                            invoice={invoice}
-                            customer={customer}
-                            companySettings={invoice.performancePeriod?.companySnapshot || companySettings}
-                        />
-                    </div>
+                    {isStoredInvoice ? (
+                        signedPdfUrl ? (
+                            <iframe
+                                src={signedPdfUrl}
+                                title={`Rechnung ${invoice.invoiceNumber}`}
+                                className="w-full h-full min-h-[70vh] bg-white rounded-2xl shadow-xl border border-slate-200"
+                            />
+                        ) : (
+                            <div className="w-full h-full min-h-[70vh] bg-white rounded-2xl shadow-xl border border-slate-200 flex items-center justify-center">
+                                <div className="flex flex-col items-center gap-3 text-slate-500 font-bold">
+                                    {signedPdfError ? (
+                                        <>
+                                            <AlertTriangle className="h-8 w-8 text-rose-500" />
+                                            {signedPdfError}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                                            PDF wird geladen...
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    ) : (
+                        <div className="max-w-[210mm] mx-auto bg-white shadow-xl">
+                            <InvoicePDF
+                                ref={pdfRef}
+                                invoice={invoice}
+                                customer={customer}
+                                companySettings={invoice.performancePeriod?.companySnapshot || companySettings}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
 

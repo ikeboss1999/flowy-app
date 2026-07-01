@@ -36,6 +36,27 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
             flexDirection: 'column',
             margin: '0',
         }}>
+            {invoice.status === 'draft' && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: 'none',
+                    zIndex: 0,
+                }}>
+                    <div style={{
+                        transform: 'rotate(-32deg)',
+                        fontSize: '86px',
+                        fontWeight: 900,
+                        color: 'rgba(148, 163, 184, 0.22)',
+                        letterSpacing: '0.12em',
+                    }}>
+                        ENTWURF
+                    </div>
+                </div>
+            )}
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '35px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>

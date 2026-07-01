@@ -86,6 +86,11 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                                 <h3 className="text-2xl font-black text-white tracking-tight leading-snug break-words">
                                     {customer.name}
                                 </h3>
+                                {customer.customer_number && (
+                                    <span className="text-xs font-bold text-indigo-200 bg-white/10 px-2.5 py-1 rounded-lg mt-2 inline-block border border-white/5">
+                                        {customer.customer_number}
+                                    </span>
+                                )}
                             </div>
                         </div>
 

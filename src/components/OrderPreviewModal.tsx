@@ -46,13 +46,49 @@ interface OrderPreviewModalProps {
     companySettings: CompanyData;
 }
 
+async function fetchSignedOrderPdfUrl(orderId: string) {
+    const response = await fetch(`/api/orders/pdf-url?id=${encodeURIComponent(orderId)}`);
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
+    const data = await response.json();
+    return data.url as string;
+}
+
 export function OrderPreviewModal({ isOpen, onClose, order, customer, companySettings }: OrderPreviewModalProps) {
     const [isDownloading, setIsDownloading] = React.useState(false);
+    const [signedPdfUrl, setSignedPdfUrl] = React.useState<string | null>(null);
+    const [signedPdfError, setSignedPdfError] = React.useState<string | null>(null);
     const { data: orderSettings } = useOrderSettings();
+
+    React.useEffect(() => {
+        setSignedPdfUrl(null);
+        setSignedPdfError(null);
+
+        if (!isOpen || !order || !order.pdfUrl) {
+            return;
+        }
+
+        let cancelled = false;
+
+        fetchSignedOrderPdfUrl(order.id)
+            .then((url) => {
+                if (!cancelled) setSignedPdfUrl(url);
+            })
+            .catch((error) => {
+                console.error('[OrderPDFUrl]', error);
+                if (!cancelled) setSignedPdfError("Die gespeicherte PDF konnte nicht geladen werden.");
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isOpen, order?.id, order?.pdfUrl]);
 
     if (!isOpen || !order) return null;
 
     const fmt = (d?: string) => d ? new Date(d).toLocaleDateString('de-DE') : '-';
+    const isStoredOrder = !!order.pdfUrl;
 
     const generatePDF = async () => {
         const { pdf } = await import('@react-pdf/renderer');
@@ -65,11 +101,31 @@ export function OrderPreviewModal({ isOpen, onClose, order, customer, companySet
     const handleDownloadPDF = async () => {
         setIsDownloading(true);
         try {
+            const fileName = `Auftrag_${order.orderNumber.replace(/\//g, '-')}.pdf`;
+
+            if (isStoredOrder) {
+                const pdfUrl = signedPdfUrl || await fetchSignedOrderPdfUrl(order.id);
+                try {
+                    const response = await fetch(pdfUrl);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                } catch {
+                    window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+                }
+                return;
+            }
+
             const blob = await generatePDF();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Auftrag_${order.orderNumber.replace(/\//g, '-')}.pdf`;
+            a.download = fileName;
             a.click();
             URL.revokeObjectURL(url);
         } catch (e) {
@@ -113,12 +169,33 @@ export function OrderPreviewModal({ isOpen, onClose, order, customer, companySet
 
                 {/* Document Preview */}
                 <div className="flex-1 min-h-0 bg-slate-100">
-                    <OrderPDFPreview
-                        order={order}
-                        customer={customer}
-                        companySettings={companySettings}
-                        orderSettings={orderSettings}
-                    />
+                    {isStoredOrder ? (
+                        signedPdfUrl ? (
+                            <iframe
+                                src={signedPdfUrl}
+                                title={`Auftrag ${order.orderNumber}`}
+                                className="w-full h-full border-none bg-white"
+                            />
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-slate-400 gap-2">
+                                {signedPdfError ? (
+                                    <span className="text-sm font-bold text-rose-500">{signedPdfError}</span>
+                                ) : (
+                                    <>
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        <span className="text-sm font-medium">PDF wird geladen ...</span>
+                                    </>
+                                )}
+                            </div>
+                        )
+                    ) : (
+                        <OrderPDFPreview
+                            order={order}
+                            customer={customer}
+                            companySettings={companySettings}
+                            orderSettings={orderSettings}
+                        />
+                    )}
                 </div>
 
             </div>

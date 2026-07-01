@@ -59,6 +59,8 @@ import { ServiceSelectionModal } from "@/components/ServiceSelectionModal";
 import { ServiceModal } from "@/components/ServiceModal";
 import { Service } from "@/types/service";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
+import { pdf } from "@react-pdf/renderer";
+import { OfferReactPDF } from "@/components/OfferReactPDF";
 
 interface OfferFormProps {
   initialData?: Partial<Offer>;
@@ -474,6 +476,39 @@ export function OfferForm({ initialData }: OfferFormProps) {
         pdfUrl: initialData?.pdfUrl,
       };
 
+      if (status !== "draft") {
+        const blob = await pdf(
+          <OfferReactPDF
+            offer={offerData}
+            customer={customer}
+            companySettings={companySettings}
+            offerSettings={offerSettings}
+          />,
+        ).toBlob();
+
+        const pdfFile = new File([blob], "offer.pdf", { type: "application/pdf" });
+        const formData = new FormData();
+        formData.append("file", pdfFile);
+        formData.append("offerId", offerData.id);
+        formData.append("offerNumber", offerData.offerNumber);
+        const previousPdfPath = initialData?.pdfUrl && !initialData.pdfUrl.startsWith("http") ? initialData.pdfUrl : undefined;
+        if (previousPdfPath) {
+          formData.append("previousPdfPath", previousPdfPath);
+        }
+
+        const uploadResponse = await fetch("/api/offers/pdf-upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(await uploadResponse.text());
+        }
+
+        const uploadData = await uploadResponse.json();
+        offerData.pdfUrl = uploadData.pdfPath;
+      }
+
       if (initialData?.id) {
         await updateOffer(initialData.id, offerData);
       } else {
@@ -487,7 +522,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
       router.push("/offers");
     } catch (e) {
       console.error("Failed to save offer", e);
-      setError("Speichern fehlgeschlagen. Bitte erneut versuchen.");
+      setError("Speichern fehlgeschlagen. Die PDF konnte nicht gespeichert werden. Bitte erneut versuchen.");
     } finally {
       setIsSaving(false);
     }
