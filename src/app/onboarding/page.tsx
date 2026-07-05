@@ -1,39 +1,92 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
-    ShieldCheck,
-    User,
-    Building2,
     ArrowRight,
-    CheckCircle2,
-    Lock,
+    Building2,
     Calculator,
+    CheckCircle2,
+    FileText,
     LayoutDashboard,
-    Trash2,
-    Plus
+    Lock,
+    RotateCcw,
+    ShieldCheck,
+    Sparkles,
+    Upload,
+    User,
+    WalletCards,
+    X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAccountSettings } from "@/hooks/useAccountSettings";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/context/AuthContext";
 
-type Step = "pin" | "username" | "company" | "bank" | "logo" | "success";
+type Step = "welcome" | "pin" | "username" | "company" | "bank" | "logo" | "success";
+
+const steps: Step[] = ["welcome", "pin", "username", "company", "bank", "logo", "success"];
+
+const stepMeta: Record<Step, { label: string; title: string; description: string }> = {
+    welcome: {
+        label: "Start",
+        title: "FlowY einrichten",
+        description: "Wir richten Sicherheit, Firmendaten und PDF-Informationen einmal sauber ein.",
+    },
+    pin: {
+        label: "Sicherheit",
+        title: "Sicherheit zuerst",
+        description: "Mit diesem PIN entsperren Sie FlowY, wenn die App gesperrt ist.",
+    },
+    username: {
+        label: "Benutzer",
+        title: "Wie dürfen wir Sie nennen?",
+        description: "Dieser Name wird auf der Startseite und in der App angezeigt.",
+    },
+    company: {
+        label: "Firma",
+        title: "Ihr Unternehmen",
+        description: "Diese Daten erscheinen später automatisch auf Rechnungen und Angeboten.",
+    },
+    bank: {
+        label: "Zahlung",
+        title: "Zahlungsinformationen",
+        description: "Bankdaten und UID werden für professionelle PDF-Dokumente vorbereitet.",
+    },
+    logo: {
+        label: "Logo",
+        title: "Ihr Firmenlogo",
+        description: "Laden Sie Ihr Logo hoch und richten Sie es direkt für den Briefkopf aus.",
+    },
+    success: {
+        label: "Fertig",
+        title: "Alles bereit!",
+        description: "FlowY ist eingerichtet. Sie können jetzt loslegen.",
+    },
+};
 
 export default function OnboardingPage() {
     const router = useRouter();
-    const { user, signOut } = useAuth(); // Get user and signOut
+    const { user, signOut } = useAuth();
     const { data: accountSettings, updateSettings: updateAccount, isLoading: isAccountLoading } = useAccountSettings();
     const { data: companySettings, updateData: updateCompany, isLoading: isCompanyLoading } = useCompanySettings();
 
-    const [currentStep, setCurrentStep] = useState<Step>("pin");
+    const [currentStep, setCurrentStep] = useState<Step>("welcome");
     const [isInitialized, setIsInitialized] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [pin, setPin] = useState("");
     const [confirmPin, setConfirmPin] = useState("");
     const [username, setUsername] = useState("");
+    const [logoEditor, setLogoEditor] = useState<{
+        src: string;
+        originalSrc: string;
+        zoom: number;
+        offsetX: number;
+        offsetY: number;
+        rotation: number;
+    } | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [companyData, setCompanyData] = useState({
         companyName: "",
         street: "",
@@ -45,20 +98,25 @@ export default function OnboardingPage() {
         iban: "",
         bic: "",
         vatId: "",
-        logo: ""
+        logo: "",
+        originalLogo: "",
     });
 
-    // Initialize data from hooks once loaded
+    const currentStepIndex = steps.indexOf(currentStep);
+    const progressPercent = ((currentStepIndex + 1) / steps.length) * 100;
+    const showDevWipe = process.env.NEXT_PUBLIC_SHOW_DEV_WIPE === "true";
+    const activeMeta = stepMeta[currentStep];
+    const inputClass = "w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/25 focus:outline-none focus:border-indigo-400 transition-all font-medium";
+    const labelClass = "text-sm font-bold text-slate-300 ml-1";
+
     useEffect(() => {
         if (!isAccountLoading && accountSettings && !isInitialized) {
             if (accountSettings.onboardingCompleted) {
-                console.log("Onboarding: Completed flag found, redirecting to /");
                 router.push("/");
                 return;
             }
 
-            // Intelligence: Skip steps if data exists
-            let nextStep: Step = "pin";
+            let nextStep: Step = "welcome";
 
             if (accountSettings.pinCode) {
                 setPin(accountSettings.pinCode);
@@ -66,7 +124,7 @@ export default function OnboardingPage() {
                 nextStep = "username";
             }
 
-            if (accountSettings.name && accountSettings.name !== 'Benutzer') {
+            if (accountSettings.name && accountSettings.name !== "Benutzer") {
                 setUsername(accountSettings.name);
                 if (nextStep === "username") nextStep = "company";
             }
@@ -89,59 +147,141 @@ export default function OnboardingPage() {
                 iban: companySettings.iban || "",
                 bic: companySettings.bic || "",
                 vatId: companySettings.vatId || "",
-                logo: companySettings.logo || ""
+                logo: companySettings.logo || "",
+                originalLogo: companySettings.originalLogo || "",
             });
         }
     }, [isCompanyLoading, companySettings]);
 
+    const handleBack = () => {
+        if (currentStepIndex > 0) {
+            setCurrentStep(steps[currentStepIndex - 1]);
+        }
+    };
+
+    const handleCancelOnboarding = () => {
+        sessionStorage.setItem("flowy_allow_welcome_after_onboarding", "true");
+        router.push("/welcome");
+    };
+
     const handlePinSubmit = () => {
         if (pin.length < 4 || pin.length > 8) return;
         if (pin !== confirmPin) return;
-
         updateAccount({ pinCode: pin });
         setCurrentStep("username");
     };
 
     const handleUsernameSubmit = () => {
         if (username.trim().length === 0) return;
-
-        updateAccount({ name: username });
+        updateAccount({ name: username.trim() });
         setCurrentStep("company");
     };
 
     const handleCompanySubmit = () => {
-        if (!companyData.companyName || !companyData.city) return;
+        if (!canSubmitCompany) return;
         setCurrentStep("bank");
     };
 
-    const handleBankSubmit = () => {
-        setCurrentStep("logo");
+    const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const result = reader.result as string;
+            setLogoEditor({
+                src: result,
+                originalSrc: result,
+                zoom: 1,
+                offsetX: 0,
+                offsetY: 0,
+                rotation: 0,
+            });
+        };
+        reader.readAsDataURL(file);
     };
 
-    const handleLogoSubmit = (logoBase64?: string) => {
-        if (logoBase64) {
-            setCompanyData({ ...companyData, logo: logoBase64 });
-        }
-        setCurrentStep("success");
+    const openLogoEditor = () => {
+        if (!companyData.logo) return;
+        setLogoEditor({
+            src: companyData.logo,
+            originalSrc: companyData.originalLogo || companyData.logo,
+            zoom: 1,
+            offsetX: 0,
+            offsetY: 0,
+            rotation: 0,
+        });
     };
 
-    const handleFinalize = async () => {
+    const resetLogoEditor = () => {
+        setLogoEditor((prev) => prev ? {
+            ...prev,
+            zoom: 1,
+            offsetX: 0,
+            offsetY: 0,
+            rotation: 0,
+        } : prev);
+    };
+
+    const removeLogo = () => {
+        setCompanyData({ ...companyData, logo: "", originalLogo: "" });
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    const saveEditedLogo = async () => {
+        if (!logoEditor) return;
+
+        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = logoEditor.src;
+        });
+
+        const canvas = document.createElement("canvas");
+        const outputWidth = 1300;
+        const outputHeight = 360;
+        canvas.width = outputWidth;
+        canvas.height = outputHeight;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, outputWidth, outputHeight);
+        const baseScale = Math.min(outputWidth / image.width, outputHeight / image.height);
+        const scale = baseScale * logoEditor.zoom;
+        const offsetX = (logoEditor.offsetX / 100) * (outputWidth / 2);
+        const offsetY = (logoEditor.offsetY / 100) * (outputHeight / 2);
+
+        ctx.translate(outputWidth / 2 + offsetX, outputHeight / 2 + offsetY);
+        ctx.rotate((logoEditor.rotation * Math.PI) / 180);
+        ctx.scale(scale, scale);
+        ctx.drawImage(image, -image.width / 2, -image.height / 2);
+
+        setCompanyData({
+            ...companyData,
+            logo: canvas.toDataURL("image/png"),
+            originalLogo: logoEditor.originalSrc,
+        });
+        setLogoEditor(null);
+
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    const handleFinalize = async (target: "/" | "/projects" = "/") => {
         setIsSaving(true);
         try {
             await updateCompany(companyData);
             await updateAccount({ onboardingCompleted: true });
 
-            // SYNC TO CLOUD: Update Supabase metadata
             if (user) {
                 const { error } = await supabase.auth.updateUser({
-                    data: { onboarding_completed: true }
+                    data: { onboarding_completed: true },
                 });
                 if (error) console.error("Failed to sync onboarding status to cloud:", error);
-                else console.log("Onboarding status synced to cloud.");
-
             }
 
-            router.push("/");
+            router.push(target);
         } catch (e) {
             console.error("Finalization failed:", e);
         } finally {
@@ -149,389 +289,643 @@ export default function OnboardingPage() {
         }
     };
 
+    const canSubmitCompany = Boolean(
+        companyData.companyName.trim() &&
+        companyData.street.trim() &&
+        companyData.zipCode.trim() &&
+        companyData.city.trim()
+    );
+
     if (isAccountLoading || isCompanyLoading) {
-        return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
-            <div className="flex flex-col items-center gap-4">
-                <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                <p className="text-slate-400 text-sm font-medium tracking-widest uppercase">Lade Profil...</p>
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-slate-400 text-sm font-medium tracking-widest uppercase">Lade Profil...</p>
+                </div>
             </div>
-        </div>;
+        );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 font-sans relative overflow-hidden">
-            {/* Background Effects */}
-            <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-purple-500/20 blur-[120px] rounded-full pointer-events-none" />
-            <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none" />
+        <div className="min-h-screen overflow-hidden bg-[#070716] text-white relative">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(99,102,241,0.35),transparent_32%),radial-gradient(circle_at_85%_75%,rgba(219,39,119,0.26),transparent_34%),linear-gradient(135deg,#050510_0%,#151047_52%,#29091f_100%)]" />
+            <div className="absolute inset-0 bg-slate-950/35" />
 
-            <div className="max-w-md w-full relative z-10 space-y-8">
-                {/* Header */}
-                <div className="text-center space-y-4">
-                    <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center mx-auto border border-white/10 shadow-2xl">
-                        {currentStep === "pin" && <Lock className="w-8 h-8 text-indigo-400" />}
-                        {currentStep === "username" && <User className="w-8 h-8 text-emerald-400" />}
-                        {currentStep === "company" && <Building2 className="w-8 h-8 text-blue-400" />}
-                        {currentStep === "bank" && <Calculator className="w-8 h-8 text-amber-400" />}
-                        {currentStep === "logo" && <LayoutDashboard className="w-8 h-8 text-rose-400" />}
-                        {currentStep === "success" && <CheckCircle2 className="w-8 h-8 text-emerald-400" />}
-                    </div>
-                    <div>
-                        <h1 className="text-3xl font-black text-white tracking-tight mb-2">
-                            {currentStep === "pin" && "Sicherheit zuerst"}
-                            {currentStep === "username" && "Wie dürfen wir Sie nennen?"}
-                            {currentStep === "company" && "Ihr Unternehmen"}
-                            {currentStep === "bank" && "Zahlungsinformationen"}
-                            {currentStep === "logo" && "Ihr Firmenlogo"}
-                            {currentStep === "success" && "Alles bereit!"}
-                        </h1>
-                        <p className="text-slate-400 font-medium">
-                            {currentStep === "pin" && "Legen Sie einen 4-8 stelligen PIN-Code fest."}
-                            {currentStep === "username" && "Dieser Name wird auf Ihrem Dashboard angezeigt."}
-                            {currentStep === "company" && "Basisdaten für Ihre Rechnungen."}
-                            {currentStep === "bank" && "Bankdaten und UID für rechtssichere Rechnungen."}
-                            {currentStep === "logo" && "Laden Sie Ihr Logo für den Rechnungs-Briefkopf hoch."}
-                            {currentStep === "success" && "Ihre Einrichtung ist abgeschlossen."}
-                        </p>
-                    </div>
-                </div>
+            <main className="relative z-10 flex min-h-screen items-center justify-center p-4 sm:p-6 lg:p-10">
+                <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+                    <aside className="rounded-[2rem] border border-white/10 bg-white/[0.07] p-6 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
+                                <Sparkles className="h-6 w-6 text-cyan-200" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-black uppercase tracking-[0.35em] text-cyan-200">FlowY Start</p>
+                                <h2 className="text-2xl font-black">Einrichtung</h2>
+                            </div>
+                        </div>
 
-                {/* Card */}
-                <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl">
-                    {currentStep === "pin" && (
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-300 ml-1">Neuer PIN-Code</label>
-                                <input
-                                    type="password"
-                                    value={pin}
-                                    onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                                    placeholder="4-8 Ziffern"
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-indigo-500 transition-all font-mono text-center tracking-[0.5em] text-lg"
+                        <div className="mt-8 space-y-3">
+                            {steps.map((step, index) => {
+                                const isActive = step === currentStep;
+                                const isDone = index < currentStepIndex;
+                                return (
+                                    <button
+                                        key={step}
+                                        type="button"
+                                        disabled={index > currentStepIndex}
+                                        onClick={() => index <= currentStepIndex && setCurrentStep(step)}
+                                        className={cn(
+                                            "flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition",
+                                            isActive && "border-indigo-300/60 bg-white/15 shadow-lg shadow-indigo-950/20",
+                                            !isActive && isDone && "border-emerald-300/20 bg-emerald-400/10",
+                                            !isActive && !isDone && "border-white/5 bg-white/[0.03] text-slate-400"
+                                        )}
+                                    >
+                                        <span className={cn(
+                                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black",
+                                            isDone ? "bg-emerald-400 text-emerald-950" : "bg-white/10 text-white"
+                                        )}>
+                                            {isDone ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                                        </span>
+                                        <span>
+                                            <span className="block text-sm font-black">{stepMeta[step].label}</span>
+                                            <span className="block text-xs font-semibold text-slate-400">{stepMeta[step].title}</span>
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div className="mt-8 rounded-3xl border border-white/10 bg-black/20 p-4">
+                            <div className="mb-3 flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-400">
+                                <span>Fortschritt</span>
+                                <span>{currentStepIndex + 1} / {steps.length}</span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                                <div
+                                    className="h-full rounded-full bg-gradient-to-r from-indigo-400 via-violet-400 to-pink-400 transition-all duration-500"
+                                    style={{ width: `${progressPercent}%` }}
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-300 ml-1">PIN bestätigen</label>
-                                <input
-                                    type="password"
-                                    value={confirmPin}
-                                    onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                                    placeholder="PIN wiederholen"
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-indigo-500 transition-all font-mono text-center tracking-[0.5em] text-lg"
-                                />
-                            </div>
+                        </div>
+                    </aside>
 
+                    <section className="rounded-[2rem] border border-white/10 bg-white/[0.08] p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl sm:p-7 lg:p-8">
+                        <div className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="flex items-start gap-4">
+                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 shadow-inner">
+                                    {currentStep === "welcome" && <ShieldCheck className="h-7 w-7 text-cyan-200" />}
+                                    {currentStep === "pin" && <Lock className="h-7 w-7 text-indigo-200" />}
+                                    {currentStep === "username" && <User className="h-7 w-7 text-emerald-200" />}
+                                    {currentStep === "company" && <Building2 className="h-7 w-7 text-blue-200" />}
+                                    {currentStep === "bank" && <Calculator className="h-7 w-7 text-amber-200" />}
+                                    {currentStep === "logo" && <LayoutDashboard className="h-7 w-7 text-rose-200" />}
+                                    {currentStep === "success" && <CheckCircle2 className="h-7 w-7 text-emerald-200" />}
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black uppercase tracking-[0.35em] text-cyan-200">{activeMeta.label}</p>
+                                    <h1 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl">{activeMeta.title}</h1>
+                                    <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-300">{activeMeta.description}</p>
+                                </div>
+                            </div>
                             <button
-                                onClick={handlePinSubmit}
-                                disabled={pin.length < 4 || pin !== confirmPin}
-                                className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/20"
+                                type="button"
+                                onClick={handleCancelOnboarding}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-black text-slate-200 transition hover:bg-white/15 hover:text-white lg:self-start"
                             >
-                                Weiter <ArrowRight className="w-5 h-5" />
+                                <X className="h-4 w-4" />
+                                Abbrechen
                             </button>
                         </div>
-                    )}
 
-                    {currentStep === "username" && (
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-300 ml-1">Ihr Name</label>
-                                <input
-                                    type="text"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    placeholder="z.B. Max Mustermann"
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500 transition-all"
-                                />
-                            </div>
-
-                            <button
-                                onClick={handleUsernameSubmit}
-                                disabled={username.trim().length === 0}
-                                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20"
-                            >
-                                Weiter <ArrowRight className="w-5 h-5" />
-                            </button>
-                        </div>
-                    )}
-
-                    {currentStep === "company" && (
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-300 ml-1">Firmenname</label>
-                                <input
-                                    type="text"
-                                    value={companyData.companyName}
-                                    onChange={(e) => setCompanyData({ ...companyData, companyName: e.target.value })}
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-all font-medium"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-300 ml-1">Vorname (GF)</label>
-                                    <input
-                                        type="text"
-                                        value={companyData.ceoFirstName}
-                                        onChange={(e) => setCompanyData({ ...companyData, ceoFirstName: e.target.value })}
-                                        className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-all font-medium"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-300 ml-1">Nachname (GF)</label>
-                                    <input
-                                        type="text"
-                                        value={companyData.ceoLastName}
-                                        onChange={(e) => setCompanyData({ ...companyData, ceoLastName: e.target.value })}
-                                        className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-all font-medium"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-300 ml-1">Straße</label>
-                                <input
-                                    type="text"
-                                    value={companyData.street}
-                                    onChange={(e) => setCompanyData({ ...companyData, street: e.target.value })}
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-all font-medium"
-                                />
-                            </div>
-                            <div className="grid grid-cols-[1fr,2fr] gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-300 ml-1">PLZ</label>
-                                    <input
-                                        type="text"
-                                        value={companyData.zipCode}
-                                        onChange={(e) => setCompanyData({ ...companyData, zipCode: e.target.value })}
-                                        className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-all font-medium"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-300 ml-1">Ort</label>
-                                    <input
-                                        type="text"
-                                        value={companyData.city}
-                                        onChange={(e) => setCompanyData({ ...companyData, city: e.target.value })}
-                                        className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition-all font-medium"
-                                    />
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={handleCompanySubmit}
-                                disabled={!companyData.companyName || !companyData.city}
-                                className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20 mt-4"
-                            >
-                                Weiter <ArrowRight className="w-5 h-5" />
-                            </button>
-                        </div>
-                    )}
-
-                    {currentStep === "bank" && (
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-300 ml-1">Bankname</label>
-                                <input
-                                    type="text"
-                                    value={companyData.bankName}
-                                    onChange={(e) => setCompanyData({ ...companyData, bankName: e.target.value })}
-                                    placeholder="z.B. Erste Bank"
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-amber-500 transition-all font-medium"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-300 ml-1">IBAN</label>
-                                <input
-                                    type="text"
-                                    value={companyData.iban}
-                                    onChange={(e) => setCompanyData({ ...companyData, iban: e.target.value.toUpperCase() })}
-                                    placeholder="AT00 0000 0000 0000 0000"
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-amber-500 transition-all font-mono"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-300 ml-1">BIC</label>
-                                    <input
-                                        type="text"
-                                        value={companyData.bic}
-                                        onChange={(e) => setCompanyData({ ...companyData, bic: e.target.value.toUpperCase() })}
-                                        className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-amber-500 transition-all font-mono"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-300 ml-1">UID-Nummer</label>
-                                    <input
-                                        type="text"
-                                        value={companyData.vatId}
-                                        onChange={(e) => setCompanyData({ ...companyData, vatId: e.target.value.toUpperCase() })}
-                                        placeholder="ATU00000000"
-                                        className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-amber-500 transition-all font-mono"
-                                    />
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={handleBankSubmit}
-                                className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20 mt-4"
-                            >
-                                Weiter <ArrowRight className="w-5 h-5" />
-                            </button>
-                        </div>
-                    )}
-
-                    {currentStep === "logo" && (
-                        <div className="space-y-6">
-                            <div className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-3xl p-8 hover:border-rose-500/50 transition-colors group relative overflow-hidden bg-black/20">
-                                {companyData.logo ? (
-                                    <div className="relative w-full aspect-video flex items-center justify-center">
-                                        <img src={companyData.logo} alt="Preview" className="max-h-full max-w-full object-contain rounded-lg" />
+                        <div className={cn(
+                            "grid gap-6",
+                            currentStep === "welcome" ? "xl:grid-cols-1" : "xl:grid-cols-[minmax(0,1fr)_320px]"
+                        )}>
+                            <div className="rounded-3xl border border-white/10 bg-black/20 p-5 sm:p-6">
+                                {currentStep === "welcome" && (
+                                    <div className="space-y-6">
+                                        <div className="grid gap-4 lg:grid-cols-3">
+                                            {[
+                                                { icon: Lock, title: "PIN-Schutz", text: "Schnell entsperren, wenn FlowY gesperrt ist." },
+                                                { icon: FileText, title: "PDF-Daten", text: "Firmenkopf, Adresse und Bankdaten vorbereiten." },
+                                                { icon: WalletCards, title: "Startklar", text: "Danach können Rechnungen und Projekte sauber starten." },
+                                            ].map((item) => (
+                                                <div key={item.title} className="rounded-2xl border border-white/10 bg-white/[0.05] p-5">
+                                                    <item.icon className="mb-4 h-6 w-6 text-indigo-200" />
+                                                    <h3 className="font-black">{item.title}</h3>
+                                                    <p className="mt-2 text-sm font-semibold leading-5 text-slate-400">{item.text}</p>
+                                                </div>
+                                            ))}
+                                        </div>
                                         <button
-                                            onClick={() => setCompanyData({ ...companyData, logo: "" })}
-                                            className="absolute top-0 right-0 p-2 bg-rose-600 text-white rounded-full translate-x-1/2 -translate-y-1/2"
+                                            type="button"
+                                            onClick={() => setCurrentStep("pin")}
+                                            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-pink-500 py-4 font-black shadow-xl shadow-indigo-950/30 transition hover:scale-[1.01]"
                                         >
-                                            <Trash2 className="w-4 h-4" />
+                                            Einrichtung starten <ArrowRight className="h-5 w-5" />
                                         </button>
                                     </div>
-                                ) : (
-                                    <label className="cursor-pointer flex flex-col items-center gap-4 w-full">
-                                        <div className="p-6 bg-white/5 rounded-2xl group-hover:scale-110 transition-transform">
-                                            <Plus className="w-8 h-8 text-rose-400" />
+                                )}
+
+                                {currentStep === "pin" && (
+                                    <div className="space-y-5">
+                                        <div className="rounded-2xl border border-indigo-300/20 bg-indigo-400/10 p-4 text-sm font-semibold text-indigo-100">
+                                            Der PIN wird später für den Sperrbildschirm verwendet. Nutzen Sie 4 bis 8 Ziffern.
                                         </div>
-                                        <div className="text-center">
-                                            <p className="text-white font-bold">Bild auswählen</p>
-                                            <p className="text-slate-400 text-sm">PNG, JPG bis 2MB</p>
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <div className="space-y-2">
+                                                <label className={labelClass}>Neuer PIN-Code</label>
+                                                <input
+                                                    type="password"
+                                                    inputMode="numeric"
+                                                    value={pin}
+                                                    onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                                                    placeholder="PIN"
+                                                    className={cn(inputClass, "text-center font-mono text-lg")}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className={labelClass}>PIN bestätigen</label>
+                                                <input
+                                                    type="password"
+                                                    inputMode="numeric"
+                                                    value={confirmPin}
+                                                    onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                                                    placeholder="PIN"
+                                                    className={cn(inputClass, "text-center font-mono text-lg")}
+                                                />
+                                            </div>
                                         </div>
+                                        {pin && confirmPin && pin !== confirmPin && (
+                                            <p className="text-sm font-bold text-rose-300">Die PIN-Codes stimmen noch nicht überein.</p>
+                                        )}
+                                        <StepActions
+                                            onBack={handleBack}
+                                            onNext={handlePinSubmit}
+                                            disabled={pin.length < 4 || pin !== confirmPin}
+                                        />
+                                    </div>
+                                )}
+
+                                {currentStep === "username" && (
+                                    <div className="space-y-5">
+                                        <div className="space-y-2">
+                                            <label className={labelClass}>Ihr Name</label>
+                                            <input
+                                                type="text"
+                                                value={username}
+                                                onChange={(e) => setUsername(e.target.value)}
+                                                placeholder="z.B. Max Mustermann"
+                                                className={inputClass}
+                                            />
+                                        </div>
+                                        <StepActions
+                                            onBack={handleBack}
+                                            onNext={handleUsernameSubmit}
+                                            disabled={username.trim().length === 0}
+                                        />
+                                    </div>
+                                )}
+
+                                {currentStep === "company" && (
+                                    <div className="space-y-5">
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <div className="space-y-2 sm:col-span-2">
+                                                <label className={labelClass}>Firmenname *</label>
+                                                <input
+                                                    type="text"
+                                                    value={companyData.companyName}
+                                                    onChange={(e) => setCompanyData({ ...companyData, companyName: e.target.value })}
+                                                    className={inputClass}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className={labelClass}>Vorname Geschäftsführer</label>
+                                                <input
+                                                    type="text"
+                                                    value={companyData.ceoFirstName}
+                                                    onChange={(e) => setCompanyData({ ...companyData, ceoFirstName: e.target.value })}
+                                                    className={inputClass}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className={labelClass}>Nachname Geschäftsführer</label>
+                                                <input
+                                                    type="text"
+                                                    value={companyData.ceoLastName}
+                                                    onChange={(e) => setCompanyData({ ...companyData, ceoLastName: e.target.value })}
+                                                    className={inputClass}
+                                                />
+                                            </div>
+                                            <div className="space-y-2 sm:col-span-2">
+                                                <label className={labelClass}>Straße *</label>
+                                                <input
+                                                    type="text"
+                                                    value={companyData.street}
+                                                    onChange={(e) => setCompanyData({ ...companyData, street: e.target.value })}
+                                                    className={inputClass}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className={labelClass}>PLZ *</label>
+                                                <input
+                                                    type="text"
+                                                    value={companyData.zipCode}
+                                                    onChange={(e) => setCompanyData({ ...companyData, zipCode: e.target.value })}
+                                                    className={inputClass}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className={labelClass}>Ort *</label>
+                                                <input
+                                                    type="text"
+                                                    value={companyData.city}
+                                                    onChange={(e) => setCompanyData({ ...companyData, city: e.target.value })}
+                                                    className={inputClass}
+                                                />
+                                            </div>
+                                        </div>
+                                        <StepActions onBack={handleBack} onNext={handleCompanySubmit} disabled={!canSubmitCompany} />
+                                    </div>
+                                )}
+
+                                {currentStep === "bank" && (
+                                    <div className="space-y-5">
+                                        <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm font-semibold text-amber-50">
+                                            Empfohlen für Rechnungen: Diese Daten werden später im PDF-Fußbereich verwendet.
+                                        </div>
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <div className="space-y-2 sm:col-span-2">
+                                                <label className={labelClass}>Bankname</label>
+                                                <input
+                                                    type="text"
+                                                    value={companyData.bankName}
+                                                    onChange={(e) => setCompanyData({ ...companyData, bankName: e.target.value })}
+                                                    placeholder="z.B. Raiffeisen Bank"
+                                                    className={inputClass}
+                                                />
+                                            </div>
+                                            <div className="space-y-2 sm:col-span-2">
+                                                <label className={labelClass}>IBAN</label>
+                                                <input
+                                                    type="text"
+                                                    value={companyData.iban}
+                                                    onChange={(e) => setCompanyData({ ...companyData, iban: e.target.value.toUpperCase() })}
+                                                    placeholder="AT00 0000 0000 0000 0000"
+                                                    className={cn(inputClass, "font-mono")}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className={labelClass}>BIC</label>
+                                                <input
+                                                    type="text"
+                                                    value={companyData.bic}
+                                                    onChange={(e) => setCompanyData({ ...companyData, bic: e.target.value.toUpperCase() })}
+                                                    className={cn(inputClass, "font-mono")}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className={labelClass}>UID-Nummer</label>
+                                                <input
+                                                    type="text"
+                                                    value={companyData.vatId}
+                                                    onChange={(e) => setCompanyData({ ...companyData, vatId: e.target.value.toUpperCase() })}
+                                                    placeholder="ATU00000000"
+                                                    className={cn(inputClass, "font-mono")}
+                                                />
+                                            </div>
+                                        </div>
+                                        <StepActions onBack={handleBack} onNext={() => setCurrentStep("logo")} />
+                                    </div>
+                                )}
+
+                                {currentStep === "logo" && (
+                                    <div className="space-y-5">
                                         <input
+                                            ref={fileInputRef}
                                             type="file"
                                             className="hidden"
                                             accept="image/*"
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                    const reader = new FileReader();
-                                                    reader.onloadend = () => {
-                                                        handleLogoSubmit(reader.result as string);
-                                                    };
-                                                    reader.readAsDataURL(file);
-                                                }
-                                            }}
+                                            onChange={handleLogoUpload}
                                         />
-                                    </label>
+
+                                        <div className="rounded-3xl border border-dashed border-white/15 bg-black/20 p-5">
+                                            {companyData.logo ? (
+                                                <div className="space-y-4">
+                                                    <div className="flex aspect-[13/4] items-center justify-center rounded-2xl bg-white p-4">
+                                                        <img src={companyData.logo} alt="Firmenlogo" className="max-h-full max-w-full object-contain" />
+                                                    </div>
+                                                    <div className="grid gap-3 sm:grid-cols-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={openLogoEditor}
+                                                            className="min-w-0 rounded-2xl bg-indigo-500 px-3 py-3 text-sm font-black text-white transition hover:bg-indigo-400"
+                                                        >
+                                                            Bearbeiten
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => fileInputRef.current?.click()}
+                                                            className="min-w-0 rounded-2xl border border-white/10 bg-white/10 px-3 py-3 text-sm font-black text-white transition hover:bg-white/15"
+                                                        >
+                                                            Ersetzen
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={removeLogo}
+                                                            className="min-w-0 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-3 py-3 text-sm font-black text-rose-100 transition hover:bg-rose-500/20 sm:col-span-2"
+                                                        >
+                                                            Entfernen
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="flex w-full flex-col items-center justify-center gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-8 text-center transition hover:border-rose-300/40 hover:bg-white/[0.07]"
+                                                >
+                                                    <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-rose-400/15 text-rose-100">
+                                                        <Upload className="h-7 w-7" />
+                                                    </span>
+                                                    <span>
+                                                        <span className="block text-lg font-black">Logo hochladen</span>
+                                                        <span className="mt-1 block text-sm font-semibold text-slate-400">PNG oder JPG, idealerweise mit transparentem Hintergrund.</span>
+                                                    </span>
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setCurrentStep("success")}
+                                                className="rounded-2xl border border-white/10 bg-white/10 py-4 font-black text-white transition hover:bg-white/15"
+                                            >
+                                                Überspringen
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setCurrentStep("success")}
+                                                className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-500 py-4 font-black text-white shadow-lg shadow-rose-950/20 transition hover:scale-[1.01]"
+                                            >
+                                                Weiter <ArrowRight className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {currentStep === "success" && (
+                                    <div className="space-y-7 text-center">
+                                        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border border-emerald-300/20 bg-emerald-400/10 shadow-2xl shadow-emerald-950/20">
+                                            <CheckCircle2 className="h-12 w-12 text-emerald-300" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-2xl font-black">Großartig, FlowY ist startklar.</h3>
+                                            <p className="mx-auto mt-2 max-w-lg text-sm font-semibold leading-6 text-slate-400">
+                                                Ihre wichtigsten Daten sind vorbereitet. Sie können direkt ins Dashboard oder mit dem ersten Projekt starten.
+                                            </p>
+                                        </div>
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleFinalize("/")}
+                                                disabled={isSaving}
+                                                className="flex items-center justify-center gap-3 rounded-2xl bg-emerald-500 py-4 font-black text-white shadow-xl shadow-emerald-950/20 transition hover:bg-emerald-400 disabled:opacity-60"
+                                            >
+                                                {isSaving ? <span className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> : "Zum Dashboard"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleFinalize("/projects")}
+                                                disabled={isSaving}
+                                                className="rounded-2xl border border-white/10 bg-white/10 py-4 font-black text-white transition hover:bg-white/15 disabled:opacity-60"
+                                            >
+                                                Erstes Projekt erstellen
+                                            </button>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
 
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={() => setCurrentStep("success")}
-                                    className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-xl transition-all"
-                                >
-                                    Überspringen
-                                </button>
-                                {companyData.logo && (
-                                    <button
-                                        onClick={() => setCurrentStep("success")}
-                                        className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"
-                                    >
-                                        Weiter <ArrowRight className="w-5 h-5" />
-                                    </button>
-                                )}
-                            </div>
+                            {currentStep !== "welcome" && (
+                                <LivePreview companyData={companyData} username={username} pinReady={pin.length >= 4 && pin === confirmPin} />
+                            )}
                         </div>
-                    )}
+                    </section>
+                </div>
+            </main>
 
-                    {currentStep === "success" && (
-                        <div className="text-center space-y-8 py-4">
-                            <div className="relative inline-block">
-                                <div className="absolute inset-0 bg-emerald-500 blur-2xl opacity-20 animate-pulse" />
-                                <div className="relative w-24 h-24 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mx-auto">
-                                    <CheckCircle2 className="w-12 h-12 text-emerald-500" />
-                                </div>
+            {logoEditor && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-4xl overflow-hidden rounded-3xl border border-white/10 bg-white shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900">Logo bearbeiten</h3>
+                                <p className="text-sm font-semibold text-slate-400">Zuschneiden, ausrichten und für PDF-Briefköpfe optimieren.</p>
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => setLogoEditor(null)}
+                                className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
 
-                            <div className="space-y-2">
-                                <h3 className="text-2xl font-black text-white">Großartig!</h3>
-                                <p className="text-slate-400">
-                                    Ihre Firmendaten wurden erfolgreich konfiguriert. Sie können jetzt Ihre erste Rechnung erstellen.
+                        <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+                            <div className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
+                                <div className="relative aspect-[13/4] overflow-hidden rounded-2xl border-2 border-dashed border-indigo-200 bg-white shadow-inner">
+                                    <img
+                                        src={logoEditor.src}
+                                        alt="Logo Vorschau"
+                                        className="absolute left-1/2 top-1/2 max-w-none select-none"
+                                        style={{
+                                            transform: `translate(calc(-50% + ${logoEditor.offsetX * 2}px), calc(-50% + ${logoEditor.offsetY}px)) rotate(${logoEditor.rotation}deg) scale(${logoEditor.zoom})`,
+                                            maxHeight: "100%",
+                                            maxWidth: "100%",
+                                        }}
+                                    />
+                                    <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-indigo-500/20" />
+                                </div>
+                                <p className="mt-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+                                    Dieser Rahmen entspricht ungefähr dem Logo-Bereich im Rechnungs- und Angebotskopf.
                                 </p>
                             </div>
 
-                            <div className="space-y-3">
-                                <button
-                                    onClick={handleFinalize}
-                                    disabled={isSaving}
-                                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-5 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-900/20 group"
-                                >
-                                    {isSaving ? (
-                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                        <>
-                                            <span>Zum Dashboard</span>
-                                            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                        </>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={async () => {
-                                        await updateCompany(companyData);
-                                        await updateAccount({ onboardingCompleted: true });
+                            <div className="space-y-5">
+                                {[
+                                    { key: "zoom", label: "Zoom", min: 0.6, max: 3, step: 0.05, value: logoEditor.zoom },
+                                    { key: "offsetX", label: "Horizontal", min: -100, max: 100, step: 1, value: logoEditor.offsetX },
+                                    { key: "offsetY", label: "Vertikal", min: -100, max: 100, step: 1, value: logoEditor.offsetY },
+                                    { key: "rotation", label: "Drehung", min: -15, max: 15, step: 0.5, value: logoEditor.rotation },
+                                ].map((control) => (
+                                    <div key={control.key}>
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <label className="text-sm font-black text-slate-700">{control.label}</label>
+                                            <span className="text-xs font-bold text-slate-400">
+                                                {Number(control.value).toFixed(control.key === "zoom" ? 2 : 0)}
+                                            </span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min={control.min}
+                                            max={control.max}
+                                            step={control.step}
+                                            value={control.value}
+                                            onChange={(e) => {
+                                                const value = Number(e.target.value);
+                                                setLogoEditor((prev) => prev ? { ...prev, [control.key]: value } : prev);
+                                            }}
+                                            className="w-full accent-indigo-600"
+                                        />
+                                    </div>
+                                ))}
 
-                                        // SYNC TO CLOUD
-                                        if (user) {
-                                            await supabase.auth.updateUser({
-                                                data: { onboarding_completed: true }
-                                            });
-                                        }
-
-                                        router.push("/projects");
-                                    }}
-                                    className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-5 rounded-2xl transition-all border border-white/5"
-                                >
-                                    Erstes Projekt erstellen
-                                </button>
+                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={resetLogoEditor}
+                                        className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50"
+                                    >
+                                        <RotateCcw className="h-4 w-4" />
+                                        Reset
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={saveEditedLogo}
+                                        className="flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-indigo-200 transition hover:scale-[1.02]"
+                                    >
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        Speichern
+                                    </button>
+                                </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {showDevWipe && (
+                <button
+                    onClick={async () => {
+                        try {
+                            const wipeUrl = user ? `/api/db/clear?userId=${user.id}` : "/api/db/clear";
+                            await fetch(wipeUrl, { method: "POST" });
+                        } catch (e) {
+                            console.error("Wipe failed", e);
+                        }
+                        await signOut();
+                        window.location.href = "/login";
+                    }}
+                    className="fixed right-4 top-4 z-[9999] rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-red-300 transition hover:bg-red-500/20"
+                >
+                    Dev: Wipe & Logout
+                </button>
+            )}
+        </div>
+    );
+}
+
+function StepActions({ onBack, onNext, disabled }: { onBack: () => void; onNext: () => void; disabled?: boolean }) {
+    return (
+        <div className="grid gap-3 pt-2 sm:grid-cols-[160px_minmax(0,1fr)]">
+            <button
+                type="button"
+                onClick={onBack}
+                className="rounded-2xl border border-white/10 bg-white/10 py-4 font-black text-white transition hover:bg-white/15"
+            >
+                Zurück
+            </button>
+            <button
+                type="button"
+                onClick={onNext}
+                disabled={disabled}
+                className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-pink-500 py-4 font-black text-white shadow-lg shadow-indigo-950/20 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+                Weiter <ArrowRight className="h-5 w-5" />
+            </button>
+        </div>
+    );
+}
+
+function LivePreview({
+    companyData,
+    username,
+    pinReady,
+}: {
+    companyData: {
+        companyName: string;
+        street: string;
+        zipCode: string;
+        city: string;
+        ceoFirstName: string;
+        ceoLastName: string;
+        bankName: string;
+        iban: string;
+        bic: string;
+        vatId: string;
+        logo: string;
+    };
+    username: string;
+    pinReady: boolean;
+}) {
+    const address = [companyData.street, [companyData.zipCode, companyData.city].filter(Boolean).join(" ")].filter(Boolean);
+    const ceoName = [companyData.ceoFirstName, companyData.ceoLastName].filter(Boolean).join(" ");
+
+    return (
+        <aside className="rounded-3xl border border-white/10 bg-white/[0.05] p-5">
+            <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10">
+                    <FileText className="h-5 w-5 text-cyan-200" />
+                </div>
+                <div>
+                    <h3 className="font-black">Dokument-Vorschau</h3>
+                    <p className="text-xs font-semibold text-slate-400">So wirken Ihre Stammdaten später.</p>
+                </div>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl bg-white p-5 text-slate-900 shadow-2xl shadow-black/20">
+                <div className="flex min-h-16 items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                    {companyData.logo ? (
+                        <img src={companyData.logo} alt="Firmenlogo" className="max-h-14 max-w-36 object-contain" />
+                    ) : (
+                        <div className="flex h-14 w-36 items-center justify-center rounded-xl bg-slate-100 text-xs font-black uppercase tracking-wider text-slate-400">
+                            Logo
+                        </div>
                     )}
+                    <div className="text-right text-[11px] font-semibold leading-5 text-slate-500">
+                        <p>{address[0] || "Firmenstraße 1"}</p>
+                        <p>{address[1] || "8010 Graz"}</p>
+                    </div>
                 </div>
 
-                {/* Steps Indicator */}
-                <div className="space-y-4">
-                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
-                        <span>Fortschritt</span>
-                        <span>
-                            {currentStep === "pin" && "Schritt 1 von 6"}
-                            {currentStep === "username" && "Schritt 2 von 6"}
-                            {currentStep === "company" && "Schritt 3 von 6"}
-                            {currentStep === "bank" && "Schritt 4 von 6"}
-                            {currentStep === "logo" && "Schritt 5 von 6"}
-                            {currentStep === "success" && "Schritt 6 von 6"}
-                        </span>
+                <div className="mt-5 space-y-4">
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-indigo-500">Firma</p>
+                        <h4 className="mt-1 text-xl font-black">{companyData.companyName || "Ihre Firma"}</h4>
                     </div>
-                    <div className="flex gap-1.5 h-1.5">
-                        <div className={cn("flex-1 rounded-full transition-all duration-500", (["pin", "username", "company", "bank", "logo", "success"].indexOf(currentStep) >= 0) ? "bg-indigo-500" : "bg-white/5")} />
-                        <div className={cn("flex-1 rounded-full transition-all duration-500", (["username", "company", "bank", "logo", "success"].indexOf(currentStep) >= 1) ? "bg-emerald-500" : "bg-white/5")} />
-                        <div className={cn("flex-1 rounded-full transition-all duration-500", (["company", "bank", "logo", "success"].indexOf(currentStep) >= 2) ? "bg-blue-500" : "bg-white/5")} />
-                        <div className={cn("flex-1 rounded-full transition-all duration-500", (["bank", "logo", "success"].indexOf(currentStep) >= 3) ? "bg-amber-500" : "bg-white/5")} />
-                        <div className={cn("flex-1 rounded-full transition-all duration-500", (["logo", "success"].indexOf(currentStep) >= 4) ? "bg-rose-500" : "bg-white/5")} />
-                        <div className={cn("flex-1 rounded-full transition-all duration-500", (["success"].indexOf(currentStep) >= 5) ? "bg-emerald-500" : "bg-white/5")} />
+                    <div className="grid gap-3 text-xs font-bold text-slate-600">
+                        <PreviewRow label="Benutzer" value={username || "Noch nicht gesetzt"} />
+                        <PreviewRow label="PIN-Schutz" value={pinReady ? "Aktiv" : "Noch offen"} />
+                        <PreviewRow label="Geschäftsführer" value={ceoName || "Optional"} />
+                        <PreviewRow label="Bank" value={companyData.bankName || "Optional"} />
+                        <PreviewRow label="IBAN" value={companyData.iban || "Optional"} />
+                        <PreviewRow label="UID" value={companyData.vatId || "Optional"} />
                     </div>
                 </div>
             </div>
-            {/* Dev/Emergency Logout Button */}
-            <button
-                onClick={async () => {
-                    // Force Wipe Local DB to fix "Loop" state
-                    try {
-                        const wipeUrl = user ? `/api/db/clear?userId=${user.id}` : '/api/db/clear';
-                        await fetch(wipeUrl, { method: 'POST' });
-                        console.log("Emergency Wipe executed.");
-                    } catch (e) {
-                        console.error("Wipe failed", e);
-                    }
-                    await signOut();
-                    window.location.href = '/login';
-                }}
-                className="fixed top-4 right-4 z-[9999] px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold uppercase tracking-wider rounded-lg border border-red-500/20 transition-all"
-            >
-                Not-Ausgang (Wipe & Logout)
-            </button>
+        </aside>
+    );
+}
+
+function PreviewRow({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2">
+            <span className="text-slate-400">{label}</span>
+            <span className="truncate text-right text-slate-800">{value}</span>
         </div>
     );
 }

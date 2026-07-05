@@ -26,7 +26,8 @@ import {
     FolderOpen,
     Inbox,
     FileCheck,
-    KeyRound
+    KeyRound,
+    LockKeyhole
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
@@ -170,6 +171,11 @@ export function Sidebar() {
                 ? prev.filter(item => item !== label)
                 : [...prev, label]
         );
+    };
+
+    const handleLockApp = () => {
+        window.dispatchEvent(new Event("flowy-lock-app"));
+        if (isDrawerMode) setIsOpen(false);
     };
 
     const getActiveUserId = () => profile?.companyOwnerId || currentEmployee?.userId;
@@ -485,6 +491,13 @@ export function Sidebar() {
 
 
                 <div className="mt-12 border-t border-white/10 pt-8 pb-4">
+                    <button
+                        onClick={handleLockApp}
+                        className="mb-2 flex items-center gap-4 px-5 py-4 rounded-2xl w-full text-sidebar-foreground/70 hover:text-white hover:bg-white/5 transition-all duration-300 text-base font-bold group"
+                    >
+                        <LockKeyhole className="h-6 w-6 group-hover:scale-110 transition-transform" />
+                        App sperren
+                    </button>
                     <button
                         onClick={handleLogout}
                         className="flex items-center gap-4 px-5 py-4 rounded-2xl w-full text-sidebar-foreground/60 hover:text-white hover:bg-white/5 transition-all duration-300 text-base font-bold group"

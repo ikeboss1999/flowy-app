@@ -8,7 +8,6 @@ import {
   BarChart3,
   Briefcase,
   Calendar,
-  CheckCircle2,
   Clock,
   FileSignature,
   FileText,
@@ -55,6 +54,14 @@ export default function Home() {
   const today = new Date();
   const currentYear = today.getFullYear();
   const companyName = companySettings?.companyName || "FlowY";
+  const companyLogo = companySettings?.logo;
+  const companyLocation = [companySettings?.zipCode, companySettings?.city].filter(Boolean).join(" ");
+  const companyInitials = companyName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "FY";
   const userName = accountSettings?.name || "Benutzer";
 
   const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
@@ -160,25 +167,55 @@ export default function Home() {
     slate: "bg-slate-50 text-slate-600 border-slate-100",
   };
 
+  const quickStartActions = [
+    canWriteInvoices && { label: "Rechnung erstellen", description: "Neue Rechnung erfassen und finalisieren", href: "/invoices/new", icon: FileText, tone: "indigo" },
+    canWriteOffers && { label: "Angebot schreiben", description: "Angebot vorbereiten und versenden", href: "/offers/new", icon: FileSignature, tone: "emerald" },
+    canUseTime && { label: "Zeiten erfassen", description: "Monatszeiten der Mitarbeiter pflegen", href: "/time-tracking", icon: Clock, tone: "amber" },
+  ].filter(Boolean) as Array<{
+    label: string;
+    description: string;
+    href: string;
+    icon: React.ElementType;
+    tone: "indigo" | "emerald" | "amber" | "rose" | "slate";
+  }>;
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 2xl:p-12 space-y-8 lg:space-y-10 animate-in fade-in duration-500">
-      <section className="rounded-[2.25rem] border border-slate-100 bg-white p-8 shadow-sm overflow-hidden relative">
-        <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-indigo-50/70 to-transparent pointer-events-none" />
-        <div className="relative z-10 grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-center">
+      <section className="rounded-[2.25rem] border border-indigo-100/60 bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-700 p-5 sm:p-8 shadow-2xl shadow-indigo-950/10 overflow-hidden relative text-white">
+        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl pointer-events-none" />
+        <div className="absolute right-0 top-0 h-full w-2/3 bg-gradient-to-l from-pink-400/25 via-indigo-400/10 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 right-16 h-40 w-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="relative z-10 grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-center">
           <div className="space-y-6">
             <div className="flex flex-wrap items-center gap-3">
-              <div className="inline-flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-indigo-600">
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white shadow-sm backdrop-blur">
                 <ReceiptText className="h-4 w-4" />
                 Startseite
               </div>
-              <span className="text-sm font-bold text-slate-400">{formatDate(today)}</span>
+              <span className="text-sm font-bold text-white/70">{formatDate(today)}</span>
+            </div>
+
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+              <div className="flex h-36 w-36 shrink-0 items-center justify-center rounded-[2.4rem] border border-white/20 bg-white p-5 text-4xl font-black text-indigo-700 shadow-2xl shadow-indigo-950/25 sm:h-40 sm:w-40 2xl:h-44 2xl:w-44">
+                {companyLogo ? (
+                  <img src={companyLogo} alt={`${companyName} Logo`} className="h-full w-full object-contain" />
+                ) : (
+                  companyInitials
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-200/90">{companyName}</p>
+                {companyLocation && (
+                  <p className="mt-1 text-sm font-bold text-white/50">{companyLocation}</p>
+                )}
+              </div>
             </div>
 
             <div>
-              <h1 className="text-5xl font-black tracking-tight text-slate-900 font-outfit">
+              <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl 2xl:text-6xl font-outfit">
                 Willkommen, {userName}
               </h1>
-              <p className="mt-3 max-w-3xl text-lg font-semibold text-slate-500">
+              <p className="mt-3 max-w-3xl text-base font-semibold leading-relaxed text-white/75 sm:text-lg">
                 {companyName} ist bereit. Wählen Sie direkt den nächsten Arbeitsschritt oder öffnen Sie die Übersicht.
               </p>
             </div>
@@ -192,7 +229,9 @@ export default function Home() {
                     href={action.href}
                     className={cn(
                       "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-black shadow-lg transition hover:scale-[1.02] active:scale-95",
-                      action.color,
+                      action.color.includes("bg-primary-gradient")
+                        ? "bg-white text-indigo-700 shadow-white/10"
+                        : "bg-white/10 text-white border border-white/15 backdrop-blur hover:bg-white/15",
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -202,7 +241,7 @@ export default function Home() {
               })}
               <Link
                 href="/dashboard"
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600"
+                className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white shadow-sm backdrop-blur transition hover:bg-white/15"
               >
                 <BarChart3 className="h-4 w-4" />
                 Zur Übersicht
@@ -210,52 +249,43 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-slate-100 bg-slate-50/80 p-6 shadow-inner">
-            <div className="text-sm font-black uppercase tracking-[0.18em] text-slate-400">Aktuelle Uhrzeit</div>
-            <div className="mt-4 text-6xl font-black tracking-tight text-slate-900 tabular-nums">
+          <div className="rounded-[2rem] border border-white/15 bg-white/12 p-6 shadow-inner backdrop-blur-xl">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-cyan-100/70">Aktuelle Uhrzeit</div>
+            <div className="mt-5 text-6xl font-black tracking-tight text-white tabular-nums 2xl:text-7xl">
               <RealtimeClock />
-            </div>
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-white p-4 border border-slate-100">
-                <p className="text-xs font-black uppercase tracking-wider text-slate-400">Jahr</p>
-                <p className="mt-1 text-2xl font-black text-slate-900">{currentYear}</p>
-              </div>
-              <div className="rounded-2xl bg-white p-4 border border-slate-100">
-                <p className="text-xs font-black uppercase tracking-wider text-slate-400">Status</p>
-                <p className="mt-1 flex items-center gap-2 text-sm font-black text-emerald-600">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Bereit
-                </p>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-5 md:grid-cols-3">
-        {[
-          { label: "Fällige Rechnungen", value: status.overdueInvoices, href: "/invoices", icon: FileText, tone: status.overdueInvoices > 0 ? "rose" : "emerald" },
-          { label: "Offene Angebote", value: status.openOffers, href: "/offers", icon: FileSignature, tone: "indigo" },
-          { label: "Aktive Projekte", value: status.activeProjects, href: "/projects", icon: Briefcase, tone: "amber" },
-        ].map((item) => {
+      <section className="rounded-[2rem] border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-black text-slate-900">Schnellstart</h2>
+            <p className="text-sm font-semibold text-slate-500">Die wichtigsten Aktionen direkt griffbereit.</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {quickStartActions.map((item) => {
           const Icon = item.icon;
           return (
             <Link
               key={item.label}
               href={item.href}
-              className="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-200/70"
+              className="group rounded-[1.5rem] border border-slate-100 bg-gradient-to-br from-slate-50 to-white p-5 transition hover:-translate-y-0.5 hover:border-indigo-100 hover:shadow-xl hover:shadow-slate-200/70"
             >
               <div className="flex items-start justify-between">
                 <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl border", toneClasses[item.tone as keyof typeof toneClasses])}>
                   <Icon className="h-6 w-6" />
                 </div>
-                <ArrowUpRight className="h-5 w-5 text-slate-300" />
+                <ArrowUpRight className="h-5 w-5 text-slate-300 transition group-hover:text-indigo-500" />
               </div>
-              <p className="mt-6 text-xs font-black uppercase tracking-[0.16em] text-slate-400">{item.label}</p>
-              <p className="mt-2 text-4xl font-black text-slate-900">{item.value}</p>
+              <p className="mt-5 text-lg font-black text-slate-900">{item.label}</p>
+              <p className="mt-1 text-sm font-bold leading-relaxed text-slate-500">{item.description}</p>
             </Link>
           );
         })}
+        </div>
       </section>
 
       <section className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
