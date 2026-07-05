@@ -8,7 +8,7 @@ import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 export default function CalendarPage() {
     usePermissionGuard("calendar_use");
     return (
-        <div className="p-8 lg:p-12 space-y-12 animate-in fade-in duration-700">
+        <div className="p-4 sm:p-6 lg:p-8 2xl:p-12 space-y-8 lg:space-y-12 animate-in fade-in duration-700">
             {/* Header section */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                 <div className="space-y-1">

@@ -97,8 +97,8 @@ export default function TimeTrackingPage() {
     const loading = isLoading || timeLoading;
 
     return (
-        <div className="p-10 min-h-screen">
-            <div className="max-w-[1400px] mx-auto space-y-12 animate-in fade-in duration-500">
+        <div className="dashboard-page-centered">
+            <div className="max-w-[1400px] mx-auto space-y-8 lg:space-y-12 animate-in fade-in duration-500">
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2 text-indigo-600 mb-2">
                         <div className="p-2.5 bg-indigo-50 rounded-xl shadow-sm border border-indigo-100/50">
@@ -106,18 +106,18 @@ export default function TimeTrackingPage() {
                         </div>
                         <span className="text-sm font-black uppercase tracking-[0.3em]">Zeiterfassung</span>
                     </div>
-                    <h1 className="text-5xl font-black text-slate-900 tracking-tight font-outfit">Zeiten erfassen</h1>
-                    <p className="text-xl text-slate-500 font-medium max-w-2xl">
+                    <h1 className="dashboard-title">Zeiten erfassen</h1>
+                    <p className="dashboard-subtitle max-w-2xl">
                         Wählen Sie einen Mitarbeiter aus, um den vergangenen Monat zu erfassen.
                     </p>
                 </div>
 
-                <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm relative overflow-hidden">
+                <div className="bg-white p-4 sm:p-6 rounded-[32px] border border-slate-100 shadow-sm relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
                         <Clock className="h-64 w-64 text-indigo-900" />
                     </div>
 
-                    <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4 mb-6">
                         <div className="rounded-2xl bg-indigo-50 border border-indigo-100 p-5">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">Abrechnungsmonat</p>
                             <p className="text-lg font-black text-indigo-900 mt-2">{monthLabel}</p>
@@ -136,7 +136,7 @@ export default function TimeTrackingPage() {
                         </div>
                     </div>
 
-                    <div className="relative z-10 grid grid-cols-1 xl:grid-cols-[minmax(360px,520px)_1fr] gap-4 mb-8">
+                    <div className="relative z-10 grid grid-cols-1 2xl:grid-cols-[minmax(360px,520px)_1fr] gap-4 mb-8">
                         <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 w-full">
                             <Search className="h-5 w-5 text-slate-400" />
                             <input

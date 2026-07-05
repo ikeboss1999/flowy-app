@@ -1,13 +1,24 @@
 "use client";
 
 import { SWRConfig } from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
 export function SWRProvider({ children }: { children: React.ReactNode }) {
     return (
         <SWRConfig value={{
+            fetcher,
             revalidateOnFocus: false,
-            revalidateOnReconnect: true,
-            dedupingInterval: 30000,
+            revalidateOnReconnect: false,
+            revalidateIfStale: false,
+            refreshWhenHidden: false,
+            refreshWhenOffline: false,
+            shouldRetryOnError: true,
+            errorRetryCount: 2,
+            errorRetryInterval: 5000,
+            dedupingInterval: 120000,
+            focusThrottleInterval: 300000,
+            loadingTimeout: 8000,
+            keepPreviousData: true,
         }}>
             {children}
         </SWRConfig>

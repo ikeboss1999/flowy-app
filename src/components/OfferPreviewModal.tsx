@@ -16,7 +16,7 @@ import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { useNotification } from "@/context/NotificationContext";
 import { useAuth } from "@/context/AuthContext";
 import { nanoid } from "nanoid";
-import { useRouter } from "next/navigation";
+import { offerPdfFileName } from "@/lib/document-filenames";
 
 const OfferPDFPreview = dynamic(
     async () => {
@@ -107,7 +107,6 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     const { data: invoiceSettings, updateData: updateInvoiceSettings } = useInvoiceSettings();
     const { showToast } = useNotification();
     const { profile } = useAuth();
-    const router = useRouter();
 
     const canConfirmOrder = !profile || profile.role === 'admin' || profile.role === 'developer' || !!profile.permissions?.orders_write;
     const canCreateInvoice = !profile || profile.role === 'admin' || profile.role === 'developer' || !!profile.permissions?.invoices_write;
@@ -157,8 +156,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     const handleDownloadPDF = async () => {
         setIsDownloading(true);
         try {
-            const prefix = offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot';
-            const fileName = `${prefix}_${offer.offerNumber.replace(/\//g, '-')}.pdf`;
+            const fileName = offerPdfFileName({ ...offer, customerName: customer?.name || offer.customerName });
 
             if (isStoredOffer) {
                 const pdfUrl = signedPdfUrl || await fetchSignedOfferPdfUrl(offer.id);
@@ -305,7 +303,6 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
             setTimeout(() => {
                 setShowInvoiceSuccess(false);
                 onClose();
-                router.push(`/invoices/${newInvoice.id}/edit`);
             }, 1500);
         } catch (e) {
             console.error('[Invoice Creation]', e);

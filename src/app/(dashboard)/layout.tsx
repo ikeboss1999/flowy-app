@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { OnboardingCheck } from "@/components/OnboardingCheck";
 import { ReloadButton } from "@/components/ReloadButton";
 import { GlobalTodoWidget } from "@/components/GlobalTodoWidget";
+import { DashboardPrefetch } from "@/components/DashboardPrefetch";
 import { useDevice } from "@/hooks/useDevice";
 import { cn } from "@/lib/utils";
 
@@ -12,8 +13,7 @@ export default function DashboardLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const { isIPad, isTouchDevice } = useDevice();
-    const isDrawerMode = isIPad || isTouchDevice;
+    const { isDrawerLayout } = useDevice();
 
     return (
         <div className="flex min-h-screen bg-slate-50 overflow-x-hidden">
@@ -21,9 +21,10 @@ export default function DashboardLayout({
             <Sidebar />
             <ReloadButton />
             <GlobalTodoWidget />
+            <DashboardPrefetch />
             <main className={cn(
                 "flex-1 min-h-screen text-lg transition-all duration-300",
-                isDrawerMode ? "ml-0 pt-20 px-4" : "ml-[var(--sidebar-width,20rem)] [.sidebar-collapsed_&]:ml-0"
+                isDrawerLayout ? "ml-0 pt-20" : "ml-[var(--sidebar-width,20rem)] [.sidebar-collapsed_&]:ml-0"
             )}>
                 {children}
             </main>

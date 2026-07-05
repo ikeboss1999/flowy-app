@@ -285,7 +285,7 @@ interface OfferReactPDFProps {
 
 export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, companySettings, offerSettings }) => {
     const fmt = (d: string) => d ? new Date(d).toLocaleDateString('de-DE') : '-';
-    const isRC = offer.isReverseCharge || (customer?.type === 'business' && (customer as any)?.reverseChargeEnabled);
+    const isRC = offer.isReverseCharge === true;
     const ceoName = `${companySettings.ceoFirstName || ''} ${companySettings.ceoLastName || ''}`.trim();
     const processor = (offer.processor && offer.processor !== 'Max Mustermann') ? offer.processor : ceoName || '-';
 

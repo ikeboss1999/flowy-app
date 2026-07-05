@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/context/AuthContext";
 import { useSWRConfig } from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { CheckCircle2, RefreshCcw, Menu, X } from "lucide-react";
 import { useDevice } from "@/hooks/useDevice";
 
@@ -100,9 +101,9 @@ const menuGroups: MenuGroup[] = [
                 icon: FileSignature,
                 label: "Finanzen",
                 children: [
-                    { icon: FileSignature, label: "Angebotsarchiv", href: "/offers" },
-                    { icon: FileCheck, label: "Auftragsarchiv", href: "/orders" },
-                    { icon: FileText, label: "Rechnungsarchiv", href: "/invoices" },
+                    { icon: FileSignature, label: "Angebote", href: "/offers" },
+                    { icon: FileCheck, label: "Aufträge", href: "/orders" },
+                    { icon: FileText, label: "Rechnungen", href: "/invoices" },
                     { icon: AlertTriangle, label: "Mahnwesen", href: "/invoices/dunning" },
                     { icon: BarChart3, label: "Auswertungen", href: "/reports" },
                 ]
@@ -129,9 +130,9 @@ const menuGroups: MenuGroup[] = [
 export function Sidebar() {
     const path = usePathname();
     const { signOut, currentEmployee, logoutEmployee, profile } = useAuth();
-    const { mutate: mutateAll } = useSWRConfig();
+    const { cache, mutate: mutateAll } = useSWRConfig();
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const { isIPad, isTouchDevice } = useDevice();
+    const { isDrawerLayout } = useDevice();
     const [isOpen, setIsOpen] = useState(false);
 
     const handleRefresh = async () => {
@@ -145,7 +146,7 @@ export function Sidebar() {
         setIsOpen(false);
     }, [path]);
 
-    const isDrawerMode = isIPad || isTouchDevice;
+    const isDrawerMode = isDrawerLayout;
 
     const handleLogout = async () => {
         try {
@@ -169,6 +170,55 @@ export function Sidebar() {
                 ? prev.filter(item => item !== label)
                 : [...prev, label]
         );
+    };
+
+    const getActiveUserId = () => profile?.companyOwnerId || currentEmployee?.userId;
+
+    const cacheHasData = (key: string) => {
+        const cached = cache.get(key) as { data?: unknown } | undefined;
+        return cached?.data !== undefined;
+    };
+
+    const prefetchKeys = (keys: string[]) => {
+        keys.forEach(key => {
+            if (cacheHasData(key)) return;
+            mutateAll(key, fetcher(key), { populateCache: true, revalidate: false }).catch((error) => {
+                console.warn("[SidebarPrefetch]", key, error);
+            });
+        });
+    };
+
+    const prefetchForHref = (href?: string) => {
+        const activeUserId = getActiveUserId();
+        if (!href || !activeUserId) return;
+
+        const sharedSettings = [`/api/settings?userId=${activeUserId}`];
+        const byHref: Record<string, string[]> = {
+            "/customers": [`/api/customers?userId=${activeUserId}`],
+            "/employees": [`/api/employees?userId=${activeUserId}`],
+            "/projects": [`/api/projects?userId=${activeUserId}`, ...sharedSettings],
+            "/services": [`/api/services?userId=${activeUserId}`],
+            "/vehicles": [`/api/vehicles?userId=${activeUserId}`],
+            "/time-tracking": [
+                `/api/employees?userId=${activeUserId}`,
+                `/api/time-entries?userId=${activeUserId}`,
+                `/api/timesheets?userId=${activeUserId}`,
+            ],
+            "/time-tracking/archive": [
+                `/api/employees?userId=${activeUserId}`,
+                `/api/time-entries?userId=${activeUserId}`,
+                `/api/timesheets?userId=${activeUserId}`,
+                ...sharedSettings,
+            ],
+            "/offers": [`/api/offers?userId=${activeUserId}`, `/api/customers?userId=${activeUserId}`, ...sharedSettings],
+            "/orders": [`/api/orders?userId=${activeUserId}`, `/api/customers?userId=${activeUserId}`, ...sharedSettings],
+            "/invoices": [`/api/invoices?userId=${activeUserId}`, `/api/customers?userId=${activeUserId}`, ...sharedSettings],
+            "/archive": [`/api/archive-files?userId=${activeUserId}`, `/api/archive-folders?userId=${activeUserId}`],
+            "/crm": [`/api/crm?userId=${activeUserId}`],
+            "/calendar": [`/api/calendar-events?userId=${activeUserId}`],
+        };
+
+        prefetchKeys(byHref[href] || []);
     };
 
     // Auto-expand parents of active children on path change
@@ -339,6 +389,8 @@ export function Sidebar() {
             <Link
                 key={item.label}
                 href={item.href!}
+                onMouseEnter={() => prefetchForHref(item.href)}
+                onFocus={() => prefetchForHref(item.href)}
                 className={cn(
                     "flex items-center gap-4 px-5 py-2.5 rounded-2xl transition-all duration-300 group text-sm font-bold",
                     depth > 0 && "ml-2",

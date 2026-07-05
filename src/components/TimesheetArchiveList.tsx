@@ -8,6 +8,7 @@ import { FileText, Calendar, CheckCircle, Download, Folder, ChevronRight, Chevro
 import { TimeTrackingPreviewModal } from './TimeTrackingPreviewModal';
 import { Employee } from '@/types/employee';
 import { TimesheetMeta } from '@/types/time-tracking';
+import { timesheetPdfFileName } from '@/lib/document-filenames';
 
 export function TimesheetArchiveList() {
     const { timesheets, entries, isLoading: timeEntriesLoading } = useTimeEntries();
@@ -127,7 +128,10 @@ export function TimesheetArchiveList() {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `Stundenzettel_${emp.personalData.lastName}_${sheet.month}.pdf`;
+                a.download = timesheetPdfFileName(
+                    `${emp.personalData.firstName} ${emp.personalData.lastName}`,
+                    sheet.month,
+                );
                 a.click();
                 URL.revokeObjectURL(url);
                 return;
@@ -151,7 +155,10 @@ export function TimesheetArchiveList() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Stundenzettel_${emp.personalData.lastName}_${normalizedMonth}.pdf`;
+            a.download = timesheetPdfFileName(
+                `${emp.personalData.firstName} ${emp.personalData.lastName}`,
+                normalizedMonth,
+            );
             a.click();
             URL.revokeObjectURL(url);
         } catch (err) {

@@ -196,7 +196,7 @@ export const OfferPDF = forwardRef<HTMLDivElement, OfferPDFProps>(({ offer, cust
             {/* Summary and Reverse Charge Notice */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
                 <div style={{ width: '60%', fontWeight: 'bold', paddingTop: '10px', color: '#000' }}>
-                    {(offer.isReverseCharge || (customer?.type === 'business' && customer?.reverseChargeEnabled)) && (
+                    {offer.isReverseCharge === true && (
                         <div style={{ fontSize: '8pt' }}>
                             Übergang der Steuerschuld für Bauleistungen gem. §19 Abs. 1a UStG
                         </div>

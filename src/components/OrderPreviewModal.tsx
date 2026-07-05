@@ -7,6 +7,7 @@ import { OrderConfirmation } from "@/types/order";
 import { Customer } from "@/types/customer";
 import { CompanyData } from "@/types/company";
 import { useOrderSettings } from "@/hooks/useOrderSettings";
+import { orderPdfFileName } from "@/lib/document-filenames";
 
 const OrderPDFPreview = dynamic(
     async () => {
@@ -101,7 +102,7 @@ export function OrderPreviewModal({ isOpen, onClose, order, customer, companySet
     const handleDownloadPDF = async () => {
         setIsDownloading(true);
         try {
-            const fileName = `Auftrag_${order.orderNumber.replace(/\//g, '-')}.pdf`;
+            const fileName = orderPdfFileName({ ...order, customerName: customer?.name || order.customerName });
 
             if (isStoredOrder) {
                 const pdfUrl = signedPdfUrl || await fetchSignedOrderPdfUrl(order.id);

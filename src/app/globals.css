@@ -62,6 +62,49 @@
     background: var(--primary-gradient);
     @apply text-white font-medium rounded-xl px-6 py-2 transition-transform duration-200 active:scale-95;
   }
+
+  .dashboard-page {
+    @apply flex-1 min-h-screen p-4 sm:p-6 lg:p-8 2xl:p-10 space-y-6 lg:space-y-8 2xl:space-y-10;
+  }
+
+  .dashboard-page-centered {
+    @apply min-h-screen p-4 sm:p-6 lg:p-8 2xl:p-10;
+  }
+
+  .dashboard-header {
+    @apply flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between;
+  }
+
+  .dashboard-title {
+    @apply text-4xl sm:text-5xl font-black text-slate-900 tracking-tight;
+  }
+
+  .dashboard-subtitle {
+    @apply text-base sm:text-lg xl:text-xl text-slate-500 font-medium;
+  }
+
+  .dashboard-stat-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4 2xl:gap-6;
+  }
+
+  .dashboard-stat-grid-3 {
+    @apply grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 2xl:gap-6;
+  }
+
+  .dashboard-toolbar {
+    @apply flex flex-col gap-4 xl:flex-row xl:items-center;
+  }
+
+  .dashboard-filter-strip {
+    @apply flex gap-1 overflow-x-auto whitespace-nowrap;
+  }
+
+  .dashboard-table-card {
+    background: var(--card-glass);
+    backdrop-filter: var(--card-glass-blur);
+    border: 1px solid var(--card-glass-border);
+    @apply rounded-2xl shadow-sm transition-all duration-300 overflow-x-auto;
+  }
 }
 
 @layer utilities {

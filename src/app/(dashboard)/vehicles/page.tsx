@@ -106,7 +106,7 @@ export default function VehiclesPage() {
     };
 
     return (
-        <div className="p-10 animate-in fade-in duration-500 space-y-10">
+        <div className="dashboard-page">
             {/* Header Section */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
                 <div className="space-y-2">
@@ -164,14 +164,14 @@ export default function VehiclesPage() {
             </div>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4 mb-8">
                 {[
                     { label: "Gesamt", count: vehicles.length, color: "text-slate-600", bg: "bg-slate-100" },
                     { label: "Bereit", count: vehicles.filter(v => v.fleetDetails.status === "Bereit").length, color: "text-emerald-600", bg: "bg-emerald-50" },
                     { label: "In Benutzung", count: vehicles.filter(v => v.fleetDetails.status === "In Benutzung").length, color: "text-amber-600", bg: "bg-amber-50" },
                     { label: "Wartung", count: vehicles.filter(v => v.fleetDetails.status === "Werkstatt").length, color: "text-rose-600", bg: "bg-rose-50" },
                 ].map((stat) => (
-                    <div key={stat.label} className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-indigo-500/30 transition-all duration-300">
+                    <div key={stat.label} className="bg-white p-4 2xl:p-6 rounded-[24px] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-indigo-500/30 transition-all duration-300">
                         <span className="text-slate-400 font-bold text-xs uppercase tracking-widest">{stat.label}</span>
                         <span className={cn("font-black text-3xl px-4 py-2 rounded-2xl", stat.color, stat.bg)}>{stat.count}</span>
                     </div>

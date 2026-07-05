@@ -100,7 +100,7 @@ export default function ReportsPage() {
     }
 
     return (
-        <div className="flex-1 p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="dashboard-page">
             {/* Header */}
             <div className="flex justify-between items-end">
                 <div className="space-y-2">

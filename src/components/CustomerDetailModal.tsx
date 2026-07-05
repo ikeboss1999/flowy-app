@@ -57,10 +57,10 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
 
     return (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-[88rem] rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col md:flex-row max-h-[95vh] md:max-h-[900px] animate-in zoom-in-95 duration-200">
+            <div className="bg-white w-full max-w-[82rem] rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col md:flex-row max-h-[94vh] md:max-h-[880px] animate-in zoom-in-95 duration-200">
                 
                 {/* Linkes Panel (Hero & Kontakt) - 30% Breite mit lebendigerem Farbverlauf */}
-                <div className="md:w-[30%] bg-gradient-to-br from-[#1e1b4b] via-[#3b0764] to-[#4f46e5] text-slate-100 border-r border-white/5 p-8 flex flex-col justify-between relative">
+                <div className="md:w-[34%] bg-gradient-to-br from-[#1e1b4b] via-[#3b0764] to-[#4f46e5] text-slate-100 border-r border-white/5 p-8 flex flex-col justify-between relative">
                     <button 
                         onClick={onClose} 
                         className="absolute top-6 left-6 md:hidden p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white shadow-sm border border-white/10 bg-white/5"
@@ -68,7 +68,7 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                         <X className="h-4 w-4" />
                     </button>
 
-                    <div className="space-y-8 mt-4 md:mt-0">
+                    <div className="space-y-7 mt-4 md:mt-0">
                         {/* Profile Avatar & Name */}
                         <div className="space-y-4">
                             <div className={cn(
@@ -83,7 +83,7 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                                 <span className="text-[10px] font-bold text-slate-350 uppercase tracking-widest block mb-1">
                                     {customer.salutation || "Kunde"}
                                 </span>
-                                <h3 className="text-2xl font-black text-white tracking-tight leading-snug break-words">
+                                <h3 className="text-3xl font-black text-white tracking-tight leading-tight break-words">
                                     {customer.name}
                                 </h3>
                                 {customer.customer_number && (
@@ -146,6 +146,27 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                                 </div>
                             </div>
                         </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <a
+                                href={customer.email ? `mailto:${customer.email}` : undefined}
+                                className={cn(
+                                    "rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-center text-xs font-black text-white transition-colors",
+                                    customer.email ? "hover:bg-white/15" : "opacity-40 pointer-events-none"
+                                )}
+                            >
+                                E-Mail
+                            </a>
+                            <a
+                                href={customer.phone ? `tel:${customer.phone}` : undefined}
+                                className={cn(
+                                    "rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-center text-xs font-black text-white transition-colors",
+                                    customer.phone ? "hover:bg-white/15" : "opacity-40 pointer-events-none"
+                                )}
+                            >
+                                Anrufen
+                            </a>
+                        </div>
                     </div>
 
                     {/* Metadata am Fuß des linken Panels */}
@@ -166,7 +187,7 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                 </div>
 
                 {/* Rechtes Panel (Detaillierte Infos) - 70% Breite */}
-                <div className="flex-1 p-8 flex flex-col justify-between overflow-y-auto relative bg-white">
+                <div className="flex-1 p-8 overflow-y-auto relative bg-white">
                     <button 
                         onClick={onClose} 
                         className="absolute top-6 right-6 hidden md:flex p-2 hover:bg-slate-50 rounded-full transition-colors text-slate-400 hover:text-slate-600 shadow-sm border border-slate-100 bg-white"
@@ -175,7 +196,13 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                     </button>
 
                     {/* Übersichtlicheres 2-Spalten-Raster für Infos */}
-                    <div className="space-y-8 flex-1 flex flex-col justify-between">
+                    <div className="mb-8 pr-12">
+                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.25em]">Kundenakte</span>
+                        <h2 className="mt-2 text-2xl font-black text-slate-900 tracking-tight">Kontaktdaten & Details</h2>
+                        <p className="mt-1 text-sm font-medium text-slate-500">Alle wichtigen Kundendaten auf einen Blick.</p>
+                    </div>
+
+                    <div className="space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             
                             {/* Spalte 1: Adresse */}
@@ -183,7 +210,7 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                                 <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
                                     <MapPin className="h-3.5 w-3.5" /> Postanschrift
                                 </h4>
-                                <div className="bg-slate-50/40 border border-slate-100/80 rounded-2xl p-5 min-h-[100px] flex flex-col justify-center">
+                                <div className="bg-white border border-slate-100 rounded-2xl p-5 min-h-[100px] flex flex-col justify-center shadow-sm">
                                     <p className="text-[15px] font-bold text-slate-800 leading-snug">
                                         {customer.address.street || "Keine Straße angegeben"}
                                     </p>
@@ -198,7 +225,7 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                                 <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
                                     <Clock className="h-3.5 w-3.5" /> Zahlungskonditionen
                                 </h4>
-                                <div className="bg-slate-50/40 border border-slate-100/80 rounded-2xl p-5 min-h-[100px] flex flex-col justify-center">
+                                <div className="bg-white border border-slate-100 rounded-2xl p-5 min-h-[100px] flex flex-col justify-center shadow-sm">
                                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Standard-Frist</span>
                                     <p className="text-[15px] font-bold text-slate-800">
                                         {paymentTerm ? `${paymentTerm.name} (${paymentTerm.days} Tage)` : "Globaler Standard (Einstellungen)"}
@@ -212,7 +239,7 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                                     <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
                                         <Building2 className="h-3.5 w-3.5" /> Registrierungsdetails
                                     </h4>
-                                    <div className="bg-slate-50/40 border border-slate-100/80 rounded-2xl p-5 space-y-4">
+                                    <div className="bg-white border border-slate-100 rounded-2xl p-5 space-y-4 shadow-sm">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">UID-Nummer</span>
@@ -245,7 +272,7 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                                     <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
                                         <Calendar className="h-3.5 w-3.5" /> Systemdaten
                                     </h4>
-                                    <div className="bg-slate-50/40 border border-slate-100/80 rounded-2xl p-5 space-y-3.5">
+                                    <div className="bg-white border border-slate-100 rounded-2xl p-5 space-y-3.5 shadow-sm">
                                         <div className="flex justify-between items-center text-xs">
                                             <span className="font-bold text-slate-400 uppercase tracking-wider">Kunde seit:</span>
                                             <span className="font-bold text-slate-700">{new Date(customer.createdAt).toLocaleDateString('de-DE')}</span>
@@ -266,7 +293,7 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                                     <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
                                         <Calendar className="h-3.5 w-3.5" /> Systemdaten
                                     </h4>
-                                    <div className="bg-slate-50/40 border border-slate-100/80 rounded-2xl p-5 space-y-3.5 min-h-[135px] flex flex-col justify-center">
+                                    <div className="bg-white border border-slate-100 rounded-2xl p-5 space-y-3.5 min-h-[135px] flex flex-col justify-center shadow-sm">
                                         <div className="flex justify-between items-center text-xs">
                                             <span className="font-bold text-slate-400 uppercase tracking-wider">Kunde seit:</span>
                                             <span className="font-bold text-slate-700">{new Date(customer.createdAt).toLocaleDateString('de-DE')}</span>
@@ -338,7 +365,7 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                                     </div>
                                 </div>
                             ) : (
-                                <div className="bg-slate-50/40 border border-slate-100/80 rounded-2xl p-5 min-h-[90px] flex flex-col justify-between items-start">
+                                <div className="bg-white border border-slate-100 rounded-2xl p-5 min-h-[110px] flex flex-col justify-between items-start shadow-sm">
                                     <p className="text-sm font-semibold text-slate-650 leading-relaxed whitespace-pre-line w-full text-left">
                                         {customer.notes || "Keine Notizen zu diesem Kunden hinterlegt."}
                                     </p>
@@ -357,15 +384,6 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                         </div>
                     </div>
 
-                    {/* Footer Close Button */}
-                    <div className="pt-6 mt-6 border-t border-slate-100 flex justify-end">
-                        <button
-                            onClick={onClose}
-                            className="px-6 py-2.5 bg-primary-gradient text-white rounded-xl font-bold hover:opacity-95 transition-all text-xs tracking-wide shadow-md shadow-purple-500/20 active:scale-95 duration-150"
-                        >
-                            Schließen
-                        </button>
-                    </div>
                 </div>
 
             </div>

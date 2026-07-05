@@ -440,7 +440,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                                                 : "border-slate-100 bg-slate-50 text-slate-500"
                                         )}
                                     >
-                                        <span>Berechtigt</span>
+                                        <span>{formData.reverseChargeEnabled ? "Aktiv" : "Inaktiv"}</span>
                                         <div className={cn(
                                             "w-10 h-5 rounded-full relative transition-colors",
                                             formData.reverseChargeEnabled ? "bg-emerald-500" : "bg-slate-200"

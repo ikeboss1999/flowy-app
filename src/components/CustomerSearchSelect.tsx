@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
     Search, 
     User, 
@@ -136,15 +137,15 @@ export function CustomerSearchSelect({
             </button>
 
             {/* Modal Overlay */}
-            {isOpen && (
-                <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 sm:p-6 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+            {isOpen && typeof document !== 'undefined' && createPortal((
+                <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 sm:p-8 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
                     {/* Modal Box */}
                     <div 
                         ref={modalRef}
-                        className="bg-white rounded-[32px] border border-slate-100 shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+                        className="bg-white rounded-[28px] border border-slate-100 shadow-2xl w-full max-w-[1120px] max-h-[86vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
                     >
                         {/* Header */}
-                        <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <div className="px-7 py-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 bg-slate-50/70">
                             <div>
                                 <h3 className="text-2xl font-black text-slate-900 tracking-tight font-outfit">
                                     Kunden <span className="text-indigo-600 font-bold">auswählen</span>
@@ -153,14 +154,14 @@ export function CustomerSearchSelect({
                                     Wählen Sie den gewünschten Kunden für dieses Dokument aus.
                                 </p>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 shrink-0">
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setIsOpen(false);
                                         onAddNew();
                                     }}
-                                    className="bg-primary-gradient text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-md shadow-indigo-500/10"
+                                    className="bg-primary-gradient text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-md shadow-indigo-500/10 whitespace-nowrap"
                                 >
                                     <Plus className="h-4 w-4" /> Neuen Kunden anlegen
                                 </button>
@@ -175,7 +176,7 @@ export function CustomerSearchSelect({
                         </div>
 
                         {/* Search and Filters Bar */}
-                        <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row gap-4 bg-white">
+                        <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row gap-4 bg-white">
                             {/* Search Input */}
                             <div className="relative flex-1 group">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -199,7 +200,7 @@ export function CustomerSearchSelect({
                             </div>
 
                             {/* Type Filters */}
-                            <div className="bg-slate-100 p-1 rounded-2xl flex gap-1 self-start md:self-auto">
+                            <div className="bg-slate-100 p-1 rounded-2xl flex gap-1 self-start lg:self-auto shrink-0">
                                 {[
                                     { id: 'all', label: 'Alle' },
                                     { id: 'private', label: 'Privat' },
@@ -210,7 +211,7 @@ export function CustomerSearchSelect({
                                         type="button"
                                         onClick={() => setFilterType(tab.id as any)}
                                         className={cn(
-                                            "px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all",
+                                            "px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all whitespace-nowrap",
                                             filterType === tab.id
                                                 ? "bg-white text-indigo-600 shadow-sm border border-slate-200/20"
                                                 : "text-slate-400 hover:text-slate-600 hover:bg-white/40"
@@ -222,7 +223,7 @@ export function CustomerSearchSelect({
                             </div>
 
                             {/* Sort Selector */}
-                            <div className="flex items-center gap-2 bg-slate-50 p-2 px-3 rounded-2xl border border-slate-100">
+                            <div className="flex items-center gap-2 bg-slate-50 p-2 px-3 rounded-2xl border border-slate-100 shrink-0">
                                 <ArrowUpDown className="h-4 w-4 text-slate-400" />
                                 <select
                                     value={sortBy}
@@ -237,7 +238,7 @@ export function CustomerSearchSelect({
                         </div>
 
                         {/* Customer List Content */}
-                        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50 space-y-3 max-h-[60vh] min-h-[300px]">
+                        <div className="flex-1 overflow-y-auto p-5 bg-slate-50/60 space-y-3 max-h-[58vh] min-h-[320px]">
                             {processedCustomers.length > 0 ? (
                                 <div className="flex flex-col gap-3">
                                     {processedCustomers.map((customer) => {
@@ -252,12 +253,12 @@ export function CustomerSearchSelect({
                                                     setSearch('');
                                                 }}
                                                 className={cn(
-                                                    "bg-white border p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-indigo-500/50 hover:shadow-md transition-all duration-300 cursor-pointer group relative",
+                                                    "bg-white border p-4 rounded-2xl grid grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(170px,0.75fr)_minmax(210px,0.9fr)_32px] lg:items-center gap-4 hover:border-indigo-500/50 hover:shadow-md transition-all duration-300 cursor-pointer group relative",
                                                     isSelected ? "border-indigo-500 ring-2 ring-indigo-500/10 bg-indigo-50/10" : "border-slate-100"
                                                 )}
                                             >
                                                 {/* Left: Avatar & Name */}
-                                                <div className="flex items-center gap-4 min-w-0 sm:w-1/3">
+                                                <div className="flex items-center gap-4 min-w-0">
                                                     <div className={cn(
                                                         "h-11 w-11 rounded-xl flex items-center justify-center border shrink-0 transition-all group-hover:scale-105",
                                                         customer.type === 'business' 
@@ -287,7 +288,7 @@ export function CustomerSearchSelect({
                                                 </div>
 
                                                 {/* Middle: Contacts */}
-                                                <div className="flex flex-col gap-1 sm:w-1/3 min-w-0">
+                                                <div className="flex flex-col gap-1 min-w-0">
                                                     {customer.email && (
                                                         <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                                                             <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -303,7 +304,7 @@ export function CustomerSearchSelect({
                                                 </div>
 
                                                 {/* Right: Address */}
-                                                <div className="flex items-center gap-2 sm:w-1/4 min-w-0 text-xs font-semibold text-slate-500">
+                                                <div className="flex items-center gap-2 min-w-0 text-xs font-semibold text-slate-500">
                                                     {(customer.address?.street || customer.address?.city) ? (
                                                         <>
                                                             <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -338,13 +339,13 @@ export function CustomerSearchSelect({
                         </div>
                         
                         {/* Footer Summary */}
-                        <div className="px-8 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        <div className="px-7 py-4 border-t border-slate-100 bg-white flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
                             <span>Kunden gesamt: {customers.length}</span>
                             <span>Gefiltert: {processedCustomers.length}</span>
                         </div>
                     </div>
                 </div>
-            )}
+            ), document.body)}
         </div>
     );
 }

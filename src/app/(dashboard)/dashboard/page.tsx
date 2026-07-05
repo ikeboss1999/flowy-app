@@ -1,268 +1,473 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-    FileText,
-    FileSignature,
-    TrendingUp,
-    Plus,
-    Calendar as CalendarIcon,
-    ArrowUpRight,
-    Eye,
     AlertCircle,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useInvoices } from '@/hooks/useInvoices';
-import { useCustomers } from '@/hooks/useCustomers';
-import { useTodos } from '@/hooks/useTodos';
-import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { useAccountSettings } from '@/hooks/useAccountSettings';
-import { useDashboardSummary } from '@/hooks/useDashboardSummary';
-import { Invoice } from '@/types/invoice';
-import { InvoicePreviewModal } from '@/components/InvoicePreviewModal';
-import { CalendarWidget } from '@/components/CalendarWidget';
-import { useAuth } from '@/context/AuthContext';
+    ArrowUpRight,
+    Calendar as CalendarIcon,
+    CheckCircle2,
+    Clock,
+    Euro,
+    FileCheck,
+    FileSignature,
+    FileText,
+    Plus,
+    ReceiptText,
+    TrendingUp,
+    Users,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useInvoices } from "@/hooks/useInvoices";
+import { useOffers } from "@/hooks/useOffers";
+import { useOrders } from "@/hooks/useOrders";
+import { useCustomers } from "@/hooks/useCustomers";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useAccountSettings } from "@/hooks/useAccountSettings";
+import { useDashboardSummary } from "@/hooks/useDashboardSummary";
+import { useAuth } from "@/context/AuthContext";
+import { Invoice } from "@/types/invoice";
+import { InvoicePreviewModal } from "@/components/InvoicePreviewModal";
+import { CalendarWidget } from "@/components/CalendarWidget";
+
+const currency = (value: number) =>
+    value.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+
+const statusLabel: Record<string, string> = {
+    draft: "Entwurf",
+    pending: "Offen",
+    paid: "Bezahlt",
+    overdue: "Fällig",
+    canceled: "Storniert",
+    sent: "Gesendet",
+    accepted: "Angenommen",
+    rejected: "Abgelehnt",
+    expired: "Abgelaufen",
+    confirmed: "Bestätigt",
+    completed: "Abgeschlossen",
+    cancelled: "Storniert",
+};
+
+const statusClass = (status: string) => {
+    if (["paid", "accepted", "completed"].includes(status)) {
+        return "bg-emerald-50 text-emerald-600 border-emerald-100";
+    }
+    if (["overdue", "rejected", "canceled", "cancelled"].includes(status)) {
+        return "bg-rose-50 text-rose-600 border-rose-100";
+    }
+    if (["draft", "pending"].includes(status)) {
+        return "bg-amber-50 text-amber-600 border-amber-100";
+    }
+    return "bg-indigo-50 text-indigo-600 border-indigo-100";
+};
 
 export default function DashboardPage() {
     const currentYear = new Date().getFullYear();
-    const { invoices, isLoading } = useInvoices();
+    const router = useRouter();
+    const { profile } = useAuth();
+    const { invoices, isLoading: invoicesLoading } = useInvoices();
+    const { offers, isLoading: offersLoading } = useOffers();
+    const { orders, isLoading: ordersLoading } = useOrders();
     const { customers } = useCustomers();
-    const { todos, addTodo, toggleTodo, deleteTodo } = useTodos();
     const { data: companySettings } = useCompanySettings();
     const { data: accountSettings } = useAccountSettings();
     const { summary } = useDashboardSummary();
-    const { profile } = useAuth();
-    const router = useRouter();
+    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
     React.useEffect(() => {
-        if (profile?.role === 'developer') {
+        if (profile?.role === "developer") {
             router.push("/admin");
         }
     }, [profile, router]);
 
-    const [newTodo, setNewTodo] = useState("");
-    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-    const [isTodoMinimized, setIsTodoMinimized] = useState(false);
+    const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
+    const canReadInvoices = isAdminOrDev || !!profile?.permissions?.invoices_read;
+    const canReadOffers = isAdminOrDev || !!profile?.permissions?.offers_read;
+    const canReadOrders = isAdminOrDev || !!profile?.permissions?.orders_read;
+    const canWriteInvoices = isAdminOrDev || !!profile?.permissions?.invoices_write;
+    const canWriteOffers = isAdminOrDev || !!profile?.permissions?.offers_write;
+    const canUseCalendar = isAdminOrDev || !!profile?.permissions?.calendar_use;
 
-    React.useEffect(() => {
-        try {
-            const savedState = localStorage.getItem('flowy_todo_minimized');
-            if (savedState !== null) {
-                setIsTodoMinimized(savedState === 'true');
-            }
-        } catch (e) {
-            console.error('Error reading localStorage', e);
-        }
-    }, []);
+    const yearInvoices = useMemo(
+        () => invoices.filter((invoice) => new Date(invoice.issueDate).getFullYear() === currentYear),
+        [invoices, currentYear],
+    );
 
-    const toggleTodoMinimized = () => {
-        const newValue = !isTodoMinimized;
-        setIsTodoMinimized(newValue);
-        try {
-            localStorage.setItem('flowy_todo_minimized', String(newValue));
-        } catch (e) {
-            console.error('Error setting localStorage', e);
-        }
-    };
+    const yearOffers = useMemo(
+        () => offers.filter((offer) => new Date(offer.issueDate).getFullYear() === currentYear),
+        [offers, currentYear],
+    );
 
-    const sortedInvoices = useMemo(() => {
-        const year = new Date().getFullYear();
-        return [...invoices]
-            .filter(inv => new Date(inv.issueDate).getFullYear() === year)
-            .sort((a, b) => (a.invoiceNumber || "").localeCompare(b.invoiceNumber || "", undefined, { numeric: true }));
-    }, [invoices]);
+    const yearOrders = useMemo(
+        () => orders.filter((order) => new Date(order.issueDate).getFullYear() === currentYear),
+        [orders, currentYear],
+    );
 
-    const handleAddTodo = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newTodo.trim()) return;
-        addTodo(newTodo);
-        setNewTodo("");
-    };
+    const openInvoices = useMemo(
+        () => yearInvoices.filter((invoice) => invoice.status === "pending" || invoice.status === "overdue"),
+        [yearInvoices],
+    );
 
-    const stats = {
-        totalRevenue: summary?.totalRevenue ?? 0,
-        openAmount: summary?.openAmount ?? 0,
-        openInvoicesCount: summary?.openInvoicesCount ?? 0,
-        openOffersCount: summary?.openOffersCount ?? 0,
-        openOffersAmount: summary?.openOffersAmount ?? 0,
-    };
+    const draftInvoices = useMemo(
+        () => yearInvoices.filter((invoice) => invoice.status === "draft"),
+        [yearInvoices],
+    );
 
-    const isAdminOrDev = profile?.role === 'admin' || profile?.role === 'developer';
-    const showOffersBtn = isAdminOrDev || !!profile?.permissions?.offers_write;
-    const showInvoicesBtn = isAdminOrDev || !!profile?.permissions?.invoices_write;
-    const showInvoicesStat = isAdminOrDev || !!profile?.permissions?.invoices_read;
-    const showOffersStat = isAdminOrDev || !!profile?.permissions?.offers_read;
-    const showCalendarWidget = isAdminOrDev || !!profile?.permissions?.calendar_use;
+    const openOffers = useMemo(
+        () => yearOffers.filter((offer) => offer.status === "sent"),
+        [yearOffers],
+    );
+
+    const activeOrders = useMemo(
+        () => yearOrders.filter((order) => order.status === "confirmed" || order.status === "pending"),
+        [yearOrders],
+    );
+
+    const recentDocuments = useMemo(() => {
+        const invoiceDocs = canReadInvoices
+            ? yearInvoices.map((invoice) => ({
+                id: invoice.id,
+                type: "Rechnung",
+                number: invoice.invoiceNumber,
+                customerName: invoice.customerName,
+                amount: invoice.totalAmount,
+                date: invoice.issueDate,
+                status: invoice.status,
+                icon: FileText,
+                onClick: () => setSelectedInvoice(invoice),
+            }))
+            : [];
+
+        const offerDocs = canReadOffers
+            ? yearOffers.map((offer) => ({
+                id: offer.id,
+                type: offer.documentType === "estimate" ? "KVA" : "Angebot",
+                number: offer.offerNumber,
+                customerName: offer.customerName,
+                amount: offer.totalAmount,
+                date: offer.issueDate,
+                status: offer.status,
+                icon: FileSignature,
+                href: "/offers",
+            }))
+            : [];
+
+        const orderDocs = canReadOrders
+            ? yearOrders.map((order) => ({
+                id: order.id,
+                type: "Auftrag",
+                number: order.orderNumber,
+                customerName: order.customerName,
+                amount: order.totalAmount,
+                date: order.issueDate,
+                status: order.status,
+                icon: FileCheck,
+                href: "/orders",
+            }))
+            : [];
+
+        return [...invoiceDocs, ...offerDocs, ...orderDocs]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 8);
+    }, [canReadInvoices, canReadOffers, canReadOrders, yearInvoices, yearOffers, yearOrders]);
+
+    const urgentItems = useMemo(() => {
+        const overdue = openInvoices.filter((invoice) => invoice.status === "overdue").length;
+        return [
+            canReadInvoices && {
+                label: "Fällige Rechnungen",
+                value: overdue,
+                text: overdue > 0 ? "Bitte Mahnwesen prüfen" : "Keine fälligen Rechnungen",
+                href: "/invoices",
+                tone: overdue > 0 ? "rose" : "emerald",
+            },
+            canReadInvoices && {
+                label: "Rechnungsentwürfe",
+                value: draftInvoices.length,
+                text: "Noch nicht finalisiert",
+                href: "/invoices",
+                tone: "amber",
+            },
+            canReadOffers && {
+                label: "Offene Angebote",
+                value: openOffers.length,
+                text: "Warten auf Entscheidung",
+                href: "/offers",
+                tone: "indigo",
+            },
+        ].filter(Boolean) as Array<{ label: string; value: number; text: string; href: string; tone: string }>;
+    }, [canReadInvoices, canReadOffers, draftInvoices.length, openInvoices, openOffers.length]);
+
+    const greeting = (() => {
+        const hour = new Date().getHours();
+        if (hour < 11) return "Guten Morgen";
+        if (hour < 17) return "Guten Tag";
+        return "Guten Abend";
+    })();
+
+    const isLoading = invoicesLoading || offersLoading || ordersLoading;
+
+    const kpis = [
+        canReadInvoices && {
+            label: "Umsatz",
+            value: currency(summary?.totalRevenue ?? 0),
+            sub: `Bezahlt ${currentYear}`,
+            icon: TrendingUp,
+            className: "bg-indigo-50 text-indigo-600 border-indigo-100",
+            href: "/reports",
+        },
+        canReadInvoices && {
+            label: "Offene Rechnungen",
+            value: currency(summary?.openAmount ?? 0),
+            sub: `${summary?.openInvoicesCount ?? openInvoices.length} offen/fällig`,
+            icon: AlertCircle,
+            className: "bg-rose-50 text-rose-600 border-rose-100",
+            href: "/invoices",
+        },
+        canReadOffers && {
+            label: "Offene Angebote",
+            value: currency(summary?.openOffersAmount ?? 0),
+            sub: `${summary?.openOffersCount ?? openOffers.length} gesendet`,
+            icon: FileSignature,
+            className: "bg-emerald-50 text-emerald-600 border-emerald-100",
+            href: "/offers",
+        },
+        canReadOrders && {
+            label: "Aktive Aufträge",
+            value: String(activeOrders.length),
+            sub: "Bestätigt oder in Arbeit",
+            icon: FileCheck,
+            className: "bg-amber-50 text-amber-600 border-amber-100",
+            href: "/orders",
+        },
+    ].filter(Boolean) as Array<{
+        label: string;
+        value: string;
+        sub: string;
+        icon: React.ElementType;
+        className: string;
+        href: string;
+    }>;
 
     return (
-        <div className="p-8 lg:p-12 space-y-12 animate-in fade-in duration-1000">
-            {/* Header section - Premium & Clean */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
-                <div className="space-y-1">
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tight font-outfit">Dashboard</h2>
-                    <p className="text-slate-500 font-bold flex items-center gap-2">
-                        Willkommen zurück, <span className="text-indigo-600">{accountSettings?.name || "Benutzer"}</span>
-                        <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
-                        Status für {currentYear}
-                    </p>
+        <div className="p-4 sm:p-6 lg:p-8 2xl:p-12 space-y-8 lg:space-y-10 animate-in fade-in duration-500">
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+                <div className="space-y-3">
+                    <div className="inline-flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-indigo-600">
+                        <ReceiptText className="h-4 w-4" />
+                        Übersicht
+                    </div>
+                    <div>
+                        <h1 className="text-5xl font-black tracking-tight text-slate-900 font-outfit">
+                            {greeting}, {accountSettings?.name || "Benutzer"}
+                        </h1>
+                        <p className="mt-2 text-lg font-semibold text-slate-500">
+                            Aktueller Stand für {companySettings?.companyName || "Ihr Unternehmen"} im Jahr {currentYear}.
+                        </p>
+                    </div>
                 </div>
-                <div className="flex items-center gap-4">
-                    {showOffersBtn && (
+
+                <div className="flex flex-wrap gap-3">
+                    {canWriteOffers && (
                         <Link
                             href="/offers/new"
-                            className="h-14 px-8 bg-white border-2 border-slate-100 text-slate-700 rounded-[1.25rem] flex items-center gap-3 font-black text-xs uppercase tracking-[0.15em] shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-all active:scale-95"
+                            className="inline-flex h-13 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600"
                         >
-                            <FileSignature className="h-5 w-5" /> Angebot
+                            <FileSignature className="h-4 w-4" />
+                            Neues Angebot
                         </Link>
                     )}
-                    {showInvoicesBtn && (
+                    {canWriteInvoices && (
                         <Link
                             href="/invoices/new"
-                            className="h-14 px-8 bg-primary-gradient text-white rounded-[1.25rem] flex items-center gap-3 font-black text-xs uppercase tracking-[0.15em] shadow-2xl shadow-indigo-500/30 hover:scale-[1.05] active:scale-95 transition-all"
+                            className="inline-flex h-13 items-center gap-2 rounded-2xl bg-primary-gradient px-5 py-3 text-sm font-black text-white shadow-xl shadow-indigo-500/20 transition hover:scale-[1.02] active:scale-95"
                         >
-                            <Plus className="h-5 w-5 text-white" /> Rechnung
+                            <Plus className="h-4 w-4" />
+                            Neue Rechnung
                         </Link>
                     )}
                 </div>
             </div>
 
-            {/* Stats Grid - Premium Glass Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
-                {[
-                    { label: "Gesamtumsatz", value: stats.totalRevenue, sub: "Bezahlt dieses Jahr", color: "indigo", icon: TrendingUp, href: "/reports", show: showInvoicesStat },
-                    { label: "Offener Betrag", value: stats.openAmount, sub: "Gesamte Außenstände", color: "rose", icon: AlertCircle, dark: true, show: showInvoicesStat },
-                    { label: "Angebote", value: stats.openOffersAmount, sub: `${stats.openOffersCount} offene Angebote`, color: "emerald", icon: FileSignature, href: "/offers", show: showOffersStat },
-                ].filter(s => s.show).map((stat, i) => {
-                    const CardWrapper = stat.href ? Link : 'div';
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
+                {kpis.map((kpi) => {
+                    const Icon = kpi.icon;
                     return (
-                        <CardWrapper
-                            key={i}
-                            href={stat.href || "#"}
-                            className={cn(
-                                "p-8 rounded-[3rem] border transition-all duration-500 group relative overflow-hidden block",
-                                stat.dark ? "bg-slate-900 border-slate-800 text-white shadow-2xl shadow-slate-900/20" : "bg-white border-slate-100 hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-500/5 shadow-sm",
-                                stat.href && "hover:-translate-y-1 cursor-pointer"
-                            )}
+                        <Link
+                            key={kpi.label}
+                            href={kpi.href}
+                            className="group rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-100 hover:shadow-xl hover:shadow-slate-200/70"
                         >
-                            <div className="flex justify-between items-start mb-6 relative z-10">
-                                <div className={cn(
-                                    "h-14 w-14 rounded-2xl flex items-center justify-center shadow-sm transition-transform duration-500 group-hover:scale-110",
-                                    stat.dark ? "bg-white/10 text-white" : `bg-${stat.color}-50 text-${stat.color}-600`
-                                )}>
-                                    <stat.icon className="h-7 w-7" />
+                            <div className="flex items-start justify-between gap-4">
+                                <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl border", kpi.className)}>
+                                    <Icon className="h-6 w-6" />
                                 </div>
-                                <div className={cn("text-[10px] font-black uppercase tracking-[0.2em]", stat.dark ? "text-white/30" : "text-slate-400")}>
-                                    {stat.label}
-                                    {stat.href && <ArrowUpRight className="h-3 w-3 ml-1 inline-block opacity-0 group-hover:opacity-100 transition-all" />}
-                                </div>
+                                <ArrowUpRight className="h-5 w-5 text-slate-300 transition group-hover:text-indigo-500" />
                             </div>
-
-                            <div className="relative z-10">
-                                <h4 className="text-3xl font-black tracking-tight mb-2">
-                                    {stat.value.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                                </h4>
-                                <p className={cn("text-[11px] font-bold", stat.dark ? "text-white/40" : "text-slate-400")}>{stat.sub}</p>
+                            <div className="mt-6">
+                                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">{kpi.label}</p>
+                                <p className="mt-2 text-3xl font-black tracking-tight text-slate-900">{kpi.value}</p>
+                                <p className="mt-1 text-sm font-bold text-slate-500">{kpi.sub}</p>
                             </div>
-                        </CardWrapper>
+                        </Link>
                     );
                 })}
             </div>
 
-            {/* Main Content Area - Dynamic Split */}
-            <div className="grid grid-cols-1 2xl:grid-cols-12 gap-12 items-start">
-                {/* Recent Invoices */}
-                {showInvoicesStat && (
-                    <div className={cn("space-y-8", showCalendarWidget ? "2xl:col-span-8" : "2xl:col-span-12")}>
-                        <div className="flex items-center justify-between px-4">
-                            <div className="flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500">
-                                    <FileText className="h-5 w-5" />
-                                </div>
-                                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Letzte Rechnungen</h3>
+            <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1fr)_420px]">
+                <div className="space-y-8">
+                    <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-900">Aktuelle Dokumente</h2>
+                                <p className="text-sm font-semibold text-slate-500">Die neuesten Rechnungen, Angebote und Aufträge.</p>
                             </div>
-                            <div className="flex items-center gap-6">
-                                <Link href="/invoices" className="text-xs font-black text-indigo-600 hover:text-indigo-800 tracking-widest uppercase flex items-center gap-2">
-                                    Alle ansehen <ArrowUpRight className="h-4 w-4" />
-                                </Link>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-x-auto">
-                            <table className="w-full text-left min-w-[600px]">
-                                <thead>
-                                    <tr className="bg-slate-50/50">
-                                        <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Rechnung</th>
-                                        <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Kunde</th>
-                                        <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
-                                        <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Betrag</th>
-                                        <th className="px-10 py-6 w-24"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {isLoading ? (
-                                        <tr><td colSpan={5} className="py-24 text-center font-black text-slate-300 uppercase tracking-[0.2em] text-[11px]">Ladevorgang...</td></tr>
-                                    ) : sortedInvoices.length === 0 ? (
-                                        <tr><td colSpan={5} className="py-24 text-center font-black text-slate-300 uppercase tracking-[0.2em] text-[11px]">Keine Rechnungen gefunden</td></tr>
-                                    ) : (
-                                        sortedInvoices.slice(-6).map((invoice) => (
-                                            <tr key={invoice.id} className="group hover:bg-slate-50/50 transition-all duration-300 cursor-pointer" onClick={() => setSelectedInvoice(invoice)}>
-                                                <td className="px-10 py-8">
-                                                    <p className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors">#{invoice.invoiceNumber}</p>
-                                                    <p className="text-xs text-slate-400 font-bold mt-1">Vom {new Date(invoice.issueDate).toLocaleDateString('de-DE')}</p>
-                                                </td>
-                                                <td className="px-10 py-8 text-base font-bold text-slate-700">{invoice.customerName}</td>
-                                                <td className="px-10 py-8">
-                                                    <span className={cn(
-                                                        "px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
-                                                        invoice.status === 'paid' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-                                                        invoice.status === 'overdue' ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-amber-50 text-amber-600 border-amber-100"
-                                                    )}>
-                                                        {invoice.status === 'paid' ? 'Bezahlt' : invoice.status === 'overdue' ? 'Fällig' : 'Offen'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-10 py-8 text-right">
-                                                    <p className="text-lg font-black text-slate-900">{invoice.totalAmount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
-                                                </td>
-                                                <td className="px-10 py-8 text-right">
-                                                    <div className="h-12 w-12 rounded-2xl bg-slate-50 text-slate-300 flex items-center justify-center group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
-                                                        <Eye className="h-6 w-6" />
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* Tagesplan */}
-                {showCalendarWidget && (
-                    <div className={cn("space-y-8", showInvoicesStat ? "2xl:col-span-4" : "2xl:col-span-12")}>
-                        <div className="flex items-center justify-between px-4">
-                            <div className="flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500">
-                                    <CalendarIcon className="h-5 w-5" />
-                                </div>
-                                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Tagesplan</h3>
-                            </div>
-                            <Link href="/calendar" className="text-xs font-black text-indigo-600 hover:text-indigo-800 tracking-widest uppercase flex items-center gap-2">
-                                Kalender <ArrowUpRight className="h-4 w-4" />
+                            <Link href="/invoices" className="text-xs font-black uppercase tracking-[0.16em] text-indigo-600">
+                                Archiv öffnen
                             </Link>
                         </div>
-                        <CalendarWidget isCompact={true} />
+
+                        <div className="mt-6 overflow-hidden rounded-3xl border border-slate-100">
+                            {isLoading ? (
+                                <div className="py-20 text-center text-sm font-black uppercase tracking-[0.18em] text-slate-300">
+                                    Daten werden geladen...
+                                </div>
+                            ) : recentDocuments.length === 0 ? (
+                                <div className="py-20 text-center text-sm font-black uppercase tracking-[0.18em] text-slate-300">
+                                    Noch keine Dokumente vorhanden
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-slate-100">
+                                    {recentDocuments.map((doc) => {
+                                        const Icon = doc.icon;
+                                        const content = (
+                                            <div className="flex items-center gap-4 px-5 py-4 transition hover:bg-slate-50">
+                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-indigo-600">
+                                                    <Icon className="h-5 w-5" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <p className="font-black text-slate-900">{doc.type} #{doc.number}</p>
+                                                        <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider", statusClass(doc.status))}>
+                                                            {statusLabel[doc.status] || doc.status}
+                                                        </span>
+                                                    </div>
+                                                    <p className="truncate text-sm font-semibold text-slate-500">{doc.customerName}</p>
+                                                </div>
+                                                <div className="hidden text-right sm:block">
+                                                    <p className="font-black text-slate-900">{currency(doc.amount)}</p>
+                                                    <p className="text-xs font-bold text-slate-400">{new Date(doc.date).toLocaleDateString("de-DE")}</p>
+                                                </div>
+                                                <ArrowUpRight className="h-4 w-4 text-slate-300" />
+                                            </div>
+                                        );
+
+                                        if ("onClick" in doc && doc.onClick) {
+                                            return (
+                                                <button key={`${doc.type}-${doc.id}`} type="button" onClick={doc.onClick} className="w-full text-left">
+                                                    {content}
+                                                </button>
+                                            );
+                                        }
+
+                                        return (
+                                            <Link key={`${doc.type}-${doc.id}`} href={"href" in doc ? doc.href : "/dashboard"}>
+                                                {content}
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                )}
+
+                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+                        {urgentItems.map((item) => (
+                            <Link
+                                key={item.label}
+                                href={item.href}
+                                className="rounded-[1.5rem] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-indigo-100 hover:shadow-lg"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">{item.label}</p>
+                                        <p className="mt-3 text-4xl font-black text-slate-900">{item.value}</p>
+                                        <p className="mt-1 text-sm font-bold text-slate-500">{item.text}</p>
+                                    </div>
+                                    {item.tone === "rose" ? (
+                                        <AlertCircle className="h-6 w-6 text-rose-500" />
+                                    ) : item.tone === "emerald" ? (
+                                        <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                                    ) : (
+                                        <Clock className="h-6 w-6 text-amber-500" />
+                                    )}
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+
+                <aside className="space-y-8">
+                    <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
+                        <div className="mb-5 flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                                <Users className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-slate-900">Schnellzugriff</h2>
+                                <p className="text-sm font-semibold text-slate-500">Häufige Bereiche</p>
+                            </div>
+                        </div>
+                        <div className="grid gap-3">
+                            {[
+                                { label: "Kunden", href: "/customers", icon: Users },
+                                { label: "Projekte", href: "/projects", icon: FileCheck },
+                                { label: "Zeiten erfassen", href: "/time-tracking", icon: Clock },
+                                { label: "Auswertungen", href: "/reports", icon: Euro },
+                            ].map((link) => {
+                                const Icon = link.icon;
+                                return (
+                                    <Link
+                                        key={link.href}
+                                        href={link.href}
+                                        className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 font-black text-slate-700 transition hover:bg-white hover:text-indigo-600"
+                                    >
+                                        <span className="flex items-center gap-3">
+                                            <Icon className="h-4 w-4" />
+                                            {link.label}
+                                        </span>
+                                        <ArrowUpRight className="h-4 w-4 text-slate-300" />
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {canUseCalendar && (
+                        <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
+                            <div className="mb-5 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                                        <CalendarIcon className="h-5 w-5" />
+                                    </div>
+                                    <h2 className="text-xl font-black text-slate-900">Tagesplan</h2>
+                                </div>
+                                <Link href="/calendar" className="text-xs font-black uppercase tracking-wider text-indigo-600">
+                                    Kalender
+                                </Link>
+                            </div>
+                            <CalendarWidget isCompact />
+                        </div>
+                    )}
+                </aside>
             </div>
 
             <InvoicePreviewModal
                 isOpen={!!selectedInvoice}
                 onClose={() => setSelectedInvoice(null)}
                 invoice={selectedInvoice}
-                customer={customers.find(c => c.id === selectedInvoice?.customerId)}
+                customer={customers.find((customer) => customer.id === selectedInvoice?.customerId)}
                 companySettings={companySettings}
             />
         </div>

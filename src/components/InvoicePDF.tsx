@@ -24,7 +24,7 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
             width: '100%',
             minHeight: '296mm',
             flexShrink: 0,
-            padding: '40px 75px 30px 75px',
+            padding: '40px 75px 115px 75px',
             backgroundColor: 'white',
             color: '#000',
             fontFamily: 'Arial, Helvetica, sans-serif',
@@ -227,7 +227,7 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
             {/* Summary and Reverse Charge Notice */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
                 <div style={{ width: '60%', fontWeight: 'bold', paddingTop: '10px', color: '#000' }}>
-                    {(invoice.isReverseCharge || (customer?.type === 'business' && customer?.reverseChargeEnabled)) && (
+                    {invoice.isReverseCharge === true && (
                         <div style={{ fontSize: '8pt' }}>
                             Übergang der Steuerschuld für Bauleistungen gem. §19 Abs. 1a UStG
                         </div>
@@ -257,14 +257,14 @@ export const InvoicePDF = forwardRef<HTMLDivElement, InvoicePDFProps>(({ invoice
             </div>
 
             {/* Signature Area */}
-            <div style={{ fontSize: '10pt', marginBottom: 'auto' }}>
+            <div style={{ fontSize: '10pt', marginBottom: '30px' }}>
                 Mit freundlichen Grüßen<br /><br />
                 <div style={{ fontWeight: 'bold' }}>{companySettings?.ceoFirstName} {companySettings?.ceoLastName}</div>
                 <div>Geschäftsführer</div>
             </div>
 
             {/* Footer */}
-            <div style={{ paddingTop: '10px' }}>
+            <div style={{ position: 'absolute', left: '75px', right: '75px', bottom: '30px', paddingTop: '10px' }}>
                 <div style={{ fontWeight: 'bold', fontSize: '9pt', textAlign: 'center', marginBottom: '15px' }}>Zahlungskondition: {invoice.paymentTerms || 'sofort nach Rechnungserhalt'}</div>
                 <div style={{ borderTop: '1px solid #000', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', fontSize: '8pt', color: '#444' }}>
                     <div style={{ width: '30%' }}>

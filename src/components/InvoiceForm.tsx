@@ -278,6 +278,9 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     initialData?.performancePeriod?.to || "",
   );
   const [customerId, setCustomerId] = useState(initialData?.customerId || "");
+  const [reverseChargeOverride, setReverseChargeOverride] = useState<boolean | null>(
+    typeof initialData?.isReverseCharge === "boolean" ? initialData.isReverseCharge : null,
+  );
   const [projectId, setProjectId] = useState(initialData?.projectId || "");
   const [billingType, setBillingType] = useState<
     "standard" | "partial" | "final"
@@ -492,6 +495,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
       if (!raw) return;
       const d = JSON.parse(raw);
       if (d.customerId) setCustomerId(d.customerId);
+      if (typeof d.isReverseCharge === "boolean") setReverseChargeOverride(d.isReverseCharge);
       if (d.constructionProject) setConstructionProject(d.constructionProject);
       if (d.subjectExtra) setSubjectExtra(d.subjectExtra);
       if (d.projectId) setProjectId(d.projectId);
@@ -520,10 +524,14 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     return items.reduce((sum, item) => sum + item.totalPrice, 0);
   }, [items]);
 
-  const isReverseCharge = useMemo(() => {
-    const customer = customers.find((c) => c.id === customerId);
-    return customer?.type === "business" && !!customer?.reverseChargeEnabled;
+  const selectedCustomer = useMemo(() => {
+    return customers.find((c) => c.id === customerId);
   }, [customerId, customers]);
+
+  const isReverseCharge = useMemo(() => {
+    if (selectedCustomer?.type !== "business") return false;
+    return reverseChargeOverride ?? !!selectedCustomer?.reverseChargeEnabled;
+  }, [selectedCustomer, reverseChargeOverride]);
 
   const taxAmount = useMemo(() => {
     if (isReverseCharge) return 0;
@@ -663,15 +671,27 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
   const handleSave = async (status: InvoiceStatus) => {
     setError(null);
 
-    if (!customerId) {
-      setError("Bitte wählen Sie einen Kunden aus.");
-      return;
+    const validationErrors: string[] = [];
+    if (!customerId) validationErrors.push("Kunde auswählen");
+    if (!invoiceNumber.trim()) validationErrors.push("Rechnungsnummer eintragen");
+    if (!issueDate) validationErrors.push("Rechnungsdatum wählen");
+    if (!paymentTerms.trim()) validationErrors.push("Zahlungskonditionen auswählen");
+    if (!processor.trim()) validationErrors.push("Bearbeiter eintragen");
+    if (subtotal <= 0) {
+      validationErrors.push("Mindestens eine Position mit Betrag größer als 0 EUR eintragen");
     }
 
-    if (subtotal <= 0) {
-      setError(
-        "Die Rechnung muss mindestens eine Position mit einem Betrag größer als 0€ enthalten.",
-      );
+    const hasEmptyPricedPosition = items.some((item) => {
+      const type = item.itemType ?? ((item as any).isTitleOnly ? "title" : "standard");
+      if (type === "title" || type === "info" || item.totalPrice <= 0) return false;
+      return !String(item.title || item.description || "").trim();
+    });
+    if (hasEmptyPricedPosition) {
+      validationErrors.push("Positionsbeschreibung bei allen berechneten Positionen ausfüllen");
+    }
+
+    if (validationErrors.length > 0) {
+      setError(`Bitte prüfe folgende Pflichtfelder:\n- ${validationErrors.join("\n- ")}`);
       return;
     }
 
@@ -760,7 +780,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
         }
 
         setIsGeneratingPDF(false);
-        router.push("/dashboard");
+        showToast("Rechnung wurde finalisiert und als PDF gespeichert.", "success");
       } catch (e) {
         console.error("PDF Upload Failed", e);
         setIsGeneratingPDF(false);
@@ -779,14 +799,15 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
       });
     }
 
-    if (status === "draft") {
-      router.push("/dashboard");
-    }
+    showToast("Rechnung wurde als Entwurf gespeichert.", "success");
   };
 
   const handleSaveNewCustomer = (newCustomer: Customer) => {
     addCustomer(newCustomer);
     setCustomerId(newCustomer.id);
+    setReverseChargeOverride(
+      newCustomer.type === "business" ? !!newCustomer.reverseChargeEnabled : null,
+    );
     setIsCustomerModalOpen(false);
   };
 
@@ -896,9 +917,15 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     }),
   );
 
+  const positionsDropElementRef = useRef<HTMLDivElement | null>(null);
   const { setNodeRef: setPositionsDropRef, isOver: isOverPositions } = useDroppable({
     id: "positions-drop-zone",
   });
+
+  const setPositionsDropNode = (node: HTMLDivElement | null) => {
+    positionsDropElementRef.current = node;
+    setPositionsDropRef(node);
+  };
 
   const handleDragStart = (event: any) => {
     setActiveDragId(event.active.id);
@@ -914,6 +941,20 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
       const isOnDropZone = over.id === "positions-drop-zone";
       const isOnItem = items.some((i) => i.id === over.id);
       if (!isOnDropZone && !isOnItem) return;
+
+      const dropZoneRect = positionsDropElementRef.current?.getBoundingClientRect();
+      const translatedRect = active.rect.current.translated;
+      if (!dropZoneRect || !translatedRect) return;
+
+      const activeCenterX = translatedRect.left + translatedRect.width / 2;
+      const activeCenterY = translatedRect.top + translatedRect.height / 2;
+      const isInsidePositions =
+        activeCenterX >= dropZoneRect.left &&
+        activeCenterX <= dropZoneRect.right &&
+        activeCenterY >= dropZoneRect.top &&
+        activeCenterY <= dropZoneRect.bottom;
+
+      if (!isInsidePositions) return;
 
       const serviceId = active.id.toString().replace("preset-", "");
       const service = services.find((s) => s.id === serviceId);
@@ -979,10 +1020,125 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     );
   }
 
+  const renderPresetLibraryPanel = (className?: string) => (
+    <div
+      className={cn(
+        "bg-white border border-slate-100 rounded-[1.75rem] shadow-xl shadow-slate-200/60 flex flex-col overflow-hidden p-5 min-h-[520px]",
+        className,
+      )}
+    >
+      <div className="flex justify-between items-center pb-4 border-b border-slate-200/60">
+        <div>
+          <h4 className="font-black text-slate-800 text-lg flex items-center gap-1.5 font-outfit">
+            <Bookmark className="h-5 w-5 text-indigo-600" />
+            Vorlagen-Bibliothek
+          </h4>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+            Ziehen zum Einfügen
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsPresetDrawerOpen(false)}
+          className="text-xs text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl font-bold transition-all"
+        >
+          Schließen
+        </button>
+      </div>
+
+      <div className="space-y-4 pt-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Vorlagen durchsuchen..."
+            value={presetSearchTerm}
+            onChange={(e) => setPresetSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400 font-medium"
+          />
+        </div>
+
+        <div className="flex p-1 bg-slate-200/60 rounded-xl text-xs">
+          <button
+            type="button"
+            onClick={() => setActivePresetTab("services")}
+            className={cn(
+              "flex-1 py-2 font-bold rounded-lg transition-all",
+              activePresetTab === "services"
+                ? "bg-white text-indigo-600 shadow-sm"
+                : "text-slate-500 hover:text-slate-700",
+            )}
+          >
+            Leistungen
+          </button>
+          <button
+            type="button"
+            onClick={() => setActivePresetTab("positions")}
+            className={cn(
+              "flex-1 py-2 font-bold rounded-lg transition-all",
+              activePresetTab === "positions"
+                ? "bg-white text-indigo-600 shadow-sm"
+                : "text-slate-500 hover:text-slate-700",
+            )}
+          >
+            Positions-Vorlagen
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto pr-1 mt-4 space-y-3 min-h-0 custom-scrollbar">
+        {Object.keys(groupedServices).length === 0 ? (
+          <div className="py-12 text-center text-slate-400 text-sm font-medium">
+            Keine Vorlagen gefunden
+          </div>
+        ) : (
+          Object.keys(groupedServices)
+            .sort()
+            .map((folderName) => {
+              const isExpanded = expandedPresetFolders[folderName] !== false;
+              const folderServices = groupedServices[folderName];
+
+              return (
+                <div key={folderName} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => togglePresetFolder(folderName)}
+                    className="w-full flex items-center justify-between text-xs font-bold text-slate-550 hover:text-slate-700 py-1"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                      {folderName} ({folderServices.length})
+                    </span>
+                    {isExpanded ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+
+                  {isExpanded && (
+                    <div className="space-y-2 pl-2">
+                      {folderServices.map((service) => (
+                        <DraggablePresetItem
+                          key={service.id}
+                          service={service}
+                          onAdd={() => addServiceAsItem(service)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className={cn(
       "mx-auto space-y-10 transition-all duration-300",
-      "max-w-6xl"
+      "w-full max-w-none px-4 lg:px-6 2xl:px-10"
     )}>
       {/* Header */}
       <div className="flex justify-between items-center">
@@ -1011,20 +1167,24 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
         modifiers={activeDragId?.toString().startsWith('preset-') ? [] : [restrictToVerticalAxis]}
       >
         <div className="space-y-8 w-full">
-          {/* Left Column: Form Cards */}
+          {/* Form Cards */}
           <div className="space-y-8 w-full min-w-0">
             {/* Card 1: Kopfdaten */}
             <div className={cn(
-              "glass-card p-6 xl:p-12 space-y-8 xl:space-y-12 transition-all duration-300",
-              isPresetDrawerOpen ? "w-full max-w-6xl" : "w-full"
+              "glass-card p-5 xl:p-7 2xl:p-8 transition-all duration-300",
+              "w-full"
             )}>
+            <div className="grid grid-cols-1 2xl:grid-cols-[620px_minmax(0,1fr)] gap-6 2xl:gap-8 items-start">
+              <div className="space-y-6 xl:space-y-7 xl:order-2">
             {/* Section: Basic Data */}
-        <div className="space-y-6 xl:space-y-8">
+        <div className="space-y-5 xl:space-y-6">
           <h2 className={sectionTitleClasses}>
             <div className="h-8 xl:h-10 w-8 xl:w-10 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
               <Calculator className="h-4 xl:h-5 w-4 xl:w-5 text-indigo-600" />
             </div>
-            Rechnung erstellen
+            <span className="flex flex-col">
+              <span>Rechnung erstellen</span>
+            </span>
           </h2>
 
           <div className="grid grid-cols-2 gap-6 xl:gap-8">
@@ -1109,7 +1269,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
 
           <div className="grid grid-cols-2 gap-6 xl:gap-8">
             <div>
-              <label className={labelClasses}>Rechnungsnummer</label>
+              <label className={labelClasses}>Rechnungsnummer <span className="text-rose-500">*</span></label>
               <input
                 type="text"
                 value={invoiceNumber}
@@ -1142,7 +1302,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
               />
             </div>
             <div>
-              <label className={labelClasses}>Rechnungsdatum</label>
+              <label className={labelClasses}>Rechnungsdatum <span className="text-rose-500">*</span></label>
               <DatePicker
                 value={issueDate}
                 onChange={setIssueDate}
@@ -1152,7 +1312,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
           </div>
 
           <div>
-            <label className={labelClasses}>Zahlungskonditionen</label>
+            <label className={labelClasses}>Zahlungskonditionen <span className="text-rose-500">*</span></label>
             <select
               value={
                 settings.paymentTerms.find((t) => t.text === paymentTerms)
@@ -1183,11 +1343,11 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
 
         <hr className="border-slate-100" />
 
-        <div className="space-y-6 xl:space-y-8">
+        <div className="space-y-5 xl:space-y-6">
           <h3 className="text-xl font-bold text-slate-800 tracking-tight">
             Leistungszeitraum
           </h3>
-          <div className="grid grid-cols-2 gap-6 xl:gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 xl:gap-6">
             <div>
               <label className={labelClasses}>Von</label>
               <DatePicker
@@ -1204,16 +1364,33 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                 placeholder="Ende wählen"
               />
             </div>
+            <div>
+              <label className={labelClasses}>Bearbeiter <span className="text-rose-500">*</span></label>
+              <input
+                type="text"
+                value={processor}
+                onChange={(e) => setProcessor(e.target.value)}
+                className={inputClasses}
+              />
+            </div>
           </div>
         </div>
 
         <hr className="border-slate-100" />
+              </div>
 
         {/* Section: Customer Data */}
-        <div className="space-y-8">
-          <h3 className="text-xl font-bold text-slate-800 tracking-tight">
-            Kundendaten
-          </h3>
+        <div className="space-y-5 rounded-[1.5rem] border border-slate-100 bg-slate-50/70 p-5 xl:p-6 xl:order-1">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-indigo-600">
+              <User className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-800 tracking-tight">
+                Kundendaten
+              </h3>
+            </div>
+          </div>
           <div className="space-y-4">
             <label className={labelClasses}>
               Kunde auswählen <span className="text-rose-500">*</span>
@@ -1221,35 +1398,118 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
             <CustomerSearchSelect
               customers={customers}
               selectedId={customerId}
-              onSelect={setCustomerId}
+              onSelect={(id) => {
+                setCustomerId(id);
+                setReverseChargeOverride(null);
+              }}
               onAddNew={() => setIsCustomerModalOpen(true)}
             />
           </div>
 
-          <div>
-            <label className={labelClasses}>Bearbeiter</label>
-            <input
-              type="text"
-              value={processor}
-              onChange={(e) => setProcessor(e.target.value)}
-              className={inputClasses}
-            />
-          </div>
+          {selectedCustomer ? (
+            <div className="space-y-4 rounded-2xl bg-white border border-slate-100 p-5 shadow-sm">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[0.65rem] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
+                    {selectedCustomer.type === "business" ? "Firma" : "Privat"}
+                  </span>
+                </div>
+                <p className="mt-3 text-2xl font-black text-slate-900 leading-tight">
+                  {selectedCustomer.name}
+                </p>
+              </div>
+
+              {selectedCustomer.type === "business" && (
+                <button
+                  type="button"
+                  onClick={() => setReverseChargeOverride(!isReverseCharge)}
+                  className={cn(
+                    "w-full flex items-center justify-between gap-4 rounded-2xl border px-4 py-3.5 text-left transition-all",
+                    isReverseCharge
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-slate-100 bg-slate-50 text-slate-500"
+                  )}
+                >
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wider">
+                      Reverse Charge
+                    </p>
+                    <p className="text-sm font-bold">
+                      {isReverseCharge ? "Aktiv" : "Inaktiv"}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "relative h-6 w-11 rounded-full transition-colors",
+                      isReverseCharge ? "bg-emerald-500" : "bg-slate-300"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all",
+                        isReverseCharge ? "left-6" : "left-1"
+                      )}
+                    />
+                  </span>
+                </button>
+              )}
+
+              <div className="grid gap-3 text-sm font-semibold text-slate-600">
+                <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4">
+                  <p className="text-[0.65rem] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    Anschrift
+                  </p>
+                  <p>{selectedCustomer.address.street}</p>
+                  <p>
+                    {selectedCustomer.address.zip} {selectedCustomer.address.city}
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 min-w-0">
+                    <p className="text-[0.65rem] font-black uppercase tracking-wider text-slate-400 mb-1">
+                      E-Mail
+                    </p>
+                    <p className="truncate">{selectedCustomer.email || "-"}</p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 min-w-0">
+                    <p className="text-[0.65rem] font-black uppercase tracking-wider text-slate-400 mb-1">
+                      Telefon
+                    </p>
+                    <p className="truncate">{selectedCustomer.phone || "-"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-5 text-sm font-bold text-slate-400">
+              Wählen Sie einen Kunden aus, damit die Rechnungsanschrift hier angezeigt wird.
+            </div>
+          )}
         </div>
           </div>
 
+          <div
+            className={cn(
+              "grid gap-6 items-start transition-all duration-300",
+              isPresetDrawerOpen
+                ? "2xl:grid-cols-[minmax(0,1fr)_420px]"
+                : "grid-cols-1",
+            )}
+          >
           {/* Card 2: Positionen */}
           <div className={cn(
-            "glass-card p-6 xl:p-12 space-y-8 xl:space-y-12 transition-all duration-300",
-            isPresetDrawerOpen ? "w-full max-w-6xl" : "w-full"
+            "glass-card p-5 xl:p-7 2xl:p-8 space-y-8 xl:space-y-10 transition-all duration-300",
+            "w-full min-w-0"
           )}>
 
         {/* Section: Items */}
         <div className="space-y-8">
           <div className="flex justify-between items-center">
-            <h3 className="text-xl font-bold text-slate-800 tracking-tight">
-              Rechnungspositionen
-            </h3>
+            <div>
+              <h3 className="text-xl font-bold text-slate-800 tracking-tight">
+                Rechnungspositionen
+              </h3>
+            </div>
             <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl p-1">
               <button
                 type="button"
@@ -1299,7 +1559,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
           </div>
 
           <div
-            ref={setPositionsDropRef}
+            ref={setPositionsDropNode}
             className={cn(
               "space-y-2 rounded-2xl transition-all min-h-[80px]",
               isOverPositions && activeDragId?.toString().startsWith("preset-") && "ring-2 ring-indigo-300 bg-indigo-50/40"
@@ -1519,9 +1779,13 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
         </div>
       </div>
 
+      {isPresetDrawerOpen &&
+        renderPresetLibraryPanel("hidden 2xl:flex sticky top-6 max-h-[calc(100vh-3rem)]")}
+          </div>
+
       {/* Card 3: Totals & Footer */}
       <div className={cn(
-        "glass-card p-6 xl:p-12 space-y-8 xl:space-y-12 transition-all duration-300",
+        "glass-card p-5 sm:p-6 2xl:p-12 space-y-8 2xl:space-y-12 transition-all duration-300",
         "w-full"
       )}>
 
@@ -1567,7 +1831,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
           {/* Footer Actions */}
           <div className="pt-10 flex flex-col items-end gap-6">
             {error && (
-              <div className="w-full xl:w-auto bg-rose-50 border border-rose-100 text-rose-600 px-6 py-4 rounded-2xl font-bold flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+              <div className="w-full xl:w-auto bg-rose-50 border border-rose-100 text-rose-600 px-6 py-4 rounded-2xl font-bold flex items-start gap-3 animate-in fade-in slide-in-from-top-2 whitespace-pre-line">
                 <CheckCircle2 className="h-5 w-5 rotate-180" />
                 {error}
               </div>
@@ -1600,7 +1864,8 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
           </div>
         </div>
       </div>
-      {isPresetDrawerOpen && (
+      </div>
+      {false && isPresetDrawerOpen && (
         <div className="fixed right-0 top-16 h-[calc(100vh-4rem)] w-[420px] bg-white border-l border-slate-200 shadow-2xl flex flex-col overflow-hidden z-[110] p-6">
           {/* Header */}
           <div className="flex justify-between items-center pb-4 border-b border-slate-200/60">

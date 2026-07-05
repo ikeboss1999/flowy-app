@@ -1,279 +1,333 @@
 "use client";
 
-import {
-  ArrowRight,
-  Settings,
-  LayoutDashboard,
-  Calendar,
-  Clock,
-  Users,
-  FileText,
-  Briefcase,
-  LifeBuoy
-} from "lucide-react";
+import React, { useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  ArrowUpRight,
+  BarChart3,
+  Briefcase,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  FileSignature,
+  FileText,
+  FolderOpen,
+  Plus,
+  ReceiptText,
+  Settings,
+  Users,
+} from "lucide-react";
 import { RealtimeClock } from "@/components/RealtimeClock";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAccountSettings } from "@/hooks/useAccountSettings";
 import { useAuth } from "@/context/AuthContext";
-import { Modal } from "@/components/ui/Modal";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useInvoices } from "@/hooks/useInvoices";
+import { useOffers } from "@/hooks/useOffers";
+import { useProjects } from "@/hooks/useProjects";
+import { useEmployees } from "@/hooks/useEmployees";
+import { cn } from "@/lib/utils";
 
-// Re-using cn helper for icons
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
-}
+const formatDate = (date: Date) =>
+  date.toLocaleDateString("de-DE", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
 
 export default function Home() {
-  const { data: companySettings, isLoading: companyLoading } = useCompanySettings();
-  const { data: accountSettings, isLoading: accountLoading } = useAccountSettings();
-  const { profile } = useAuth();
-  const [selectedFeature, setSelectedFeature] = useState<any>(null);
   const router = useRouter();
+  const { profile } = useAuth();
+  const { data: companySettings } = useCompanySettings();
+  const { data: accountSettings } = useAccountSettings();
+  const { invoices } = useInvoices();
+  const { offers } = useOffers();
+  const { projects } = useProjects();
+  const { employees } = useEmployees();
 
-  useEffect(() => {
-    if (profile?.role === 'developer') {
+  React.useEffect(() => {
+    if (profile?.role === "developer") {
       router.push("/admin");
     }
   }, [profile, router]);
 
   const today = new Date();
-  const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' };
-  const formattedDate = today.toLocaleDateString('de-DE', options);
-
-  // Fallback values if data is loading or empty
-  const companyName = companySettings?.companyName || "FlowY Professional";
+  const currentYear = today.getFullYear();
+  const companyName = companySettings?.companyName || "FlowY";
   const userName = accountSettings?.name || "Benutzer";
-  const showName = !profile || profile.role === 'admin' || profile.role === 'developer';
 
-  const features = [
-    {
+  const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
+  const canWriteInvoices = isAdminOrDev || !!profile?.permissions?.invoices_write;
+  const canWriteOffers = isAdminOrDev || !!profile?.permissions?.offers_write;
+  const canReadInvoices = isAdminOrDev || !!profile?.permissions?.invoices_read;
+  const canReadOffers = isAdminOrDev || !!profile?.permissions?.offers_read;
+  const canReadProjects = isAdminOrDev || !!profile?.permissions?.projects_read;
+  const canReadEmployees = isAdminOrDev || !!profile?.permissions?.employees_read;
+  const canUseTime = isAdminOrDev || !!profile?.permissions?.time_tracking_use;
+  const canUseCalendar = isAdminOrDev || !!profile?.permissions?.calendar_use;
+
+  const status = useMemo(() => {
+    const yearInvoices = invoices.filter((invoice) => new Date(invoice.issueDate).getFullYear() === currentYear);
+    const yearOffers = offers.filter((offer) => new Date(offer.issueDate).getFullYear() === currentYear);
+
+    return {
+      invoiceDrafts: yearInvoices.filter((invoice) => invoice.status === "draft").length,
+      overdueInvoices: yearInvoices.filter((invoice) => invoice.status === "overdue").length,
+      openOffers: yearOffers.filter((offer) => offer.status === "sent").length,
+      activeProjects: projects.filter((project: any) => project.status !== "completed" && project.status !== "archived").length,
+      employees: employees.length,
+    };
+  }, [currentYear, employees.length, invoices, offers, projects]);
+
+  const primaryActions = [
+    canWriteInvoices && {
+      label: "Neue Rechnung",
+      href: "/invoices/new",
       icon: FileText,
-      title: "Rechnungsverwaltung",
-      color: "text-blue-500",
-      bg: "bg-blue-50/50",
-      desc: "Erstellen und verwalten Sie professionelle Rechnungen mit nur wenigen Klicks. Automatisierte Berechnungen inklusive.",
-      details: (
-        <div className="space-y-4">
-          <p className="text-lg leading-relaxed text-slate-600">
-            Unser <strong>Rechnungsmodul</strong> revolutioniert Ihre Buchhaltung. Erstellen Sie GoBD-konforme Angebote und Rechnungen in wenigen Sekunden und verwandeln Sie Angebote mit einem Klick in Rechnungen.
-          </p>
-          <ul className="space-y-3 mt-4">
-            <li className="flex items-start gap-3">
-              <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <ArrowRight className="h-3 w-3 text-green-600" />
-              </div>
-              <span className="text-slate-700"><strong>Automatisierung:</strong> Steuerberechnungen und Summierungen erfolgen vollautomatisch.</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <ArrowRight className="h-3 w-3 text-green-600" />
-              </div>
-              <span className="text-slate-700"><strong>Mahnwesen:</strong> Behalten Sie offene Posten im Blick und erstellen Sie Mahnungen per Knopfdruck.</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <ArrowRight className="h-3 w-3 text-green-600" />
-              </div>
-              <span className="text-slate-700"><strong>PDF-Export:</strong> Professionelles Design für Ihre Dokumente, sofort versandfertig.</span>
-            </li>
-          </ul>
-        </div>
-      )
+      color: "bg-primary-gradient text-white shadow-indigo-500/20",
     },
-    {
-      icon: Users,
-      title: "Kunden & Mitarbeiter",
-      color: "text-purple-500",
-      bg: "bg-purple-50/50",
-      desc: "Verwalten Sie alle Kontakte und Mitarbeiterdaten zentral an einem Ort mit detaillierten Profilen.",
-      details: (
-        <div className="space-y-4">
-          <p className="text-lg leading-relaxed text-slate-600">
-            Das Herzstück Ihres Unternehmens sind Menschen. Mit FlowY verwalten Sie <strong>Kunden und Mitarbeiter</strong> effizient und DSGVO-konform an einem zentralen Ort.
-          </p>
-          <div className="grid grid-cols-2 gap-4 mt-4">
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <h5 className="font-bold text-slate-900 mb-2">Für Kunden</h5>
-              <p className="text-sm text-slate-600">Historie aller Projekte, Rechnungen und Dokumente. Schneller Zugriff auf Kontaktdaten und Ansprechpartner.</p>
-            </div>
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <h5 className="font-bold text-slate-900 mb-2">Für Mitarbeiter</h5>
-              <p className="text-sm text-slate-600">Digitale Personalakte mit Stammdaten, Urlaubsverwaltung und Stundensätzen für die Kalkulation.</p>
-            </div>
-          </div>
-        </div>
-      )
+    canWriteOffers && {
+      label: "Neues Angebot",
+      href: "/offers/new",
+      icon: FileSignature,
+      color: "bg-white text-slate-800 border border-slate-200",
     },
-    {
+    canReadProjects && {
+      label: "Projekt öffnen",
+      href: "/projects",
       icon: Briefcase,
-      title: "Projektverwaltung",
-      color: "text-emerald-500",
-      bg: "bg-emerald-50/50",
-      desc: "Behalten Sie den Überblick über alle Ihre Bauprojekte, Meilensteilen und Aufträge in Echtzeit.",
-      details: (
-        <div className="space-y-4">
-          <p className="text-lg leading-relaxed text-slate-600">
-            Behalten Sie die volle Kontrolle über Ihre Baustellen. Von der ersten Planung bis zur Abnahme dokumentieren Sie jeden Schritt in der <strong>Projektverwaltung</strong>.
-          </p>
-          <ul className="space-y-3 mt-4">
-            <li className="flex items-start gap-3">
-              <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Briefcase className="h-3 w-3 text-blue-600" />
-              </div>
-              <span className="text-slate-700"><strong>Zeiterfassung:</strong> Buchen Sie Arbeitszeiten direkt auf Projekte für eine genaue Nachkalkulation.</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Briefcase className="h-3 w-3 text-blue-600" />
-              </div>
-              <span className="text-slate-700"><strong>Fortschritt:</strong> Status-Updates und Meilensteine zeigen Ihnen sofort, wo Projekte stehen.</span>
-            </li>
-          </ul>
-        </div>
-      )
-    }
-  ];
+      color: "bg-white text-slate-800 border border-slate-200",
+    },
+  ].filter(Boolean) as Array<{ label: string; href: string; icon: React.ElementType; color: string }>;
 
-  if (companyLoading || accountLoading) {
-    // Add a simple timeout/fallback or non-blocking render? 
-    // If it takes too long, just show the page with defaults.
-    // For now, let's keep the loader but ensuring it triggers only if actually loading.
-    // The user issue "must click other tab" implies a focus/state update issue.
-    // Let's remove the blocking return and use optional chaining strictly in UI.
-  }
+  const modules = [
+    canReadInvoices && {
+      label: "Rechnungen",
+      href: "/invoices",
+      icon: FileText,
+      description: `${status.invoiceDrafts} Entwürfe, ${status.overdueInvoices} fällig`,
+      tone: status.overdueInvoices > 0 ? "rose" : "indigo",
+    },
+    canReadOffers && {
+      label: "Angebote",
+      href: "/offers",
+      icon: FileSignature,
+      description: `${status.openOffers} offene Angebote`,
+      tone: "emerald",
+    },
+    canReadProjects && {
+      label: "Projekte",
+      href: "/projects",
+      icon: Briefcase,
+      description: `${status.activeProjects} aktive Projekte`,
+      tone: "amber",
+    },
+    canReadEmployees && {
+      label: "Mitarbeiter",
+      href: "/employees",
+      icon: Users,
+      description: `${status.employees} Mitarbeiter angelegt`,
+      tone: "slate",
+    },
+    canUseTime && {
+      label: "Zeiten erfassen",
+      href: "/time-tracking",
+      icon: Clock,
+      description: "Monatszeiten bearbeiten",
+      tone: "indigo",
+    },
+    {
+      label: "Dokumenten-Archiv",
+      href: "/archive",
+      icon: FolderOpen,
+      description: "Ablage und Dateien",
+      tone: "slate",
+    },
+  ].filter(Boolean) as Array<{
+    label: string;
+    href: string;
+    icon: React.ElementType;
+    description: string;
+    tone: "indigo" | "emerald" | "amber" | "rose" | "slate";
+  }>;
 
-  // Changing strategy: Don't return early. Just use default values if loading.
-  const isInitializing = companyLoading || accountLoading;
-
-  if (isInitializing) {
-    // Only show blocking loader for a max time, or render skeleton?
-    // User sees "INITIALISIERUNG..." which is lines 130-137. 
-    // This means `companyLoading` or `accountLoading` is true. 
-    // But why does it unblock when switching tabs? 
-    // Maybe the hooks rely on focus or re-render.
-  }
+  const toneClasses = {
+    indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
+    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
+    amber: "bg-amber-50 text-amber-600 border-amber-100",
+    rose: "bg-rose-50 text-rose-600 border-rose-100",
+    slate: "bg-slate-50 text-slate-600 border-slate-100",
+  };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Header Section with Gradient */}
-      <section className="bg-primary-gradient pt-20 md:pt-24 pb-32 md:pb-48 px-4 md:px-16 relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/5 pointer-events-none" />
-
-        {/* Floating background elements for depth */}
-        <div className="absolute top-[-15%] right-[-5%] w-[45%] h-[110%] bg-white/10 blur-[140px] rounded-full" />
-        <div className="absolute bottom-[-25%] left-[-5%] w-[35%] h-[90%] bg-purple-500/20 blur-[120px] rounded-full" />
-
-        <div className="max-w-7xl mx-auto space-y-12 relative z-10">
-          <div className="flex flex-col items-center text-center space-y-6">
-            <div className="bg-white/95 backdrop-blur-xl p-6 rounded-[2rem] shadow-2xl border border-white/40 inline-block transform transition-transform hover:scale-105 duration-500">
-              {companySettings?.logo ? (
-                <img src={companySettings.logo} alt="Company Logo" className="h-20 object-contain" />
-              ) : (
-                <div className="flex flex-col items-center">
-                  <h2 className="text-3xl font-black bg-clip-text text-transparent bg-primary-gradient uppercase tracking-[0.2em] leading-none mb-1">
-                    {companyName.toUpperCase()}
-                  </h2>
-                  <p className="text-xs text-slate-400 uppercase font-bold tracking-widest">
-                    Ihr Partner für Bauprojekte
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-tight font-outfit leading-tight">
-              Willkommen bei FlowY
-            </h1>
-            <p className="text-white/90 text-base md:text-2xl max-w-3xl font-medium leading-relaxed">
-              {companyName} — Guten Abend! Ihre All-in-One-Lösung für Rechnungen, Projekte und Zeiterfassung.
-            </p>
-
-            <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 mt-10">
-              <Link href="/dashboard" className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-3 shadow-xl shadow-black/15 transition-all hover:scale-105 hover:shadow-2xl active:scale-95">
-                Zum Dashboard <ArrowRight className="h-5 w-5" />
-              </Link>
-              <Link href="/settings" className="bg-white/15 backdrop-blur-xl text-white border-2 border-white/30 px-8 py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-3 hover:bg-white/25 transition-all hover:scale-105 active:scale-95">
-                <Settings className="h-5 w-5" /> Einstellungen
-              </Link>
-              <a href="mailto:elsword.ie@gmail.com" className="bg-orange-500/20 backdrop-blur-xl text-orange-400 border-2 border-orange-500/30 px-8 py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-3 hover:bg-orange-500/30 transition-all hover:scale-105 active:scale-95">
-                <LifeBuoy className="h-5 w-5" /> Support kontaktieren
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Widgets */}
-      <section className="px-4 md:px-16 -mt-16 md:-mt-24 relative z-20">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-10">
-          <div className="glass-card p-8 md:p-12 flex flex-col items-center text-center space-y-4 hover:-translate-y-2 duration-300">
-            <div className="h-14 w-14 md:h-16 md:w-16 rounded-[1.5rem] bg-indigo-50/50 flex items-center justify-center mb-2">
-              <Clock className="h-7 w-7 md:h-8 md:w-8 text-indigo-500" />
-            </div>
-            <h3 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">Willkommen</h3>
-            {showName && (
-              <p className="text-base text-slate-500 font-semibold tracking-wide uppercase">{userName}</p>
-            )}
-          </div>
-
-          <div className="glass-card p-8 md:p-12 flex flex-col items-center text-center space-y-4 hover:-translate-y-2 duration-300">
-            <div className="h-14 w-14 md:h-16 md:w-16 rounded-[1.5rem] bg-emerald-50/50 flex items-center justify-center mb-2">
-              <Calendar className="h-7 w-7 md:h-8 md:w-8 text-emerald-500" />
-            </div>
-            <h3 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">{formattedDate.split(',')[0]}</h3>
-            <p className="text-sm md:text-base text-slate-500 font-semibold tracking-wide">{formattedDate.split(',')[1]}</p>
-          </div>
-
-          <div className="glass-card p-8 md:p-12 flex flex-col items-center text-center space-y-4 hover:-translate-y-2 duration-300">
-            <div className="h-14 w-14 md:h-16 md:w-16 rounded-[1.5rem] bg-orange-50/50 flex items-center justify-center mb-2">
-              <Clock className="h-7 w-7 md:h-8 md:w-8 text-orange-500" />
-            </div>
-            <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter tabular-nums">
-              <RealtimeClock />
-            </h3>
-            <p className="text-sm md:text-base text-slate-500 font-semibold tracking-wide">Aktuelle Uhrzeit</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Explore Section */}
-      <section className="px-4 md:px-16 py-16 md:py-32">
-        <div className="max-w-7xl mx-auto space-y-12 md:space-y-20">
-          <div className="text-center space-y-4">
-            <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight font-outfit">Entdecken Sie alle Funktionen</h2>
-            <p className="text-base md:text-xl text-slate-500 font-semibold">Alles, was Sie für Ihre Unternehmensverwaltung benötigen</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-12">
-            {features.map((feature, i) => (
-              <div key={i} className="glass-card p-8 md:p-12 group cursor-pointer hover:border-indigo-500/40 hover:-translate-y-2 duration-300" onClick={() => setSelectedFeature(feature)}>
-                <div className={cn("h-16 w-16 rounded-2xl flex items-center justify-center mb-8 transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg", feature.bg)}>
-                  <feature.icon className={cn("h-8 w-8", feature.color)} />
-                </div>
-                <h4 className="text-xl md:text-2xl font-bold text-slate-900 mb-4">{feature.title}</h4>
-                <p className="text-base md:text-lg text-slate-500 leading-relaxed mb-8">
-                  {feature.desc}
-                </p>
-                <button className="text-base font-black text-indigo-600 flex items-center gap-2 group-hover:gap-3 transition-all" onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedFeature(feature);
-                }}>
-                  Mehr erfahren <ArrowRight className="h-5 w-5" />
-                </button>
+    <div className="p-4 sm:p-6 lg:p-8 2xl:p-12 space-y-8 lg:space-y-10 animate-in fade-in duration-500">
+      <section className="rounded-[2.25rem] border border-slate-100 bg-white p-8 shadow-sm overflow-hidden relative">
+        <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-indigo-50/70 to-transparent pointer-events-none" />
+        <div className="relative z-10 grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-center">
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-indigo-600">
+                <ReceiptText className="h-4 w-4" />
+                Startseite
               </div>
-            ))}
+              <span className="text-sm font-bold text-slate-400">{formatDate(today)}</span>
+            </div>
+
+            <div>
+              <h1 className="text-5xl font-black tracking-tight text-slate-900 font-outfit">
+                Willkommen, {userName}
+              </h1>
+              <p className="mt-3 max-w-3xl text-lg font-semibold text-slate-500">
+                {companyName} ist bereit. Wählen Sie direkt den nächsten Arbeitsschritt oder öffnen Sie die Übersicht.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              {primaryActions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <Link
+                    key={action.href}
+                    href={action.href}
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-black shadow-lg transition hover:scale-[1.02] active:scale-95",
+                      action.color,
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {action.label}
+                  </Link>
+                );
+              })}
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Zur Übersicht
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-slate-100 bg-slate-50/80 p-6 shadow-inner">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-slate-400">Aktuelle Uhrzeit</div>
+            <div className="mt-4 text-6xl font-black tracking-tight text-slate-900 tabular-nums">
+              <RealtimeClock />
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-white p-4 border border-slate-100">
+                <p className="text-xs font-black uppercase tracking-wider text-slate-400">Jahr</p>
+                <p className="mt-1 text-2xl font-black text-slate-900">{currentYear}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4 border border-slate-100">
+                <p className="text-xs font-black uppercase tracking-wider text-slate-400">Status</p>
+                <p className="mt-1 flex items-center gap-2 text-sm font-black text-emerald-600">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Bereit
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <Modal
-        isOpen={!!selectedFeature}
-        onClose={() => setSelectedFeature(null)}
-        title={selectedFeature?.title || ""}
-      >
-        {selectedFeature?.details}
-      </Modal>
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        {[
+          { label: "Fällige Rechnungen", value: status.overdueInvoices, href: "/invoices", icon: FileText, tone: status.overdueInvoices > 0 ? "rose" : "emerald" },
+          { label: "Offene Angebote", value: status.openOffers, href: "/offers", icon: FileSignature, tone: "indigo" },
+          { label: "Aktive Projekte", value: status.activeProjects, href: "/projects", icon: Briefcase, tone: "amber" },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              className="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-200/70"
+            >
+              <div className="flex items-start justify-between">
+                <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl border", toneClasses[item.tone as keyof typeof toneClasses])}>
+                  <Icon className="h-6 w-6" />
+                </div>
+                <ArrowUpRight className="h-5 w-5 text-slate-300" />
+              </div>
+              <p className="mt-6 text-xs font-black uppercase tracking-[0.16em] text-slate-400">{item.label}</p>
+              <p className="mt-2 text-4xl font-black text-slate-900">{item.value}</p>
+            </Link>
+          );
+        })}
+      </section>
+
+      <section className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900">Arbeitsbereiche</h2>
+              <p className="text-sm font-semibold text-slate-500">Direkt in den passenden Bereich springen.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
+            {modules.map((module) => {
+              const Icon = module.icon;
+              return (
+                <Link
+                  key={module.href}
+                  href={module.href}
+                  className="group rounded-[1.5rem] border border-slate-100 bg-slate-50/70 p-5 transition hover:bg-white hover:shadow-lg"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className={cn("flex h-11 w-11 items-center justify-center rounded-2xl border", toneClasses[module.tone])}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:text-indigo-500" />
+                  </div>
+                  <p className="mt-5 text-lg font-black text-slate-900">{module.label}</p>
+                  <p className="mt-1 text-sm font-bold text-slate-500">{module.description}</p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        <aside className="space-y-5">
+          <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-black text-slate-900">Heute nützlich</h2>
+            <div className="mt-5 space-y-3">
+              {canUseCalendar && (
+                <Link href="/calendar" className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 font-black text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600">
+                  <span className="flex items-center gap-3">
+                    <Calendar className="h-4 w-4" />
+                    Kalender
+                  </span>
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
+              )}
+              <Link href="/settings" className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 font-black text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600">
+                <span className="flex items-center gap-3">
+                  <Settings className="h-4 w-4" />
+                  Einstellungen
+                </span>
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+              <Link href="/archive" className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 font-black text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600">
+                <span className="flex items-center gap-3">
+                  <FolderOpen className="h-4 w-4" />
+                  Archiv
+                </span>
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-slate-100 bg-slate-900 p-6 text-white shadow-xl shadow-slate-900/10">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/40">Tipp</p>
+            <p className="mt-3 text-lg font-black">Fertige PDFs bleiben unverändert.</p>
+            <p className="mt-2 text-sm font-semibold leading-relaxed text-white/60">
+              Neue Änderungen an Firmendaten oder Logo wirken erst bei neu finalisierten Dokumenten.
+            </p>
+          </div>
+        </aside>
+      </section>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getUserSession } from '@/lib/auth-server';
+import { wipeAccount } from '@/lib/account-wipe';
 
 export const dynamic = 'force-dynamic';
 
@@ -220,19 +221,21 @@ export async function DELETE(request: Request) {
     }
 
     try {
-        // 1. Delete from user_roles
-        const { error: dbError } = await supabaseAdmin
+        // Verify that the user being deleted belongs to the caller's company
+        const { data: targetUserRole } = await supabaseAdmin
             .from('user_roles')
-            .delete()
+            .select('company_owner_id')
             .eq('user_id', userId)
-            .eq('company_owner_id', companyOwnerId);
+            .maybeSingle();
 
-        if (dbError) throw dbError;
+        if (!targetUserRole || targetUserRole.company_owner_id !== companyOwnerId) {
+            return NextResponse.json({ error: 'Nicht autorisiert (Benutzer gehört nicht zu Ihrer Firma).' }, { status: 403 });
+        }
 
-        // 2. Delete auth user
-        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-        if (authError) {
-            console.error('[UsersAPI] Warning: Failed to delete auth user, might be already deleted:', authError);
+        const result = await wipeAccount(userId);
+
+        if (!result.success) {
+            return NextResponse.json({ error: result.message }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });

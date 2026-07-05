@@ -71,7 +71,7 @@ export default function ServicesPage() {
     }
 
     return (
-        <div className="flex-1 p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="dashboard-page">
             {/* Header Area */}
             <div className="flex justify-between items-end">
                 <div className="space-y-2">
@@ -98,7 +98,7 @@ export default function ServicesPage() {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-4 gap-6">
+            <div className="dashboard-stat-grid">
                 {[
                     { label: "Gesamt", count: services.filter(s => s.category !== 'Position').length, color: "text-slate-600", bg: "bg-slate-100", icon: Wrench },
                     { label: "Arbeit", count: services.filter(s => s.category === 'Labor').length, color: "text-indigo-600", bg: "bg-indigo-50", icon: Briefcase },

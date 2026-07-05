@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkAdmin } from '@/lib/auth-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { wipeAccount } from '@/lib/account-wipe';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,10 +95,13 @@ export async function DELETE(req: Request) {
             return NextResponse.json({ message: 'Admin-Client nicht konfiguriert' }, { status: 503 });
         }
 
-        const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
-        if (error) throw error;
+        const result = await wipeAccount(userId);
 
-        return NextResponse.json({ message: 'Benutzer erfolgreich gelöscht' });
+        if (!result.success) {
+            return NextResponse.json({ message: result.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ message: result.message });
     } catch (error) {
         console.error('Admin Users DELETE error:', error);
         return NextResponse.json({ message: 'Serverfehler' }, { status: 500 });

@@ -31,6 +31,7 @@ import { Invoice, InvoiceStatus } from "@/types/invoice";
 import { useNotification } from "@/context/NotificationContext";
 import { useRouter } from "next/navigation";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
+import { invoicePdfFileName } from "@/lib/document-filenames";
 
 export const dynamic = 'force-dynamic';
 
@@ -56,9 +57,26 @@ export default function InvoicesPage() {
         e.stopPropagation();
         setDownloadingIds(prev => new Set(prev).add(invoice.id));
         try {
+            const customer = customers.find(c => c.id === invoice.customerId);
+
+            if (invoice.status !== 'draft' && (invoice.pdfPath || invoice.pdfUrl)) {
+                const response = await fetch(`/api/invoices/pdf-url?id=${encodeURIComponent(invoice.id)}`);
+                if (!response.ok) throw new Error(await response.text());
+                const { url: pdfUrl } = await response.json();
+                const pdfResponse = await fetch(pdfUrl);
+                if (!pdfResponse.ok) throw new Error(`PDF download failed: ${pdfResponse.status}`);
+                const blob = await pdfResponse.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = invoicePdfFileName({ ...invoice, customerName: customer?.name || invoice.customerName });
+                a.click();
+                URL.revokeObjectURL(url);
+                return;
+            }
+
             const { pdf } = await import('@react-pdf/renderer');
             const { InvoiceReactPDF } = await import('@/components/InvoiceReactPDF');
-            const customer = customers.find(c => c.id === invoice.customerId);
             const blob = await pdf(
                 React.createElement(InvoiceReactPDF, { 
                     invoice, 
@@ -69,7 +87,7 @@ export default function InvoicesPage() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Rechnung_${invoice.invoiceNumber}.pdf`;
+            a.download = invoicePdfFileName({ ...invoice, customerName: customer?.name || invoice.customerName });
             a.click();
             URL.revokeObjectURL(url);
         } catch (err) {
@@ -131,13 +149,13 @@ export default function InvoicesPage() {
     }, [invoices]);
 
     if (isLoading) {
-        return <div className="p-10 text-slate-400 font-bold">Laden...</div>;
+        return <div className="dashboard-page text-slate-400 font-bold">Laden...</div>;
     }
 
     return (
-        <div className="flex-1 p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="dashboard-page">
             {/* Header Area */}
-            <div className="flex justify-between items-end">
+            <div className="dashboard-header">
                 <div className="space-y-2">
                     <div className="flex items-center gap-3 text-indigo-600 mb-2">
                         <div className="p-2 bg-indigo-50 rounded-lg">
@@ -145,14 +163,14 @@ export default function InvoicesPage() {
                         </div>
                         <span className="text-sm font-black uppercase tracking-[0.2em]">Archiv</span>
                     </div>
-                    <h1 className="text-5xl font-black text-slate-900 tracking-tight font-outfit">
+                    <h1 className="dashboard-title">
                         Rechnungen <span className="text-slate-300 font-light">Verwalten</span>
                     </h1>
                     <p className="text-xl text-slate-500 font-medium">Alle erstellten Rechnungen im Überblick.</p>
                 </div>
 
                 {/* Actions: Year Selector & New Invoice Button */}
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                     {/* Year Selector */}
                     <div className="flex items-center gap-3">
                         <Calendar className="h-5 w-5 text-slate-400" />
@@ -178,7 +196,7 @@ export default function InvoicesPage() {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-4 gap-6">
+            <div className="dashboard-stat-grid">
                 {[
                     { label: "Gesamt", count: stats.total, color: "text-slate-600", bg: "bg-slate-100", icon: FileText },
                     { label: "Bezahlt", count: stats.paid, color: "text-emerald-600", bg: "bg-emerald-50", icon: FileText },
@@ -187,7 +205,7 @@ export default function InvoicesPage() {
                 ].map((stat) => {
                     const Icon = stat.icon;
                     return (
-                        <div key={stat.label} className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-indigo-500/30 transition-all duration-300">
+                        <div key={stat.label} className="bg-white p-4 2xl:p-6 rounded-[24px] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-indigo-500/30 transition-all duration-300">
                             <div className="flex items-center gap-4">
                                 <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center", stat.bg)}>
                                     <Icon className={cn("h-6 w-6", stat.color)} />
@@ -202,7 +220,7 @@ export default function InvoicesPage() {
 
             {/* Filters & Search & Sorting */}
             <div className="flex flex-col gap-6">
-                <div className="flex gap-4 items-center">
+                <div className="dashboard-toolbar">
                     <div className="relative flex-1 group">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <Search className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -216,7 +234,7 @@ export default function InvoicesPage() {
                         />
                     </div>
 
-                    <div className="bg-white p-1 rounded-2xl border border-slate-100 shadow-sm flex gap-1">
+                    <div className="bg-white p-1 rounded-2xl border border-slate-100 shadow-sm dashboard-filter-strip">
                         {[
                             { id: "all", label: "Alle", icon: Filter },
                             { id: "paid", label: "Bezahlt", icon: FileText },
@@ -270,8 +288,8 @@ export default function InvoicesPage() {
 
             {/* Invoices List */}
             {processedInvoices.length > 0 ? (
-                <div className="glass-card overflow-hidden">
-                    <table className="w-full">
+                <div className="dashboard-table-card">
+                    <table className="w-full min-w-[920px]">
                         <thead className="bg-slate-50 border-b border-slate-100">
                             <tr>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Rechnung</th>

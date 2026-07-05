@@ -1,5 +1,13 @@
-export const fetcher = (url: string) =>
-    fetch(url).then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
+export const fetcher = async (url: string) => {
+    const response = await fetch(url, {
+        credentials: 'same-origin',
+        cache: 'no-store',
     });
+
+    if (!response.ok) {
+        const message = await response.text().catch(() => '');
+        throw new Error(message || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+};

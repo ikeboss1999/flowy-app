@@ -15,12 +15,12 @@ function EditInvoiceContent({ id }: { id: string }) {
     const invoice = invoices.find(inv => inv.id === id);
 
     if (isLoading) {
-        return <div className="p-10 text-slate-400 font-bold">Laden...</div>;
+        return <div className="dashboard-page text-slate-400 font-bold">Laden...</div>;
     }
 
     if (!invoice) {
         return (
-            <div className="p-10 text-rose-500 font-bold">
+            <div className="dashboard-page text-rose-500 font-bold">
                 Rechnung nicht gefunden.
             </div>
         );
@@ -29,7 +29,7 @@ function EditInvoiceContent({ id }: { id: string }) {
     // Only allow editing drafts
     if (invoice.status !== 'draft') {
         return (
-            <div className="p-10 text-amber-600 font-bold bg-amber-50 rounded-2xl border border-amber-100">
+            <div className="dashboard-page text-amber-600 font-bold bg-amber-50 rounded-2xl border border-amber-100">
                 Nur Rechnungsentwürfe können bearbeitet werden.
             </div>
         );
@@ -40,8 +40,8 @@ function EditInvoiceContent({ id }: { id: string }) {
 
 export default function EditInvoicePage({ params }: EditInvoicePageProps) {
     return (
-        <div className="p-10 pb-24">
-            <Suspense fallback={<div className="p-10 text-slate-400">Lade Formular...</div>}>
+        <div className="dashboard-page-centered pb-24">
+            <Suspense fallback={<div className="dashboard-page text-slate-400">Lade Formular...</div>}>
                 <EditInvoiceContent id={params.id} />
             </Suspense>
         </div>

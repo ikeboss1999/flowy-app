@@ -1,6 +1,7 @@
 export interface CompanyData {
     // Firmendaten & Logo
     logo?: string;
+    originalLogo?: string;
     companyName: string;
     email?: string;
 

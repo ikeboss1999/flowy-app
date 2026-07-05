@@ -12,7 +12,7 @@ export default function DunningPage() {
     const [activeTab, setActiveTab] = useState<"active" | "archive">("active");
 
     return (
-        <div className="p-10 min-h-screen">
+        <div className="dashboard-page-centered">
             <div className="max-w-6xl mx-auto space-y-12">
                 {/* Header */}
                 <div className="flex flex-col gap-2">

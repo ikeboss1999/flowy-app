@@ -11,6 +11,7 @@ import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
+import { invoicePdfFileName } from "@/lib/document-filenames";
 
 interface InvoicePreviewModalProps {
     isOpen: boolean;
@@ -98,7 +99,11 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
                 }) as any
             ).toBlob();
             const url = URL.createObjectURL(blob);
-            window.open(url, '_blank');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = invoicePdfFileName({ ...invoice, customerName: customer?.name || invoice.customerName });
+            a.click();
+            URL.revokeObjectURL(url);
         } catch (e) {
             console.error('[PDF]', e);
         } finally {

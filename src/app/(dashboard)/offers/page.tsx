@@ -36,6 +36,7 @@ import { useNotification } from "@/context/NotificationContext";
 import { useRouter } from "next/navigation";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { useAuth } from "@/context/AuthContext";
+import { offerPdfFileName } from "@/lib/document-filenames";
 
 export const dynamic = 'force-dynamic';
 
@@ -80,8 +81,8 @@ export default function OffersPage() {
         e.stopPropagation();
         setDownloadingIds(prev => new Set(prev).add(offer.id));
         try {
-            const prefix = offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot';
-            const fileName = `${prefix}_${offer.offerNumber.replace(/\//g, '-')}.pdf`;
+            const customer = customers.find(c => c.id === offer.customerId);
+            const fileName = offerPdfFileName({ ...offer, customerName: customer?.name || offer.customerName });
 
             if (offer.status !== 'draft' && offer.pdfUrl) {
                 try {
@@ -104,7 +105,6 @@ export default function OffersPage() {
 
             const { pdf } = await import('@react-pdf/renderer');
             const { OfferReactPDF } = await import('@/components/OfferReactPDF');
-            const customer = customers.find(c => c.id === offer.customerId);
             const blob = await pdf(
                 React.createElement(OfferReactPDF, { offer, customer, companySettings }) as any
             ).toBlob();
@@ -166,14 +166,14 @@ export default function OffersPage() {
     }, [offers]);
 
     if (isLoading) {
-        return <div className="p-10 text-slate-400 font-bold">Laden...</div>;
+        return <div className="dashboard-page text-slate-400 font-bold">Laden...</div>;
     }
 
     return (
-        <div className="flex-1 p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="dashboard-page">
 
             {/* Header */}
-            <div className="flex justify-between items-end">
+            <div className="dashboard-header">
                 <div className="space-y-2">
                     <div className="flex items-center gap-3 text-indigo-600 mb-2">
                         <div className="p-2 bg-indigo-50 rounded-lg">
@@ -181,12 +181,12 @@ export default function OffersPage() {
                         </div>
                         <span className="text-sm font-black uppercase tracking-[0.2em]">Archiv</span>
                     </div>
-                    <h1 className="text-5xl font-black text-slate-900 tracking-tight font-outfit">
+                    <h1 className="dashboard-title">
                         Angebote <span className="text-slate-300 font-light">Verwalten</span>
                     </h1>
                     <p className="text-xl text-slate-500 font-medium">Alle erstellten Angebote im Überblick.</p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                     <div className="flex items-center gap-3">
                         <Calendar className="h-5 w-5 text-slate-400" />
                         <select
@@ -210,7 +210,7 @@ export default function OffersPage() {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-4 gap-6">
+            <div className="dashboard-stat-grid">
                 {[
                     { label: "Gesamt",     count: stats.total,    color: "text-slate-600",   bg: "bg-slate-100",   icon: FileText },
                     { label: "Angenommen", count: stats.accepted, color: "text-emerald-600", bg: "bg-emerald-50",  icon: CheckCircle2 },
@@ -219,7 +219,7 @@ export default function OffersPage() {
                 ].map((stat) => {
                     const Icon = stat.icon;
                     return (
-                        <div key={stat.label} className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-indigo-500/30 transition-all duration-300">
+                        <div key={stat.label} className="bg-white p-4 2xl:p-6 rounded-[24px] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-indigo-500/30 transition-all duration-300">
                             <div className="flex items-center gap-4">
                                 <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center", stat.bg)}>
                                     <Icon className={cn("h-6 w-6", stat.color)} />
@@ -233,7 +233,7 @@ export default function OffersPage() {
             </div>
 
             {/* Filters & Search */}
-            <div className="flex gap-4 items-center">
+            <div className="dashboard-toolbar">
                 <div className="relative flex-1 group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <Search className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -246,7 +246,7 @@ export default function OffersPage() {
                         className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium"
                     />
                 </div>
-                <div className="bg-white p-1 rounded-2xl border border-slate-100 shadow-sm flex gap-1">
+                <div className="bg-white p-1 rounded-2xl border border-slate-100 shadow-sm dashboard-filter-strip">
                     {([
                         { id: "all",      label: "Alle" },
                         { id: "draft",    label: "Entwurf" },
@@ -300,8 +300,8 @@ export default function OffersPage() {
 
             {/* Offers List */}
             {processedOffers.length > 0 ? (
-                <div className="glass-card overflow-hidden">
-                    <table className="w-full">
+                <div className="dashboard-table-card">
+                    <table className="w-full min-w-[1040px]">
                         <thead className="bg-slate-50 border-b border-slate-100">
                             <tr>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Angebot</th>

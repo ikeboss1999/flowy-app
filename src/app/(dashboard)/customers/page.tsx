@@ -96,13 +96,13 @@ export default function CustomersPage() {
     };
 
     if (isLoading) {
-        return <div className="p-10 text-slate-400 font-bold">Laden...</div>;
+        return <div className="dashboard-page text-slate-400 font-bold">Laden...</div>;
     }
 
     return (
-        <div className="flex-1 p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="dashboard-page">
             {/* Header Area */}
-            <div className="flex justify-between items-end">
+            <div className="dashboard-header">
                 <div className="space-y-2">
                     <div className="flex items-center gap-3 text-indigo-600 mb-2">
                         <div className="p-2 bg-indigo-50 rounded-lg">
@@ -110,7 +110,7 @@ export default function CustomersPage() {
                         </div>
                         <span className="text-sm font-black uppercase tracking-[0.2em]">CRM</span>
                     </div>
-                    <h1 className="text-5xl font-black text-slate-900 tracking-tight font-outfit">
+                    <h1 className="dashboard-title">
                         Kunden <span className="text-slate-300 font-light">Verwalten</span>
                     </h1>
                     <p className="text-xl text-slate-500 font-medium">Verwalten Sie Ihre Kundenbeziehungen und Kontaktdaten zentral.</p>
@@ -127,7 +127,7 @@ export default function CustomersPage() {
             </div>
 
             {/* Quick Stats / Highlights */}
-            <div className="grid grid-cols-3 gap-6">
+            <div className="dashboard-stat-grid-3">
                 {[
                     { label: "Gesamt", count: customers.length, color: "text-slate-600", bg: "bg-slate-100", icon: User },
                     { label: "Privat", count: customers.filter(c => c.type === 'private').length, color: "text-purple-600", bg: "bg-purple-50", icon: User },
@@ -135,7 +135,7 @@ export default function CustomersPage() {
                 ].map((stat) => {
                     const Icon = stat.icon;
                     return (
-                        <div key={stat.label} className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-indigo-500/30 transition-all duration-300">
+                        <div key={stat.label} className="bg-white p-4 2xl:p-6 rounded-[24px] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-indigo-500/30 transition-all duration-300">
                             <div className="flex items-center gap-4">
                                 <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center", stat.bg)}>
                                     <Icon className={cn("h-6 w-6", stat.color)} />
@@ -149,7 +149,7 @@ export default function CustomersPage() {
             </div>
 
             {/* Filters & Actions bar */}
-            <div className="flex gap-4 items-center">
+            <div className="dashboard-toolbar">
                 <div className="relative flex-1 group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <Search className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -163,7 +163,7 @@ export default function CustomersPage() {
                     />
                 </div>
 
-                <div className="bg-white/50 backdrop-blur-md p-1 rounded-2xl border border-slate-100 shadow-sm flex gap-1">
+                <div className="bg-white/50 backdrop-blur-md p-1 rounded-2xl border border-slate-100 shadow-sm dashboard-filter-strip">
                     {[
                         { id: "all", label: "Alle", icon: Filter },
                         { id: "private", label: "Privat", icon: User },
@@ -194,10 +194,10 @@ export default function CustomersPage() {
             {filteredCustomers.length > 0 ? (
                 <div className="flex flex-col gap-4">
                     {filteredCustomers.map((customer) => (
-                        <div 
+                        <div
                             key={customer.id} 
                             onClick={() => handleOpenDetail(customer)}
-                            className="glass-card p-6 flex flex-col gap-4 group hover:border-indigo-500/30 hover:shadow-md transition-all duration-300 cursor-pointer"
+                            className="glass-card p-6 flex flex-col gap-4 group hover:border-indigo-500/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
                         >
                             {/* Obere Zeile: Avatar, Typ-Badge, Name, Status & Aktionen */}
                             <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4">
@@ -213,35 +213,37 @@ export default function CustomersPage() {
                                     </div>
 
                                     {/* Badge & Name */}
-                                    <div className="flex flex-wrap items-center gap-2.5 min-w-0">
-                                        <span className={cn(
-                                            "text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md shrink-0",
-                                            customer.type === 'private' ? "bg-purple-100 text-purple-600" : "bg-emerald-100 text-emerald-600"
-                                        )}>
-                                            {customer.type === 'private' ? "Privat" : "Firma"}
-                                        </span>
-                                        {customer.customer_number && (
-                                            <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md shrink-0 border border-slate-250">
-                                                {customer.customer_number}
+                                    <div className="flex flex-col gap-2 min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className={cn(
+                                                "text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md shrink-0",
+                                                customer.type === 'private' ? "bg-purple-100 text-purple-600" : "bg-emerald-100 text-emerald-600"
+                                            )}>
+                                                {customer.type === 'private' ? "Privat" : "Firma"}
                                             </span>
-                                        )}
-                                        <h3 className="font-extrabold text-slate-800 text-base leading-snug group-hover:text-indigo-600 transition-colors truncate max-w-[250px] sm:max-w-[400px] md:max-w-none" title={customer.name}>
+                                            {customer.customer_number && (
+                                                <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-md shrink-0 border border-slate-200">
+                                                    {customer.customer_number}
+                                                </span>
+                                            )}
+                                            {(customer.taxId || customer.commercialRegisterNumber) && (
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    {customer.taxId && (
+                                                        <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                                                            UID: {customer.taxId}
+                                                        </span>
+                                                    )}
+                                                    {customer.commercialRegisterNumber && (
+                                                        <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                                                            FN: {customer.commercialRegisterNumber}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <h3 className="font-black text-slate-900 text-xl md:text-2xl leading-tight group-hover:text-indigo-600 transition-colors truncate max-w-[260px] sm:max-w-[520px] lg:max-w-[720px]" title={customer.name}>
                                             {customer.name}
                                         </h3>
-                                        {(customer.taxId || customer.commercialRegisterNumber) && (
-                                            <div className="flex items-center gap-1.5 shrink-0">
-                                                {customer.taxId && (
-                                                    <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-                                                        UID: {customer.taxId}
-                                                    </span>
-                                                )}
-                                                {customer.commercialRegisterNumber && (
-                                                    <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-                                                        FN: {customer.commercialRegisterNumber}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
 
@@ -286,7 +288,7 @@ export default function CustomersPage() {
                             </div>
 
                             {/* Untere Zeile: Kontaktdaten aufgeteilt auf die Breite */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-100/80 text-slate-500 text-sm">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-100/80 text-slate-500 text-sm bg-slate-50/30 -mx-6 -mb-6 px-6 pb-5 rounded-b-[inherit]">
                                 {/* E-Mail */}
                                 <div className="flex items-center justify-between md:justify-start gap-2 min-w-0">
                                     <div className="flex items-center gap-2.5 min-w-0">

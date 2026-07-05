@@ -8,9 +8,11 @@ export function useDevice() {
     const [isTouchDevice, setIsTouchDevice] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [isDesktop, setIsDesktop] = useState(false);
+    const [viewportWidth, setViewportWidth] = useState(0);
     useEffect(() => {
         const checkDevice = () => {
             const ua = window.navigator.userAgent.toLowerCase();
+            const width = window.innerWidth;
 
             // iPhone Detection
             const isIPhoneCheck = /iphone/.test(ua);
@@ -28,6 +30,7 @@ export function useDevice() {
             setIsTouchDevice(isTouch);
             setIsMobile(isMobileCheck);
             setIsDesktop(!isMobileCheck && !isIPadCheck);
+            setViewportWidth(width);
         };
 
         let debounceTimer: ReturnType<typeof setTimeout>;
@@ -45,5 +48,8 @@ export function useDevice() {
         };
     }, []);
 
-    return { isIPhone, isIPad, isTouchDevice, isMobile, isDesktop };
+    const isCompactLayout = viewportWidth > 0 && viewportWidth < 1180;
+    const isDrawerLayout = isMobile || isIPad || isCompactLayout;
+
+    return { isIPhone, isIPad, isTouchDevice, isMobile, isDesktop, viewportWidth, isCompactLayout, isDrawerLayout };
 }

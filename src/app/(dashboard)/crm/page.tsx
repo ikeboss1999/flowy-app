@@ -196,7 +196,7 @@ export default function CRMPage() {
     }
 
     return (
-        <div className="flex-1 p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="dashboard-page">
             {/* Header Area */}
             <div className="flex justify-between items-end flex-wrap gap-6">
                 <div className="space-y-2">

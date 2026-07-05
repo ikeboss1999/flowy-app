@@ -6,8 +6,8 @@ import { Customer } from '@/types/customer';
 
 const styles = StyleSheet.create({
     page: {
-        paddingTop: 48,
-        paddingBottom: 25,
+        paddingTop: 38,
+        paddingBottom: 70,
         paddingLeft: 50,
         paddingRight: 50,
         backgroundColor: '#ffffff',
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 35,
+        marginBottom: 24,
     },
     logoImg: {
         maxHeight: 72,       // ← Logo-HÖHE  (pt, 1mm ≈ 2.83pt)
@@ -76,8 +76,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginTop: 24,
-        marginBottom: 14,
+        marginTop: 14,
+        marginBottom: 12,
     },
     recipientText: {
         fontSize: 10,
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 9.5,
         lineHeight: 1.7,
-        marginBottom: 20,
+        marginBottom: 14,
     },
     paymentRed: {
         color: '#f43f5e',
@@ -223,11 +223,10 @@ const styles = StyleSheet.create({
     signatureSection: {
         fontSize: 10,
         lineHeight: 1.4,    // FIX: enger (war 1.6)
-        flexGrow: 1,
+        marginBottom: 10,
     },
     signatureName: {
         fontFamily: 'Helvetica-Bold',
-        marginTop: 13,      // FIX: kleiner Abstand (war 20)
     },
 
     // ─── Footer ──────────────────────────────────────
@@ -236,6 +235,12 @@ const styles = StyleSheet.create({
         fontFamily: 'Helvetica-Bold',
         fontSize: 8,        // FIX: deutlichst kleiner (war 9)
         marginBottom: 8,
+    },
+    footer: {
+        position: 'absolute',
+        left: 50,
+        right: 50,
+        bottom: 34,
     },
     footerGrid: {
         borderTopWidth: 0.5,    // FIX: dünner (war 1)
@@ -260,7 +265,7 @@ interface InvoiceReactPDFProps {
 
 export const InvoiceReactPDF: React.FC<InvoiceReactPDFProps> = ({ invoice, customer, companySettings }) => {
     const fmt = (d: string) => d ? new Date(d).toLocaleDateString('de-DE') : '-';
-    const isRC = invoice.isReverseCharge || (customer?.type === 'business' && (customer as any)?.reverseChargeEnabled);
+    const isRC = invoice.isReverseCharge === true;
     const ceoName = `${companySettings.ceoFirstName || ''} ${companySettings.ceoLastName || ''}`.trim();
     const processor = (invoice.processor && invoice.processor !== 'Max Mustermann') ? invoice.processor : ceoName || '-';
 
@@ -487,14 +492,16 @@ export const InvoiceReactPDF: React.FC<InvoiceReactPDFProps> = ({ invoice, custo
                 </View>
 
                 {/* ── Signature ── */}
-                <View style={styles.signatureSection}>
-                    <Text>Mit freundlichen Grüßen</Text>
-                    <Text style={styles.signatureName}>{ceoName}</Text>
-                    <Text>Geschäftsführer</Text>
+                <View wrap={false} style={styles.signatureSection}>
+                    <Text>
+                        {'Mit freundlichen Grüßen\n\n'}
+                        <Text style={styles.signatureName}>{ceoName}</Text>
+                        {'\nGeschäftsführer'}
+                    </Text>
                 </View>
 
                 {/* ── Footer — wrap=false verhindert Split auf Seite 2 ── */}
-                <View wrap={false}>
+                <View fixed style={styles.footer}>
                     <Text style={styles.paymentTermLine}>
                         {'Zahlungskondition: ' + (invoice.paymentTerms || 'sofort nach Rechnungserhalt')}
                     </Text>

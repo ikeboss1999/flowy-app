@@ -400,7 +400,7 @@ export default function EmployeesPage() {
     };
 
     return (
-        <div className="flex-1 p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-screen">
+        <div className="dashboard-page">
             {/* Header Area */}
             <div className="flex justify-between items-end">
                 <div className="space-y-2">
