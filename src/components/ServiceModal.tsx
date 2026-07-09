@@ -1,7 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { X, Wrench, Save } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+    Briefcase,
+    FileText,
+    Folder,
+    Layers,
+    Package,
+    Save,
+    Type,
+    Wrench,
+    X,
+} from "lucide-react";
 import { Service } from "@/types/service";
 import { cn } from "@/lib/utils";
 import { InvoiceUnit } from "@/types/invoice";
@@ -12,16 +22,33 @@ interface ServiceModalProps {
     onSave: (service: Service) => void;
     initialService?: Service;
     folders?: string[];
+    mode?: "service" | "position";
 }
 
-export function ServiceModal({ isOpen, onClose, onSave, initialService, folders }: ServiceModalProps) {
+const inputClasses = "w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-bold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10";
+const labelClasses = "px-1 text-[10px] font-black uppercase tracking-widest text-slate-400";
+
+const unitOptions: Array<{ value: InvoiceUnit; label: string }> = [
+    { value: "h", label: "Stunde (h)" },
+    { value: "PA", label: "Pauschal (PA)" },
+    { value: "Stk", label: "Stück (Stk)" },
+    { value: "m", label: "Meter (m)" },
+    { value: "m²", label: "Quadratmeter (m²)" },
+    { value: "m³", label: "Kubikmeter (m³)" },
+    { value: "Tag", label: "Tag" },
+    { value: "kg", label: "Kilogramm (kg)" },
+];
+
+export function ServiceModal({ isOpen, onClose, onSave, initialService, folders, mode }: ServiceModalProps) {
+    const resolvedMode = mode || (initialService?.category === "Position" ? "position" : "service");
+    const isPositionMode = resolvedMode === "position";
     const [formData, setFormData] = useState({
         title: "",
         description: "",
         unit: "h" as InvoiceUnit,
         price: 0,
-        category: "Labor" as Service['category'],
-        itemType: "standard" as 'standard' | 'detailed',
+        category: "Labor" as Service["category"],
+        itemType: "standard" as "standard" | "detailed",
         folder: null as string | null
     });
 
@@ -32,7 +59,7 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService, folders 
                 description: initialService.description || "",
                 unit: initialService.unit,
                 price: initialService.price,
-                category: initialService.category || "Labor",
+                category: isPositionMode ? "Position" : (initialService.category || "Labor"),
                 itemType: initialService.itemType || "standard",
                 folder: initialService.folder || null
             });
@@ -40,210 +67,270 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService, folders 
             setFormData({
                 title: "",
                 description: "",
-                unit: "h",
+                unit: isPositionMode ? "PA" : "h",
                 price: 0,
-                category: "Labor",
+                category: isPositionMode ? "Position" : "Labor",
                 itemType: "standard",
                 folder: null
             });
         }
-    }, [initialService, isOpen]);
+    }, [initialService, isOpen, isPositionMode]);
+
+    const previewMeta = useMemo(() => {
+        if (isPositionMode) {
+            return {
+                title: "Positions-Vorlage",
+                subtitle: "Wiederverwendbare Position für Angebote und Rechnungen.",
+                icon: formData.itemType === "detailed" ? FileText : Layers,
+                color: formData.itemType === "detailed" ? "text-emerald-600" : "text-indigo-600",
+                bg: formData.itemType === "detailed" ? "bg-emerald-50" : "bg-indigo-50",
+            };
+        }
+
+        if (formData.category === "Material") {
+            return { title: "Material", subtitle: "Materialpreis oder Lieferposition.", icon: Package, color: "text-amber-600", bg: "bg-amber-50" };
+        }
+        if (formData.category === "FlatRate") {
+            return { title: "Pauschale", subtitle: "Fixpreis für wiederkehrende Leistung.", icon: Layers, color: "text-emerald-600", bg: "bg-emerald-50" };
+        }
+        return { title: "Arbeitsleistung", subtitle: "Zeit- oder Leistungsposition.", icon: Briefcase, color: "text-indigo-600", bg: "bg-indigo-50" };
+    }, [formData.category, formData.itemType, isPositionMode]);
 
     if (!isOpen) return null;
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = (event: React.FormEvent) => {
+        event.preventDefault();
         onSave({
-            id: initialService?.id || Math.random().toString(36).substr(2, 9),
-            userId: initialService?.userId || "", // The hook will overwrite this with the actual user.id
+            id: initialService?.id || Math.random().toString(36).slice(2, 11),
+            userId: initialService?.userId || "",
             ...formData,
+            category: isPositionMode ? "Position" : formData.category,
+            folder: isPositionMode ? formData.folder || undefined : undefined,
             createdAt: initialService?.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString()
         } as Service);
         onClose();
     };
 
-    const inputClasses = "w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400 font-medium";
-    const labelClasses = "block text-sm font-bold text-slate-700 mb-2 ml-1";
+    const PreviewIcon = previewMeta.icon;
 
     return (
-        <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-2xl xl:max-w-4xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-                {/* Header */}
-                <div className="px-8 py-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider border border-indigo-100">
-                                {initialService ? 'Bearbeiten' : 'Neu'}
-                            </span>
+        <div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[36px] border border-white/20 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-6 py-5 sm:px-8">
+                    <div className="flex items-center gap-3">
+                        <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl", previewMeta.bg, previewMeta.color)}>
+                            <PreviewIcon className="h-6 w-6" />
                         </div>
-                        <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                            {initialService ? 'Leistung bearbeiten' : 'Neue Leistung'}
-                        </h2>
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600">Katalog</p>
+                            <h2 className="text-2xl font-black text-slate-900">
+                                {initialService ? "Eintrag bearbeiten" : isPositionMode ? "Neue Positions-Vorlage" : "Neue Leistung"}
+                            </h2>
+                        </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="h-8 w-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-100 transition-all shadow-sm"
-                    >
-                        <X className="h-4 w-4" />
+                    <button onClick={onClose} className="rounded-2xl border border-slate-200 bg-white p-2 text-slate-400 shadow-sm transition-colors hover:text-slate-700">
+                        <X className="h-5 w-5" />
                     </button>
                 </div>
 
-                {/* Body */}
-                <div className="p-8 overflow-y-auto custom-scrollbar">
-                    <form id="service-form" onSubmit={handleSubmit} className="space-y-6">
-                        <div>
-                            <label className={labelClasses}>Bezeichnung</label>
-                            <div className="relative">
-                                <Wrench className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
-                                <input
-                                    required
-                                    type="text"
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    className={cn(inputClasses, "pl-12")}
-                                    placeholder="z.B. Regiestunde"
-                                />
+                <form onSubmit={handleSubmit} className="grid flex-1 overflow-y-auto xl:grid-cols-[340px_1fr]">
+                    <aside className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white sm:p-8">
+                        <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-fuchsia-500/20 blur-3xl" />
+                        <div className="relative space-y-5">
+                            <div className="rounded-[32px] border border-white/10 bg-white/10 p-5 backdrop-blur">
+                                <div className={cn("mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-white", previewMeta.color)}>
+                                    <PreviewIcon className="h-8 w-8" />
+                                </div>
+                                <p className="text-xs font-black uppercase tracking-widest text-cyan-100/70">{previewMeta.title}</p>
+                                <h3 className="mt-2 break-words text-3xl font-black leading-tight">
+                                    {formData.title || (isPositionMode ? "Positionsname" : "Leistungsname")}
+                                </h3>
+                                <p className="mt-3 text-sm font-semibold text-white/60">{previewMeta.subtitle}</p>
+                            </div>
+
+                            <div className="grid gap-3">
+                                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-white/45">Einheit</p>
+                                    <p className="mt-1 text-lg font-black text-white">{formData.unit}</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-white/45">Nettopreis</p>
+                                    <p className="mt-1 text-2xl font-black text-white">
+                                        € {(formData.price || 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+                                    </p>
+                                </div>
+                                {isPositionMode && (
+                                    <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-white/45">Ordner</p>
+                                        <p className="mt-1 truncate text-sm font-black text-white">{formData.folder || "Hauptverzeichnis"}</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
+                    </aside>
 
-                        <div>
-                            <label className={labelClasses}>Beschreibung (Optional)</label>
-                            <textarea
-                                value={formData.description}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                className={cn(inputClasses, "min-h-[100px] resize-none")}
-                                placeholder="Details zur Leistung..."
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-6">
-                            <div>
-                                <label className={labelClasses}>Einheit</label>
-                                <select
-                                    value={formData.unit}
-                                    onChange={(e) => setFormData({ ...formData, unit: e.target.value as any })}
-                                    className={cn(inputClasses, "appearance-none")}
-                                >
-                                    <option value="h">Stunde (h)</option>
-                                    <option value="PA">Pauschal (PA)</option>
-                                    <option value="Stk">Stück (Stk)</option>
-                                    <option value="m">Meter (m)</option>
-                                    <option value="m²">Quadratmeter (m²)</option>
-                                    <option value="m³">Kubikmeter (m³)</option>
-                                    <option value="Tag">Tag</option>
-                                    <option value="kg">Kilogramm (kg)</option>
-                                </select>
+                    <main className="space-y-6 p-6 sm:p-8">
+                        <section className="rounded-[32px] border border-slate-100 bg-white p-5 shadow-sm">
+                            <div className="mb-5 flex items-center gap-3">
+                                <Type className="h-5 w-5 text-indigo-500" />
+                                <h3 className="text-lg font-black text-slate-900">Grunddaten</h3>
                             </div>
-                            <div>
-                                <label className={labelClasses}>Preis (netto)</label>
-                                <div className="relative">
-                                    <span className="absolute left-4 top-3.5 text-slate-400 font-bold">€</span>
+                            <div className="grid gap-4">
+                                <div className="space-y-2">
+                                    <label className={labelClasses}>Bezeichnung *</label>
                                     <input
                                         required
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={formData.price}
-                                        onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                                        className={cn(inputClasses, "pl-10 text-right font-mono")}
-                                        placeholder="0.00"
+                                        value={formData.title}
+                                        onChange={(event) => setFormData({ ...formData, title: event.target.value })}
+                                        className={inputClasses}
+                                        placeholder={isPositionMode ? "z.B. Malerarbeiten Innenbereich" : "z.B. Regiestunde Facharbeiter"}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className={labelClasses}>Beschreibung</label>
+                                    <textarea
+                                        value={formData.description}
+                                        onChange={(event) => setFormData({ ...formData, description: event.target.value })}
+                                        rows={4}
+                                        className={cn(inputClasses, "resize-none")}
+                                        placeholder="Beschreibung, Hinweise oder Leistungsumfang..."
                                     />
                                 </div>
                             </div>
-                        </div>
+                        </section>
 
-                        <div>
-                            <label className={labelClasses}>Kategorie</label>
-                            <div className="grid grid-cols-2 gap-3">
-                                {[
-                                    { id: 'Labor', label: 'Arbeit' },
-                                    { id: 'Material', label: 'Material' },
-                                    { id: 'FlatRate', label: 'Pauschale' },
-                                    { id: 'Position', label: 'Position' }
-                                ].map((cat) => (
-                                    <button
-                                        key={cat.id}
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, category: cat.id as any })}
-                                        className={cn(
-                                            "py-3 rounded-xl text-sm font-bold border transition-all",
-                                            formData.category === cat.id
-                                                ? "bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm"
-                                                : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
-                                        )}
-                                    >
-                                        {cat.label}
-                                    </button>
-                                ))}
+                        <section className="rounded-[32px] border border-slate-100 bg-white p-5 shadow-sm">
+                            <div className="mb-5 flex items-center gap-3">
+                                <Wrench className="h-5 w-5 text-indigo-500" />
+                                <h3 className="text-lg font-black text-slate-900">Preis & Einordnung</h3>
                             </div>
-                        </div>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div className="space-y-2">
+                                    <label className={labelClasses}>Einheit</label>
+                                    <select
+                                        value={formData.unit}
+                                        onChange={(event) => setFormData({ ...formData, unit: event.target.value as InvoiceUnit })}
+                                        className={inputClasses}
+                                    >
+                                        {unitOptions.map(option => (
+                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className={labelClasses}>Preis netto *</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-slate-400">€</span>
+                                        <input
+                                            required
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={Number.isNaN(formData.price) ? "" : formData.price}
+                                            onChange={(event) => setFormData({ ...formData, price: parseFloat(event.target.value) || 0 })}
+                                            className={cn(inputClasses, "pl-10 text-right font-mono")}
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
 
-                        {formData.category === 'Position' && (
-                            <div className="space-y-6">
-                                <div>
-                                    <label className={labelClasses}>Positionstyp</label>
-                                    <div className="grid grid-cols-2 gap-3">
+                            {!isPositionMode && (
+                                <div className="mt-5 space-y-2">
+                                    <label className={labelClasses}>Kategorie</label>
+                                    <div className="grid gap-3 md:grid-cols-3">
                                         {[
-                                            { id: 'standard', label: 'Standard (1-zeilig)' },
-                                            { id: 'detailed', label: 'Detailliert (2-zeilig)' }
-                                        ].map((type) => (
+                                            { id: "Labor", label: "Arbeit", icon: Briefcase },
+                                            { id: "Material", label: "Material", icon: Package },
+                                            { id: "FlatRate", label: "Pauschale", icon: Layers },
+                                        ].map(({ id, label, icon: Icon }) => (
                                             <button
-                                                key={type.id}
+                                                key={id}
                                                 type="button"
-                                                onClick={() => setFormData({ ...formData, itemType: type.id as any })}
+                                                onClick={() => setFormData({ ...formData, category: id as Service["category"] })}
                                                 className={cn(
-                                                    "py-3 rounded-xl text-sm font-bold border transition-all",
-                                                    (formData.itemType || 'standard') === type.id
-                                                        ? "bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm"
-                                                        : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
+                                                    "flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 font-black transition-all",
+                                                    formData.category === id
+                                                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                                                        : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-white"
                                                 )}
                                             >
-                                                {type.label}
+                                                <Icon className="h-4 w-4" />
+                                                {label}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
-                                {folders && folders.length > 0 && (
-                                    <div>
-                                        <label className={labelClasses}>Ordner</label>
-                                        <select
-                                            value={formData.folder || ""}
-                                            onChange={(e) => setFormData({ ...formData, folder: e.target.value || null })}
-                                            className={inputClasses}
-                                        >
-                                            <option value="">Kein Ordner (Hauptverzeichnis)</option>
-                                            {folders.map((fName) => (
-                                                <option key={fName} value={fName}>
-                                                    {fName}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </form>
-                </div>
+                            )}
 
-                {/* Footer */}
-                <div className="p-6 border-t border-slate-50 bg-slate-50/50 flex justify-end gap-3">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:text-slate-700 hover:bg-white transition-all"
-                    >
-                        Abbrechen
-                    </button>
-                    <button
-                        form="service-form"
-                        type="submit"
-                        className="px-8 py-3 bg-primary-gradient text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
-                    >
-                        <Save className="h-4 w-4" />
-                        {initialService ? 'Speichern' : 'Erstellen'}
-                    </button>
-                </div>
+                            {isPositionMode && (
+                                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <label className={labelClasses}>Positionstyp</label>
+                                        <div className="grid gap-2">
+                                            {[
+                                                { id: "standard", label: "Standard", description: "Eine kompakte Positionszeile" },
+                                                { id: "detailed", label: "Detailliert", description: "Mit zusätzlicher Detailzeile" },
+                                            ].map(item => (
+                                                <button
+                                                    key={item.id}
+                                                    type="button"
+                                                    onClick={() => setFormData({ ...formData, itemType: item.id as "standard" | "detailed" })}
+                                                    className={cn(
+                                                        "rounded-2xl border p-4 text-left transition-all",
+                                                        formData.itemType === item.id
+                                                            ? "border-indigo-500 bg-indigo-50 text-indigo-800"
+                                                            : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-white"
+                                                    )}
+                                                >
+                                                    <p className="font-black">{item.label}</p>
+                                                    <p className="text-xs font-semibold opacity-70">{item.description}</p>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className={labelClasses}>Ordner</label>
+                                        <div className="relative">
+                                            <Folder className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                                            <select
+                                                value={formData.folder || ""}
+                                                onChange={(event) => setFormData({ ...formData, folder: event.target.value || null })}
+                                                className={cn(inputClasses, "pl-12")}
+                                            >
+                                                <option value="">Hauptverzeichnis</option>
+                                                {folders?.map(folderName => (
+                                                    <option key={folderName} value={folderName}>{folderName}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </section>
+
+                        <div className="sticky bottom-0 -mx-6 -mb-6 flex gap-3 border-t border-slate-100 bg-white/90 p-6 backdrop-blur sm:-mx-8 sm:-mb-8 sm:px-8">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="flex-1 rounded-2xl border border-slate-200 bg-white px-6 py-3.5 font-black text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
+                            >
+                                Abbrechen
+                            </button>
+                            <button
+                                type="submit"
+                                className="bg-primary-gradient flex-[2] rounded-2xl px-6 py-3.5 font-black text-white shadow-lg shadow-indigo-500/20 transition-all hover:-translate-y-0.5 active:scale-95"
+                            >
+                                <span className="flex items-center justify-center gap-2">
+                                    <Save className="h-5 w-5" />
+                                    {initialService ? "Änderungen speichern" : isPositionMode ? "Vorlage erstellen" : "Leistung erstellen"}
+                                </span>
+                            </button>
+                        </div>
+                    </main>
+                </form>
             </div>
         </div>
     );

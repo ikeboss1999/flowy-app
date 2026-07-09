@@ -32,15 +32,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             const hasUser = !!user || !!currentEmployee
 
             if (isPublic) {
-                const allowWelcomeAfterOnboarding =
-                    pathname === "/welcome" &&
-                    sessionStorage.getItem("flowy_allow_welcome_after_onboarding") === "true"
-
-                if (allowWelcomeAfterOnboarding) {
-                    setIsRedirecting(false)
-                    return
-                }
-
                 if (hasUser) {
                     // Loop guard: if we've bounced back to a public page
                     // more than 3 times, sync-session is broken — stop looping.
@@ -59,7 +50,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             } else {
                 // Protected routes: clear loop counter on successful entry
                 sessionStorage.removeItem('__auth_attempts')
-                sessionStorage.removeItem("flowy_allow_welcome_after_onboarding")
 
                 if (!hasUser) {
                     if (isLoading && forceShow) {

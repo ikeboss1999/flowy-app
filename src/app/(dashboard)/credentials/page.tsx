@@ -218,25 +218,29 @@ export default function CredentialsPage() {
     }
 
     return (
-        <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-300">
+        <div className="dashboard-page">
+            <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-8 animate-in fade-in duration-300">
             {/* Header section */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                <div>
-                    <div className="flex items-center gap-2 text-slate-400 font-bold uppercase tracking-widest text-xs mb-1">
-                        <KeyRound className="h-4 w-4 text-indigo-500" />
+            <div className="relative overflow-hidden rounded-[32px] border border-indigo-100 bg-white p-6 shadow-sm sm:p-8">
+                <div className="absolute right-0 top-0 h-44 w-44 rounded-full bg-indigo-100/70 blur-3xl" />
+                <div className="absolute bottom-0 right-36 h-32 w-32 rounded-full bg-fuchsia-100/70 blur-3xl" />
+                <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-3xl">
+                    <div className="mb-4 inline-flex items-center gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-2 text-xs font-black uppercase tracking-[0.28em] text-indigo-600">
+                        <KeyRound className="h-5 w-5" />
                         Sicherheit & Zugänge
                     </div>
-                    <h1 className="text-3xl xl:text-5xl font-black text-slate-900 tracking-tight font-outfit">
+                    <h1 className="text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
                         Zugangsdaten
                     </h1>
-                    <p className="text-slate-500 font-medium">
+                    <p className="mt-3 max-w-2xl text-base font-medium leading-relaxed text-slate-500">
                         Verwalte deine Passwörter und Anmeldungen sicher verschlüsselt.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <button
                         onClick={handleLock}
-                        className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-2xl font-bold text-sm transition-all flex items-center gap-2"
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50"
                         title="Tresor sperren"
                     >
                         <Lock className="h-4 w-4" />
@@ -244,36 +248,37 @@ export default function CredentialsPage() {
                     </button>
                     <button
                         onClick={handleOpenAddModal}
-                        className="gradient-button flex items-center gap-2 shadow-lg shadow-purple-200 hover:scale-[1.02] active:scale-95 transition-all text-sm font-bold py-3.5"
+                        className="gradient-button inline-flex items-center justify-center gap-2 py-3.5 text-sm font-bold shadow-lg shadow-purple-200 transition-all hover:scale-[1.02] active:scale-95"
                     >
                         <Plus className="h-4 w-4" />
                         Zugang hinzufügen
                     </button>
                 </div>
+                </div>
             </div>
 
             {/* Main Area */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
                 
                 {/* Sidebar Filter */}
-                <div className="glass-card p-6 space-y-6">
+                <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm xl:sticky xl:top-6">
                     <div>
-                        <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <h2 className="mb-4 flex items-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-500">
                             <Tags className="h-3.5 w-3.5 text-slate-400" />
                             Kategorie / Tags
                         </h2>
-                        <div className="flex flex-col gap-1">
+                        <div className="flex gap-2 overflow-x-auto pb-1 xl:flex-col xl:overflow-visible">
                             <button
                                 onClick={() => setSelectedTag(null)}
                                 className={cn(
-                                    "flex items-center justify-between px-3 py-2 rounded-xl text-sm font-bold text-left transition-all",
+                                    "flex shrink-0 items-center justify-between gap-4 rounded-2xl px-4 py-3 text-sm font-bold text-left transition-all xl:w-full",
                                     !selectedTag 
                                         ? "bg-indigo-50 text-indigo-600" 
                                         : "text-slate-600 hover:bg-slate-50"
                                 )}
                             >
                                 <span>Alle anzeigen</span>
-                                <span className="text-xs px-2 py-0.5 bg-white border border-slate-200 rounded-md text-slate-400">
+                                <span className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-400">
                                     {credentials.length}
                                 </span>
                             </button>
@@ -284,7 +289,7 @@ export default function CredentialsPage() {
                                         key={tag}
                                         onClick={() => setSelectedTag(tag)}
                                         className={cn(
-                                            "flex items-center justify-between px-3 py-2 rounded-xl text-sm font-bold text-left transition-all capitalize",
+                                            "flex shrink-0 items-center justify-between gap-4 rounded-2xl px-4 py-3 text-sm font-bold text-left transition-all capitalize xl:w-full",
                                             selectedTag === tag 
                                                 ? "bg-indigo-50 text-indigo-600" 
                                                 : "text-slate-600 hover:bg-slate-50"
@@ -294,7 +299,7 @@ export default function CredentialsPage() {
                                             <Tag className="h-3.5 w-3.5 opacity-60" />
                                             <span>{tag}</span>
                                         </div>
-                                        <span className="text-xs px-2 py-0.5 bg-white border border-slate-200 rounded-md text-slate-400">
+                                        <span className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-400">
                                             {count}
                                         </span>
                                     </button>
@@ -305,7 +310,7 @@ export default function CredentialsPage() {
                 </div>
 
                 {/* Listing Content */}
-                <div className="lg:col-span-3 space-y-6">
+                <div className="min-w-0 space-y-6 rounded-[32px] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
                     {/* Search bar */}
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5 pointer-events-none" />
@@ -314,23 +319,23 @@ export default function CredentialsPage() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Zugangsdaten durchsuchen..."
-                            className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 shadow-sm transition-all"
+                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-4 pl-12 pr-4 font-semibold text-slate-800 shadow-sm transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none"
                         />
                     </div>
 
                     {/* Results Loading / Empty State */}
                     {isLoading ? (
-                        <div className="glass-card p-12 flex flex-col items-center justify-center text-slate-400 gap-3">
+                        <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 rounded-[28px] border border-slate-100 bg-slate-50 text-slate-400">
                             <RefreshCw className="h-8 w-8 animate-spin text-indigo-500" />
                             <p className="font-bold text-sm">Lade Tresor-Inhalt...</p>
                         </div>
                     ) : filteredCredentials.length === 0 ? (
-                        <div className="glass-card p-16 flex flex-col items-center justify-center text-center text-slate-400">
-                            <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 mb-4">
-                                <KeyRound className="h-8 w-8 text-slate-300" />
+                        <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-200 bg-slate-50/70 p-10 text-center text-slate-400">
+                            <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl border border-indigo-100 bg-white text-indigo-500 shadow-sm">
+                                <KeyRound className="h-9 w-9" />
                             </div>
-                            <h3 className="font-bold text-slate-800 text-lg mb-1">Keine Zugangsdaten gefunden</h3>
-                            <p className="text-sm text-slate-500 max-w-xs leading-relaxed">
+                            <h3 className="mb-2 text-xl font-black text-slate-900">Keine Zugangsdaten gefunden</h3>
+                            <p className="max-w-sm text-sm font-medium leading-relaxed text-slate-500">
                                 {searchQuery || selectedTag 
                                     ? "Passe deinen Suchbegriff oder deine Tag-Filter an."
                                     : "Füge deine ersten Zugangsdaten hinzu, um sie hier sicher zu verwahren."}
@@ -338,7 +343,7 @@ export default function CredentialsPage() {
                         </div>
                     ) : (
                         /* Grid Layout for Credentials Cards */
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
                             {filteredCredentials.map(cred => {
                                 const isPasswordVisible = !!visiblePasswords[cred.id];
                                 const isUsernameCopied = !!copiedStates[`${cred.id}-username`];
@@ -658,6 +663,7 @@ export default function CredentialsPage() {
                     </div>
                 </div>
             )}
+            </div>
         </div>
     );
 }

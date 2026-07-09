@@ -7,27 +7,31 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
     try {
-        let userId = '';
+        let sessionUserId = '';
+        let requestedUserId = '';
 
         const token = cookies().get('session_token')?.value;
         if (token) {
             const decoded = await verifySessionToken(token);
-            if (decoded?.userId) userId = decoded.userId;
+            if (decoded?.userId) sessionUserId = decoded.userId;
         }
 
-        if (!userId) {
-            try {
-                const body = await req.json();
-                userId = body.userId;
-            } catch (e) { /* ignore */ }
+        try {
+            const body = await req.json();
+            requestedUserId = body.userId || '';
+        } catch (e) {
+            // Body is optional; the session token is authoritative.
         }
 
-        // CRITICAL SAFETY CHECK: Never delete without a valid userId
-        if (!userId || userId.length < 5) {
-            return NextResponse.json({ message: 'Ungültige oder fehlende Benutzer-ID' }, { status: 400 });
+        if (!sessionUserId || sessionUserId.length < 5) {
+            return NextResponse.json({ message: 'Ungueltige oder fehlende Benutzer-ID' }, { status: 400 });
         }
 
-        const result = await wipeAccount(userId);
+        if (requestedUserId && requestedUserId !== sessionUserId) {
+            return NextResponse.json({ message: 'Benutzer-ID stimmt nicht mit der aktuellen Sitzung ueberein.' }, { status: 403 });
+        }
+
+        const result = await wipeAccount(sessionUserId);
 
         if (!result.success) {
             return NextResponse.json({ error: result.message, details: result.details }, { status: 500 });
@@ -41,6 +45,6 @@ export async function POST(req: Request) {
         });
     } catch (error: any) {
         console.error('[AccountDeletion] Fatal error:', error);
-        return NextResponse.json({ message: 'Fehler beim Löschen des Kontos: ' + error.message }, { status: 500 });
+        return NextResponse.json({ message: 'Fehler beim Loeschen des Kontos: ' + error.message }, { status: 500 });
     }
 }

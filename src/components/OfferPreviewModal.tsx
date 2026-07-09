@@ -17,6 +17,7 @@ import { useNotification } from "@/context/NotificationContext";
 import { useAuth } from "@/context/AuthContext";
 import { nanoid } from "nanoid";
 import { offerPdfFileName } from "@/lib/document-filenames";
+import { LockedPdfPreview } from "@/components/LockedPdfPreview";
 
 const OfferPDFPreview = dynamic(
     async () => {
@@ -96,8 +97,6 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     const [showSuccess, setShowSuccess] = React.useState(false);
     const [isConvertingInvoice, setIsConvertingInvoice] = React.useState(false);
     const [showInvoiceSuccess, setShowInvoiceSuccess] = React.useState(false);
-    const [signedPdfUrl, setSignedPdfUrl] = React.useState<string | null>(null);
-    const [signedPdfError, setSignedPdfError] = React.useState<string | null>(null);
 
     const { data: offerSettings } = useOfferSettings();
     const { data: orderSettings, updateData: updateOrderSettings } = useOrderSettings();
@@ -110,30 +109,6 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
 
     const canConfirmOrder = !profile || profile.role === 'admin' || profile.role === 'developer' || !!profile.permissions?.orders_write;
     const canCreateInvoice = !profile || profile.role === 'admin' || profile.role === 'developer' || !!profile.permissions?.invoices_write;
-
-    React.useEffect(() => {
-        setSignedPdfUrl(null);
-        setSignedPdfError(null);
-
-        if (!isOpen || !offer || offer.status === 'draft' || !offer.pdfUrl) {
-            return;
-        }
-
-        let cancelled = false;
-
-        fetchSignedOfferPdfUrl(offer.id)
-            .then((url) => {
-                if (!cancelled) setSignedPdfUrl(url);
-            })
-            .catch((error) => {
-                console.error('[OfferPDFUrl]', error);
-                if (!cancelled) setSignedPdfError("Die gespeicherte PDF konnte nicht geladen werden.");
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [isOpen, offer?.id, offer?.status, offer?.pdfUrl]);
 
     const alreadyInvoiced = React.useMemo(() => {
         if (!offer || !invoices) return false;
@@ -159,7 +134,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
             const fileName = offerPdfFileName({ ...offer, customerName: customer?.name || offer.customerName });
 
             if (isStoredOffer) {
-                const pdfUrl = signedPdfUrl || await fetchSignedOfferPdfUrl(offer.id);
+                const pdfUrl = await fetchSignedOfferPdfUrl(offer.id);
                 try {
                     const response = await fetch(pdfUrl);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -395,33 +370,19 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
 
                 {/* ── Document Preview (echtes PDF-Rendering) ── */}
                 <div className="flex-1 min-h-0 bg-slate-100">
-                    {isStoredOffer ? (
-                        signedPdfUrl ? (
-                            <iframe
-                                src={signedPdfUrl}
-                                title={`${offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot'} ${offer.offerNumber}`}
-                                className="w-full h-full border-none bg-white"
+                    <LockedPdfPreview
+                        isStored={isStoredOffer}
+                        pdfUrlEndpoint={isStoredOffer ? `/api/offers/pdf-url?id=${encodeURIComponent(offer.id)}` : undefined}
+                        title={`${offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot'} ${offer.offerNumber}`}
+                        fallback={
+                            <OfferPDFPreview
+                                offer={offer}
+                                customer={customer}
+                                companySettings={companySettings}
+                                offerSettings={offerSettings}
                             />
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-slate-400 gap-2">
-                                {signedPdfError ? (
-                                    <span className="text-sm font-bold text-rose-500">{signedPdfError}</span>
-                                ) : (
-                                    <>
-                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                        <span className="text-sm font-medium">PDF wird geladen ...</span>
-                                    </>
-                                )}
-                            </div>
-                        )
-                    ) : (
-                        <OfferPDFPreview
-                            offer={offer}
-                            customer={customer}
-                            companySettings={companySettings}
-                            offerSettings={offerSettings}
-                        />
-                    )}
+                        }
+                    />
                 </div>
 
             </div>

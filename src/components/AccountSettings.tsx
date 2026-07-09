@@ -85,7 +85,7 @@ export function AccountSettings() {
                 setEmail(user.email);
             }
         }
-    }, [settings, isLoading, user]);
+    }, [isLoading, settings.name, user?.email]);
 
     const toggleSection = (section: string) => {
         setOpenSection(openSection === section ? null : section);

@@ -1,17 +1,47 @@
 "use client";
 
-import React, { useRef } from "react";
+import React from "react";
+import dynamic from "next/dynamic";
 import { X, Download, Loader2, AlertTriangle, RotateCcw } from "lucide-react";
 import { Invoice } from "@/types/invoice";
 import { Customer } from "@/types/customer";
 import { CompanyData } from "@/types/company";
-import { InvoicePDF } from "@/components/InvoicePDF";
 import { DunningModal } from "@/components/DunningModal";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import { invoicePdfFileName } from "@/lib/document-filenames";
+import { LockedPdfPreview } from "@/components/LockedPdfPreview";
+
+const InvoicePDFPreview = dynamic(
+    async () => {
+        const [{ PDFViewer }, { InvoiceReactPDF }] = await Promise.all([
+            import('@react-pdf/renderer'),
+            import('@/components/InvoiceReactPDF'),
+        ]);
+        return function InvoicePDFPreviewInner({ invoice, customer, companySettings }: any) {
+            return (
+                <PDFViewer width="100%" height="100%" style={{ border: 'none' }}>
+                    <InvoiceReactPDF
+                        invoice={invoice}
+                        customer={customer}
+                        companySettings={companySettings}
+                    />
+                </PDFViewer>
+            );
+        };
+    },
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex items-center justify-center h-full text-slate-400 gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-sm font-medium">Vorschau wird geladen ...</span>
+            </div>
+        ),
+    }
+);
 
 interface InvoicePreviewModalProps {
     isOpen: boolean;
@@ -31,41 +61,14 @@ async function fetchSignedInvoicePdfUrl(invoiceId: string) {
 }
 
 export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, companySettings }: InvoicePreviewModalProps) {
-    const pdfRef = useRef<HTMLDivElement>(null);
     const [isPrinting, setIsPrinting] = React.useState(false);
     const [isDunningModalOpen, setIsDunningModalOpen] = React.useState(false);
-    const [signedPdfUrl, setSignedPdfUrl] = React.useState<string | null>(null);
-    const [signedPdfError, setSignedPdfError] = React.useState<string | null>(null);
 
     // Hooks for Dunning System
     const { data: invoiceSettings } = useInvoiceSettings();
     const { updateInvoice } = useInvoices();
     const { profile } = useAuth();
     const { showConfirm, showToast } = useNotification();
-
-    React.useEffect(() => {
-        setSignedPdfUrl(null);
-        setSignedPdfError(null);
-
-        if (!isOpen || !invoice || invoice.status === 'draft' || (!invoice.pdfPath && !invoice.pdfUrl)) {
-            return;
-        }
-
-        let cancelled = false;
-
-        fetchSignedInvoicePdfUrl(invoice.id)
-            .then((url) => {
-                if (!cancelled) setSignedPdfUrl(url);
-            })
-            .catch((error) => {
-                console.error('[InvoicePDFUrl]', error);
-                if (!cancelled) setSignedPdfError("Die gespeicherte PDF konnte nicht geladen werden.");
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [isOpen, invoice?.id, invoice?.status, invoice?.pdfPath, invoice?.pdfUrl]);
 
     if (!isOpen || !invoice) return null;
 
@@ -76,7 +79,7 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
         if (isStoredInvoice) {
             setIsPrinting(true);
             try {
-                const url = signedPdfUrl || await fetchSignedInvoicePdfUrl(invoice.id);
+                const url = await fetchSignedInvoicePdfUrl(invoice.id);
                 window.open(url, '_blank', 'noopener,noreferrer');
             } catch (e) {
                 console.error('[InvoicePDFUrl]', e);
@@ -200,41 +203,19 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
                 </div>
 
                 {/* PDF Preview */}
-                <div className="flex-1 overflow-y-auto bg-slate-50 p-8 no-print">
-                    {isStoredInvoice ? (
-                        signedPdfUrl ? (
-                            <iframe
-                                src={signedPdfUrl}
-                                title={`Rechnung ${invoice.invoiceNumber}`}
-                                className="w-full h-full min-h-[70vh] bg-white rounded-2xl shadow-xl border border-slate-200"
-                            />
-                        ) : (
-                            <div className="w-full h-full min-h-[70vh] bg-white rounded-2xl shadow-xl border border-slate-200 flex items-center justify-center">
-                                <div className="flex flex-col items-center gap-3 text-slate-500 font-bold">
-                                    {signedPdfError ? (
-                                        <>
-                                            <AlertTriangle className="h-8 w-8 text-rose-500" />
-                                            {signedPdfError}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-                                            PDF wird geladen...
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        )
-                    ) : (
-                        <div className="max-w-[210mm] mx-auto bg-white shadow-xl">
-                            <InvoicePDF
-                                ref={pdfRef}
+                <div className="flex-1 min-h-0 bg-slate-100 no-print">
+                    <LockedPdfPreview
+                        isStored={isStoredInvoice}
+                        pdfUrlEndpoint={isStoredInvoice ? `/api/invoices/pdf-url?id=${encodeURIComponent(invoice.id)}` : undefined}
+                        title={`Rechnung ${invoice.invoiceNumber}`}
+                        fallback={
+                            <InvoicePDFPreview
                                 invoice={invoice}
                                 customer={customer}
                                 companySettings={invoice.performancePeriod?.companySnapshot || companySettings}
                             />
-                        </div>
-                    )}
+                        }
+                    />
                 </div>
             </div>
 

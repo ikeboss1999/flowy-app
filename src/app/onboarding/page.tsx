@@ -75,6 +75,7 @@ export default function OnboardingPage() {
     const [currentStep, setCurrentStep] = useState<Step>("welcome");
     const [isInitialized, setIsInitialized] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isCancelling, setIsCancelling] = useState(false);
     const [pin, setPin] = useState("");
     const [confirmPin, setConfirmPin] = useState("");
     const [username, setUsername] = useState("");
@@ -159,9 +160,46 @@ export default function OnboardingPage() {
         }
     };
 
-    const handleCancelOnboarding = () => {
-        sessionStorage.setItem("flowy_allow_welcome_after_onboarding", "true");
-        router.push("/welcome");
+    const handleCancelOnboarding = async () => {
+        if (isCancelling) return;
+
+        const confirmed = window.confirm(
+            "Onboarding abbrechen? Ihr gerade angelegtes Konto und alle bereits gespeicherten Daten werden gelöscht."
+        );
+        if (!confirmed) return;
+
+        setIsCancelling(true);
+        try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (sessionData.session?.access_token) {
+                await fetch("/api/auth/sync-session", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ access_token: sessionData.session.access_token }),
+                });
+            }
+
+            const response = await fetch("/api/auth/delete-account", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: user?.id }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => null);
+                throw new Error(error?.message || error?.error || "Konto konnte nicht gelöscht werden.");
+            }
+
+            sessionStorage.removeItem("flowy_app_unlocked_user");
+            localStorage.removeItem("flowy_last_active_at");
+
+            await supabase.auth.signOut();
+            window.location.href = "/welcome";
+        } catch (error) {
+            console.error("Onboarding cancellation failed:", error);
+            alert("Das Onboarding konnte nicht sauber abgebrochen werden. Bitte versuche es erneut.");
+            setIsCancelling(false);
+        }
     };
 
     const handlePinSubmit = () => {
@@ -392,10 +430,15 @@ export default function OnboardingPage() {
                             <button
                                 type="button"
                                 onClick={handleCancelOnboarding}
-                                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-black text-slate-200 transition hover:bg-white/15 hover:text-white lg:self-start"
+                                disabled={isCancelling}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-black text-slate-200 transition hover:bg-white/15 hover:text-white disabled:cursor-wait disabled:opacity-70 lg:self-start"
                             >
-                                <X className="h-4 w-4" />
-                                Abbrechen
+                                {isCancelling ? (
+                                    <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                                ) : (
+                                    <X className="h-4 w-4" />
+                                )}
+                                {isCancelling ? "Wird gelöscht..." : "Abbrechen"}
                             </button>
                         </div>
 

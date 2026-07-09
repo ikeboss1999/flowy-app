@@ -8,6 +8,7 @@ import { Customer } from "@/types/customer";
 import { CompanyData } from "@/types/company";
 import { useOrderSettings } from "@/hooks/useOrderSettings";
 import { orderPdfFileName } from "@/lib/document-filenames";
+import { LockedPdfPreview } from "@/components/LockedPdfPreview";
 
 const OrderPDFPreview = dynamic(
     async () => {
@@ -58,33 +59,7 @@ async function fetchSignedOrderPdfUrl(orderId: string) {
 
 export function OrderPreviewModal({ isOpen, onClose, order, customer, companySettings }: OrderPreviewModalProps) {
     const [isDownloading, setIsDownloading] = React.useState(false);
-    const [signedPdfUrl, setSignedPdfUrl] = React.useState<string | null>(null);
-    const [signedPdfError, setSignedPdfError] = React.useState<string | null>(null);
     const { data: orderSettings } = useOrderSettings();
-
-    React.useEffect(() => {
-        setSignedPdfUrl(null);
-        setSignedPdfError(null);
-
-        if (!isOpen || !order || !order.pdfUrl) {
-            return;
-        }
-
-        let cancelled = false;
-
-        fetchSignedOrderPdfUrl(order.id)
-            .then((url) => {
-                if (!cancelled) setSignedPdfUrl(url);
-            })
-            .catch((error) => {
-                console.error('[OrderPDFUrl]', error);
-                if (!cancelled) setSignedPdfError("Die gespeicherte PDF konnte nicht geladen werden.");
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [isOpen, order?.id, order?.pdfUrl]);
 
     if (!isOpen || !order) return null;
 
@@ -105,7 +80,7 @@ export function OrderPreviewModal({ isOpen, onClose, order, customer, companySet
             const fileName = orderPdfFileName({ ...order, customerName: customer?.name || order.customerName });
 
             if (isStoredOrder) {
-                const pdfUrl = signedPdfUrl || await fetchSignedOrderPdfUrl(order.id);
+                const pdfUrl = await fetchSignedOrderPdfUrl(order.id);
                 try {
                     const response = await fetch(pdfUrl);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -170,33 +145,19 @@ export function OrderPreviewModal({ isOpen, onClose, order, customer, companySet
 
                 {/* Document Preview */}
                 <div className="flex-1 min-h-0 bg-slate-100">
-                    {isStoredOrder ? (
-                        signedPdfUrl ? (
-                            <iframe
-                                src={signedPdfUrl}
-                                title={`Auftrag ${order.orderNumber}`}
-                                className="w-full h-full border-none bg-white"
+                    <LockedPdfPreview
+                        isStored={isStoredOrder}
+                        pdfUrlEndpoint={isStoredOrder ? `/api/orders/pdf-url?id=${encodeURIComponent(order.id)}` : undefined}
+                        title={`Auftrag ${order.orderNumber}`}
+                        fallback={
+                            <OrderPDFPreview
+                                order={order}
+                                customer={customer}
+                                companySettings={companySettings}
+                                orderSettings={orderSettings}
                             />
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-slate-400 gap-2">
-                                {signedPdfError ? (
-                                    <span className="text-sm font-bold text-rose-500">{signedPdfError}</span>
-                                ) : (
-                                    <>
-                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                        <span className="text-sm font-medium">PDF wird geladen ...</span>
-                                    </>
-                                )}
-                            </div>
-                        )
-                    ) : (
-                        <OrderPDFPreview
-                            order={order}
-                            customer={customer}
-                            companySettings={companySettings}
-                            orderSettings={orderSettings}
-                        />
-                    )}
+                        }
+                    />
                 </div>
 
             </div>

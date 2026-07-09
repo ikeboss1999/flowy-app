@@ -60,23 +60,28 @@ export function ProjectDiary({ project, onUpdate, onGeneratePDF }: ProjectDiaryP
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center px-2">
-                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                    <Camera className="h-5 w-5 text-indigo-600" />
-                    Bautagebuch
-                </h3>
-                <div className="flex gap-2">
+            <div className="flex flex-col gap-4 rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                        <Camera className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-slate-900">Bautagebuch</h3>
+                        <p className="text-sm font-medium text-slate-500">Fortschritt, Fotos und Notizen sauber dokumentieren.</p>
+                    </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
                     <button
                         onClick={onGeneratePDF}
                         disabled={!project.diaryEntries || project.diaryEntries.length === 0}
-                        className="text-slate-600 font-bold hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-colors text-sm border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-600 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Bericht erstellen (PDF)
                     </button>
                     {!isAdding && (
                         <button
                             onClick={() => setIsAdding(true)}
-                            className="bg-primary-gradient text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 text-sm"
+                            className="bg-primary-gradient flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition-all hover:-translate-y-0.5 active:scale-95"
                         >
                             <Plus className="h-4 w-4" /> Neuer Eintrag
                         </button>
@@ -85,7 +90,7 @@ export function ProjectDiary({ project, onUpdate, onGeneratePDF }: ProjectDiaryP
             </div>
 
             {isAdding && (
-                <div className="bg-white rounded-[24px] border-2 border-indigo-100 p-6 shadow-xl shadow-indigo-500/5 animate-in slide-in-from-top-4 duration-300">
+                <div className="animate-in slide-in-from-top-4 rounded-[32px] border border-indigo-100 bg-white p-6 shadow-xl shadow-indigo-500/5 duration-300">
                     <div className="flex justify-between items-start mb-4">
                         <h4 className="font-bold text-slate-900">Neuer Tagebucheintrag</h4>
                         <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600">
@@ -153,8 +158,10 @@ export function ProjectDiary({ project, onUpdate, onGeneratePDF }: ProjectDiaryP
 
             <div className="space-y-4">
                 {!project.diaryEntries || project.diaryEntries.length === 0 ? (
-                    <div className="bg-slate-50 rounded-[24px] border border-slate-100 p-12 text-center border-dashed">
-                        <ImageIcon className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+                    <div className="rounded-[32px] border border-dashed border-indigo-200 bg-indigo-50/40 p-12 text-center">
+                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-white text-indigo-500 shadow-sm">
+                            <ImageIcon className="h-8 w-8" />
+                        </div>
                         <p className="text-slate-500 font-medium">Noch keine Einträge im Bautagebuch vorhanden.</p>
                         <button
                             onClick={() => setIsAdding(true)}
@@ -165,7 +172,7 @@ export function ProjectDiary({ project, onUpdate, onGeneratePDF }: ProjectDiaryP
                     </div>
                 ) : (
                     project.diaryEntries.map((entry) => (
-                        <div key={entry.id} className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden group">
+                        <div key={entry.id} className="group overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm">
                             <div className="p-6">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-3">

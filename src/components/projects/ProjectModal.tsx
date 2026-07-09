@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Briefcase, MapPin, Banknote, Save, Plus, ChevronDown, ChevronUp, Trash2, ListChecks } from "lucide-react";
-import { Project, ProjectStatus, PaymentPlanItem } from "@/types/project";
+import { X, Briefcase, MapPin, Banknote, Save, ListChecks } from "lucide-react";
+import { Project, ProjectStatus } from "@/types/project";
 import { Customer } from "@/types/customer";
 import { cn, generateUUID } from "@/lib/utils";
 import { CustomerModal } from "@/components/CustomerModal";
@@ -23,9 +23,7 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
     const taxRate = invoiceSettings?.defaultTaxRate || 20; // Fallback to 20 if not loaded yet
 
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
-    const [paymentPlan, setPaymentPlan] = useState<PaymentPlanItem[]>([]);
     const [copyCustomerAddress, setCopyCustomerAddress] = useState(false);
-    const [isPaymentPlanOpen, setIsPaymentPlanOpen] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
         customerId: "",
@@ -53,8 +51,6 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
                 budget: net > 0 ? net.toString() : "",
                 budgetGross: net > 0 ? gross.toFixed(2) : ""
             });
-            setPaymentPlan(initialProject.paymentPlan || []);
-            setIsPaymentPlanOpen((initialProject.paymentPlan || []).length > 0);
         } else {
             setFormData({
                 name: "",
@@ -67,8 +63,6 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
                 budget: "",
                 budgetGross: ""
             });
-            setPaymentPlan([]);
-            setIsPaymentPlanOpen(false);
         }
         setCopyCustomerAddress(false);
     }, [initialProject, isOpen, taxRate]);
@@ -98,37 +92,6 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
         }
     };
 
-    const addPaymentPlanItem = () => {
-        const hasFinal = paymentPlan.some(item => item.type === 'final');
-        setPaymentPlan(prev => [...prev, {
-            id: generateUUID(),
-            name: hasFinal ? `${prev.length + 1}. Teilrechnung` : (prev.length === 0 ? 'Anzahlung' : `${prev.length + 1}. Teilrechnung`),
-            amount: 0,
-            status: 'planned',
-            type: 'partial'
-        }]);
-    };
-
-    const removePaymentPlanItem = (id: string) => {
-        setPaymentPlan(prev => prev.filter(item => item.id !== id));
-    };
-
-    const updatePaymentPlanItem = (id: string, updates: Partial<PaymentPlanItem>) => {
-        setPaymentPlan(prev => prev.map(item => {
-            if (item.id === id) {
-                const newItem = { ...item, ...updates };
-                // Auto-update name if type changed to final
-                if (updates.type === 'final' && item.type !== 'final') {
-                    newItem.name = 'Schlussrechnung';
-                } else if (updates.type === 'partial' && item.type === 'final') {
-                    newItem.name = `${prev.filter(i => i.type === 'partial').length + 1}. Teilrechnung`;
-                }
-                return newItem;
-            }
-            return item;
-        }));
-    };
-
     const isFormValid = formData.name.trim() !== "" && 
                         formData.customerId !== "" && 
                         formData.budget !== "" && 
@@ -153,7 +116,7 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
             },
             description: formData.description,
             budget: formData.budget ? parseFloat(formData.budget) : undefined,
-            paymentPlan: paymentPlan.length > 0 ? paymentPlan : undefined,
+            paymentPlan: initialProject?.paymentPlan,
             diaryEntries: initialProject?.diaryEntries,
             createdAt: initialProject?.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -359,71 +322,18 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
                         />
                     </div>
 
-                    {/* Payment Plan */}
-                    <div className="space-y-3">
-                        <button
-                            type="button"
-                            onClick={() => setIsPaymentPlanOpen(prev => !prev)}
-                            className="flex items-center gap-2 w-full text-left px-1"
-                        >
-                            <ListChecks className="h-3.5 w-3.5 text-indigo-400" />
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Zahlungsplan</span>
-                            {paymentPlan.length > 0 && (
-                                <span className="text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full">
-                                    {paymentPlan.length} Pos.
-                                </span>
-                            )}
-                            <span className="ml-auto text-slate-400">
-                                {isPaymentPlanOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                            </span>
-                        </button>
+                    {/* Payment Plan hint */}
+                    <div className="flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
+                            <ListChecks className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-black text-indigo-900">Zahlungsplan in der Projektakte</p>
+                            <p className="mt-1 text-sm font-medium leading-relaxed text-indigo-700/70">
+                                Teilrechnungen und Schlussrechnung werden nach dem Speichern zentral im Projekt unter &quot;Zahlungsplan&quot; gepflegt.
+                            </p>
+                        </div>
 
-                        {isPaymentPlanOpen && (
-                            <div className="space-y-2 bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                                {paymentPlan.map((item, index) => (
-                                    <div key={item.id} className="flex gap-2 items-center">
-                                        <span className="text-xs font-bold text-slate-400 w-5 shrink-0">{index + 1}.</span>
-                                        <input
-                                            type="text"
-                                            value={item.name}
-                                            onChange={e => updatePaymentPlanItem(item.id, { name: e.target.value })}
-                                            placeholder="Bezeichnung"
-                                            className="flex-1 min-w-0 px-3 py-2 bg-white border border-slate-100 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
-                                        />
-                                        <input
-                                            type="number"
-                                            value={item.amount || ''}
-                                            onChange={e => updatePaymentPlanItem(item.id, { amount: parseFloat(e.target.value) || 0 })}
-                                            placeholder="Netto €"
-                                            step="0.01"
-                                            className="w-28 shrink-0 px-3 py-2 bg-white border border-slate-100 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
-                                        />
-                                        <select
-                                            value={item.type || 'partial'}
-                                            onChange={e => updatePaymentPlanItem(item.id, { type: e.target.value as 'partial' | 'final' })}
-                                            className="w-36 shrink-0 px-3 py-2 bg-white border border-slate-100 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 appearance-none"
-                                        >
-                                            <option value="partial">Teilrechnung</option>
-                                            <option value="final">Schlussrechnung</option>
-                                        </select>
-                                        <button
-                                            type="button"
-                                            onClick={() => removePaymentPlanItem(item.id)}
-                                            className="p-2 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-lg transition-colors shrink-0"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                ))}
-                                <button
-                                    type="button"
-                                    onClick={addPaymentPlanItem}
-                                    className="flex items-center gap-1.5 text-sm font-bold text-indigo-600 hover:text-indigo-700 px-2 py-1.5 hover:bg-indigo-50 rounded-lg transition-colors"
-                                >
-                                    <Plus className="h-4 w-4" /> Position hinzufügen
-                                </button>
-                            </div>
-                        )}
                     </div>
                 </form>
 

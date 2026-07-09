@@ -353,7 +353,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
 
     const renderFolderTable = (folderList: string[]) => {
         return (
-            <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
@@ -373,7 +373,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                                             <div className="flex items-center gap-3">
                                                 <div 
                                                     onClick={() => setSelectedFolder(folderName)}
-                                                    className="h-10 w-10 rounded-xl bg-indigo-50/50 flex items-center justify-center text-indigo-500 hover:bg-indigo-55 transition-colors cursor-pointer shrink-0"
+                                                    className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-2xl bg-indigo-50 text-indigo-500 transition-colors hover:bg-indigo-100"
                                                 >
                                                     <FolderOpen className="h-5 w-5" />
                                                 </div>
@@ -425,22 +425,27 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
     if (!selectedFolder) {
         return (
             <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <h3 className="font-black text-slate-900 flex items-center gap-2 font-outfit text-lg">
-                        <FolderOpen className="h-5 w-5 text-indigo-500" />
-                        {title}
-                    </h3>
+                <div className="flex flex-col gap-4 rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                            <FolderOpen className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h3 className="font-outfit text-xl font-black text-slate-900">{title}</h3>
+                            <p className="text-sm font-medium text-slate-500">Ordner und Projektdateien zentral verwalten.</p>
+                        </div>
+                    </div>
                     <button
                         onClick={() => setIsCreateFolderModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100"
+                        className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5 hover:bg-indigo-700"
                     >
                         <Plus className="h-4 w-4" /> Neuer Ordner
                     </button>
                 </div>
 
                 {visibleFolders.length === 0 ? (
-                    <div className="p-16 text-center bg-slate-50/50 rounded-[32px] border border-slate-100/85 max-w-md mx-auto mt-8 flex flex-col items-center gap-4">
-                        <div className="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500">
+                    <div className="mx-auto mt-8 flex max-w-md flex-col items-center gap-4 rounded-[32px] border border-dashed border-indigo-200 bg-indigo-50/40 p-16 text-center">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-white text-indigo-500 shadow-sm">
                             <FolderOpen className="h-8 w-8" />
                         </div>
                         <div>
@@ -449,7 +454,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                         </div>
                         <button
                             onClick={() => setIsCreateFolderModalOpen(true)}
-                            className="mt-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-100 flex items-center gap-2 font-outfit"
+                            className="font-outfit mt-2 flex items-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 text-xs font-black text-white shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700"
                         >
                             <Plus className="h-4 w-4" /> Ordner erstellen
                         </button>
@@ -489,13 +494,13 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
 
     return (
         <div 
-            className="space-y-5"
+            className="space-y-6"
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={async (e) => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) await handleFiles(e.dataTransfer.files); }}
         >
-            <div className="flex items-center gap-4 flex-wrap border-b border-slate-50 pb-4">
-                <div className="flex items-center gap-2 flex-wrap font-outfit text-sm">
+            <div className="flex flex-col gap-4 rounded-[32px] border border-slate-100 bg-white p-5 shadow-sm xl:flex-row xl:items-center">
+                <div className="font-outfit flex flex-wrap items-center gap-2 text-sm">
                     <button onClick={() => setSelectedFolder(null)} className="text-slate-400 hover:text-indigo-600 font-bold transition-colors">
                         Alle Ordner
                     </button>
@@ -513,10 +518,10 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                     ))}
                 </div>
                 
-                <div className="ml-auto flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 xl:ml-auto">
                     <button 
                         onClick={() => setIsCreateFolderModalOpen(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm font-outfit"
+                        className="font-outfit flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm transition-all hover:bg-slate-50"
                     >
                         <Plus className="h-3.5 w-3.5" /> Neuer Unterordner
                     </button>
@@ -538,7 +543,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                     >
                         <Trash2 className="h-4 w-4" />
                     </button>
-                    <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-md shadow-indigo-200 disabled:opacity-60 font-outfit">
+                    <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="font-outfit flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-60">
                         {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Datei hochladen
                     </button>
                     <input ref={fileInputRef} type="file" multiple accept={ACCEPT_ALL} onChange={(e) => e.target.files && handleFiles(e.target.files)} className="hidden" />
@@ -554,8 +559,8 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
             )}
 
             {visibleFolders.length === 0 && folderFiles.length === 0 ? (
-                <div className="p-16 text-center bg-slate-50/50 rounded-[32px] border border-slate-100/80 max-w-md mx-auto mt-8 flex flex-col items-center gap-4">
-                    <div className="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500">
+                <div className="mx-auto mt-8 flex max-w-md flex-col items-center gap-4 rounded-[32px] border border-dashed border-indigo-200 bg-indigo-50/40 p-16 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-white text-indigo-500 shadow-sm">
                         <FolderOpen className="h-8 w-8" />
                     </div>
                     <div>
@@ -589,7 +594,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                     {folderFiles.length > 0 && (
                         <div className="space-y-3">
                             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Dateien</h4>
-                            <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+                            <div className="overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse">
                                         <thead>

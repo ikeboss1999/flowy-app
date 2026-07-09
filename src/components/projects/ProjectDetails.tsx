@@ -106,6 +106,12 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
         };
     }, [invoices, project.id, project.budget, project.paymentPlan]);
 
+    React.useEffect(() => {
+        if (financials.hasActiveFinalInvoice && project.status !== 'completed') {
+            updateProject(project.id, { status: 'completed' });
+        }
+    }, [financials.hasActiveFinalInvoice, project.id, project.status]);
+
     const projectOffers = useMemo(
         () => offers.filter(o => o.projectId === project.id),
         [offers, project.id]
@@ -222,112 +228,141 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
     return (
         <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
 
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-                <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors font-medium">
-                    <ArrowLeft className="h-4 w-4" /> Zurück zur Übersicht
-                </button>
-                <div className="flex gap-3">
-                    <button onClick={onEdit} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition-colors shadow-sm">
-                        Bearbeiten
-                    </button>
-                    {financials.hasActiveFinalInvoice && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold border border-emerald-100">
-                            <CheckCircle className="h-4 w-4" /> Projekt abgerechnet
-                        </div>
-                    )}
-                </div>
-            </div>
+            <div className="overflow-hidden rounded-[36px] border border-indigo-100/70 bg-white shadow-sm">
+                <div className="relative bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white sm:p-8">
+                    <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-fuchsia-500/20 blur-3xl" />
+                    <div className="absolute bottom-0 left-1/3 h-40 w-40 rounded-full bg-indigo-400/20 blur-3xl" />
 
-            {/* ── Title card — always visible ───────────────────────────────── */}
-            <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
-                <div className="flex flex-col lg:flex-row justify-between gap-8">
-                    {/* Identity */}
-                    <div className="space-y-3 flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border", getStatusStyle(project.status))}>
-                                {getStatusLabel(project.status)}
-                            </span>
-                            {project.projectNumber && (
-                                <span className="text-indigo-500 font-mono font-bold text-sm bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100">
-                                    {project.projectNumber}
+                    <div className="relative flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+                        <div className="min-w-0 flex-1">
+                            <button
+                                onClick={onBack}
+                                className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-bold text-white/80 transition-all hover:bg-white/15 hover:text-white"
+                            >
+                                <ArrowLeft className="h-4 w-4" /> Zurueck zur Projektuebersicht
+                            </button>
+
+                            <div className="mb-4 flex flex-wrap items-center gap-2">
+                                <span className={cn("rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wider", getStatusStyle(project.status))}>
+                                    {getStatusLabel(project.status)}
                                 </span>
-                            )}
-                            <span className="text-slate-400 text-sm font-medium flex items-center gap-1">
-                                <Calendar className="h-3.5 w-3.5" /> {new Date(project.createdAt).toLocaleDateString('de-DE')}
-                            </span>
-                        </div>
-                        <h1 className="text-4xl font-black text-slate-900 tracking-tight">{project.name}</h1>
-                        <div className="flex flex-wrap gap-5 text-slate-500 font-medium text-sm">
-                            {customer && (
-                                <div className="flex items-center gap-2">
-                                    <Building className="h-4 w-4 text-slate-400" />
-                                    {customer.name}
+                                {project.projectNumber && (
+                                    <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-cyan-100">
+                                        {project.projectNumber}
+                                    </span>
+                                )}
+                                <span className="flex items-center gap-1 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-white/70">
+                                    <Calendar className="h-3.5 w-3.5" /> {new Date(project.createdAt).toLocaleDateString('de-DE')}
+                                </span>
+                            </div>
+
+                            <h1 className="max-w-4xl truncate text-3xl font-black tracking-tight sm:text-4xl xl:text-5xl">{project.name}</h1>
+
+                            <div className="mt-5 flex flex-wrap gap-3 text-sm font-bold text-white/70">
+                                {customer && (
+                                    <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2">
+                                        <Building className="h-4 w-4 text-cyan-200" />
+                                        {customer.name}
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2">
+                                    <MapPin className="h-4 w-4 text-cyan-200" />
+                                    {[project.address.street, `${project.address.zip} ${project.address.city}`].filter(Boolean).join(", ")}
                                 </div>
-                            )}
-                            <div className="flex items-center gap-2">
-                                <MapPin className="h-4 w-4 text-slate-400" />
-                                {project.address.street}, {project.address.zip} {project.address.city}
                             </div>
                         </div>
+
+                        <div className="relative flex flex-wrap gap-3 xl:justify-end">
+                            <button
+                                onClick={onEdit}
+                                className="rounded-2xl border border-white/10 bg-white px-5 py-3 text-sm font-black text-slate-900 shadow-lg shadow-black/10 transition-all hover:-translate-y-0.5"
+                            >
+                                Bearbeiten
+                            </button>
+                            {financials.hasActiveFinalInvoice && (
+                                <div className="flex items-center gap-2 rounded-2xl border border-emerald-300/30 bg-emerald-400/15 px-5 py-3 text-sm font-black text-emerald-100">
+                                    <CheckCircle className="h-4 w-4" /> Projekt abgerechnet
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Quick Stats — pinned to header */}
-                    <div className="flex gap-3 flex-shrink-0 flex-wrap">
-                        <div className="bg-slate-50 rounded-2xl p-4 min-w-[130px] border border-slate-100 text-center">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Budget (Netto)</p>
-                            <p className="text-lg font-black text-slate-900">€ {(financials.budget || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
+                    <div className="relative mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-white/50">Budget Netto</p>
+                            <p className="mt-2 text-2xl font-black">EUR {(financials.budget || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
                         </div>
-                        <div className="bg-emerald-50 rounded-2xl p-4 min-w-[130px] border border-emerald-100 text-center">
-                            <p className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest mb-1">Bezahlt (Netto)</p>
-                            <p className="text-lg font-black text-emerald-700">€ {(financials.totalPaid || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
+                        <div className="rounded-3xl border border-emerald-300/20 bg-emerald-400/10 p-4 backdrop-blur">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-100/60">Bezahlt Netto</p>
+                            <p className="mt-2 text-2xl font-black text-emerald-100">EUR {(financials.totalPaid || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
                         </div>
-                        <div className="bg-indigo-50 rounded-2xl p-4 min-w-[130px] border border-indigo-100 text-center">
-                            <p className="text-[10px] font-bold text-indigo-600/70 uppercase tracking-widest mb-1">Offen (Netto)</p>
-                            <p className="text-lg font-black text-indigo-700">€ {(financials.openAmount || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
+                        <div className="rounded-3xl border border-cyan-300/20 bg-cyan-400/10 p-4 backdrop-blur">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-cyan-100/60">Offen Netto</p>
+                            <p className="mt-2 text-2xl font-black text-cyan-100">EUR {(financials.openAmount || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        <div className="rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-white/50">Dokumente</p>
+                            <p className="mt-2 text-2xl font-black">{documents.length}</p>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* ── Tab strip ────────────────────────────────────────────────── */}
-            <div className="flex items-center gap-1 p-1 bg-slate-100/60 rounded-2xl w-fit border border-slate-200/50">
-                {TABS.map(({ id, label, icon: Icon }) => (
-                    <button
-                        key={id}
-                        onClick={() => setActiveTab(id)}
-                        className={cn(
-                            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all",
-                            activeTab === id
-                                ? "bg-white text-indigo-600 shadow-sm border border-slate-100"
-                                : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
-                        )}
-                    >
-                        <Icon className="h-4 w-4" />
-                        {label}
-                    </button>
-                ))}
+                <div className="border-t border-slate-100 bg-slate-50/80 p-3">
+                    <div className="grid gap-2 md:grid-cols-5">
+                        {TABS.map(({ id, label, icon: Icon }) => {
+                            const count =
+                                id === 'documents' ? documents.length :
+                                id === 'payment' ? (project.paymentPlan?.length || 0) :
+                                id === 'diary' ? (project.diaryEntries?.length || 0) :
+                                undefined;
+
+                            return (
+                                <button
+                                    key={id}
+                                    onClick={() => setActiveTab(id)}
+                                    className={cn(
+                                        "flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all",
+                                        activeTab === id
+                                            ? "bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100"
+                                            : "text-slate-500 hover:bg-white/70 hover:text-slate-800"
+                                    )}
+                                >
+                                    <Icon className="h-4 w-4" />
+                                    <span>{label}</span>
+                                    {count !== undefined && (
+                                        <span className={cn(
+                                            "rounded-full px-2 py-0.5 text-[10px] font-black",
+                                            activeTab === id ? "bg-indigo-50 text-indigo-600" : "bg-slate-200/70 text-slate-500"
+                                        )}>
+                                            {count}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
 
             {/* ── TAB: Übersicht ───────────────────────────────────────────── */}
             {activeTab === 'overview' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 animate-in fade-in duration-300">
+                <div className="grid grid-cols-1 gap-6 animate-in fade-in duration-300 xl:grid-cols-[1.1fr_0.9fr]">
                     {/* Projektinformationen */}
-                    <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-6 space-y-1">
-                        <h3 className="font-black text-slate-900 flex items-center gap-2 text-base mb-4">
-                            <div className="h-7 w-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                <LayoutGrid className="h-3.5 w-3.5 text-indigo-500" />
+                    <div className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm sm:p-7">
+                        <h3 className="mb-5 flex items-center gap-3 text-lg font-black text-slate-900">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                                <LayoutGrid className="h-5 w-5" />
                             </div>
                             Projektinformationen
                         </h3>
-                        <div className="divide-y divide-slate-50">
+                        <div className="divide-y divide-slate-100 rounded-3xl border border-slate-100 bg-slate-50/50 px-5">
                             {project.projectNumber && (
-                                <div className="flex justify-between items-center py-2.5">
+                                <div className="flex items-center justify-between gap-4 py-3">
                                     <span className="text-sm text-slate-500 font-medium">Projektnummer</span>
                                     <span className="font-mono font-bold text-indigo-600 text-sm">{project.projectNumber}</span>
                                 </div>
                             )}
-                            <div className="flex justify-between items-center py-2.5">
+                            <div className="flex items-center justify-between gap-4 py-3">
                                 <span className="text-sm text-slate-500 font-medium">Status</span>
                                 <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border", getStatusStyle(project.status))}>
                                     {getStatusLabel(project.status)}
@@ -335,31 +370,31 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                             </div>
                             {customer && (
                                 <>
-                                    <div className="flex justify-between items-center py-2.5">
+                                    <div className="flex items-center justify-between gap-4 py-3">
                                         <span className="text-sm text-slate-500 font-medium">Kunde</span>
                                         <span className="font-bold text-slate-700 text-sm">{customer.name}</span>
                                     </div>
                                     {customer.email && (
-                                        <div className="flex justify-between items-center py-2.5">
+                                        <div className="flex items-center justify-between gap-4 py-3">
                                             <span className="text-sm text-slate-500 font-medium flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />E-Mail</span>
                                             <span className="text-slate-600 text-sm">{customer.email}</span>
                                         </div>
                                     )}
                                     {customer.phone && (
-                                        <div className="flex justify-between items-center py-2.5">
+                                        <div className="flex items-center justify-between gap-4 py-3">
                                             <span className="text-sm text-slate-500 font-medium flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />Telefon</span>
                                             <span className="text-slate-600 text-sm">{customer.phone}</span>
                                         </div>
                                     )}
                                 </>
                             )}
-                            <div className="flex justify-between items-center py-2.5">
+                            <div className="flex items-center justify-between gap-4 py-3">
                                 <span className="text-sm text-slate-500 font-medium">Angelegt am</span>
                                 <span className="text-slate-700 text-sm font-medium">{new Date(project.createdAt).toLocaleDateString('de-DE')}</span>
                             </div>
                         </div>
                         {project.description && (
-                            <div className="pt-3 border-t border-slate-50 mt-1">
+                            <div className="mt-5 rounded-3xl border border-indigo-100 bg-indigo-50/50 p-5">
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Notizen</p>
                                 <p className="text-sm text-slate-600 leading-relaxed">{project.description}</p>
                             </div>
@@ -367,41 +402,41 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                     </div>
 
                     {/* Adresse + Finanzkurzinfo */}
-                    <div className="space-y-4">
-                        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-6 space-y-4">
-                            <h3 className="font-black text-slate-900 flex items-center gap-2 text-base">
-                                <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                                    <MapPin className="h-3.5 w-3.5 text-emerald-500" />
+                    <div className="space-y-6">
+                        <div className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm sm:p-7">
+                            <h3 className="mb-5 flex items-center gap-3 text-lg font-black text-slate-900">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                                    <MapPin className="h-5 w-5" />
                                 </div>
                                 Baustellenadresse
                             </h3>
-                            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                            <div className="rounded-3xl border border-emerald-100 bg-emerald-50/50 p-5">
                                 <p className="font-bold text-slate-800">{project.address.street}</p>
                                 <p className="text-slate-600 font-medium">{project.address.zip} {project.address.city}</p>
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-6 space-y-3">
-                            <h3 className="font-black text-slate-900 flex items-center gap-2 text-base">
-                                <div className="h-7 w-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-                                    <Banknote className="h-3.5 w-3.5 text-amber-500" />
+                        <div className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm sm:p-7">
+                            <h3 className="mb-5 flex items-center gap-3 text-lg font-black text-slate-900">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+                                    <Banknote className="h-5 w-5" />
                                 </div>
                                 Finanzen
                             </h3>
-                            <div className="divide-y divide-slate-50">
-                                <div className="flex justify-between items-center py-2.5">
+                            <div className="divide-y divide-slate-100 rounded-3xl border border-slate-100 bg-slate-50/50 px-5">
+                                <div className="flex items-center justify-between gap-4 py-3">
                                     <span className="text-sm text-slate-500">Projekt-Summe (Netto)</span>
                                     <span className="font-bold text-slate-800">€ {(financials.budget || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</span>
                                 </div>
-                                <div className="flex justify-between items-center py-2.5">
+                                <div className="flex items-center justify-between gap-4 py-3">
                                     <span className="text-sm text-slate-500">Abgerechnet (Brutto)</span>
                                     <span className="font-medium text-slate-700">€ {(financials.totalBilled || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</span>
                                 </div>
-                                <div className="flex justify-between items-center py-2.5">
+                                <div className="flex items-center justify-between gap-4 py-3">
                                     <span className="text-sm text-slate-500">Angebote</span>
                                     <span className="font-medium text-slate-700">{projectOffers.length} Stk.</span>
                                 </div>
-                                <div className="flex justify-between items-center py-2.5">
+                                <div className="flex items-center justify-between gap-4 py-3">
                                     <span className="text-sm text-slate-500">Rechnungen</span>
                                     <span className="font-medium text-slate-700">{financials.invoiceCount} Stk.</span>
                                 </div>
@@ -413,25 +448,33 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
 
             {/* ── TAB: Dokumente ───────────────────────────────────────────── */}
             {activeTab === 'documents' && (
-                <div className="space-y-4 animate-in fade-in duration-300">
-                    <div className="flex items-center justify-between px-1">
-                        <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-indigo-500" />
-                            Alle Dokumente
-                            <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{documents.length}</span>
-                        </h3>
+                <div className="space-y-6 animate-in fade-in duration-300">
+                    <div className="flex flex-col gap-4 rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                                <FileText className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900">Dokumente</h3>
+                                <p className="text-sm font-medium text-slate-500">Angebote, Aufträge und Rechnungen zu diesem Projekt.</p>
+                            </div>
+                        </div>
+                        <span className="w-fit rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-600">{documents.length} Dokumente</span>
                     </div>
 
                     {documents.length === 0 ? (
-                        <div className="bg-slate-50 rounded-[24px] border border-dashed border-slate-200 p-12 text-center">
-                            <FileText className="h-10 w-10 text-slate-200 mx-auto mb-3" />
+                        <div className="rounded-[32px] border border-dashed border-indigo-200 bg-indigo-50/40 p-12 text-center">
+                            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-white text-indigo-500 shadow-sm">
+                                <FileText className="h-8 w-8" />
+                            </div>
                             <p className="text-slate-500 font-medium">Noch keine Dokumente für dieses Projekt.</p>
                             <p className="text-sm text-slate-400 mt-1">Erstellen Sie ein Angebot oder eine Rechnung und weisen Sie es diesem Projekt zu.</p>
                         </div>
                     ) : (
-                        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+                        <div className="overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm">
+                            <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-50 border-b border-slate-100">
+                                <thead className="border-b border-slate-100 bg-slate-50">
                                     <tr>
                                         <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest w-36">Typ</th>
                                         <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Nummer</th>
@@ -545,6 +588,7 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                                     })}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -554,53 +598,60 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
             {activeTab === 'payment' && (
                 <div className="space-y-5 animate-in fade-in duration-300">
                     {/* Financial summary cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm">
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Budget (Netto)</p>
                             <p className="text-xl font-black text-slate-900">€ {(financials.budget || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
                         </div>
-                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                        <div className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm">
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Abgerechnet (Brutto)</p>
                             <p className="text-xl font-black text-slate-900">€ {(financials.totalBilled || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
                         </div>
-                        <div className="bg-emerald-50 rounded-2xl border border-emerald-100 p-5">
+                        <div className="rounded-[28px] border border-emerald-100 bg-emerald-50 p-5">
                             <p className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest mb-1">Bezahlt (Netto)</p>
                             <p className="text-xl font-black text-emerald-700">€ {(financials.totalPaid || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
                         </div>
-                        <div className="bg-indigo-50 rounded-2xl border border-indigo-100 p-5">
+                        <div className="rounded-[28px] border border-indigo-100 bg-indigo-50 p-5">
                             <p className="text-[10px] font-bold text-indigo-600/70 uppercase tracking-widest mb-1">Offen (Netto)</p>
                             <p className="text-xl font-black text-indigo-700">€ {(financials.openAmount || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
                         </div>
                     </div>
 
                     {/* Payment plan table */}
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-center px-1">
-                            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                                <ListChecks className="h-4 w-4 text-indigo-500" /> Zahlungsplan
-                            </h3>
+                    <div className="space-y-4">
+                        <div className="flex flex-col gap-4 rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                                    <ListChecks className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-900">Zahlungsplan</h3>
+                                    <p className="text-sm font-medium text-slate-500">Teilrechnungen und Schlussrechnung zentral planen.</p>
+                                </div>
+                            </div>
                             <button
                                 onClick={() => setIsPaymentPlanModalOpen(true)}
-                                className="text-indigo-600 font-bold hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors text-sm"
+                                className="rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5 hover:bg-indigo-700"
                             >
                                 Plan bearbeiten
                             </button>
                         </div>
 
                         {!project.paymentPlan || project.paymentPlan.length === 0 ? (
-                            <div className="bg-slate-50 rounded-[24px] border border-dashed border-slate-200 p-10 text-center">
-                                <p className="text-slate-500 font-medium mb-4">Noch kein Zahlungsplan hinterlegt.</p>
+                            <div className="rounded-[32px] border border-dashed border-indigo-200 bg-indigo-50/40 p-12 text-center">
+                                <p className="mb-4 font-black text-slate-800">Noch kein Zahlungsplan hinterlegt.</p>
                                 <button
                                     onClick={() => setIsPaymentPlanModalOpen(true)}
-                                    className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm inline-flex items-center gap-2"
+                                    className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 font-black text-indigo-600 shadow-sm ring-1 ring-indigo-100 transition-all hover:-translate-y-0.5"
                                 >
                                     <Plus className="h-4 w-4" /> Zahlungsplan erstellen
                                 </button>
                             </div>
                         ) : (
-                            <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+                            <div className="overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm">
+                                <div className="overflow-x-auto">
                                 <table className="w-full text-left">
-                                    <thead className="bg-slate-50 border-b border-slate-100">
+                                    <thead className="border-b border-slate-100 bg-slate-50">
                                         <tr>
                                             <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest w-12">Nr.</th>
                                             <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Bezeichnung</th>
@@ -673,6 +724,7 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                                         })}
                                     </tbody>
                                 </table>
+                                </div>
                             </div>
                         )}
                     </div>
