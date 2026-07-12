@@ -1,4 +1,4 @@
-export type VehicleStatus = "Bereit" | "In Benutzung" | "Werkstatt" | "Außer Betrieb";
+export type VehicleStatus = "Bereit" | "In Benutzung" | "Werkstatt" | "Außer Betrieb" | "AuÃŸer Betrieb";
 
 export interface VehicleDocument {
     id: string;
@@ -16,7 +16,7 @@ export interface Vehicle {
         model: string;
         licensePlate: string;
         year: string;
-        vin: string; // Fahrzeugidentifikationsnummer
+        vin: string;
         color?: string;
     };
     fleetDetails: {
@@ -39,5 +39,5 @@ export interface Vehicle {
     };
     documents: VehicleDocument[];
     createdAt: string;
-    userId?: string; // Owner of the vehicle
+    userId?: string;
 }

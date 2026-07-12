@@ -469,12 +469,13 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
     };
 
     return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-md">
+            <div className="absolute inset-0" onClick={onClose} />
 
-            <div className="relative bg-white w-full max-w-4xl xl:max-w-6xl rounded-[32px] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="relative flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-[34px] border border-white bg-white shadow-[0_32px_90px_rgba(15,23,42,0.35)]">
                 {/* Header */}
-                <div className="px-6 xl:px-8 py-4 xl:py-6 border-b border-slate-100 flex justify-between items-center bg-white">
+                <div className="border-b border-slate-100 bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-500 px-6 py-5 text-white xl:px-8 xl:py-6">
+                    <div className="flex justify-between items-center gap-5">
                     <div className="flex items-center gap-5 relative">
                         <div 
                             className="relative cursor-pointer group"
@@ -487,11 +488,11 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                             }}
                         >
                             {formData.avatar ? (
-                                <div className="h-16 w-16 rounded-2xl overflow-hidden shadow-md ring-4 ring-indigo-50 border-2 border-white group-hover:opacity-90 transition-opacity">
+                                <div className="h-16 w-16 rounded-2xl overflow-hidden shadow-md ring-4 ring-white/20 border-2 border-white/40 group-hover:opacity-90 transition-opacity">
                                     <img src={formData.avatar} alt="Profile" className="h-full w-full object-cover" />
                                 </div>
                             ) : (
-                                <div className="h-16 w-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-100 group-hover:bg-indigo-200 transition-colors">
+                                <div className="h-16 w-16 rounded-2xl bg-white/15 flex items-center justify-center text-white shadow-sm border border-white/20 group-hover:bg-white/20 transition-colors">
                                     <User className="h-8 w-8" />
                                 </div>
                             )}
@@ -530,7 +531,8 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                             onChange={handleAvatarUpload}
                         />
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-900 font-outfit leading-tight">
+                            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-cyan-100">Personalakte</p>
+                            <h2 className="mt-1 text-3xl font-black text-white leading-tight">
                                 {initialEmployee ? "Mitarbeiter bearbeiten" : "Neuer Mitarbeiter"}
                             </h2>
                             <div className="flex items-center gap-3">
@@ -539,7 +541,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                     <button
                                         type="button"
                                         onClick={handleAvatarDelete}
-                                        className="text-rose-500 hover:text-rose-700 text-xs font-bold flex items-center gap-1 transition-colors px-2 py-1 bg-rose-50 hover:bg-rose-100 rounded-lg"
+                                        className="text-white hover:text-rose-100 text-xs font-bold flex items-center gap-1 transition-colors px-2 py-1 bg-white/10 hover:bg-white/15 rounded-lg"
                                         title="Profilbild entfernen"
                                     >
                                         <Trash2 className="h-3 w-3" /> Bild entfernen
@@ -551,16 +553,17 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     <button
                         type="button"
                         onClick={onClose}
-                        className="h-10 w-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-100 transition-colors"
+                        className="h-11 w-11 rounded-2xl bg-white/12 text-white flex items-center justify-center hover:bg-white/20 transition-colors border border-white/15"
                     >
                         <X className="h-5 w-5" />
                     </button>
+                    </div>
                 </div>
 
                 <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
                     {/* Sidebar Tabs */}
-                    <div className="w-full md:w-64 bg-slate-50/50 border-r border-slate-100 flex md:flex-col overflow-x-auto md:overflow-x-visible scrollbar-hide">
-                        <div className="flex md:flex-col w-full p-2 md:p-4 gap-1">
+                    <div className="w-full md:w-72 bg-slate-50 border-r border-slate-100 flex md:flex-col overflow-x-auto md:overflow-x-visible scrollbar-hide">
+                        <div className="flex md:flex-col w-full p-3 md:p-5 gap-2">
                             {TABS.map((tab) => {
                                 const Icon = tab.icon;
                                 const active = activeTab === tab.id;
@@ -570,12 +573,12 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                         type="button"
                                         onClick={() => setActiveTab(tab.id)}
                                         className={cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-bold text-sm h-12 whitespace-nowrap md:whitespace-normal",
+                                            "flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-black text-sm min-h-14 whitespace-nowrap md:whitespace-normal border",
                                             active
-                                                ? "bg-white text-indigo-600 shadow-sm border border-slate-100"
+                                                ? "bg-white text-indigo-600 shadow-sm border-indigo-100"
                                                 : tab.disabled
-                                                    ? "opacity-60 text-slate-400 hover:text-slate-500 hover:bg-slate-100/30"
-                                                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100/50"
+                                                    ? "opacity-60 text-slate-400 hover:text-slate-500 hover:bg-white/70 border-transparent"
+                                                    : "text-slate-500 hover:text-slate-800 hover:bg-white/80 border-transparent"
                                         )}
                                     >
                                         <Icon className={cn("h-5 w-5 shrink-0", active ? "text-indigo-600" : "text-slate-300")} />
@@ -596,7 +599,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
 
                     {/* Right side: Form + Footer */}
                     <div className="flex-1 flex flex-col overflow-hidden bg-white">
-                        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 xl:p-10">
+                        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto bg-slate-50/50 p-4 xl:p-8">
                             {activeTab === "personal" && (
                                 <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-10">
                                     {/* Group: Basisinformationen */}
@@ -1315,36 +1318,6 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                         </section>
 
                                         <section>
-                                            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1 mb-4">Benutzerdefinierte Dokumente & Archive</h5>
-                                            <div className="grid grid-cols-1 gap-4 p-6 rounded-[2.5rem] bg-slate-50/30 border border-slate-100">
-                                                <DocumentSlot
-                                                    label="Anmeldung / Abmeldung"
-                                                    subType="registration"
-                                                    documents={formData.documents}
-                                                    onUpload={(e) => handleSlotUpload(e, 'registration', 'Anmeldung_Abmeldung')}
-                                                    onRemove={handleRemoveSlotDocument}
-                                                    onPreview={handlePreview}
-                                                />
-                                                <DocumentSlot
-                                                    label="Krankmeldungen"
-                                                    subType="sick_leave"
-                                                    documents={formData.documents}
-                                                    onUpload={(e) => handleSlotUpload(e, 'sick_leave', 'Krankmeldung')}
-                                                    onRemove={handleRemoveSlotDocument}
-                                                    onPreview={handlePreview}
-                                                />
-                                                <DocumentSlot
-                                                    label="Sonstige Dokumente (z.B. Schulungen, Zertifikate)"
-                                                    subType="other_custom"
-                                                    documents={formData.documents}
-                                                    onUpload={(e) => handleSlotUpload(e, 'other_custom', 'Sonstiges')}
-                                                    onRemove={handleRemoveSlotDocument}
-                                                    onPreview={handlePreview}
-                                                />
-                                            </div>
-                                        </section>
-
-                                        <section>
                                             <div className="flex items-center justify-between mb-4 px-1">
                                                 <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Freigegebene App-Ordner</h5>
                                                 <button
@@ -1444,18 +1417,18 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                         </form>
 
                         {/* Footer */}
-                        <div className="px-10 py-8 border-t border-slate-100 flex justify-end gap-4 bg-white relative z-20">
+                        <div className="relative z-20 flex flex-col gap-3 border-t border-slate-100 bg-white px-5 py-5 sm:flex-row sm:justify-end sm:px-8">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="px-8 py-4 rounded-2xl text-slate-400 font-bold hover:bg-slate-50 hover:text-slate-600 transition-all active:scale-95"
+                                className="rounded-2xl bg-slate-100 px-6 py-3.5 text-sm font-black text-slate-600 transition-all hover:bg-slate-200 active:scale-95"
                             >
                                 Abbrechen
                             </button>
                             <button
                                 type="submit"
                                 onClick={handleSubmit}
-                                className="bg-indigo-600 text-white min-w-[220px] py-4 rounded-2xl font-black text-lg shadow-2xl shadow-indigo-600/30 hover:bg-indigo-700 hover:scale-[1.02] active:scale-95 transition-all"
+                                className="min-w-[220px] rounded-2xl bg-gradient-to-r from-indigo-600 to-fuchsia-500 px-7 py-3.5 text-sm font-black text-white shadow-xl shadow-indigo-500/25 transition-all hover:-translate-y-0.5 active:scale-95"
                             >
                                 {initialEmployee ? "Änderungen speichern" : "Mitarbeiter anlegen"}
                             </button>

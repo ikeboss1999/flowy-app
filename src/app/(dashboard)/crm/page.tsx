@@ -1,120 +1,136 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
-import { useCRM, useInquiryNotes } from '@/hooks/useCRM';
-import { Inquiry, InquiryStatus, InquiryChannel } from '@/types/crm';
-import { useAuth } from '@/context/AuthContext';
-import { usePermissionGuard } from "@/hooks/usePermissionGuard";
+import React, { useMemo, useState } from "react";
 import {
+    Calendar,
+    ChevronRight,
+    Euro,
     Inbox,
-    Phone,
+    Loader2,
     Mail,
     MapPin,
-    Calendar,
-    DollarSign,
-    Plus,
-    Trash2,
-    Edit2,
-    X,
-    Loader2,
     MessageSquare,
-    Trophy,
-    TrendingUp,
+    Phone,
+    Plus,
     Search,
-    ChevronRight
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { InquiryDetailModal } from '@/components/InquiryDetailModal';
+    Sparkles,
+    TrendingUp,
+    X,
+} from "lucide-react";
+import { useCRM } from "@/hooks/useCRM";
+import { Inquiry, InquiryChannel, InquiryStatus } from "@/types/crm";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
+import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { InquiryDetailModal } from "@/components/InquiryDetailModal";
 
 const STATUS_CONFIG: Record<InquiryStatus, { label: string; color: string; bg: string; border: string; dot: string }> = {
-    new: { label: 'Neu', color: 'text-blue-600', bg: 'bg-blue-50/50', border: 'border-blue-100', dot: 'bg-blue-500' },
-    contacted: { label: 'In Kontakt', color: 'text-amber-600', bg: 'bg-amber-50/50', border: 'border-amber-100', dot: 'bg-amber-500' },
-    offered: { label: 'Angebot erstellt', color: 'text-indigo-600', bg: 'bg-indigo-50/50', border: 'border-indigo-100', dot: 'bg-indigo-500' },
-    won: { label: 'Gewonnen', color: 'text-emerald-600', bg: 'bg-emerald-50/50', border: 'border-emerald-100', dot: 'bg-emerald-500' },
-    lost: { label: 'Verloren', color: 'text-rose-600', bg: 'bg-rose-50/50', border: 'border-rose-100', dot: 'bg-rose-500' }
+    new: { label: "Neu", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", dot: "bg-blue-500" },
+    contacted: { label: "In Kontakt", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", dot: "bg-amber-500" },
+    offered: { label: "Angebot erstellt", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", dot: "bg-indigo-500" },
+    won: { label: "Gewonnen", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100", dot: "bg-emerald-500" },
+    lost: { label: "Verloren", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100", dot: "bg-rose-500" },
 };
 
 const CHANNELS: { id: InquiryChannel; label: string; color: string; bg: string }[] = [
-    { id: 'phone', label: 'Telefon', color: 'text-cyan-700', bg: 'bg-cyan-50' },
-    { id: 'website', label: 'Webseite', color: 'text-indigo-700', bg: 'bg-indigo-50' },
-    { id: 'instagram', label: 'Instagram', color: 'text-pink-700', bg: 'bg-pink-50' },
-    { id: 'email', label: 'E-Mail', color: 'text-purple-700', bg: 'bg-purple-50' },
-    { id: 'recommendation', label: 'Empfehlung', color: 'text-emerald-700', bg: 'bg-emerald-50' },
-    { id: 'other', label: 'Sonstiges', color: 'text-slate-700', bg: 'bg-slate-50' }
+    { id: "phone", label: "Telefon", color: "text-cyan-700", bg: "bg-cyan-50" },
+    { id: "website", label: "Webseite", color: "text-indigo-700", bg: "bg-indigo-50" },
+    { id: "instagram", label: "Instagram", color: "text-pink-700", bg: "bg-pink-50" },
+    { id: "email", label: "E-Mail", color: "text-purple-700", bg: "bg-purple-50" },
+    { id: "recommendation", label: "Empfehlung", color: "text-emerald-700", bg: "bg-emerald-50" },
+    { id: "other", label: "Sonstiges", color: "text-slate-700", bg: "bg-slate-100" },
 ];
+
+const formatDate = (date?: string) => {
+    if (!date) return "-";
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return "-";
+    return parsed.toLocaleDateString("de-AT");
+};
+
+const formatBudget = (budget?: number) =>
+    typeof budget === "number"
+        ? new Intl.NumberFormat("de-AT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(budget)
+        : "-";
+
+const initialsFor = (name: string) =>
+    name
+        .split(" ")
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase() || "?";
 
 export default function CRMPage() {
     usePermissionGuard("crm_read");
-    const { user } = useAuth();
-    const { inquiries, addInquiry, updateInquiry, deleteInquiry, isLoading } = useCRM();
 
-    // UI States
+    const { inquiries, addInquiry, updateInquiry, deleteInquiry, isLoading } = useCRM();
     const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [activeStatusFilter, setActiveStatusFilter] = useState<InquiryStatus | 'all'>('all');
-
-    // Form inputs for creation/editing
-    const [clientName, setClientName] = useState('');
-    const [clientPhone, setClientPhone] = useState('');
-    const [clientEmail, setClientEmail] = useState('');
-    const [channel, setChannel] = useState<InquiryChannel>('phone');
-    const [projectDescription, setProjectDescription] = useState('');
-    const [location, setLocation] = useState('');
-    const [budget, setBudget] = useState('');
-    const [status, setStatus] = useState<InquiryStatus>('new');
-
+    const [searchQuery, setSearchQuery] = useState("");
+    const [activeStatusFilter, setActiveStatusFilter] = useState<InquiryStatus | "all">("all");
+    const [clientName, setClientName] = useState("");
+    const [clientPhone, setClientPhone] = useState("");
+    const [clientEmail, setClientEmail] = useState("");
+    const [channel, setChannel] = useState<InquiryChannel>("phone");
+    const [projectDescription, setProjectDescription] = useState("");
+    const [location, setLocation] = useState("");
+    const [budget, setBudget] = useState("");
+    const [status, setStatus] = useState<InquiryStatus>("new");
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
-    // Filtered Inquiries
     const filteredInquiries = useMemo(() => {
-        return inquiries.filter(inq => {
-            const matchesSearch = 
-                (inq.clientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (inq.projectDescription || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (inq.location || '').toLowerCase().includes(searchQuery.toLowerCase());
-            
-            const matchesStatus = activeStatusFilter === 'all' || inq.status === activeStatusFilter;
+        const query = searchQuery.trim().toLowerCase();
 
-            return matchesSearch && matchesStatus;
-        });
-    }, [inquiries, searchQuery, activeStatusFilter]);
+        return inquiries
+            .filter((inquiry) => {
+                const matchesSearch =
+                    !query ||
+                    inquiry.clientName.toLowerCase().includes(query) ||
+                    inquiry.clientPhone?.toLowerCase().includes(query) ||
+                    inquiry.clientEmail?.toLowerCase().includes(query) ||
+                    inquiry.projectDescription?.toLowerCase().includes(query) ||
+                    inquiry.location?.toLowerCase().includes(query);
+                const matchesStatus = activeStatusFilter === "all" || inquiry.status === activeStatusFilter;
 
-    // Statistics computation
+                return matchesSearch && matchesStatus;
+            })
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }, [activeStatusFilter, inquiries, searchQuery]);
+
     const stats = useMemo(() => {
         const total = inquiries.length;
-        if (total === 0) return { total: 0, channels: {} as Record<InquiryChannel, { count: number; pct: number }> };
-        
-        const channelsCount = {} as Record<InquiryChannel, number>;
-        CHANNELS.forEach(c => { channelsCount[c.id] = 0; });
-        
-        inquiries.forEach(inq => {
-            if (channelsCount[inq.channel] !== undefined) {
-                channelsCount[inq.channel]++;
-            } else {
-                channelsCount.other = (channelsCount.other || 0) + 1;
-            }
-        });
-
-        const channelsWithPct = {} as Record<InquiryChannel, { count: number; pct: number }>;
-        CHANNELS.forEach(c => {
-            const count = channelsCount[c.id];
-            channelsWithPct[c.id] = {
-                count,
-                pct: Math.round((count / total) * 100)
-            };
-        });
+        const channelCounts = CHANNELS.reduce((acc, channelOption) => {
+            acc[channelOption.id] = inquiries.filter((inquiry) => inquiry.channel === channelOption.id).length;
+            return acc;
+        }, {} as Record<InquiryChannel, number>);
 
         return {
             total,
-            channels: channelsWithPct
+            newCount: inquiries.filter((inquiry) => inquiry.status === "new").length,
+            wonCount: inquiries.filter((inquiry) => inquiry.status === "won").length,
+            offeredCount: inquiries.filter((inquiry) => inquiry.status === "offered").length,
+            totalBudget: inquiries.reduce((sum, inquiry) => sum + (inquiry.budget || 0), 0),
+            channels: channelCounts,
         };
     }, [inquiries]);
 
+    const resetForm = () => {
+        setClientName("");
+        setClientPhone("");
+        setClientEmail("");
+        setChannel("phone");
+        setProjectDescription("");
+        setLocation("");
+        setBudget("");
+        setStatus("new");
+        setIsEditMode(false);
+    };
+
     const handleCreateInquiry = async () => {
         if (!clientName.trim()) return;
+
         await addInquiry({
             clientName: clientName.trim(),
             clientPhone: clientPhone.trim(),
@@ -123,48 +139,41 @@ export default function CRMPage() {
             projectDescription: projectDescription.trim(),
             location: location.trim(),
             budget: budget ? parseFloat(budget) : undefined,
-            status: 'new'
+            status: "new",
         });
         resetForm();
         setIsCreateModalOpen(false);
     };
 
-    const handleSaveInquiryEdit = async () => {
-        if (!selectedInquiry || !clientName.trim()) return;
-        await updateInquiry(selectedInquiry.id, {
-            clientName: clientName.trim(),
-            clientPhone: clientPhone.trim(),
-            clientEmail: clientEmail.trim(),
-            channel,
-            projectDescription: projectDescription.trim(),
-            location: location.trim(),
-            budget: budget ? parseFloat(budget) : undefined,
-            status
-        });
-        setSelectedInquiry(prev => prev ? {
-            ...prev,
-            clientName: clientName.trim(),
-            clientPhone: clientPhone.trim(),
-            clientEmail: clientEmail.trim(),
-            channel,
-            projectDescription: projectDescription.trim(),
-            location: location.trim(),
-            budget: budget ? parseFloat(budget) : undefined,
-            status
-        } : null);
-        setIsEditMode(false);
+    const handleStartEdit = (inquiry: Inquiry) => {
+        setClientName(inquiry.clientName);
+        setClientPhone(inquiry.clientPhone || "");
+        setClientEmail(inquiry.clientEmail || "");
+        setChannel(inquiry.channel);
+        setProjectDescription(inquiry.projectDescription || "");
+        setLocation(inquiry.location || "");
+        setBudget(inquiry.budget?.toString() || "");
+        setStatus(inquiry.status);
+        setIsEditMode(true);
     };
 
-    const handleStartEdit = (inq: Inquiry) => {
-        setClientName(inq.clientName);
-        setClientPhone(inq.clientPhone || '');
-        setClientEmail(inq.clientEmail || '');
-        setChannel(inq.channel);
-        setProjectDescription(inq.projectDescription || '');
-        setLocation(inq.location || '');
-        setBudget(inq.budget?.toString() || '');
-        setStatus(inq.status);
-        setIsEditMode(true);
+    const handleSaveInquiryEdit = async () => {
+        if (!selectedInquiry || !clientName.trim()) return;
+
+        const updated = {
+            clientName: clientName.trim(),
+            clientPhone: clientPhone.trim(),
+            clientEmail: clientEmail.trim(),
+            channel,
+            projectDescription: projectDescription.trim(),
+            location: location.trim(),
+            budget: budget ? parseFloat(budget) : undefined,
+            status,
+        };
+
+        await updateInquiry(selectedInquiry.id, updated);
+        setSelectedInquiry((prev) => (prev ? { ...prev, ...updated } : null));
+        setIsEditMode(false);
     };
 
     const handleDeleteInquiryConfirm = async () => {
@@ -174,393 +183,298 @@ export default function CRMPage() {
         setConfirmDeleteOpen(false);
     };
 
-    const resetForm = () => {
-        setClientName('');
-        setClientPhone('');
-        setClientEmail('');
-        setChannel('phone');
-        setProjectDescription('');
-        setLocation('');
-        setBudget('');
-        setStatus('new');
-        setIsEditMode(false);
-    };
-
     if (isLoading) {
         return (
-            <div className="h-96 flex flex-col items-center justify-center gap-3 text-slate-400">
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-                <p className="text-sm font-medium">CRM-Daten werden geladen...</p>
+            <div className="dashboard-page flex items-center justify-center">
+                <div className="rounded-3xl border border-slate-200 bg-white px-8 py-6 text-sm font-black text-slate-500 shadow-sm">
+                    <Loader2 className="mr-2 inline h-5 w-5 animate-spin text-indigo-600" />
+                    CRM-Daten werden geladen...
+                </div>
             </div>
         );
     }
 
     return (
         <div className="dashboard-page">
-            {/* Header Area */}
-            <div className="flex justify-between items-end flex-wrap gap-6">
-                <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-indigo-600 mb-2">
-                        <div className="p-2 bg-indigo-50 rounded-lg">
-                            <Inbox className="h-5 w-5" />
-                        </div>
-                        <span className="text-sm font-black uppercase tracking-[0.2em]">Vertrieb & CRM</span>
-                    </div>
-                    <h1 className="text-5xl font-black text-slate-900 tracking-tight font-outfit">
-                        Anfragen <span className="text-slate-300 font-light">& CRM</span>
-                    </h1>
-                    <p className="text-xl text-slate-500 font-medium">Verwalten Sie eingehende Anfragen und die Kundenkommunikation.</p>
-                </div>
-                <button
-                    onClick={() => { resetForm(); setIsCreateModalOpen(true); }}
-                    className="bg-primary-gradient text-white px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all font-outfit text-sm"
-                >
-                    <Plus className="h-5 w-5" /> Neue Anfrage erfassen
-                </button>
-            </div>
+            <section className="relative overflow-hidden rounded-[34px] border border-white bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-500 p-7 text-white shadow-xl shadow-indigo-500/20">
+                <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+                <div className="absolute -bottom-20 left-1/3 h-52 w-52 rounded-full bg-cyan-300/20 blur-3xl" />
 
-            {/* Feature 3: Origin Statistics Widget */}
-            {stats.total > 0 && (
-                <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-sm">
-                    <div className="flex items-center gap-2 mb-4">
-                        <TrendingUp className="h-5 w-5 text-indigo-500" />
-                        <h3 className="text-sm font-black text-slate-800 font-outfit uppercase tracking-wider">Herkunft der Anfragen ({stats.total} Gesamt)</h3>
+                <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <div className="mb-4 inline-flex items-center gap-3 rounded-2xl bg-white/12 px-4 py-2 ring-1 ring-white/20">
+                            <Inbox className="h-5 w-5 text-cyan-100" />
+                            <span className="text-xs font-black uppercase tracking-[0.3em] text-cyan-100">Vertrieb & CRM</span>
+                        </div>
+                        <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Anfragen</h1>
+                        <p className="mt-3 max-w-2xl text-base font-semibold leading-7 text-white/75">
+                            Neue Anfragen, Kontakte, Status und Chancen schnell erfassen und weiterverfolgen.
+                        </p>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                        {CHANNELS.map(ch => {
-                            const data = stats.channels[ch.id] || { count: 0, pct: 0 };
+
+                    <button
+                        onClick={() => {
+                            resetForm();
+                            setIsCreateModalOpen(true);
+                        }}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-lg transition hover:-translate-y-0.5"
+                    >
+                        <Plus className="h-5 w-5" />
+                        Neue Anfrage
+                    </button>
+                </div>
+            </section>
+
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                    { label: "Gesamt", value: stats.total, icon: Inbox, tone: "slate" },
+                    { label: "Neu", value: stats.newCount, icon: Sparkles, tone: "blue" },
+                    { label: "Angebote", value: stats.offeredCount, icon: MessageSquare, tone: "indigo" },
+                    { label: "Gewonnen", value: stats.wonCount, icon: TrendingUp, tone: "emerald" },
+                ].map((stat) => {
+                    const Icon = stat.icon;
+                    return (
+                        <div key={stat.label} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div className={cn(
+                                    "flex h-12 w-12 items-center justify-center rounded-2xl",
+                                    stat.tone === "slate" && "bg-slate-100 text-slate-600",
+                                    stat.tone === "blue" && "bg-blue-50 text-blue-600",
+                                    stat.tone === "indigo" && "bg-indigo-50 text-indigo-600",
+                                    stat.tone === "emerald" && "bg-emerald-50 text-emerald-600"
+                                )}>
+                                    <Icon className="h-6 w-6" />
+                                </div>
+                                <span className="text-3xl font-black text-slate-950">{stat.value}</span>
+                            </div>
+                            <p className="mt-4 text-[11px] font-black uppercase tracking-widest text-slate-400">{stat.label}</p>
+                        </div>
+                    );
+                })}
+            </section>
+
+            {stats.total > 0 && (
+                <section className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                            <TrendingUp className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h3 className="font-black text-slate-950">Herkunft der Anfragen</h3>
+                            <p className="text-sm font-semibold text-slate-500">Budget gesamt: {formatBudget(stats.totalBudget)}</p>
+                        </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                        {CHANNELS.map((channelOption) => {
+                            const count = stats.channels[channelOption.id] || 0;
+                            const pct = stats.total ? Math.round((count / stats.total) * 100) : 0;
+
                             return (
-                                <div key={ch.id} className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className={cn("inline-block w-2.5 h-2.5 rounded-full", ch.bg, ch.color.replace('text', 'bg'))}></span>
-                                        <span className="text-xs font-bold text-slate-500 font-outfit">{ch.label}</span>
+                                <div key={channelOption.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className={cn("rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest", channelOption.bg, channelOption.color)}>
+                                            {channelOption.label}
+                                        </span>
+                                        <span className="text-lg font-black text-slate-950">{count}</span>
                                     </div>
-                                    <div className="mt-2 flex items-baseline gap-1.5">
-                                        <span className="text-2xl font-black text-slate-800 font-outfit">{data.count}</span>
-                                        <span className="text-xs font-semibold text-slate-400 font-outfit">({data.pct}%)</span>
+                                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                                        <div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} />
                                     </div>
-                                    <div className="w-full bg-slate-200/60 h-1.5 rounded-full mt-2 overflow-hidden">
-                                        <div className={cn("h-full rounded-full", ch.color.replace('text', 'bg'))} style={{ width: `${data.pct}%` }}></div>
-                                    </div>
+                                    <p className="mt-2 text-xs font-bold text-slate-400">{pct}% Anteil</p>
                                 </div>
                             );
                         })}
                     </div>
-                </div>
+                </section>
             )}
 
-            {/* Filters & Actions Bar */}
-            <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-                {/* Search Bar */}
-                <div className="relative flex-1 group max-w-md">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Search className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+            <section className="rounded-[32px] border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Anfragen suchen nach Name, Telefon, E-Mail, Vorhaben oder Ort..."
+                            value={searchQuery}
+                            onChange={(event) => setSearchQuery(event.target.value)}
+                            className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-12 pr-4 text-sm font-bold outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                        />
                     </div>
-                    <input
-                        type="text"
-                        placeholder="Anfragen suchen nach Name, Vorhaben, Ort..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium"
-                    />
-                </div>
 
-                {/* Status Tabs Filter */}
-                <div className="bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-1">
-                    <button
-                        onClick={() => setActiveStatusFilter('all')}
-                        className={cn(
-                            "px-4 py-2 rounded-xl font-bold text-xs transition-all",
-                            activeStatusFilter === 'all'
-                                ? "bg-indigo-50 text-indigo-600 shadow-sm"
-                                : "text-slate-400 hover:text-slate-600"
-                        )}
-                    >
-                        Alle
-                    </button>
-                    {(Object.keys(STATUS_CONFIG) as InquiryStatus[]).map((stKey) => {
-                        const config = STATUS_CONFIG[stKey];
-                        const count = inquiries.filter(i => i.status === stKey).length;
-                        return (
+                    <div className="flex flex-wrap gap-1 rounded-2xl bg-slate-100 p-1">
+                        <button
+                            onClick={() => setActiveStatusFilter("all")}
+                            className={cn(
+                                "rounded-xl px-4 py-3 text-xs font-black transition",
+                                activeStatusFilter === "all" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                            )}
+                        >
+                            Alle ({inquiries.length})
+                        </button>
+                        {(Object.keys(STATUS_CONFIG) as InquiryStatus[]).map((statusKey) => (
                             <button
-                                key={stKey}
-                                onClick={() => setActiveStatusFilter(stKey)}
+                                key={statusKey}
+                                onClick={() => setActiveStatusFilter(statusKey)}
                                 className={cn(
-                                    "px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5",
-                                    activeStatusFilter === stKey
-                                        ? cn("shadow-sm", config.bg, config.color)
-                                        : "text-slate-400 hover:text-slate-600"
+                                    "flex items-center gap-2 rounded-xl px-4 py-3 text-xs font-black transition",
+                                    activeStatusFilter === statusKey ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
                                 )}
                             >
-                                <span className={cn("h-1.5 w-1.5 rounded-full", config.dot)} />
-                                {config.label}
-                                <span className="text-[10px] opacity-60">({count})</span>
+                                <span className={cn("h-2 w-2 rounded-full", STATUS_CONFIG[statusKey].dot)} />
+                                {STATUS_CONFIG[statusKey].label}
                             </button>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Tabular List View */}
-            <div className="bg-white rounded-[28px] border border-slate-100 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-wider bg-slate-50/50">
-                                <th className="py-4 px-6">Kunde</th>
-                                <th className="py-4 px-6">Bauvorhaben</th>
-                                <th className="py-4 px-6">Ort</th>
-                                <th className="py-4 px-6">Kanal</th>
-                                <th className="py-4 px-6">Budget</th>
-                                <th className="py-4 px-6">Status</th>
-                                <th className="py-4 px-6">Erfasst am</th>
-                                <th className="py-4 px-6 w-10"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {filteredInquiries.length === 0 ? (
-                                <tr>
-                                    <td colSpan={8} className="py-16 text-center text-slate-400 font-medium font-outfit">
-                                        <Inbox className="h-10 w-10 text-slate-200 mx-auto mb-3" />
-                                        Keine Anfragen in dieser Ansicht gefunden.
-                                    </td>
-                                </tr>
-                            ) : (
-                                filteredInquiries.map((inq) => {
-                                    const statusDef = STATUS_CONFIG[inq.status];
-                                    const channelDef = CHANNELS.find(c => c.id === inq.channel);
-                                    
-                                    // Generate initials for customer avatar
-                                    const initials = inq.clientName
-                                        .split(' ')
-                                        .map(n => n[0])
-                                        .join('')
-                                        .slice(0, 2)
-                                        .toUpperCase() || '?';
-
-                                    return (
-                                        <tr
-                                            key={inq.id}
-                                            onClick={() => { setSelectedInquiry(inq); setIsEditMode(false); }}
-                                            className="hover:bg-slate-50/60 transition-colors cursor-pointer group"
-                                        >
-                                            {/* Client Info */}
-                                            <td className="py-4 px-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-10 w-10 rounded-xl bg-slate-100 text-slate-600 font-black text-sm flex items-center justify-center shrink-0">
-                                                        {initials}
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-bold text-slate-800 text-sm">{inq.clientName}</div>
-                                                        <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-                                                            {inq.clientPhone && <span>{inq.clientPhone}</span>}
-                                                            {inq.clientPhone && inq.clientEmail && <span>•</span>}
-                                                            {inq.clientEmail && <span className="truncate max-w-[150px]">{inq.clientEmail}</span>}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-
-                                            {/* Description */}
-                                            <td className="py-4 px-6">
-                                                <div className="text-sm font-semibold text-slate-700 line-clamp-1 max-w-xs">
-                                                    {inq.projectDescription || <span className="text-slate-300 font-light italic">Keine Beschreibung</span>}
-                                                </div>
-                                            </td>
-
-                                            {/* Location */}
-                                            <td className="py-4 px-6">
-                                                <div className="text-sm font-bold text-slate-600 flex items-center gap-1">
-                                                    <MapPin className="h-4 w-4 text-slate-300 shrink-0" />
-                                                    <span>{inq.location || '—'}</span>
-                                                </div>
-                                            </td>
-
-                                            {/* Channel */}
-                                            <td className="py-4 px-6">
-                                                <span className={cn("px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider font-outfit", channelDef?.bg, channelDef?.color)}>
-                                                    {channelDef?.label || inq.channel}
-                                                </span>
-                                            </td>
-
-                                            {/* Budget */}
-                                            <td className="py-4 px-6">
-                                                <div className="text-sm font-black text-slate-700">
-                                                    {inq.budget ? `${inq.budget.toLocaleString('de-DE')} €` : '—'}
-                                                </div>
-                                            </td>
-
-                                            {/* Status */}
-                                            <td className="py-4 px-6">
-                                                <div className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border", statusDef.bg, statusDef.color, statusDef.border)}>
-                                                    <span className={cn("h-1.5 w-1.5 rounded-full", statusDef.dot)} />
-                                                    {statusDef.label}
-                                                </div>
-                                            </td>
-
-                                            {/* Created At */}
-                                            <td className="py-4 px-6">
-                                                <div className="text-xs text-slate-400 font-medium flex items-center gap-1">
-                                                    <Calendar className="h-3.5 w-3.5 text-slate-350" />
-                                                    <span>{new Date(inq.createdAt).toLocaleDateString('de-DE')}</span>
-                                                </div>
-                                            </td>
-
-                                            {/* Arrow/Edit indicator */}
-                                            <td className="py-4 px-6 text-right">
-                                                <ChevronRight className="h-4 w-4 text-slate-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* Create Inquiry Modal */}
-            {isCreateModalOpen && (
-                <div className="fixed inset-0 z-[300] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[24px] p-8 w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
-                            <h3 className="text-xl font-black text-slate-900 font-outfit">Neue Anfrage erfassen</h3>
-                            <button onClick={() => setIsCreateModalOpen(false)} className="p-1.5 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-lg transition-colors">
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Kundenname *</label>
-                                <input type="text" value={clientName} onChange={e => setClientName(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" placeholder="z.B. Hans Müller" />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Telefon</label>
-                                    <input type="text" value={clientPhone} onChange={e => setClientPhone(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" placeholder="z.B. 0664 1234567" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">E-Mail</label>
-                                    <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" placeholder="z.B. hans@web.at" />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Ort / PLZ</label>
-                                    <input type="text" value={location} onChange={e => setLocation(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" placeholder="z.B. Wien" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Kanal *</label>
-                                    <select value={channel} onChange={e => setChannel(e.target.value as InquiryChannel)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit">
-                                        {CHANNELS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Budget (€)</label>
-                                    <input type="number" value={budget} onChange={e => setBudget(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" placeholder="z.B. 15000" />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Bauvorhaben / Beschreibung</label>
-                                <textarea rows={3} value={projectDescription} onChange={e => setProjectDescription(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" placeholder="z.B. Pflasterarbeiten im Hof..." />
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3 mt-8 border-t border-slate-100 pt-6">
-                            <button onClick={() => setIsCreateModalOpen(false)} className="flex-1 px-4 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors font-outfit">Abbrechen</button>
-                            <button onClick={handleCreateInquiry} className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors font-outfit">Speichern</button>
-                        </div>
+                        ))}
                     </div>
                 </div>
+            </section>
+
+            {filteredInquiries.length > 0 ? (
+                <section className="grid gap-4">
+                    {filteredInquiries.map((inquiry) => {
+                        const statusDef = STATUS_CONFIG[inquiry.status];
+                        const channelDef = CHANNELS.find((entry) => entry.id === inquiry.channel);
+
+                        return (
+                            <article
+                                key={inquiry.id}
+                                onClick={() => {
+                                    setSelectedInquiry(inquiry);
+                                    setIsEditMode(false);
+                                }}
+                                className="group cursor-pointer rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-100/70"
+                            >
+                                <div className="grid gap-5 xl:grid-cols-[1.25fr_1.4fr_0.8fr_0.8fr_auto] xl:items-center">
+                                    <div className="flex min-w-0 items-center gap-4">
+                                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-xl font-black text-indigo-600 ring-1 ring-indigo-100">
+                                            {initialsFor(inquiry.clientName)}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                                                <span className={cn("rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest", channelDef?.bg, channelDef?.color)}>
+                                                    {channelDef?.label || inquiry.channel}
+                                                </span>
+                                                <span className={cn("rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest", statusDef.bg, statusDef.color)}>
+                                                    {statusDef.label}
+                                                </span>
+                                            </div>
+                                            <h3 className="truncate text-xl font-black text-slate-950 group-hover:text-indigo-700">{inquiry.clientName}</h3>
+                                            <div className="mt-2 grid gap-1 text-xs font-bold text-slate-500">
+                                                {inquiry.clientPhone && (
+                                                    <span className="flex items-center gap-2">
+                                                        <Phone className="h-3.5 w-3.5 text-slate-300" />
+                                                        {inquiry.clientPhone}
+                                                    </span>
+                                                )}
+                                                {inquiry.clientEmail && (
+                                                    <span className="flex min-w-0 items-center gap-2">
+                                                        <Mail className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+                                                        <span className="truncate">{inquiry.clientEmail}</span>
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bauvorhaben</p>
+                                        <p className="mt-1 line-clamp-2 font-black leading-6 text-slate-900">
+                                            {inquiry.projectDescription || "Keine Beschreibung hinterlegt."}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ort</p>
+                                        <p className="mt-1 flex items-center gap-2 font-bold text-slate-700">
+                                            <MapPin className="h-4 w-4 text-slate-300" />
+                                            {inquiry.location || "-"}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Budget</p>
+                                        <p className="mt-1 flex items-center gap-2 font-black text-slate-950">
+                                            <Euro className="h-4 w-4 text-slate-300" />
+                                            {formatBudget(inquiry.budget)}
+                                        </p>
+                                        <p className="mt-1 flex items-center gap-2 text-xs font-bold text-slate-400">
+                                            <Calendar className="h-3.5 w-3.5" />
+                                            {formatDate(inquiry.createdAt)}
+                                        </p>
+                                    </div>
+
+                                    <ChevronRight className="hidden h-5 w-5 justify-self-end text-slate-300 transition group-hover:translate-x-1 group-hover:text-indigo-500 xl:block" />
+                                </div>
+                            </article>
+                        );
+                    })}
+                </section>
+            ) : (
+                <section className="rounded-[32px] border border-dashed border-slate-200 bg-white py-20 text-center shadow-sm">
+                    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-50 text-slate-300">
+                        <Inbox className="h-8 w-8" />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-950">Keine Anfragen gefunden</h3>
+                    <p className="mt-2 font-semibold text-slate-500">Passe Suche oder Statusfilter an.</p>
+                </section>
             )}
 
-            {/* Details Modal */}
+            {isCreateModalOpen && (
+                <InquiryFormModal
+                    title="Neue Anfrage erfassen"
+                    onClose={() => setIsCreateModalOpen(false)}
+                    onSave={handleCreateInquiry}
+                    clientName={clientName}
+                    setClientName={setClientName}
+                    clientPhone={clientPhone}
+                    setClientPhone={setClientPhone}
+                    clientEmail={clientEmail}
+                    setClientEmail={setClientEmail}
+                    channel={channel}
+                    setChannel={setChannel}
+                    projectDescription={projectDescription}
+                    setProjectDescription={setProjectDescription}
+                    location={location}
+                    setLocation={setLocation}
+                    budget={budget}
+                    setBudget={setBudget}
+                />
+            )}
+
             {selectedInquiry && !isEditMode && (
                 <InquiryDetailModal
                     isOpen={!!selectedInquiry}
                     onClose={() => setSelectedInquiry(null)}
                     inquiry={selectedInquiry}
-                    onStartEdit={(inq) => handleStartEdit(inq)}
+                    onStartEdit={(inquiry) => handleStartEdit(inquiry)}
                     onDelete={() => setConfirmDeleteOpen(true)}
                 />
             )}
 
-            {/* Edit Inquiry Modal */}
             {selectedInquiry && isEditMode && (
-                <div className="fixed inset-0 z-[300] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[24px] p-8 w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
-                            <h3 className="text-xl font-black text-slate-900 font-outfit">Anfrage bearbeiten</h3>
-                            <button onClick={() => setIsEditMode(false)} className="p-1.5 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-lg transition-colors">
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Kundenname *</label>
-                                <input type="text" value={clientName} onChange={e => setClientName(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Telefon</label>
-                                    <input type="text" value={clientPhone} onChange={e => setClientPhone(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">E-Mail</label>
-                                    <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Ort / PLZ</label>
-                                    <input type="text" value={location} onChange={e => setLocation(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Kanal *</label>
-                                    <select value={channel} onChange={e => setChannel(e.target.value as InquiryChannel)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit">
-                                        {CHANNELS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Status *</label>
-                                    <select value={status} onChange={e => setStatus(e.target.value as InquiryStatus)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit">
-                                        {(Object.keys(STATUS_CONFIG) as InquiryStatus[]).map(s => <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Budget (€)</label>
-                                    <input type="number" value={budget} onChange={e => setBudget(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider font-outfit">Bauvorhaben / Beschreibung</label>
-                                <textarea rows={3} value={projectDescription} onChange={e => setProjectDescription(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-1.5 font-outfit" />
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3 mt-8 border-t border-slate-100 pt-6">
-                            <button onClick={() => setIsEditMode(false)} className="flex-1 px-4 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors font-outfit">Abbrechen</button>
-                            <button onClick={handleSaveInquiryEdit} className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors font-outfit">Speichern</button>
-                        </div>
-                    </div>
-                </div>
+                <InquiryFormModal
+                    title="Anfrage bearbeiten"
+                    onClose={() => setIsEditMode(false)}
+                    onSave={handleSaveInquiryEdit}
+                    clientName={clientName}
+                    setClientName={setClientName}
+                    clientPhone={clientPhone}
+                    setClientPhone={setClientPhone}
+                    clientEmail={clientEmail}
+                    setClientEmail={setClientEmail}
+                    channel={channel}
+                    setChannel={setChannel}
+                    projectDescription={projectDescription}
+                    setProjectDescription={setProjectDescription}
+                    location={location}
+                    setLocation={setLocation}
+                    budget={budget}
+                    setBudget={setBudget}
+                    status={status}
+                    setStatus={setStatus}
+                    showStatus
+                />
             )}
 
-            {/* Confirm Delete Dialog */}
             <ConfirmDialog
                 isOpen={confirmDeleteOpen}
                 title="Anfrage löschen"
@@ -575,92 +489,179 @@ export default function CRMPage() {
     );
 }
 
-// Inner component for the Notes Timeline
-function InquiryNotesTimeline({ inquiryId }: { inquiryId: string }) {
-    const { notes, addNote, deleteNote, isLoading } = useInquiryNotes(inquiryId);
-    const { user } = useAuth();
-    const [newNoteText, setNewNoteText] = useState('');
-    const [isSavingNote, setIsSavingNote] = useState(false);
+interface InquiryFormModalProps {
+    title: string;
+    onClose: () => void;
+    onSave: () => void;
+    clientName: string;
+    setClientName: (value: string) => void;
+    clientPhone: string;
+    setClientPhone: (value: string) => void;
+    clientEmail: string;
+    setClientEmail: (value: string) => void;
+    channel: InquiryChannel;
+    setChannel: (value: InquiryChannel) => void;
+    projectDescription: string;
+    setProjectDescription: (value: string) => void;
+    location: string;
+    setLocation: (value: string) => void;
+    budget: string;
+    setBudget: (value: string) => void;
+    status?: InquiryStatus;
+    setStatus?: (value: InquiryStatus) => void;
+    showStatus?: boolean;
+}
 
-    const handleAddNote = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newNoteText.trim() || isSavingNote) return;
-        setIsSavingNote(true);
-        try {
-            const userName = user?.email?.split('@')[0] || 'Admin';
-            await addNote(newNoteText.trim(), userName);
-            setNewNoteText('');
-        } finally {
-            setIsSavingNote(false);
-        }
-    };
-
+function InquiryFormModal({
+    title,
+    onClose,
+    onSave,
+    clientName,
+    setClientName,
+    clientPhone,
+    setClientPhone,
+    clientEmail,
+    setClientEmail,
+    channel,
+    setChannel,
+    projectDescription,
+    setProjectDescription,
+    location,
+    setLocation,
+    budget,
+    setBudget,
+    status = "new",
+    setStatus,
+    showStatus = false,
+}: InquiryFormModalProps) {
     return (
-        <div className="border-t border-slate-100 pt-6 space-y-4">
-            <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider font-outfit flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-indigo-500" />
-                Gesprächsverlauf & Notizen ({notes.length})
-            </h4>
-
-            {/* Note Input */}
-            <form onSubmit={handleAddNote} className="flex gap-2">
-                <input
-                    type="text"
-                    value={newNoteText}
-                    onChange={e => setNewNoteText(e.target.value)}
-                    disabled={isSavingNote}
-                    placeholder="Neue Notiz hinzufügen..."
-                    className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-bold text-slate-700 font-outfit"
-                />
-                <button
-                    type="submit"
-                    disabled={!newNoteText.trim() || isSavingNote}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all font-outfit shrink-0 flex items-center justify-center"
-                >
-                    {isSavingNote ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Hinzufügen'}
-                </button>
-            </form>
-
-            {/* Note Timeline List */}
-            {isLoading ? (
-                <div className="py-4 text-center text-xs text-slate-400">Notizen werden geladen...</div>
-            ) : notes.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400 font-medium font-outfit italic">
-                    Bisher keine Notizen erfasst. Schreibe die erste Notiz, um den Verlauf zu dokumentieren.
-                </div>
-            ) : (
-                <div className="relative pl-6 border-l-2 border-slate-100 space-y-5 py-2">
-                    {notes.map(note => (
-                        <div key={note.id} className="relative group/note">
-                            <span className="absolute -left-[31px] top-1.5 h-2 w-2 rounded-full bg-indigo-500 ring-4 ring-white"></span>
-                            
-                            <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-4 shadow-sm relative">
-                                <div className="flex items-center justify-between text-[10px] text-slate-400 font-black uppercase tracking-wider font-outfit">
-                                    <span>{(note as any).createdBy || (note as any).created_by || (note as any).createdby || 'Admin'}</span>
-                                    <span>
-                                        {(() => {
-                                            const dateVal = (note as any).createdAt || (note as any).created_at || (note as any).createdat;
-                                            if (!dateVal) return '—';
-                                            const d = new Date(dateVal);
-                                            if (isNaN(d.getTime())) return '—';
-                                            return `${d.toLocaleDateString('de-DE')} um ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
-                                        })()}
-                                    </span>
-                                </div>
-                                <p className="text-sm font-bold text-slate-600 mt-2 font-outfit leading-relaxed break-words whitespace-pre-wrap">{note.content}</p>
-                                
-                                <button
-                                    onClick={() => deleteNote(note.id)}
-                                    className="absolute top-2 right-2 p-1 text-slate-300 hover:text-rose-500 opacity-0 group-hover/note:opacity-100 transition-opacity rounded-lg hover:bg-slate-100/50"
-                                    title="Notiz löschen"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </button>
-                            </div>
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-md">
+            <div className="w-full max-w-3xl overflow-hidden rounded-[34px] border border-white bg-white shadow-[0_32px_90px_rgba(15,23,42,0.35)]">
+                <div className="bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-500 px-7 py-6 text-white">
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-cyan-100">CRM</p>
+                            <h3 className="mt-1 text-3xl font-black">{title}</h3>
+                            <p className="mt-2 text-sm font-semibold text-white/70">Kontakt, Vorhaben und Status sauber erfassen.</p>
                         </div>
-                    ))}
+                        <button
+                            onClick={onClose}
+                            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/12 text-white ring-1 ring-white/20 transition hover:bg-white/20"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
                 </div>
-            )}
+
+                <div className="grid gap-4 bg-slate-50/70 p-6 sm:grid-cols-2">
+                    <label className="block sm:col-span-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Kundenname *</span>
+                        <input
+                            value={clientName}
+                            onChange={(event) => setClientName(event.target.value)}
+                            placeholder="z.B. Max Mustermann"
+                            className="mt-2 h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 font-bold text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100"
+                        />
+                    </label>
+
+                    <label className="block">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Telefon</span>
+                        <input
+                            value={clientPhone}
+                            onChange={(event) => setClientPhone(event.target.value)}
+                            placeholder="z.B. 0664 1234567"
+                            className="mt-2 h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 font-bold text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100"
+                        />
+                    </label>
+
+                    <label className="block">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">E-Mail</span>
+                        <input
+                            type="email"
+                            value={clientEmail}
+                            onChange={(event) => setClientEmail(event.target.value)}
+                            placeholder="z.B. max@email.at"
+                            className="mt-2 h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 font-bold text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100"
+                        />
+                    </label>
+
+                    <label className="block">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ort / PLZ</span>
+                        <input
+                            value={location}
+                            onChange={(event) => setLocation(event.target.value)}
+                            placeholder="z.B. Graz"
+                            className="mt-2 h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 font-bold text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100"
+                        />
+                    </label>
+
+                    <label className="block">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Kanal</span>
+                        <select
+                            value={channel}
+                            onChange={(event) => setChannel(event.target.value as InquiryChannel)}
+                            className="mt-2 h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 font-bold text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100"
+                        >
+                            {CHANNELS.map((channelOption) => (
+                                <option key={channelOption.id} value={channelOption.id}>{channelOption.label}</option>
+                            ))}
+                        </select>
+                    </label>
+
+                    {showStatus && setStatus && (
+                        <label className="block">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</span>
+                            <select
+                                value={status}
+                                onChange={(event) => setStatus(event.target.value as InquiryStatus)}
+                                className="mt-2 h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 font-bold text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100"
+                            >
+                                {(Object.keys(STATUS_CONFIG) as InquiryStatus[]).map((statusKey) => (
+                                    <option key={statusKey} value={statusKey}>{STATUS_CONFIG[statusKey].label}</option>
+                                ))}
+                            </select>
+                        </label>
+                    )}
+
+                    <label className="block">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Budget</span>
+                        <input
+                            type="number"
+                            value={budget}
+                            onChange={(event) => setBudget(event.target.value)}
+                            placeholder="z.B. 15000"
+                            className="mt-2 h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 font-bold text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100"
+                        />
+                    </label>
+
+                    <label className="block sm:col-span-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bauvorhaben / Beschreibung</span>
+                        <textarea
+                            rows={4}
+                            value={projectDescription}
+                            onChange={(event) => setProjectDescription(event.target.value)}
+                            placeholder="z.B. Pflasterarbeiten im Hof..."
+                            className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100"
+                        />
+                    </label>
+                </div>
+
+                <div className="flex flex-col gap-3 border-t border-slate-100 bg-white px-6 py-5 sm:flex-row sm:justify-end">
+                    <button
+                        onClick={onClose}
+                        className="rounded-2xl bg-slate-100 px-6 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-200"
+                    >
+                        Abbrechen
+                    </button>
+                    <button
+                        onClick={onSave}
+                        disabled={!clientName.trim()}
+                        className="rounded-2xl bg-gradient-to-r from-indigo-600 to-fuchsia-500 px-7 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        Speichern
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

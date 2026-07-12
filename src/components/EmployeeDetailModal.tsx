@@ -1,7 +1,26 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, User, Briefcase, Mail, Phone, MapPin, CreditCard, FileText, Calendar, DollarSign, Download, Eye, Trash2, Edit2, Loader2, Shield, Heart, FileDown, UserX, UserCheck, Folder, ExternalLink } from "lucide-react";
+import {
+    Briefcase,
+    Calendar,
+    CreditCard,
+    Download,
+    Edit2,
+    FileDown,
+    FileText,
+    Heart,
+    Mail,
+    MapPin,
+    Phone,
+    Plus,
+    Shield,
+    Trash2,
+    Upload,
+    UserCheck,
+    UserX,
+    X,
+} from "lucide-react";
 import { Employee, EmployeeDocument } from "@/types/employee";
 import { cn } from "@/lib/utils";
 
@@ -15,9 +34,70 @@ interface EmployeeDetailModalProps {
     onReactivate?: (employee: Employee) => void;
     onDelete?: (id: string) => void;
     onDeleteDocument?: (employeeId: string, docId: string) => void;
+    onAddDocument?: (employeeId: string, doc: EmployeeDocument) => void;
     onPreviewDocument: (doc: EmployeeDocument) => void;
     isDownloadingPDF: boolean;
 }
+
+const formatDate = (date?: string) => {
+    if (!date) return "-";
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return "-";
+    return parsed.toLocaleDateString("de-AT");
+};
+
+const empty = (value?: string | number) => {
+    if (value === 0) return "0";
+    return value ? String(value) : "-";
+};
+
+const InfoCard = ({
+    icon: Icon,
+    title,
+    children,
+}: {
+    icon: React.ElementType;
+    title: string;
+    children: React.ReactNode;
+}) => (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                <Icon className="h-5 w-5" />
+            </div>
+            <h4 className="font-black text-slate-950">{title}</h4>
+        </div>
+        <div className="space-y-3">{children}</div>
+    </div>
+);
+
+const InfoRow = ({ label, value, mono }: { label: string; value?: string | number; mono?: boolean }) => (
+    <div className="flex items-start justify-between gap-4 border-t border-slate-100 pt-3 first:border-t-0 first:pt-0">
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</span>
+        <span className={cn("text-right text-sm font-black text-slate-800", mono && "font-mono text-xs")}>{empty(value)}</span>
+    </div>
+);
+
+const DOCUMENT_TYPES = [
+    { value: "id_card", label: "Ausweis" },
+    { value: "passport", label: "Reisepass" },
+    { value: "ecard", label: "E-Card" },
+    { value: "registration", label: "Anmeldung" },
+    { value: "deregistration", label: "Abmeldung" },
+    { value: "sick_leave", label: "Krankmeldung" },
+    { value: "contract", label: "Dienstvertrag" },
+    { value: "certificate", label: "Zertifikat / Schulung" },
+    { value: "other", label: "Sonstiges / eigener Typ" },
+];
+
+const formatFileSize = (size: number) =>
+    size > 1024 * 1024 ? `${(size / (1024 * 1024)).toFixed(1)} MB` : `${(size / 1024).toFixed(0)} KB`;
+
+const sanitizeFileName = (name: string) =>
+    name
+        .trim()
+        .replace(/[<>:"/\\|?*]+/g, "")
+        .replace(/\s+/g, "_") || "Dokument";
 
 export function EmployeeDetailModal({
     isOpen,
@@ -29,443 +109,449 @@ export function EmployeeDetailModal({
     onReactivate,
     onDelete,
     onDeleteDocument,
+    onAddDocument,
     onPreviewDocument,
-    isDownloadingPDF
+    isDownloadingPDF,
 }: EmployeeDetailModalProps) {
-    const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
-    const [activeTab, setActiveTab] = useState<'info' | 'documents'>('info');
+    const [activeTab, setActiveTab] = useState<"info" | "documents">("info");
+    const [isUploadOpen, setIsUploadOpen] = useState(false);
+    const [documentType, setDocumentType] = useState("id_card");
+    const [customDocumentType, setCustomDocumentType] = useState("");
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [fileName, setFileName] = useState("");
 
     if (!isOpen || !employee) return null;
 
-    const name = `${employee.personalData.firstName} ${employee.personalData.lastName}`;
-    
-    // Generate initials for avatar
-    const initials = name
-        .split(' ')
-        .map(n => n[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase() || '?';
-
+    const name = `${employee.personalData.firstName} ${employee.personalData.lastName}`.trim() || "Unbenannter Mitarbeiter";
+    const initials =
+        name
+            .split(" ")
+            .map((part) => part[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase() || "?";
     const isActive = employee.employment.isActive !== false;
-
-    // Group documents by category or folder
     const docs = employee.documents || [];
+    const weeklyHours = employee.weeklySchedule
+        ? Object.values(employee.weeklySchedule).reduce((sum, day) => sum + (day.enabled ? Number(day.hours || 0) : 0), 0)
+        : 0;
+
+    const selectedTypeLabel =
+        documentType === "other"
+            ? customDocumentType.trim() || "Eigenes Dokument"
+            : DOCUMENT_TYPES.find((type) => type.value === documentType)?.label || "Dokument";
+
+    const handleFileSelection = (file?: File | null) => {
+        if (!file) return;
+        const extension = file.name.includes(".") ? file.name.split(".").pop() : "";
+        setSelectedFile(file);
+        setFileName(`${sanitizeFileName(selectedTypeLabel)}_${employee.personalData.lastName || "Mitarbeiter"}${extension ? `.${extension}` : ""}`);
+    };
+
+    const resetUpload = () => {
+        setIsUploadOpen(false);
+        setDocumentType("id_card");
+        setCustomDocumentType("");
+        setSelectedFile(null);
+        setFileName("");
+    };
+
+    const handleUploadDocument = () => {
+        if (!selectedFile || !onAddDocument) return;
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const document: EmployeeDocument = {
+                id: Math.random().toString(36).substr(2, 9),
+                name: fileName.trim() || selectedFile.name,
+                type: selectedFile.type || "application/octet-stream",
+                uploadDate: new Date().toISOString(),
+                fileSize: formatFileSize(selectedFile.size),
+                content: reader.result as string,
+                category: "upload",
+                subType: documentType === "other" ? sanitizeFileName(customDocumentType).toLowerCase() : documentType,
+            };
+
+            onAddDocument(employee.id, document);
+            resetUpload();
+        };
+        reader.readAsDataURL(selectedFile);
+    };
 
     return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-[88rem] rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col md:flex-row max-h-[95vh] md:max-h-[900px] animate-in zoom-in-95 duration-200">
-                
-                {/* Linkes Panel (Hero & Kontakt) - 30% Breite, Farbverlauf */}
-                <div className="md:w-[30%] bg-gradient-to-br from-[#1e1b4b] via-[#3b0764] to-[#4f46e5] text-slate-100 border-r border-white/5 p-8 flex flex-col justify-between relative">
-                    <button 
-                        onClick={onClose} 
-                        className="absolute top-6 left-6 md:hidden p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white shadow-sm border border-white/10 bg-white/5"
-                    >
-                        <X className="h-4 w-4" />
-                    </button>
-
-                    <div className="space-y-8 mt-4 md:mt-0">
-                        {/* Profile Avatar & Name */}
-                        <div className="space-y-4">
-                            {employee.avatar ? (
-                                <div className="h-20 w-20 rounded-2xl overflow-hidden shadow-lg border-2 border-white/10 ring-4 ring-white/5 bg-white">
-                                    <img src={employee.avatar} alt={name} className="h-full w-full object-cover" />
-                                </div>
-                            ) : (
-                                <div className="h-20 w-20 rounded-2xl bg-white text-slate-800 font-black text-xl flex items-center justify-center shadow-lg">
-                                    {initials}
-                                </div>
-                            )}
-                            <div>
-                                <span className="text-[10px] font-bold text-slate-350 uppercase tracking-widest block mb-1">
-                                    #{employee.employeeNumber || "---"} • {employee.employment.workerType}
-                                </span>
-                                <h3 className="text-2xl font-black text-white tracking-tight leading-snug break-words">
-                                    {name}
-                                </h3>
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-md">
+            <div className="flex max-h-[92vh] w-full max-w-[92rem] overflow-hidden rounded-[34px] border border-white bg-white shadow-[0_32px_90px_rgba(15,23,42,0.35)]">
+                <aside className="hidden w-96 shrink-0 flex-col justify-between bg-gradient-to-br from-indigo-800 via-violet-800 to-fuchsia-600 p-8 text-white lg:flex">
+                    <div>
+                        {employee.avatar ? (
+                            <div className="mb-6 h-24 w-24 overflow-hidden rounded-3xl border border-white/20 bg-white shadow-xl">
+                                <img src={employee.avatar} alt={name} className="h-full w-full object-cover" />
                             </div>
-                        </div>
-
-                        {/* Badges */}
-                        <div className="flex flex-wrap gap-2 pt-2">
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-white/10 text-slate-200 border border-white/15">
-                                {employee.employment.status}
-                            </span>
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-white/10 text-slate-200 border border-white/15">
-                                {employee.employment.position || "Keine Position"}
-                            </span>
-                            {isActive ? (
-                                <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-350 border border-emerald-500/30">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                    Aktiv
-                                </span>
-                            ) : (
-                                <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-355 border border-rose-500/30">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-rose-450" />
-                                    Inaktiv
-                                </span>
-                            )}
-                        </div>
-
-                        <hr className="border-white/10" />
-
-                        {/* Quick Contacts */}
-                        <div className="space-y-5">
-                            <div>
-                                <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block mb-1.5">E-Mail-Adresse</span>
-                                <div className="flex items-center gap-2 text-slate-200 justify-between">
-                                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                        <Mail className="h-4.5 w-4.5 text-slate-355 shrink-0" />
-                                        <span className="text-sm font-semibold truncate" title={employee.personalData.email}>{employee.personalData.email || "-"}</span>
-                                    </div>
-                                    {employee.personalData.email && (
-                                        <a
-                                            href={`mailto:${employee.personalData.email}`}
-                                            className="p-1 text-slate-355 hover:text-white rounded-md hover:bg-white/10 transition-colors shrink-0"
-                                            title="E-Mail schreiben"
-                                        >
-                                            <ExternalLink className="h-3.5 w-3.5" />
-                                        </a>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div>
-                                <span className="text-[9px] font-bold text-slate-355 uppercase tracking-widest block mb-1.5">Telefonnummer</span>
-                                <div className="flex items-center gap-2.5 text-slate-200">
-                                    <Phone className="h-4.5 w-4.5 text-slate-355 shrink-0" />
-                                    <span className="text-sm font-semibold">{employee.personalData.phone || "-"}</span>
-                                </div>
-                            </div>
-
-                            <div>
-                                <span className="text-[9px] font-bold text-slate-355 uppercase tracking-widest block mb-1.5">Anschrift</span>
-                                <div className="flex items-start gap-2.5 text-slate-200">
-                                    <MapPin className="h-4.5 w-4.5 text-slate-355 mt-0.5 shrink-0" />
-                                    <div className="text-sm font-semibold leading-relaxed">
-                                        <p>{employee.personalData.street || "-"}</p>
-                                        <p>{employee.personalData.zip || ""} {employee.personalData.city || ""}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Metadata am Fuß */}
-                    <div className="pt-6 border-t border-white/10 hidden md:block">
-                        <div className="space-y-2 text-[11px] font-semibold text-slate-355">
-                            <div className="flex justify-between">
-                                <span>Eintrittsdatum:</span>
-                                <span className="text-slate-200">{employee.employment.startDate ? new Date(employee.employment.startDate).toLocaleDateString('de-DE') : "-"}</span>
-                            </div>
-                            {employee.employment.endDate && (
-                                <div className="flex justify-between">
-                                    <span>Austrittsdatum:</span>
-                                    <span className="text-rose-300">{new Date(employee.employment.endDate).toLocaleDateString('de-DE')}</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Rechtes Panel (Detaillierte Infos) - 70% Breite */}
-                <div className="flex-1 p-8 flex flex-col justify-between overflow-y-auto relative bg-white">
-                    {/* Actions Header */}
-                    <div className="absolute top-6 right-6 hidden md:flex items-center gap-2">
-                        <button
-                            onClick={() => onDownloadPDF(employee)}
-                            disabled={isDownloadingPDF}
-                            className="p-2 border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-100 hover:bg-emerald-50/50 rounded-xl transition-all"
-                            title="Personaldatenblatt herunterladen"
-                        >
-                            {isDownloadingPDF ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <FileDown className="h-4 w-4" />
-                            )}
-                        </button>
-                        {onStartEdit && (
-                            <button
-                                onClick={() => onStartEdit(employee)}
-                                className="p-2 border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 hover:bg-indigo-50/50 rounded-xl transition-all"
-                                title="Bearbeiten"
-                            >
-                                <Edit2 className="h-4 w-4" />
-                            </button>
-                        )}
-                        {isActive ? (
-                            onDeactivate && (
-                                <button
-                                    onClick={() => onDeactivate(employee)}
-                                    className="p-2 border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-100 hover:bg-rose-50/50 rounded-xl transition-all"
-                                    title="Abmelden (Archivieren)"
-                                >
-                                    <UserX className="h-4 w-4" />
-                                </button>
-                            )
                         ) : (
-                            <>
-                                {onReactivate && (
-                                    <button
-                                        onClick={() => onReactivate(employee)}
-                                        className="p-2 border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-100 hover:bg-emerald-50/50 rounded-xl transition-all"
-                                        title="Reaktivieren (Wieder anmelden)"
-                                    >
-                                        <UserCheck className="h-4 w-4" />
-                                    </button>
-                                )}
-                                {onDelete && (
-                                    <button
-                                        onClick={() => onDelete(employee.id)}
-                                        className="p-2 border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-100 hover:bg-rose-50/50 rounded-xl transition-all"
-                                        title="Endgültig löschen"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                )}
-                            </>
-                        )}
-                        <button onClick={onClose} className="p-2 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-xl transition-all ml-2">
-                            <X className="h-4 w-4" />
-                        </button>
-                    </div>
-
-                    {/* Tab Switcher */}
-                    <div className="flex gap-2 border-b border-slate-100 pb-4 shrink-0 mt-8 md:mt-2">
-                        <button
-                            onClick={() => setActiveTab('info')}
-                            className={cn(
-                                "px-5 py-2.5 rounded-xl font-bold text-xs transition-all uppercase tracking-wider font-outfit border shadow-sm",
-                                activeTab === 'info'
-                                    ? "bg-gradient-to-r from-[#3b0764] to-[#4f46e5] text-white border-transparent shadow-indigo-500/10"
-                                    : "bg-slate-50 text-slate-450 border-slate-100 hover:text-slate-700 hover:bg-slate-100"
-                            )}
-                        >
-                            Allgemeine Infos
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('documents')}
-                            className={cn(
-                                "px-5 py-2.5 rounded-xl font-bold text-xs transition-all uppercase tracking-wider font-outfit border flex items-center gap-1.5 shadow-sm",
-                                activeTab === 'documents'
-                                    ? "bg-gradient-to-r from-[#3b0764] to-[#4f46e5] text-white border-transparent shadow-indigo-500/10"
-                                    : "bg-slate-50 text-slate-450 border-slate-100 hover:text-slate-700 hover:bg-slate-100"
-                            )}
-                        >
-                            Dokumente
-                            <span className={cn(
-                                "px-1.5 py-0.5 rounded-md text-[9px] font-black leading-none",
-                                activeTab === 'documents' ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
-                            )}>
-                                {docs.length}
-                            </span>
-                        </button>
-                    </div>
-
-                    {/* Content Bereich */}
-                    <div className="flex-1 flex flex-col justify-between pt-4 overflow-y-auto">
-                        
-                        {/* Tab 1: Allgemeine Infos */}
-                        {activeTab === 'info' && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-205">
-                                
-                                {/* Card 1: Stammdaten & SV */}
-                                <div className="space-y-3">
-                                    <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
-                                        <Shield className="h-3.5 w-3.5" /> Stammdaten & Sozialversicherung
-                                    </h4>
-                                    <div className="bg-slate-50/40 border border-slate-100/80 rounded-2xl p-5 min-h-[140px] space-y-3 flex flex-col justify-center">
-                                        <div className="flex justify-between items-center text-xs">
-                                            <span className="font-bold text-slate-450 uppercase tracking-wider">SV-Nummer:</span>
-                                            <span className="font-bold text-slate-800">{employee.personalData.socialSecurityNumber || '—'}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs border-t border-slate-100/50 pt-2.5">
-                                            <span className="font-bold text-slate-450 uppercase tracking-wider">Geburtsdatum:</span>
-                                            <span className="font-bold text-slate-800">
-                                                {employee.personalData.birthday ? new Date(employee.personalData.birthday).toLocaleDateString('de-DE') : '—'}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs border-t border-slate-100/50 pt-2.5">
-                                            <span className="font-bold text-slate-450 uppercase tracking-wider">Geburtsort:</span>
-                                            <span className="font-bold text-slate-800">
-                                                {employee.personalData.birthPlace || '—'}{employee.personalData.birthCountry ? `, ${employee.personalData.birthCountry}` : ''}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs border-t border-slate-100/50 pt-2.5">
-                                            <span className="font-bold text-slate-450 uppercase tracking-wider">Staatsbürgerschaft:</span>
-                                            <span className="font-bold text-slate-800">{employee.personalData.nationality || '—'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Card 2: Anstellung & Konditionen */}
-                                <div className="space-y-3">
-                                    <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
-                                        <Briefcase className="h-3.5 w-3.5" /> Anstellung & Konditionen
-                                    </h4>
-                                    <div className="bg-slate-50/40 border border-slate-100/80 rounded-2xl p-5 min-h-[140px] space-y-3 flex flex-col justify-center">
-                                        <div className="flex justify-between items-center text-xs">
-                                            <span className="font-bold text-slate-450 uppercase tracking-wider">Gehalt / Lohn:</span>
-                                            <span className="font-bold text-slate-800">{employee.employment.salary || '—'}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs border-t border-slate-100/50 pt-2.5">
-                                            <span className="font-bold text-slate-450 uppercase tracking-wider">Einstufung / Verwendung:</span>
-                                            <span className="font-bold text-slate-800">
-                                                {employee.employment.classification || '—'} {employee.employment.verwendung ? `/ ${employee.employment.verwendung}` : ''}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs border-t border-slate-100/50 pt-2.5">
-                                            <span className="font-bold text-slate-450 uppercase tracking-wider">Wochenstunden:</span>
-                                            <span className="font-bold text-slate-800">{employee.weeklySchedule ? "Regelmäßig (Zeiteinteilung)" : "Standard"}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs border-t border-slate-100/50 pt-2.5">
-                                            <span className="font-bold text-slate-450 uppercase tracking-wider">Urlaubsausmaß:</span>
-                                            <span className="font-bold text-slate-800">{employee.employment.annualLeave ?? 25} Tage / Jahr</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Card 3: Bankdaten */}
-                                <div className="space-y-3">
-                                    <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
-                                        <CreditCard className="h-3.5 w-3.5" /> Bankverbindung
-                                    </h4>
-                                    <div className="bg-slate-50/40 border border-slate-100/80 rounded-2xl p-5 min-h-[120px] space-y-3 flex flex-col justify-center">
-                                        <div className="flex justify-between items-center text-xs">
-                                            <span className="font-bold text-slate-450 uppercase tracking-wider">Bankinstitut:</span>
-                                            <span className="font-bold text-slate-800">{employee.bankDetails.bankName || '—'}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs border-t border-slate-100/50 pt-2.5">
-                                            <span className="font-bold text-slate-450 uppercase tracking-wider">IBAN:</span>
-                                            <span className="font-bold text-slate-800 font-mono text-[11px]">{employee.bankDetails.iban || '—'}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs border-t border-slate-100/50 pt-2.5">
-                                            <span className="font-bold text-slate-450 uppercase tracking-wider">BIC:</span>
-                                            <span className="font-bold text-slate-800 font-mono text-[11px]">{employee.bankDetails.bic || '—'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Card 4: Notfallkontakt & Notizen */}
-                                <div className="space-y-3">
-                                    <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
-                                        <Heart className="h-3.5 w-3.5" /> Kontakt & Notizen
-                                    </h4>
-                                    <div className="bg-slate-50/40 border border-slate-100/80 rounded-2xl p-5 min-h-[120px] space-y-3 flex flex-col justify-center">
-                                        <div className="flex justify-between items-center text-xs">
-                                            <span className="font-bold text-slate-450 uppercase tracking-wider">Notfallkontakt:</span>
-                                            <span className="font-bold text-slate-850">
-                                                {employee.additionalInfo?.emergencyContactName || '—'} {employee.additionalInfo?.emergencyContactPhone ? `(${employee.additionalInfo.emergencyContactPhone})` : ''}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-start text-xs border-t border-slate-100/50 pt-2.5">
-                                            <span className="font-bold text-slate-450 uppercase tracking-wider shrink-0 mr-4">Notizen:</span>
-                                            <span className="font-semibold text-slate-650 text-right leading-normal line-clamp-3">
-                                                {employee.additionalInfo?.notes || 'Keine Notizen hinterlegt.'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
+                            <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-white text-3xl font-black text-indigo-700 shadow-xl">
+                                {initials}
                             </div>
                         )}
 
-                        {/* Tab 2: Dokumente */}
-                        {activeTab === 'documents' && (
-                            <div className="space-y-4 animate-in fade-in duration-200 flex-1 flex flex-col">
-                                <div className="space-y-3">
-                                    <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
-                                        <FileText className="h-4 w-4" /> Dokumenten-Archiv des Mitarbeiters ({docs.length})
-                                    </h4>
+                        <div className="mb-3 flex flex-wrap gap-2">
+                            <span className="rounded-full bg-white/12 px-3 py-1 text-[10px] font-black uppercase tracking-widest ring-1 ring-white/15">
+                                #{employee.employeeNumber || "---"}
+                            </span>
+                            <span className={cn(
+                                "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ring-1",
+                                isActive ? "bg-emerald-400/15 text-emerald-100 ring-emerald-300/20" : "bg-rose-400/15 text-rose-100 ring-rose-300/20"
+                            )}>
+                                {isActive ? "Aktiv" : "Archiviert"}
+                            </span>
+                        </div>
 
-                                    {docs.length === 0 ? (
-                                        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-3xl p-12 text-center text-slate-400 min-h-[250px]">
-                                            <Folder className="h-12 w-12 text-slate-200 mb-3" />
-                                            <p className="text-xs font-bold font-outfit">Keine Dokumente</p>
-                                            <p className="text-[11px] text-slate-400 font-medium mt-1">Es wurden noch keine Dokumente für diesen Mitarbeiter hinterlegt.</p>
+                        <h3 className="text-3xl font-black leading-tight">{name}</h3>
+                        <p className="mt-2 text-sm font-semibold text-white/70">
+                            {employee.employment.position || "Keine Position"} · {employee.employment.status}
+                        </p>
+
+                        <div className="mt-8 space-y-5 border-t border-white/15 pt-6">
+                            <a href={employee.personalData.email ? `mailto:${employee.personalData.email}` : undefined} className="flex min-w-0 items-center gap-3 text-sm font-bold text-white/80">
+                                <Mail className="h-4 w-4 shrink-0 text-cyan-100" />
+                                <span className="truncate">{employee.personalData.email || "Keine E-Mail"}</span>
+                            </a>
+                            <div className="flex min-w-0 items-center gap-3 text-sm font-bold text-white/80">
+                                <Phone className="h-4 w-4 shrink-0 text-cyan-100" />
+                                <span className="truncate">{employee.personalData.phone || "Keine Telefonnummer"}</span>
+                            </div>
+                            <div className="flex items-start gap-3 text-sm font-bold leading-6 text-white/80">
+                                <MapPin className="mt-1 h-4 w-4 shrink-0 text-cyan-100" />
+                                <span>{employee.personalData.street || "-"}<br />{employee.personalData.zip || ""} {employee.personalData.city || ""}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="rounded-3xl bg-white/10 p-4 ring-1 ring-white/15">
+                        <div className="flex justify-between text-xs font-black uppercase tracking-widest text-white/55">
+                            <span>Eintritt</span>
+                            <span>{formatDate(employee.employment.startDate)}</span>
+                        </div>
+                        {employee.employment.endDate && (
+                            <div className="mt-3 flex justify-between text-xs font-black uppercase tracking-widest text-rose-100">
+                                <span>Austritt</span>
+                                <span>{formatDate(employee.employment.endDate)}</span>
+                            </div>
+                        )}
+                    </div>
+                </aside>
+
+                <section className="flex min-w-0 flex-1 flex-col">
+                    <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 sm:px-8">
+                        <div className="min-w-0">
+                            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-500">Personalakte</p>
+                            <h3 className="mt-1 truncate text-2xl font-black text-slate-950">{name}</h3>
+                            <p className="mt-1 text-sm font-bold text-slate-500 lg:hidden">#{employee.employeeNumber || "---"} · {employee.employment.position || "Keine Position"}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => onDownloadPDF(employee)}
+                                disabled={isDownloadingPDF}
+                                className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 disabled:opacity-50"
+                                title="Personaldatenblatt herunterladen"
+                            >
+                                {isDownloadingPDF ? <FileDown className="h-4 w-4 animate-pulse" /> : <FileDown className="h-4 w-4" />}
+                            </button>
+                            {onStartEdit && (
+                                <button
+                                    onClick={() => onStartEdit(employee)}
+                                    className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 transition hover:bg-indigo-100"
+                                    title="Bearbeiten"
+                                >
+                                    <Edit2 className="h-4 w-4" />
+                                </button>
+                            )}
+                            {isActive ? (
+                                onDeactivate && (
+                                    <button
+                                        onClick={() => onDeactivate(employee)}
+                                        className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                                        title="Abmelden"
+                                    >
+                                        <UserX className="h-4 w-4" />
+                                    </button>
+                                )
+                            ) : (
+                                <>
+                                    {onReactivate && (
+                                        <button
+                                            onClick={() => onReactivate(employee)}
+                                            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100"
+                                            title="Reaktivieren"
+                                        >
+                                            <UserCheck className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                    {onDelete && (
+                                        <button
+                                            onClick={() => onDelete(employee.id)}
+                                            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                                            title="Endgültig löschen"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                            <button
+                                onClick={onClose}
+                                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+                                aria-label="Schließen"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className="border-b border-slate-100 px-6 py-4 sm:px-8">
+                        <div className="flex rounded-2xl bg-slate-100 p-1">
+                            <button
+                                onClick={() => setActiveTab("info")}
+                                className={cn(
+                                    "flex-1 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest transition",
+                                    activeTab === "info" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                                )}
+                            >
+                                Allgemeine Infos
+                            </button>
+                            <button
+                                onClick={() => setActiveTab("documents")}
+                                className={cn(
+                                    "flex-1 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest transition",
+                                    activeTab === "documents" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                                )}
+                            >
+                                Dokumente ({docs.length})
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/70 p-6 sm:p-8">
+                        {activeTab === "info" ? (
+                            <div className="grid gap-4 xl:grid-cols-2">
+                                <InfoCard icon={Shield} title="Stammdaten & Sozialversicherung">
+                                    <InfoRow label="SV-Nummer" value={employee.personalData.socialSecurityNumber} />
+                                    <InfoRow label="Geburtsdatum" value={formatDate(employee.personalData.birthday)} />
+                                    <InfoRow label="Geburtsort" value={`${employee.personalData.birthPlace || "-"}${employee.personalData.birthCountry ? `, ${employee.personalData.birthCountry}` : ""}`} />
+                                    <InfoRow label="Staatsbürgerschaft" value={employee.personalData.nationality} />
+                                </InfoCard>
+
+                                <InfoCard icon={Briefcase} title="Anstellung & Konditionen">
+                                    <InfoRow label="Gehalt / Lohn" value={employee.employment.salary} />
+                                    <InfoRow label="Einstufung" value={employee.employment.classification} />
+                                    <InfoRow label="Verwendung" value={employee.employment.verwendung} />
+                                    <InfoRow label="Urlaub" value={`${employee.employment.annualLeave ?? 25} Tage / Jahr`} />
+                                </InfoCard>
+
+                                <InfoCard icon={Calendar} title="Zeiteinteilung">
+                                    <InfoRow label="Wochenstunden" value={weeklyHours ? `${weeklyHours} Stunden` : "Nicht hinterlegt"} />
+                                    <InfoRow label="Zeiterfassung" value={employee.additionalInfo?.noTimeTrackingRequired ? "Nicht nötig" : "Aktiv"} />
+                                    <InfoRow label="Arbeitsverhältnis" value={employee.employment.workerType} />
+                                    <InfoRow label="Status" value={isActive ? "Aktiv" : "Archiviert"} />
+                                </InfoCard>
+
+                                <InfoCard icon={CreditCard} title="Bankverbindung">
+                                    <InfoRow label="Bankinstitut" value={employee.bankDetails.bankName} />
+                                    <InfoRow label="IBAN" value={employee.bankDetails.iban} mono />
+                                    <InfoRow label="BIC" value={employee.bankDetails.bic} mono />
+                                </InfoCard>
+
+                                <div className="xl:col-span-2">
+                                    <InfoCard icon={Heart} title="Notfallkontakt & Notizen">
+                                        <InfoRow label="Notfallkontakt" value={employee.additionalInfo?.emergencyContactName} />
+                                        <InfoRow label="Telefon" value={employee.additionalInfo?.emergencyContactPhone} />
+                                        <div className="border-t border-slate-100 pt-3">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notizen</p>
+                                            <p className="mt-2 rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-600">
+                                                {employee.additionalInfo?.notes || "Keine Notizen hinterlegt."}
+                                            </p>
                                         </div>
-                                    ) : (
-                                        <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin">
-                                            {docs.map(doc => (
-                                                <div 
-                                                    key={doc.id} 
-                                                    onClick={() => onPreviewDocument(doc)}
-                                                    className="flex items-center justify-between p-3.5 px-4 bg-slate-50/50 hover:bg-indigo-50/20 border border-slate-100/70 rounded-2xl hover:border-indigo-150 transition-all duration-150 cursor-pointer group/doc"
-                                                >
-                                                    <div className="flex items-center gap-3.5 min-w-0">
-                                                        <div className={cn(
-                                                            "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm border transition-colors",
-                                                            doc.category === 'system' 
-                                                                ? "bg-emerald-50 text-emerald-650 border-emerald-100 group-hover/doc:bg-emerald-100 group-hover/doc:text-emerald-700" 
-                                                                : "bg-indigo-50 text-indigo-650 border-indigo-100 group-hover/doc:bg-indigo-100 group-hover/doc:text-indigo-750"
-                                                        )}>
-                                                            <FileText className="h-4.5 w-4.5" />
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <p className="text-xs font-bold text-slate-750 truncate group-hover/doc:text-indigo-650 transition-colors" title={doc.name}>
-                                                                {doc.name}
-                                                            </p>
-                                                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5 tracking-wider flex items-center gap-1.5">
-                                                                <span>{doc.category === 'system' ? 'System' : 'Upload'}</span>
-                                                                <span>•</span>
-                                                                <span>{doc.fileSize || "—"}</span>
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex gap-1.5 shrink-0 ml-4">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (doc.content) {
-                                                                    const link = document.createElement('a');
-                                                                    link.href = doc.content;
-                                                                    link.download = doc.name;
-                                                                    document.body.appendChild(link);
-                                                                    link.click();
-                                                                    document.body.removeChild(link);
-                                                                }
-                                                            }}
-                                                            className="p-1.5 text-slate-450 hover:text-slate-800 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-100/50 shadow-sm bg-white"
-                                                            title="Download"
-                                                        >
-                                                            <Download className="h-3.5 w-3.5" />
-                                                        </button>
-                                                        {onDeleteDocument && (
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    onDeleteDocument(employee.id, doc.id);
-                                                                }}
-                                                                className="p-1.5 text-slate-450 hover:text-rose-600 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-100/50 shadow-sm bg-white"
-                                                                title="Löschen"
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
+                                    </InfoCard>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="flex flex-col gap-3 rounded-3xl border border-indigo-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Dokumentenablage</p>
+                                        <h4 className="mt-1 text-lg font-black text-slate-950">Dokumente hochladen und verwalten</h4>
+                                    </div>
+                                    {onAddDocument && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsUploadOpen(true)}
+                                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-fuchsia-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition hover:-translate-y-0.5"
+                                        >
+                                            <Upload className="h-4 w-4" />
+                                            Dokument hochladen
+                                        </button>
                                     )}
                                 </div>
+
+                                {docs.length === 0 ? (
+                                    <div className="flex min-h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white text-center">
+                                        <FileText className="mb-4 h-12 w-12 text-slate-200" />
+                                        <h4 className="font-black text-slate-950">Keine Dokumente</h4>
+                                        <p className="mt-2 text-sm font-semibold text-slate-500">Für diesen Mitarbeiter wurden noch keine Dokumente hinterlegt.</p>
+                                    </div>
+                                ) : (
+                                    docs.map((doc) => (
+                                        <button
+                                            key={doc.id}
+                                            onClick={() => onPreviewDocument(doc)}
+                                            className="group flex w-full items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-100/70"
+                                        >
+                                            <div className="flex min-w-0 items-center gap-4">
+                                                <div className={cn(
+                                                    "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl",
+                                                    doc.category === "system" ? "bg-emerald-50 text-emerald-600" : "bg-indigo-50 text-indigo-600"
+                                                )}>
+                                                    <FileText className="h-5 w-5" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="truncate font-black text-slate-950 group-hover:text-indigo-700">{doc.name}</p>
+                                                    <p className="mt-1 text-xs font-bold text-slate-400">
+                                                        {doc.category === "system" ? "System" : "Upload"} · {formatDate(doc.uploadDate)} · {doc.fileSize || "-"}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex shrink-0 gap-2" onClick={(event) => event.stopPropagation()}>
+                                                <button
+                                                    onClick={() => {
+                                                        if (!doc.content) return;
+                                                        const link = document.createElement("a");
+                                                        link.href = doc.content;
+                                                        link.download = doc.name;
+                                                        document.body.appendChild(link);
+                                                        link.click();
+                                                        document.body.removeChild(link);
+                                                    }}
+                                                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                                                    title="Download"
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                </button>
+                                                {onDeleteDocument && (
+                                                    <button
+                                                        onClick={() => onDeleteDocument(employee.id, doc.id)}
+                                                        className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-500 transition hover:bg-rose-100 hover:text-rose-700"
+                                                        title="Löschen"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </button>
+                                    ))
+                                )}
                             </div>
                         )}
-
                     </div>
+                </section>
+            </div>
 
-                    {/* Footer Close Button */}
-                    <div className="pt-6 mt-6 border-t border-slate-100 flex justify-end">
-                        <button
-                            onClick={onClose}
-                            className="px-6 py-2.5 bg-primary-gradient text-white rounded-xl font-bold hover:opacity-95 transition-all text-xs tracking-wide shadow-md shadow-purple-500/20 active:scale-95 duration-150"
-                        >
-                            Schließen
-                        </button>
+            {isUploadOpen && (
+                <div className="fixed inset-0 z-[170] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-xl rounded-[32px] border border-white bg-white p-6 shadow-2xl">
+                        <div className="mb-6 flex items-start justify-between gap-4">
+                            <div>
+                                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-500">Upload</p>
+                                <h3 className="mt-1 text-2xl font-black text-slate-950">Dokument hinzufügen</h3>
+                                <p className="mt-2 text-sm font-semibold text-slate-500">Typ wählen, Datei auswählen, Namen kontrollieren und hochladen.</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={resetUpload}
+                                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <label className="block">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Dokumentart</span>
+                                <select
+                                    value={documentType}
+                                    onChange={(event) => {
+                                        setDocumentType(event.target.value);
+                                        setSelectedFile(null);
+                                        setFileName("");
+                                    }}
+                                    className="mt-2 h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 font-bold text-slate-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                >
+                                    {DOCUMENT_TYPES.map((type) => (
+                                        <option key={type.value} value={type.value}>{type.label}</option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            {documentType === "other" && (
+                                <label className="block">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Eigene Bezeichnung</span>
+                                    <input
+                                        value={customDocumentType}
+                                        onChange={(event) => {
+                                            setCustomDocumentType(event.target.value);
+                                            setSelectedFile(null);
+                                            setFileName("");
+                                        }}
+                                        placeholder="z.B. Schulungsnachweis"
+                                        className="mt-2 h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 font-bold text-slate-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                    />
+                                </label>
+                            )}
+
+                            <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 px-6 py-8 text-center transition hover:bg-indigo-50">
+                                <Upload className="mb-3 h-8 w-8 text-indigo-500" />
+                                <span className="font-black text-slate-950">{selectedFile ? selectedFile.name : "Datei vom Computer auswählen"}</span>
+                                <span className="mt-1 text-sm font-semibold text-slate-500">{selectedFile ? formatFileSize(selectedFile.size) : "PDF, Bild oder anderes Dokument"}</span>
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    onChange={(event) => handleFileSelection(event.target.files?.[0])}
+                                />
+                            </label>
+
+                            {selectedFile && (
+                                <label className="block">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Dateiname vor dem Hochladen</span>
+                                    <input
+                                        value={fileName}
+                                        onChange={(event) => setFileName(event.target.value)}
+                                        className="mt-2 h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 font-bold text-slate-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                    />
+                                </label>
+                            )}
+                        </div>
+
+                        <div className="mt-7 grid grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                onClick={resetUpload}
+                                className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-200"
+                            >
+                                Abbrechen
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleUploadDocument}
+                                disabled={!selectedFile || (documentType === "other" && !customDocumentType.trim())}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-fuchsia-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Hochladen
+                            </button>
+                        </div>
                     </div>
                 </div>
-
-            </div>
+            )}
         </div>
     );
 }

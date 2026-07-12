@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Laptop, Shield, User, Info, Cpu, Code2 } from "lucide-react";
+import { APP_VERSION } from "@/lib/app-version";
 
 export function AppInfo() {
     const { user, profile, currentEmployee } = useAuth();
@@ -83,7 +84,7 @@ export function AppInfo() {
                             </div>
                             <div className="flex justify-between border-b border-white/10 pb-2">
                                 <span className="text-indigo-200/70 font-semibold text-sm">Version</span>
-                                <span className="font-mono bg-white/10 px-2 py-0.5 rounded text-xs">1.4.0</span>
+                                <span className="font-mono bg-white/10 px-2 py-0.5 rounded text-xs">{APP_VERSION}</span>
                             </div>
                             <div className="flex justify-between border-b border-white/10 pb-2">
                                 <span className="text-indigo-200/70 font-semibold text-sm">Lizenz</span>

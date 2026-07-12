@@ -30,6 +30,7 @@ import {
     LockKeyhole
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { APP_VERSION } from "@/lib/app-version";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/context/AuthContext";
 import { useSWRConfig } from "swr";
@@ -506,7 +507,7 @@ export function Sidebar() {
                         Ausloggen
                     </button>
                     <div className="mt-8 px-5 text-[11px] text-white/20 uppercase font-black tracking-[0.2em] text-center">
-                        FlowY Version {process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0"}
+                        FlowY Version {APP_VERSION}
                     </div>
                 </div>
             </aside>
