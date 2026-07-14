@@ -156,24 +156,45 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
     };
 
     return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-3xl xl:max-w-5xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-white/30 animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-6xl rounded-[36px] shadow-2xl overflow-hidden border border-white/20 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="px-8 py-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-                            {initialProject ? "Baustelle bearbeiten" : "Neue Baustelle"}
-                        </h2>
-                        <p className="text-sm text-slate-500 font-medium">Legen Sie ein neues Projekt an.</p>
+                <div className="relative overflow-hidden border-b border-white/10 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 px-6 py-5 text-white sm:px-8">
+                    <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-fuchsia-500/25 blur-3xl" />
+                    <div className="absolute -bottom-20 left-1/3 h-40 w-40 rounded-full bg-cyan-300/10 blur-3xl" />
+                    <div className="relative flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-cyan-100 ring-1 ring-white/15">
+                                <Briefcase className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-100">Projektakte</p>
+                                <h2 className="text-2xl font-black tracking-tight text-white">
+                                    {initialProject ? "Baustelle bearbeiten" : "Neue Baustelle"}
+                                </h2>
+                                <p className="text-sm font-semibold text-white/60">Projekt, Kunde, Adresse und Budget in einem Schritt erfassen.</p>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="rounded-2xl border border-white/15 bg-white/10 p-2 text-white/70 shadow-sm transition-colors hover:bg-white hover:text-indigo-700">
+                            <X className="h-5 w-5" />
+                        </button>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white rounded-full transition-colors text-slate-400 hover:text-slate-600 shadow-sm border border-slate-100">
-                        <X className="h-5 w-5" />
-                    </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-8">
+                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto bg-slate-50/60 p-6 sm:p-8">
+                    <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
                     {/* Basic Info */}
-                    <div className="grid grid-cols-2 gap-6">
+                    <section className="space-y-6 rounded-[32px] border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                                <Briefcase className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-black text-slate-950">Projektgrunddaten</h3>
+                                <p className="text-sm font-semibold text-slate-500">Bezeichnung, Kunde, Status und Summe.</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-5">
                         <div className="col-span-2 space-y-2">
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
                                 Projektbezeichnung <span className="text-rose-500">*</span>
@@ -258,9 +279,20 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
                             </div>
                         </div>
                     </div>
+                    </section>
 
                     {/* Address */}
+                    <section className="space-y-6 rounded-[32px] border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
                     <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                                <MapPin className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-black text-slate-950">Baustelle & Notizen</h3>
+                                <p className="text-sm font-semibold text-slate-500">Adresse und Projektbeschreibung sauber ablegen.</p>
+                            </div>
+                        </div>
                         <div className="flex items-center justify-between px-1">
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                 <MapPin className="h-3 w-3" /> Baustellenadresse <span className="text-rose-500">*</span>
@@ -321,9 +353,10 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
                             className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium resize-none"
                         />
                     </div>
+                    </section>
 
                     {/* Payment Plan hint */}
-                    <div className="flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4">
+                    <div className="xl:col-span-2 flex items-start gap-3 rounded-[28px] border border-indigo-100 bg-indigo-50/70 p-4">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
                             <ListChecks className="h-5 w-5" />
                         </div>
@@ -335,10 +368,11 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
                         </div>
 
                     </div>
+                    </div>
                 </form>
 
                 {/* Footer */}
-                <div className="px-8 py-6 border-t border-slate-50 bg-slate-50/50 flex gap-3">
+                <div className="px-6 py-5 border-t border-slate-100 bg-white flex gap-3 sm:px-8">
                     <button
                         type="button"
                         onClick={onClose}

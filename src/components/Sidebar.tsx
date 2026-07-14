@@ -150,6 +150,19 @@ export function Sidebar() {
 
     const isDrawerMode = isDrawerLayout;
 
+    useEffect(() => {
+        if (isDrawerMode) {
+            document.documentElement.style.removeProperty("--flowy-sidebar-offset");
+            return;
+        }
+
+        document.documentElement.style.setProperty("--flowy-sidebar-offset", "5.5rem");
+
+        return () => {
+            document.documentElement.style.removeProperty("--flowy-sidebar-offset");
+        };
+    }, [isDrawerMode]);
+
     const handleLogout = async () => {
         try {
             // DATA PERSISTENCE: We no longer wipe local data on logout.
@@ -364,22 +377,26 @@ export function Sidebar() {
                 <div key={item.label}>
                     <button
                         onClick={() => toggleExpand(item.label)}
+                        title={item.label}
                         className={cn(
-                            "flex items-center justify-between w-full gap-4 px-5 py-2.5 rounded-2xl transition-all duration-300 group text-sm font-bold",
+                            "flex items-center rounded-2xl py-2.5 transition-all duration-300 group/item text-sm font-bold",
+                            "w-full justify-between gap-4 px-4",
                             isParentActive
                                 ? "bg-white/10 text-white"
                                 : "hover:bg-white/5 text-sidebar-foreground/60 hover:text-white"
                         )}
                     >
-                        <div className="flex items-center gap-4">
+                        <div className="flex min-w-0 items-center gap-4">
                             <Icon className={cn(
-                                "h-5 w-5 transition-all duration-300",
-                                isParentActive ? "text-white scale-110" : "group-hover:text-white group-hover:scale-110"
+                                "h-5 w-5 shrink-0 transition-all duration-300",
+                                isParentActive ? "text-white scale-110" : "group-hover/item:text-white group-hover/item:scale-110"
                             )} />
-                            {item.label}
+                            <span className="whitespace-nowrap transition-all duration-200">
+                                {item.label}
+                            </span>
                         </div>
                         <ChevronDown className={cn(
-                            "h-3 w-3 transition-transform duration-300",
+                            "h-3 w-3 shrink-0 transition-all duration-300",
                             isExpanded ? "rotate-180" : ""
                         )} />
                     </button>
@@ -396,21 +413,106 @@ export function Sidebar() {
             <Link
                 key={item.label}
                 href={item.href!}
+                title={item.label}
+                onClick={() => isDrawerMode && setIsOpen(false)}
                 onMouseEnter={() => prefetchForHref(item.href)}
                 onFocus={() => prefetchForHref(item.href)}
                 className={cn(
-                    "flex items-center gap-4 px-5 py-2.5 rounded-2xl transition-all duration-300 group text-sm font-bold",
+                    "flex rounded-2xl py-2.5 transition-all duration-300 group/item text-sm font-bold",
+                    "items-center gap-4 px-4",
                     depth > 0 && "ml-2",
                     isActive
-                        ? "bg-primary-gradient text-white shadow-xl shadow-purple-900/40 translate-x-1"
-                        : "hover:bg-white/5 text-sidebar-foreground/60 hover:text-white hover:translate-x-1"
+                        ? "translate-x-1 bg-primary-gradient text-white shadow-xl shadow-purple-900/40"
+                        : "hover:translate-x-1 hover:bg-white/5 text-sidebar-foreground/60 hover:text-white"
                 )}
             >
                 <Icon className={cn(
-                    "h-5 w-5 transition-all duration-300",
-                    isActive ? "text-white scale-110" : "group-hover:text-white group-hover:scale-110"
+                    "h-5 w-5 shrink-0 transition-all duration-300",
+                    isActive ? "text-white scale-110" : "group-hover/item:text-white group-hover/item:scale-110"
                 )} />
-                {item.label}
+                <span className="whitespace-nowrap transition-all duration-200">
+                    {item.label}
+                </span>
+            </Link>
+        );
+    };
+
+    const renderRailItem = (item: MenuItem) => {
+        const Icon = item.icon;
+        const hasChildren = item.children && item.children.length > 0;
+        const isActive = item.href ? path === item.href : false;
+        const isParentActive = hasChildren && item.children?.some(child => child.href === path);
+        const active = isActive || isParentActive;
+        const visibleChildren = item.children || [];
+
+        const iconButtonClass = cn(
+            "group relative mx-auto flex h-11 w-11 items-center justify-center rounded-2xl text-sidebar-foreground/70 transition-all duration-300",
+            active
+                ? "bg-primary-gradient text-white shadow-lg shadow-purple-950/40"
+                : "hover:-translate-y-0.5 hover:scale-110 hover:bg-white/10 hover:text-white hover:shadow-lg hover:shadow-indigo-950/30"
+        );
+
+        const Popover = (
+            <>
+            <div className="pointer-events-none absolute left-full top-1/2 z-[119] h-[4.25rem] w-5 -translate-y-1/2 group-hover:pointer-events-auto" />
+            <div className="pointer-events-none absolute left-[calc(100%+0.35rem)] top-1/2 z-[120] min-w-[13rem] -translate-y-1/2 translate-x-2 rounded-2xl border border-white/10 bg-slate-950/80 p-2 text-white opacity-0 shadow-2xl shadow-slate-950/40 backdrop-blur-xl ring-1 ring-white/10 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100">
+                <div className="px-3 py-2">
+                    <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200/70">
+                        Navigation
+                    </div>
+                    <div className="mt-1 whitespace-nowrap text-sm font-black">{item.label}</div>
+                </div>
+                {visibleChildren.length > 0 && (
+                    <div className="mt-1 space-y-1 border-t border-white/10 pt-2">
+                        {visibleChildren.map(child => {
+                            const ChildIcon = child.icon;
+                            const childActive = child.href === path;
+
+                            return (
+                                <Link
+                                    key={child.label}
+                                    href={child.href!}
+                                    onMouseEnter={() => prefetchForHref(child.href)}
+                                    className={cn(
+                                        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-black transition-all hover:translate-x-0.5",
+                                        childActive
+                                            ? "bg-white text-slate-950"
+                                            : "text-white/70 hover:bg-white/10 hover:text-white"
+                                    )}
+                                >
+                                    <ChildIcon className="h-4 w-4 shrink-0" />
+                                    <span className="whitespace-nowrap">{child.label}</span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+            </>
+        );
+
+        if (hasChildren) {
+            return (
+                <div key={item.label} className={iconButtonClass} title={item.label}>
+                    <span className="pointer-events-none absolute inset-0 rounded-2xl bg-white/0 transition-all duration-300 group-hover:bg-white/5" />
+                    <Icon className="relative h-5 w-5 shrink-0 transition-transform duration-300 group-hover:scale-125" />
+                    {Popover}
+                </div>
+            );
+        }
+
+        return (
+            <Link
+                key={item.label}
+                href={item.href!}
+                title={item.label}
+                onMouseEnter={() => prefetchForHref(item.href)}
+                onFocus={() => prefetchForHref(item.href)}
+                className={iconButtonClass}
+            >
+                <span className="pointer-events-none absolute inset-0 rounded-2xl bg-white/0 transition-all duration-300 group-hover:bg-white/5" />
+                <Icon className="relative h-5 w-5 shrink-0 transition-transform duration-300 group-hover:scale-125" />
+                {Popover}
             </Link>
         );
     };
@@ -430,19 +532,35 @@ export function Sidebar() {
             {/* Overlay */}
             {isDrawerMode && isOpen && (
                 <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] animate-in fade-in duration-300"
+                    className="fixed inset-0 bg-white/30 z-[80] animate-in fade-in duration-300"
                     onClick={() => setIsOpen(false)}
                 />
             )}
 
             <aside className={cn(
-                "fixed left-0 top-0 h-screen w-[var(--sidebar-width)] bg-sidebar text-sidebar-foreground border-r border-white/5 flex flex-col p-4 xl:p-6 overflow-y-auto custom-scrollbar transition-transform duration-300 z-[90]",
-                isDrawerMode ? (isOpen ? "translate-x-0 overflow-y-auto" : "-translate-x-full") : "translate-x-0 [.sidebar-collapsed_&]:-translate-x-full"
-            )}>
-                <div className="flex flex-col items-center justify-center gap-3 xl:gap-4 px-3 py-6 xl:py-8 mb-6 xl:mb-8 text-center">
-                    <img src="/logo.png" alt="Logo" className="h-12 w-12 xl:h-16 xl:w-16 object-contain bg-white/10 rounded-2xl p-1" />
-                    <div className="flex flex-col items-center">
-                        <span className="font-black text-xl xl:text-2xl text-white tracking-tight leading-none break-words">
+                "fixed left-0 top-0 z-[90] flex h-screen flex-col border-r border-white/5 bg-sidebar text-sidebar-foreground transition-all duration-300",
+                isDrawerMode
+                    ? cn("w-[var(--sidebar-width)] overflow-y-auto overflow-x-hidden p-4 xl:p-6", isOpen ? "translate-x-0" : "-translate-x-full")
+                    : "w-[5.5rem] overflow-visible p-3 [.sidebar-collapsed_&]:-translate-x-full"
+            )}
+                data-flowy-sidebar
+            >
+                <div className={cn(
+                    "flex flex-col items-center justify-center gap-3 px-1 text-center",
+                    isDrawerMode ? "mb-6 py-6 xl:gap-4 xl:py-8" : "shrink-0 py-5"
+                )}>
+                    <div className="group/logo relative">
+                        <img src="/logo.png" alt="Logo" className="h-12 w-12 shrink-0 rounded-2xl bg-white/10 object-contain p-1 xl:h-12 xl:w-12" />
+                        {!isDrawerMode && (
+                            <div className="pointer-events-none absolute left-[calc(100%+0.8rem)] top-1/2 z-[120] -translate-y-1/2 translate-x-1 rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-left text-white opacity-0 shadow-2xl shadow-slate-950/40 backdrop-blur-xl ring-1 ring-white/10 transition-all duration-200 group-hover/logo:translate-x-0 group-hover/logo:opacity-100">
+                                <div className="whitespace-nowrap text-sm font-black">{companySettings?.companyName || "FlowY"}</div>
+                                <div className="mt-1 whitespace-nowrap text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Professional</div>
+                            </div>
+                        )}
+                    </div>
+                    {isDrawerMode && (
+                    <div className="flex min-w-0 flex-col items-center transition-all duration-200">
+                        <span className="max-w-[14rem] break-words text-xl font-black leading-none tracking-tight text-white xl:text-2xl">
                             {companySettings?.companyName || "FlowY"}
                         </span>
                         <span className="text-[10px] text-white/40 uppercase font-black tracking-widest mt-1">
@@ -464,12 +582,17 @@ export function Sidebar() {
                             {isRefreshing
                                 ? <RefreshCcw className="h-3 w-3 animate-spin" />
                                 : <CheckCircle2 className="h-3 w-3" />}
-                            <span>{isRefreshing ? "Wird geladen..." : "Cloud Synchron"}</span>
+                            <span className="whitespace-nowrap">{isRefreshing ? "Wird geladen..." : "Cloud Synchron"}</span>
                         </button>
                     </div>
+                    )}
                 </div>
 
-                <nav className="flex-1 space-y-4">
+                <nav className={cn(
+                    isDrawerMode
+                        ? "flex-1 space-y-4"
+                        : "flex flex-1 flex-col justify-center gap-1 py-3"
+                )}>
                     {menuGroups.map((group) => {
                         const filteredItems = group.items
                             .map(item => filterMenuItem(item))
@@ -478,12 +601,14 @@ export function Sidebar() {
                         if (filteredItems.length === 0) return null;
 
                         return (
-                            <div key={group.title} className="space-y-1">
-                                <div className="px-5 text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-1">
-                                    {group.title}
-                                </div>
+                            <div key={group.title} className={cn(isDrawerMode ? "space-y-1" : "space-y-1")}>
+                                {isDrawerMode && (
+                                    <div className="mb-1 px-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20 transition-all duration-200">
+                                        {group.title}
+                                    </div>
+                                )}
                                 <div className="space-y-0.5">
-                                    {filteredItems.map(item => renderMenuItem(item))}
+                                    {filteredItems.map(item => isDrawerMode ? renderMenuItem(item) : renderRailItem(item))}
                                 </div>
                             </div>
                         );
@@ -491,24 +616,49 @@ export function Sidebar() {
                 </nav>
 
 
-                <div className="mt-12 border-t border-white/10 pt-8 pb-4">
+                <div className={cn(
+                    "shrink-0 border-t border-white/10 pb-4",
+                    isDrawerMode ? "mt-12 pt-8" : "mt-3 pt-4"
+                )}>
                     <button
                         onClick={handleLockApp}
-                        className="mb-2 flex items-center gap-4 px-5 py-4 rounded-2xl w-full text-sidebar-foreground/70 hover:text-white hover:bg-white/5 transition-all duration-300 text-base font-bold group"
+                        title="App sperren"
+                        className={cn(
+                            "group/item mb-2 flex rounded-2xl text-sidebar-foreground/70 transition-all duration-300 hover:bg-white/5 hover:text-white",
+                            isDrawerMode ? "w-full items-center gap-4 px-4 py-4 text-base font-bold" : "relative mx-auto h-12 w-12 items-center justify-center px-0"
+                        )}
                     >
-                        <LockKeyhole className="h-6 w-6 group-hover:scale-110 transition-transform" />
-                        App sperren
+                        <LockKeyhole className="h-6 w-6 shrink-0 transition-transform group-hover/item:scale-110" />
+                        {isDrawerMode ? (
+                            <span className="whitespace-nowrap transition-all duration-200">App sperren</span>
+                        ) : (
+                            <span className="pointer-events-none absolute left-[calc(100%+0.8rem)] top-1/2 z-[120] -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm font-black text-white opacity-0 shadow-2xl shadow-slate-950/40 backdrop-blur-xl ring-1 ring-white/10 transition-all duration-200 group-hover/item:translate-x-0 group-hover/item:opacity-100">
+                                App sperren
+                            </span>
+                        )}
                     </button>
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-4 px-5 py-4 rounded-2xl w-full text-sidebar-foreground/60 hover:text-white hover:bg-white/5 transition-all duration-300 text-base font-bold group"
+                        title="Ausloggen"
+                        className={cn(
+                            "group/item flex rounded-2xl text-sidebar-foreground/60 transition-all duration-300 hover:bg-white/5 hover:text-white",
+                            isDrawerMode ? "w-full items-center gap-4 px-4 py-4 text-base font-bold" : "relative mx-auto h-12 w-12 items-center justify-center px-0"
+                        )}
                     >
-                        <LogOut className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
-                        Ausloggen
+                        <LogOut className="h-6 w-6 shrink-0 transition-transform group-hover/item:translate-x-1" />
+                        {isDrawerMode ? (
+                            <span className="whitespace-nowrap transition-all duration-200">Ausloggen</span>
+                        ) : (
+                            <span className="pointer-events-none absolute left-[calc(100%+0.8rem)] top-1/2 z-[120] -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm font-black text-white opacity-0 shadow-2xl shadow-slate-950/40 backdrop-blur-xl ring-1 ring-white/10 transition-all duration-200 group-hover/item:translate-x-0 group-hover/item:opacity-100">
+                                Ausloggen
+                            </span>
+                        )}
                     </button>
-                    <div className="mt-8 px-5 text-[11px] text-white/20 uppercase font-black tracking-[0.2em] text-center">
-                        FlowY Version {APP_VERSION}
-                    </div>
+                    {isDrawerMode && (
+                        <div className="mt-8 px-4 text-center text-[11px] font-black uppercase tracking-[0.2em] text-white/20 transition-all duration-200">
+                            FlowY Version {APP_VERSION}
+                        </div>
+                    )}
                 </div>
             </aside>
         </>

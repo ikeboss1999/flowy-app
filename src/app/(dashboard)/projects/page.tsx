@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, FolderOpen, ArrowRight } from "lucide-react";
+import { Plus, BriefcaseBusiness } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useInvoices } from "@/hooks/useInvoices";
@@ -75,26 +75,34 @@ export default function ProjectsPage() {
     };
 
     return (
-        <div className="p-8 max-w-[1600px] mx-auto min-h-screen pb-32">
+        <div className="dashboard-page">
             {activeView === 'list' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="flex justify-between items-end">
-                        <div>
-                            <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">Projekte</h1>
-                            <p className="text-lg text-slate-500 font-medium max-w-2xl">
+                <div className="space-y-8 animate-in fade-in duration-500">
+                    <section className="relative overflow-hidden rounded-[34px] border border-white/10 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white shadow-2xl shadow-indigo-950/15 sm:p-8">
+                        <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-fuchsia-500/20 blur-3xl" />
+                        <div className="absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-cyan-300/10 blur-3xl" />
+                        <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+                            <div>
+                                <div className="mb-4 inline-flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-2 ring-1 ring-white/15">
+                                    <BriefcaseBusiness className="h-5 w-5 text-cyan-100" />
+                                    <span className="text-xs font-black uppercase tracking-[0.28em] text-cyan-100">Ausführung</span>
+                                </div>
+                                <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">Projekte</h1>
+                                <p className="mt-2 max-w-2xl text-base font-semibold leading-7 text-white/70">
                                 Verwalten Sie Ihre Baustellen und behalten Sie den Überblick über Fortschritt und Abrechnungen.
-                            </p>
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setSelectedProject(null);
+                                    setIsModalOpen(true);
+                                }}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-xl shadow-indigo-950/20 transition hover:scale-[1.02] active:scale-95"
+                            >
+                                <Plus className="h-5 w-5" /> Neues Projekt
+                            </button>
                         </div>
-                        <button
-                            onClick={() => {
-                                setSelectedProject(null);
-                                setIsModalOpen(true);
-                            }}
-                            className="bg-primary-gradient text-white px-8 py-4 rounded-[20px] font-bold shadow-xl shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
-                        >
-                            <Plus className="h-5 w-5" /> Neues Projekt
-                        </button>
-                    </div>
+                    </section>
 
                     <ProjectList
                         projects={projects}

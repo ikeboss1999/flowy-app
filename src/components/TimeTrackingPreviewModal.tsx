@@ -39,15 +39,16 @@ export function TimeTrackingPreviewModal({ isOpen, onClose, entries, employee, m
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 no-print">
-            <div className="bg-white w-full max-w-4xl h-[90vh] rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col animate-in zoom-in-95 duration-200 no-print">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/30 animate-in fade-in duration-200 no-print">
+            <div className="bg-white w-full max-w-5xl h-[92vh] rounded-[32px] shadow-2xl overflow-hidden border border-white/20 flex flex-col animate-in zoom-in-95 duration-200 no-print">
                 {/* Header */}
-                <div className="px-8 py-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50 shrink-0 no-print">
+                <div className="px-8 py-6 flex justify-between items-center bg-gradient-to-r from-slate-950 via-indigo-950 to-violet-900 text-white shrink-0 no-print">
                     <div>
-                        <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                        <p className="text-[10px] font-black uppercase tracking-[0.35em] text-cyan-200">Zeitdokument</p>
+                        <h2 className="text-2xl font-black tracking-tight mt-1">
                             Export Vorschau
                         </h2>
-                        <p className="text-sm text-slate-500 font-medium mt-1">
+                        <p className="text-sm text-white/60 font-medium mt-1">
                             {employee.personalData.firstName} {employee.personalData.lastName} • {month}
                         </p>
                     </div>
@@ -65,7 +66,7 @@ export function TimeTrackingPreviewModal({ isOpen, onClose, entries, employee, m
                         </button>
                         <button
                             onClick={onClose}
-                            className="h-10 w-10 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-100 transition-all shadow-sm"
+                            className="h-10 w-10 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/15 transition-all shadow-sm"
                         >
                             <X className="h-4 w-4" />
                         </button>

@@ -163,12 +163,14 @@ export function VehicleModal({ isOpen, onClose, onSave, initialVehicle }: Vehicl
     const title = `${formData.basicInfo.make || "Neues"} ${formData.basicInfo.model || "Fahrzeug"}`.trim();
 
     return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-md">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-white/30 p-4">
             <div className="absolute inset-0" onClick={onClose} />
 
-            <div className="relative flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-[34px] border border-white bg-white shadow-[0_32px_90px_rgba(15,23,42,0.35)]">
-                <header className="border-b border-slate-100 bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-500 px-6 py-5 text-white xl:px-8 xl:py-6">
-                    <div className="flex items-center justify-between gap-5">
+            <div className="relative flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-[36px] border border-white/20 bg-white shadow-2xl">
+                <header className="relative overflow-hidden border-b border-white/10 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 px-6 py-6 text-white xl:px-8">
+                    <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-fuchsia-500/25 blur-3xl" />
+                    <div className="absolute -bottom-20 left-1/3 h-40 w-40 rounded-full bg-cyan-300/10 blur-3xl" />
+                    <div className="relative flex items-center justify-between gap-5">
                         <div className="flex min-w-0 items-center gap-5">
                             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-white shadow-sm">
                                 <Car className="h-8 w-8" />

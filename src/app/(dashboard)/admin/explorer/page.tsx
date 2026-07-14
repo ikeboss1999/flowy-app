@@ -200,7 +200,7 @@ export default function GlobalExplorer() {
 
             {/* Editing Modal - Crude but Effective for Admin */}
             {editingRecord && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-12">
+                <div className="fixed inset-0 bg-white/30 z-50 flex items-center justify-center p-12">
                     <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-8 border-b border-slate-100 flex justify-between items-center">
                             <div>

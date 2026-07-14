@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
     AlertTriangle,
     Briefcase,
@@ -8,6 +8,7 @@ import {
     Clock,
     FileText,
     Hash,
+    Loader2,
     Mail,
     MapPin,
     Phone,
@@ -20,6 +21,9 @@ import { Customer, CustomerStatus, CustomerType } from "@/types/customer";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { useCustomerSettings } from "@/hooks/useCustomerSettings";
 import { cn, generateUUID } from "@/lib/utils";
+import { useAutoSave } from "@/hooks/useAutoSave";
+import { useAuth } from "@/context/AuthContext";
+import { mutate } from "swr";
 
 interface CustomerModalProps {
     isOpen: boolean;
@@ -33,13 +37,21 @@ const inputClasses = "w-full rounded-2xl border border-slate-200 bg-slate-50 px-
 const labelClasses = "px-1 text-[10px] font-black uppercase tracking-widest text-slate-400";
 
 export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existingCustomers = [] }: CustomerModalProps) {
+    const { user } = useAuth();
+    const [customerId, setCustomerId] = useState("");
+    const [isInitialized, setIsInitialized] = useState(false);
+    const initialValuesRef = useRef<any>(null);
+
     const [type, setType] = useState<CustomerType>("private");
     const [status, setStatus] = useState<CustomerStatus>("active");
     const { data: invoiceSettings } = useInvoiceSettings();
     const { data: customerSettings, updateData: updateCustomerSettings } = useCustomerSettings();
     const [error, setError] = useState<string | null>(null);
+    const [vatLookupStatus, setVatLookupStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+    const [vatLookupMessage, setVatLookupMessage] = useState("");
     const [formData, setFormData] = useState({
         name: "",
+        contactPerson: "",
         salutation: "",
         email: "",
         phone: "",
@@ -57,11 +69,19 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
     const isBusiness = type === "business";
 
     useEffect(() => {
+        if (!isOpen) return;
+        
+        const nextId = initialCustomer?.id || generateUUID();
+        setCustomerId(nextId);
+        setIsInitialized(false);
+        initialValuesRef.current = null;
+
         if (initialCustomer) {
             setType(initialCustomer.type);
             setStatus(initialCustomer.status || "active");
             setFormData({
                 name: initialCustomer.name,
+                contactPerson: initialCustomer.contactPerson || "",
                 salutation: initialCustomer.salutation || "",
                 email: initialCustomer.email || "",
                 phone: initialCustomer.phone || "",
@@ -80,6 +100,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
             setStatus("active");
             setFormData({
                 name: "",
+                contactPerson: "",
                 salutation: "",
                 email: "",
                 phone: "",
@@ -95,6 +116,8 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
             });
         }
         setError(null);
+        setVatLookupStatus("idle");
+        setVatLookupMessage("");
     }, [initialCustomer, isOpen]);
 
     useEffect(() => {
@@ -112,6 +135,79 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
         }
     }, [isBusiness, formData.salutation]);
 
+    useEffect(() => {
+        if (isOpen && !isInitialized && formData.customer_number) {
+            initialValuesRef.current = {
+                type,
+                status: initialCustomer ? status : "draft",
+                ...formData
+            };
+            setIsInitialized(true);
+        }
+    }, [isOpen, isInitialized, type, status, formData, initialCustomer]);
+
+    const isDirty = useMemo(() => {
+        if (!initialValuesRef.current) return false;
+        return (
+            type !== initialValuesRef.current.type ||
+            status !== initialValuesRef.current.status ||
+            formData.name !== initialValuesRef.current.name ||
+            formData.contactPerson !== initialValuesRef.current.contactPerson ||
+            formData.salutation !== initialValuesRef.current.salutation ||
+            formData.email !== initialValuesRef.current.email ||
+            formData.phone !== initialValuesRef.current.phone ||
+            formData.street !== initialValuesRef.current.street ||
+            formData.city !== initialValuesRef.current.city ||
+            formData.zip !== initialValuesRef.current.zip ||
+            formData.taxId !== initialValuesRef.current.taxId ||
+            formData.commercialRegisterNumber !== initialValuesRef.current.commercialRegisterNumber ||
+            formData.reverseChargeEnabled !== initialValuesRef.current.reverseChargeEnabled ||
+            formData.defaultPaymentTermId !== initialValuesRef.current.defaultPaymentTermId ||
+            formData.notes !== initialValuesRef.current.notes ||
+            formData.customer_number !== initialValuesRef.current.customer_number
+        );
+    }, [type, status, formData]);
+
+    const autoSavePayload = useMemo(() => {
+        return {
+            type,
+            status: initialCustomer ? status : "draft",
+            salutation: formData.salutation,
+            name: formData.name.trim(),
+            contactPerson: isBusiness ? formData.contactPerson.trim() || undefined : undefined,
+            email: formData.email.trim(),
+            phone: formData.phone.trim(),
+            address: {
+                street: formData.street.trim(),
+                city: formData.city.trim(),
+                zip: formData.zip.trim()
+            },
+            taxId: isBusiness ? formData.taxId.trim() : undefined,
+            commercialRegisterNumber: isBusiness ? formData.commercialRegisterNumber.trim() : undefined,
+            reverseChargeEnabled: isBusiness ? formData.reverseChargeEnabled : false,
+            defaultPaymentTermId: formData.defaultPaymentTermId || undefined,
+            customer_number: formData.customer_number.trim(),
+            notes: formData.notes
+        };
+    }, [type, status, formData, isBusiness, initialCustomer]);
+
+    const { isSaving, lastSaved } = useAutoSave({
+        id: customerId,
+        endpoint: "/api/customers",
+        data: autoSavePayload,
+        isDirty,
+        onSaveSuccess: () => {
+            initialValuesRef.current = {
+                type,
+                status: initialCustomer ? status : "draft",
+                ...formData
+            };
+            if (user) {
+                mutate(`/api/customers?userId=${user.id}`);
+            }
+        }
+    });
+
     const previewAddress = useMemo(() => {
         const line = [formData.zip, formData.city].filter(Boolean).join(" ");
         return [formData.street, line].filter(Boolean).join(", ");
@@ -122,6 +218,51 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
     const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = event.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleVatLookup = async () => {
+        const vatId = formData.taxId.trim();
+        if (!vatId) {
+            setVatLookupStatus("error");
+            setVatLookupMessage("Bitte zuerst eine UID-Nummer eingeben.");
+            return;
+        }
+
+        setVatLookupStatus("loading");
+        setVatLookupMessage("");
+
+        try {
+            const response = await fetch("/api/vat-lookup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ vatId }),
+            });
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || "UID konnte nicht geprüft werden.");
+            }
+
+            if (!result.valid) {
+                setVatLookupStatus("error");
+                setVatLookupMessage("Diese UID wurde nicht als gültig bestätigt.");
+                return;
+            }
+
+            setFormData(prev => ({
+                ...prev,
+                taxId: result.vatId || prev.taxId,
+                name: result.name || prev.name,
+                street: result.address?.street || prev.street,
+                zip: result.address?.zip || prev.zip,
+                city: result.address?.city || prev.city,
+            }));
+            setVatLookupStatus("success");
+            setVatLookupMessage("UID geprüft. Firmenname und Adresse wurden übernommen.");
+        } catch (lookupError) {
+            setVatLookupStatus("error");
+            setVatLookupMessage(lookupError instanceof Error ? lookupError.message : "UID konnte nicht geprüft werden.");
+        }
     };
 
     const handleSubmit = (event: React.FormEvent) => {
@@ -172,11 +313,12 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
         }
 
         const customer: Customer = {
-            id: initialCustomer?.id || generateUUID(),
+            id: customerId,
             type,
             status,
             salutation: formData.salutation,
             name: formData.name.trim(),
+            contactPerson: isBusiness ? formData.contactPerson.trim() || undefined : undefined,
             email: formData.email.trim(),
             phone: formData.phone.trim(),
             address: {
@@ -200,33 +342,51 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
     };
 
     return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[36px] border border-white/20 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-6 py-5 sm:px-8">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-white/30 p-4 animate-in fade-in duration-200">
+            <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-[36px] border border-white/20 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="relative overflow-hidden border-b border-white/10 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 px-6 py-6 text-white sm:px-8">
+                    <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-fuchsia-500/25 blur-3xl" />
+                    <div className="absolute -bottom-20 left-1/3 h-40 w-40 rounded-full bg-cyan-300/10 blur-3xl" />
+                    <div className="relative flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <div className={cn(
-                            "flex h-12 w-12 items-center justify-center rounded-2xl",
-                            isBusiness ? "bg-emerald-50 text-emerald-600" : "bg-purple-50 text-purple-600"
+                            "flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15",
+                            isBusiness ? "text-emerald-200" : "text-purple-200"
                         )}>
                             {isBusiness ? <Briefcase className="h-6 w-6" /> : <User className="h-6 w-6" />}
                         </div>
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600">Kundenakte</p>
-                            <h2 className="text-2xl font-black text-slate-900">
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-100">Kundenakte</p>
+                            <h2 className="text-2xl font-black leading-tight text-white">
                                 {initialCustomer ? "Kunde bearbeiten" : "Neuer Kunde"}
                             </h2>
                         </div>
                     </div>
-                    <button onClick={onClose} className="rounded-2xl border border-slate-200 bg-white p-2 text-slate-400 shadow-sm transition-colors hover:text-slate-700">
-                        <X className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center gap-4">
+                        {isSaving && (
+                            <div className="flex items-center gap-2 text-xs font-semibold text-white/60 animate-pulse">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-100" />
+                                <span>Speichert...</span>
+                            </div>
+                        )}
+                        {!isSaving && lastSaved && (
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-200">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                <span>Entwurf gespeichert ({lastSaved})</span>
+                            </div>
+                        )}
+                        <button onClick={onClose} className="rounded-2xl border border-white/15 bg-white/10 p-2 text-white/70 shadow-sm transition-colors hover:bg-white hover:text-indigo-700">
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="grid flex-1 overflow-y-auto xl:grid-cols-[360px_1fr]">
+                <form onSubmit={handleSubmit} className="grid flex-1 overflow-y-auto bg-slate-50/60 xl:grid-cols-[380px_1fr]">
                     <aside className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white sm:p-8">
                         <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-fuchsia-500/20 blur-3xl" />
                         <div className="relative space-y-6">
-                            <div className="rounded-[32px] border border-white/10 bg-white/10 p-5 backdrop-blur">
+                            <div className="rounded-[32px] border border-white/10 bg-white/[0.08] p-5 shadow-inner">
                                 <div className="mb-5 flex items-start justify-between gap-4">
                                     <div className={cn(
                                         "flex h-16 w-16 items-center justify-center rounded-3xl bg-white",
@@ -235,7 +395,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                                         {isBusiness ? <Briefcase className="h-8 w-8" /> : <User className="h-8 w-8" />}
                                     </div>
                                     <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white/70">
-                                        {status === "active" ? "Aktiv" : status === "inactive" ? "Inaktiv" : "Gesperrt"}
+                                        {status === "active" ? "Aktiv" : status === "inactive" ? "Inaktiv" : status === "draft" ? "Entwurf" : "Gesperrt"}
                                     </span>
                                 </div>
                                 <p className="text-xs font-black uppercase tracking-widest text-cyan-100/70">
@@ -401,6 +561,18 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                                         className={inputClasses}
                                     />
                                 </div>
+                                {isBusiness && (
+                                    <div className="space-y-2 md:col-span-3">
+                                        <label className={labelClasses}>Ansprechpartner</label>
+                                        <input
+                                            name="contactPerson"
+                                            value={formData.contactPerson}
+                                            onChange={handleChange}
+                                            placeholder="z.B. Max Mustermann"
+                                            className={inputClasses}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </section>
 
@@ -441,7 +613,36 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
                                         <label className={labelClasses}>UID-Nummer *</label>
-                                        <input name="taxId" value={formData.taxId} onChange={handleChange} placeholder="ATU12345678" className={inputClasses} />
+                                        <div className="flex flex-col gap-2 sm:flex-row">
+                                            <input
+                                                name="taxId"
+                                                value={formData.taxId}
+                                                onChange={(event) => {
+                                                    handleChange(event);
+                                                    setVatLookupStatus("idle");
+                                                    setVatLookupMessage("");
+                                                }}
+                                                placeholder="ATU12345678"
+                                                className={inputClasses}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleVatLookup}
+                                                disabled={vatLookupStatus === "loading"}
+                                                className="inline-flex min-h-[52px] shrink-0 items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                {vatLookupStatus === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                                                UID prüfen
+                                            </button>
+                                        </div>
+                                        {vatLookupMessage && (
+                                            <p className={cn(
+                                                "rounded-2xl px-3 py-2 text-xs font-bold",
+                                                vatLookupStatus === "success" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                                            )}>
+                                                {vatLookupMessage}
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <label className={labelClasses}>Firmenbuchnummer</label>

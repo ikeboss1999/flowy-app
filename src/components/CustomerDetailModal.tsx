@@ -7,19 +7,26 @@ import {
     CheckCircle2,
     Clock,
     Copy,
+    Download,
     ExternalLink,
     FileText,
+    FolderOpen,
+    Loader2,
     Mail,
     MapPin,
     Phone,
     Plus,
     ShieldCheck,
     Trash2,
+    Upload,
     User,
     X,
 } from "lucide-react";
 import { Customer } from "@/types/customer";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
+import { useInvoices } from "@/hooks/useInvoices";
+import { useOffers } from "@/hooks/useOffers";
+import { useOrders } from "@/hooks/useOrders";
 import { cn } from "@/lib/utils";
 
 interface CustomerDetailModalProps {
@@ -54,15 +61,73 @@ function DetailRow({ label, value }: { label: string; value?: React.ReactNode })
 
 export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustomer }: CustomerDetailModalProps) {
     const { data: invoiceSettings } = useInvoiceSettings();
+    const { invoices } = useInvoices();
+    const { offers } = useOffers();
+    const { orders } = useOrders();
     const [isEditingNotes, setIsEditingNotes] = React.useState(false);
     const [editedNotesText, setEditedNotesText] = React.useState("");
+    const [activeTab, setActiveTab] = React.useState<"details" | "overview" | "files">("details");
+    const [customerFiles, setCustomerFiles] = React.useState<any[]>([]);
+    const [customerFolders, setCustomerFolders] = React.useState<any[]>([]);
+    const [selectedFolder, setSelectedFolder] = React.useState("Allgemein");
+    const [newFolderName, setNewFolderName] = React.useState("");
+    const [isLoadingFiles, setIsLoadingFiles] = React.useState(false);
+    const [isUploading, setIsUploading] = React.useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     React.useEffect(() => {
         if (customer) {
             setEditedNotesText(customer.notes || "");
             setIsEditingNotes(false);
+            setActiveTab("details");
+            setSelectedFolder("Allgemein");
         }
     }, [customer]);
+
+    const customerInvoices = React.useMemo(
+        () => invoices.filter(invoice => invoice.customerId === customer?.id),
+        [invoices, customer?.id]
+    );
+    const customerOffers = React.useMemo(
+        () => offers.filter(offer => offer.customerId === customer?.id),
+        [offers, customer?.id]
+    );
+    const customerOrders = React.useMemo(
+        () => orders.filter(order => order.customerId === customer?.id),
+        [orders, customer?.id]
+    );
+
+    const overviewTotal = React.useMemo(() => ({
+        invoices: customerInvoices.reduce((sum, item) => sum + item.totalAmount, 0),
+        offers: customerOffers.reduce((sum, item) => sum + item.totalAmount, 0),
+        orders: customerOrders.reduce((sum, item) => sum + item.totalAmount, 0),
+        open: customerInvoices.reduce((sum, item) => {
+            const paid = typeof item.paidAmount === "number" ? item.paidAmount : item.status === "paid" ? item.totalAmount : 0;
+            return sum + Math.max(item.totalAmount - paid, 0);
+        }, 0),
+    }), [customerInvoices, customerOffers, customerOrders]);
+
+    const loadCustomerFiles = React.useCallback(async () => {
+        if (!customer?.id) return;
+        setIsLoadingFiles(true);
+        try {
+            const [filesRes, foldersRes] = await Promise.all([
+                fetch(`/api/customer-files?customerId=${encodeURIComponent(customer.id)}`),
+                fetch(`/api/customer-folders?customerId=${encodeURIComponent(customer.id)}`),
+            ]);
+            setCustomerFiles(filesRes.ok ? await filesRes.json() : []);
+            const folders = foldersRes.ok ? await foldersRes.json() : [];
+            setCustomerFolders(folders);
+        } finally {
+            setIsLoadingFiles(false);
+        }
+    }, [customer?.id]);
+
+    React.useEffect(() => {
+        if (isOpen && activeTab === "files") {
+            loadCustomerFiles();
+        }
+    }, [isOpen, activeTab, loadCustomerFiles]);
 
     if (!isOpen || !customer) return null;
 
@@ -95,8 +160,52 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
         navigator.clipboard.writeText(value);
     };
 
+    const formatCurrency = (value: number) =>
+        `€ ${value.toLocaleString("de-AT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    const handleCreateFolder = async () => {
+        if (!customer?.id || !newFolderName.trim()) return;
+        const response = await fetch("/api/customer-folders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ customerId: customer.id, name: newFolderName.trim() }),
+        });
+        if (response.ok) {
+            setNewFolderName("");
+            await loadCustomerFiles();
+        }
+    };
+
+    const handleUploadFile = async (file?: File) => {
+        if (!customer?.id || !file) return;
+        setIsUploading(true);
+        try {
+            const data = new FormData();
+            data.append("customerId", customer.id);
+            data.append("folder", selectedFolder);
+            data.append("file", file);
+            const response = await fetch("/api/customer-files", { method: "POST", body: data });
+            if (response.ok) await loadCustomerFiles();
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+
+    const openFile = async (file: any) => {
+        const response = await fetch(`/api/project-files/signed-url?path=${encodeURIComponent(file.storagePath)}`);
+        if (!response.ok) return;
+        const { url } = await response.json();
+        window.open(url, "_blank", "noopener,noreferrer");
+    };
+
+    const deleteFile = async (file: any) => {
+        const response = await fetch(`/api/customer-files?id=${encodeURIComponent(file.id)}`, { method: "DELETE" });
+        if (response.ok) await loadCustomerFiles();
+    };
+
     return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-white/30 p-4 animate-in fade-in duration-200">
             <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-[36px] border border-white/20 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
                 <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white sm:p-8">
                     <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-fuchsia-500/20 blur-3xl" />
@@ -170,7 +279,30 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                     </div>
                 </div>
 
+                <div className="border-b border-slate-100 bg-white px-5 py-3 sm:px-6">
+                    <div className="grid gap-2 rounded-2xl bg-slate-100 p-1 sm:grid-cols-3">
+                        {[
+                            { id: "details", label: "Details" },
+                            { id: "overview", label: "Überblick" },
+                            { id: "files", label: "Dateien" },
+                        ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setActiveTab(tab.id as any)}
+                                className={cn(
+                                    "rounded-xl px-4 py-3 text-sm font-black transition-all",
+                                    activeTab === tab.id ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                                )}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 <div className="flex-1 overflow-y-auto bg-slate-50/70 p-5 sm:p-6">
+                    {activeTab === "details" && (
                     <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
                         <div className="grid gap-5 lg:grid-cols-2">
                             <InfoCard icon={MapPin} title="Postanschrift">
@@ -199,6 +331,9 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                                         ) : "-"}
                                     />
                                     <DetailRow label="Telefon" value={customer.phone || "-"} />
+                                    {isBusiness && (
+                                        <DetailRow label="Ansprechpartner" value={customer.contactPerson || "-"} />
+                                    )}
                                 </div>
                             </InfoCard>
 
@@ -306,8 +441,130 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                             </div>
                         </div>
                     </div>
+                    )}
+
+                    {activeTab === "overview" && (
+                        <div className="space-y-5">
+                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                <OverviewCard label="Rechnungen" value={formatCurrency(overviewTotal.invoices)} count={customerInvoices.length} />
+                                <OverviewCard label="Angebote" value={formatCurrency(overviewTotal.offers)} count={customerOffers.length} />
+                                <OverviewCard label="Aufträge" value={formatCurrency(overviewTotal.orders)} count={customerOrders.length} />
+                                <OverviewCard label="Offen" value={formatCurrency(overviewTotal.open)} count={customerInvoices.filter(item => item.status !== "paid").length} tone="amber" />
+                            </div>
+
+                            <div className="grid gap-5 xl:grid-cols-3">
+                                <DocumentList title="Rechnungen" items={customerInvoices} numberKey="invoiceNumber" />
+                                <DocumentList title="Angebote" items={customerOffers} numberKey="offerNumber" />
+                                <DocumentList title="Aufträge" items={customerOrders} numberKey="orderNumber" />
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === "files" && (
+                        <div className="space-y-5">
+                            <div className="flex flex-col gap-3 rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-indigo-500">Kunden-Dateien</p>
+                                    <h3 className="mt-1 text-2xl font-black text-slate-950">Dokumente & Ordner</h3>
+                                    <p className="mt-1 text-sm font-semibold text-slate-500">Speichern Sie Verträge, Ausweise, Pläne oder sonstige Kundendokumente direkt beim Kunden.</p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <input
+                                        value={newFolderName}
+                                        onChange={(event) => setNewFolderName(event.target.value)}
+                                        placeholder="Neuer Ordner"
+                                        className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                                    />
+                                    <button type="button" onClick={handleCreateFolder} className="rounded-2xl bg-slate-900 px-4 text-sm font-black text-white">Ordner</button>
+                                    <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-indigo-600 px-4 text-sm font-black text-white">
+                                        {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                        Hochladen
+                                    </button>
+                                    <input ref={fileInputRef} type="file" className="hidden" onChange={(event) => handleUploadFile(event.target.files?.[0])} />
+                                </div>
+                            </div>
+
+                            <div className="grid gap-5 xl:grid-cols-[260px_1fr]">
+                                <div className="rounded-[28px] border border-slate-100 bg-white p-4 shadow-sm">
+                                    {["Allgemein", ...customerFolders.map(folder => folder.name)].map((folder) => (
+                                        <button
+                                            key={folder}
+                                            type="button"
+                                            onClick={() => setSelectedFolder(folder)}
+                                            className={cn(
+                                                "mb-2 flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-black transition",
+                                                selectedFolder === folder ? "bg-indigo-50 text-indigo-700" : "text-slate-500 hover:bg-slate-50"
+                                            )}
+                                        >
+                                            <span className="flex items-center gap-2"><FolderOpen className="h-4 w-4" /> {folder}</span>
+                                            <span>{customerFiles.filter(file => file.folder === folder).length}</span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="rounded-[28px] border border-slate-100 bg-white p-4 shadow-sm">
+                                    {isLoadingFiles ? (
+                                        <div className="flex h-40 items-center justify-center text-slate-400"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                                    ) : customerFiles.filter(file => file.folder === selectedFolder).length === 0 ? (
+                                        <div className="rounded-3xl border border-dashed border-slate-200 p-12 text-center">
+                                            <FileText className="mx-auto mb-3 h-10 w-10 text-slate-200" />
+                                            <p className="font-black text-slate-700">Keine Dateien in diesem Ordner</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid gap-3">
+                                            {customerFiles.filter(file => file.folder === selectedFolder).map((file) => (
+                                                <div key={file.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                                                    <div className="min-w-0">
+                                                        <p className="truncate font-black text-slate-900">{file.name}</p>
+                                                        <p className="text-xs font-bold text-slate-400">{new Date(file.createdAt).toLocaleDateString("de-AT")} · {Math.round((file.size || 0) / 1024)} KB</p>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button type="button" onClick={() => openFile(file)} className="rounded-xl bg-white p-2 text-slate-500 hover:text-indigo-600"><Download className="h-4 w-4" /></button>
+                                                        <button type="button" onClick={() => deleteFile(file)} className="rounded-xl bg-white p-2 text-slate-500 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
+        </div>
+    );
+}
+
+function OverviewCard({ label, value, count, tone = "slate" }: { label: string; value: string; count: number; tone?: "slate" | "amber" }) {
+    return (
+        <div className={cn("rounded-[28px] border bg-white p-5 shadow-sm", tone === "amber" ? "border-amber-100" : "border-slate-100")}>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+            <p className={cn("mt-2 text-2xl font-black", tone === "amber" ? "text-amber-600" : "text-slate-950")}>{value}</p>
+            <p className="mt-1 text-sm font-bold text-slate-400">{count} Einträge</p>
+        </div>
+    );
+}
+
+function DocumentList({ title, items, numberKey }: { title: string; items: any[]; numberKey: string }) {
+    return (
+        <div className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm">
+            <h4 className="mb-4 text-lg font-black text-slate-950">{title}</h4>
+            {items.length === 0 ? (
+                <p className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-400">Keine Einträge vorhanden.</p>
+            ) : (
+                <div className="space-y-3">
+                    {items.slice(0, 8).map((item) => (
+                        <div key={item.id} className="rounded-2xl bg-slate-50 p-4">
+                            <div className="flex items-center justify-between gap-3">
+                                <p className="font-black text-slate-900">#{item[numberKey]}</p>
+                                <p className="font-black text-slate-700">€ {Number(item.totalAmount || 0).toLocaleString("de-AT", { minimumFractionDigits: 2 })}</p>
+                            </div>
+                            <p className="mt-1 text-xs font-bold text-slate-400">{item.issueDate ? new Date(item.issueDate).toLocaleDateString("de-AT") : "-"}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

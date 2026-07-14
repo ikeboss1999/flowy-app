@@ -68,17 +68,18 @@ export function TimeEntryModal({ isOpen, onClose, onSave, employees, initialEntr
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute inset-0 bg-white/30" onClick={onClose} />
 
-            <div className="relative bg-white w-full max-w-lg rounded-[32px] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="relative bg-white w-full max-w-lg rounded-[32px] shadow-2xl flex flex-col overflow-hidden border border-white/20 animate-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="px-8 py-6 flex justify-between items-center bg-gradient-to-r from-slate-950 via-indigo-950 to-violet-900 text-white">
                     <div>
-                        <h2 className="text-xl font-bold text-slate-900 font-outfit">
+                        <p className="text-[10px] font-black uppercase tracking-[0.35em] text-cyan-200">Zeiterfassung</p>
+                        <h2 className="text-xl font-bold font-outfit mt-1">
                             {initialEntry ? "Eintrag bearbeiten" : "Zeit erfassen"}
                         </h2>
                     </div>
-                    <button onClick={onClose} className="h-10 w-10 rounded-xl bg-slate-100/50 text-slate-400 flex items-center justify-center hover:bg-slate-100 transition-colors">
+                    <button onClick={onClose} className="h-10 w-10 rounded-xl bg-white/10 text-white/70 border border-white/10 flex items-center justify-center hover:bg-white/15 hover:text-white transition-colors">
                         <X className="h-5 w-5" />
                     </button>
                 </div>

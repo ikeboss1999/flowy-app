@@ -115,26 +115,30 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService, folders,
     const PreviewIcon = previewMeta.icon;
 
     return (
-        <div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[36px] border border-white/20 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-6 py-5 sm:px-8">
+        <div className="fixed inset-0 z-[160] flex items-center justify-center bg-white/30 p-4 animate-in fade-in duration-200">
+            <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-[36px] border border-white/20 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="relative overflow-hidden border-b border-white/10 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 px-6 py-6 text-white sm:px-8">
+                    <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-fuchsia-500/25 blur-3xl" />
+                    <div className="absolute -bottom-20 left-1/3 h-40 w-40 rounded-full bg-cyan-300/10 blur-3xl" />
+                    <div className="relative flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                        <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl", previewMeta.bg, previewMeta.color)}>
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-cyan-100 ring-1 ring-white/15">
                             <PreviewIcon className="h-6 w-6" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600">Katalog</p>
-                            <h2 className="text-2xl font-black text-slate-900">
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-100">Katalog</p>
+                            <h2 className="text-2xl font-black leading-tight text-white">
                                 {initialService ? "Eintrag bearbeiten" : isPositionMode ? "Neue Positions-Vorlage" : "Neue Leistung"}
                             </h2>
                         </div>
                     </div>
-                    <button onClick={onClose} className="rounded-2xl border border-slate-200 bg-white p-2 text-slate-400 shadow-sm transition-colors hover:text-slate-700">
+                    <button onClick={onClose} className="rounded-2xl border border-white/15 bg-white/10 p-2 text-white/70 shadow-sm transition-colors hover:bg-white hover:text-indigo-700">
                         <X className="h-5 w-5" />
                     </button>
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="grid flex-1 overflow-y-auto xl:grid-cols-[340px_1fr]">
+                <form onSubmit={handleSubmit} className="grid flex-1 overflow-y-auto bg-slate-50/60 xl:grid-cols-[340px_1fr]">
                     <aside className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white sm:p-8">
                         <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-fuchsia-500/20 blur-3xl" />
                         <div className="relative space-y-5">

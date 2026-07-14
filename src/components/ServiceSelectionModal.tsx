@@ -62,7 +62,7 @@ export function ServiceSelectionModal({ isOpen, onClose, onSelect, services, onC
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/55 p-6 backdrop-blur-md">
+        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-white/30 p-6">
             <div className="flex max-h-[86vh] w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.35)]">
                 <aside className="hidden w-72 shrink-0 flex-col justify-between bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-600 p-7 text-white lg:flex">
                     <div>

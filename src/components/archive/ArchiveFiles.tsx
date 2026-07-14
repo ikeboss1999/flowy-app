@@ -457,7 +457,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                 )}
 
                 {isCreateFolderModalOpen && (
-                    <div className="fixed inset-0 z-[300] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[300] bg-white/30 flex items-center justify-center p-4">
                         <div className="bg-white rounded-[24px] p-8 w-full max-w-md shadow-2xl">
                             <h3 className="text-xl font-black text-slate-900 mb-2 font-outfit">Neuer Ordner</h3>
                             <input type="text" autoFocus value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-4 font-outfit" placeholder="Name..." />
@@ -679,7 +679,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
             )}
 
             {isDragging && (
-                <div className="fixed inset-0 z-[250] bg-indigo-950/20 backdrop-blur-sm flex items-center justify-center p-4 pointer-events-none">
+                <div className="fixed inset-0 z-[250] bg-white/30 flex items-center justify-center p-4 pointer-events-none">
                     <div className="bg-white p-8 rounded-[32px] shadow-2xl flex flex-col items-center gap-4 text-center max-w-sm border border-slate-100/50 animate-in zoom-in-95 duration-200">
                         <div className="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 animate-bounce">
                             <Upload className="h-8 w-8" />
@@ -693,7 +693,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
             )}
 
             {isCreateFolderModalOpen && (
-                <div className="fixed inset-0 z-[300] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[300] bg-white/30 flex items-center justify-center p-4">
                     <div className="bg-white rounded-[24px] p-8 w-full max-w-md shadow-2xl">
                         <h3 className="text-xl font-black text-slate-900 mb-2 font-outfit">Neuer Unterordner</h3>
                         <input type="text" autoFocus value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-4 font-outfit" placeholder="Name..." />
@@ -706,7 +706,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
             )}
 
             {renamingFolderOldPath && (
-                <div className="fixed inset-0 z-[300] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[300] bg-white/30 flex items-center justify-center p-4">
                     <div className="bg-white rounded-[24px] p-8 w-full max-w-md shadow-2xl">
                         <h3 className="text-xl font-black text-slate-900 mb-2 font-outfit">Ordner umbenennen</h3>
                         <input type="text" autoFocus value={renamingFolderNewName} onChange={(e) => setRenamingFolderNewName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submitRenameFolder()} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 mt-4 font-outfit" placeholder="Neuer Name..." />
@@ -719,7 +719,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
             )}
 
             {movingFile && (
-                <div className="fixed inset-0 z-[300] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[300] bg-white/30 flex items-center justify-center p-4">
                     <div className="bg-white rounded-[24px] p-8 w-full max-w-md shadow-2xl">
                         <h3 className="text-xl font-black text-slate-900 mb-2 font-outfit">Verschieben</h3>
                         <div className="space-y-2 mt-4 max-h-60 overflow-y-auto">

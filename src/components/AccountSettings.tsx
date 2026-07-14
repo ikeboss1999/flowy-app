@@ -358,7 +358,7 @@ export function AccountSettings() {
             {/* DELETE MODAL */}
             {isDeleteModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isDeleting && setIsDeleteModalOpen(false)} />
+                    <div className="absolute inset-0 bg-white/30" onClick={() => !isDeleting && setIsDeleteModalOpen(false)} />
                     <div className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-200 p-10 space-y-8 animate-in zoom-in-95 duration-200">
                         <div className="text-center space-y-4">
                             <div className="h-20 w-20 bg-red-100 rounded-3xl flex items-center justify-center mx-auto mb-6">

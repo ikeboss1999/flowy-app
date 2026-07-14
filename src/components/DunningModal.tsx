@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect, useRef } from 'react';
 import { Invoice, InvoiceSettings } from '@/types/invoice';
 import { Customer } from '@/types/customer';
 import { CompanyData } from '@/types/company';
 import { DunningPDF } from './DunningPDF';
-import { InvoicePrintHandler } from './InvoicePrintHandler';
-import { X, Printer, AlertTriangle } from 'lucide-react';
+import { X, AlertTriangle, CalendarDays, FileCheck2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DunningModalProps {
@@ -15,13 +13,15 @@ interface DunningModalProps {
     customer: Customer;
     companySettings: CompanyData;
     invoiceSettings: InvoiceSettings;
-    onConfirm: (level: number, date: string) => void;
+    onConfirm: (level: number, date: string, pdfPath: string) => Promise<void> | void;
 }
 
 export function DunningModal({ isOpen, onClose, invoice, customer, companySettings, invoiceSettings, onConfirm }: DunningModalProps) {
     const [level, setLevel] = useState(1);
     const [dunningDate, setDunningDate] = useState(new Date().toISOString().split('T')[0]);
-    const [isPrinting, setIsPrinting] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const pdfRef = useRef<HTMLDivElement>(null);
 
     // Auto-suggest next level
     useEffect(() => {
@@ -45,14 +45,53 @@ export function DunningModal({ isOpen, onClose, invoice, customer, companySettin
 
     if (!isOpen) return null;
 
-    const handlePrint = () => {
-        setIsPrinting(true);
-    };
+    const handleFinalize = async () => {
+        if (!pdfRef.current || isSaving) return;
 
-    const handleAfterPrint = () => {
-        setIsPrinting(false);
-        onConfirm(level, dunningDate);
-        onClose();
+        setIsSaving(true);
+        setError(null);
+
+        try {
+            const html2pdf = (await import("html2pdf.js")).default;
+            const fileName = `Mahnung_${level}_${invoice.invoiceNumber.replace(/[^a-zA-Z0-9._-]/g, "_")}.pdf`;
+            const worker = html2pdf().from(pdfRef.current).set({
+                margin: 0,
+                filename: fileName,
+                image: { type: "jpeg" as any, quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as any },
+            });
+            const blob = await worker.output("blob");
+            const pdfFile = new File([blob], fileName, { type: "application/pdf" });
+
+            const formData = new FormData();
+            formData.append("file", pdfFile);
+            formData.append("invoiceId", invoice.id);
+            formData.append("invoiceNumber", invoice.invoiceNumber);
+            formData.append("level", String(level));
+
+            const uploadResponse = await fetch("/api/invoices/dunning-pdf-upload", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!uploadResponse.ok) {
+                throw new Error(await uploadResponse.text());
+            }
+
+            const uploadData = await uploadResponse.json();
+            if (!uploadData.pdfPath) {
+                throw new Error("PDF wurde nicht gespeichert.");
+            }
+
+            await onConfirm(level, dunningDate, uploadData.pdfPath);
+            onClose();
+        } catch (saveError) {
+            console.error("[DunningModal] PDF save failed:", saveError);
+            setError("Die Mahnung konnte nicht finalisiert werden, weil die PDF nicht gespeichert wurde.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const getLevelName = (l: number) => {
@@ -66,64 +105,90 @@ export function DunningModal({ isOpen, onClose, invoice, customer, companySettin
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-6xl h-[90vh] rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-white/30 animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-7xl h-[92vh] rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <div>
-                        <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                            <AlertTriangle className="h-6 w-6 text-orange-500" />
-                            Mahnwesen
-                        </h2>
-                        <p className="text-slate-500 font-medium">Rechnung Nr. {invoice.invoiceNumber}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
-                            {[1, 2, 3, 4].map(l => {
-                                const disabled = isLevelDisabled(l);
-                                return (
-                                    <button
-                                        key={l}
-                                        disabled={disabled}
-                                        onClick={() => setLevel(l)}
-                                        title={disabled ? "Diese Stufe kann aktuell nicht gewählt werden" : ""}
-                                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${level === l
-                                                ? 'bg-white text-slate-900 shadow-sm'
-                                                : disabled
-                                                    ? 'text-slate-300 cursor-not-allowed'
-                                                    : 'text-slate-400 hover:text-slate-600'
-                                            }`}
-                                    >
-                                        {getLevelName(l)}
-                                    </button>
-                                );
-                            })}
+                <div className="border-b border-slate-100 bg-gradient-to-r from-slate-950 via-indigo-950 to-violet-900 px-8 py-6 text-white">
+                    <div className="flex items-start justify-between gap-6">
+                        <div className="min-w-0">
+                            <div className="mb-2 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200">
+                                <AlertTriangle className="h-4 w-4" />
+                                Mahnwesen
+                            </div>
+                            <h2 className="text-3xl font-black tracking-tight">
+                                Mahnung erstellen
+                            </h2>
+                            <p className="mt-1 max-w-2xl truncate font-semibold text-white/60">
+                                Rechnung Nr. {invoice.invoiceNumber} · {customer.name}
+                            </p>
                         </div>
                         <button
-                            onClick={handlePrint}
-                            disabled={invoice.dunningLevel ? invoice.dunningLevel >= 4 : false}
-                            className={cn(
-                                "px-6 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center gap-2",
-                                (invoice.dunningLevel && invoice.dunningLevel >= 4)
-                                    ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
-                                    : "bg-orange-500 hover:bg-orange-600 text-white shadow-orange-500/20 active:scale-95"
-                            )}
-                        >
-                            <Printer className="h-5 w-5" />
-                            {invoice.dunningLevel && invoice.dunningLevel >= 4 ? "Maximalstufe erreicht" : "Mahnung erstellen & Drucken"}
-                        </button>
-                        <button
                             onClick={onClose}
-                            className="h-10 w-10 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all"
+                            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white/70 shadow-sm transition-all hover:bg-white/15 hover:text-white"
+                            aria-label="Schließen"
                         >
                             <X className="h-5 w-5" />
                         </button>
                     </div>
+
+                    <div className="mt-6 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                            <label className="flex w-fit items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-bold text-white shadow-sm">
+                                <CalendarDays className="h-4 w-4 text-cyan-200" />
+                                <input
+                                    type="date"
+                                    value={dunningDate}
+                                    onChange={(event) => setDunningDate(event.target.value)}
+                                    className="bg-transparent text-white outline-none [color-scheme:dark]"
+                                />
+                            </label>
+                            <div className="flex flex-wrap gap-1 rounded-2xl bg-white/10 p-1">
+                                {[1, 2, 3, 4].map(l => {
+                                    const disabled = isLevelDisabled(l);
+                                    return (
+                                        <button
+                                            key={l}
+                                            disabled={disabled}
+                                            onClick={() => setLevel(l)}
+                                            title={disabled ? "Diese Stufe kann aktuell nicht gewählt werden" : ""}
+                                            className={`rounded-xl px-4 py-2 text-sm font-black transition-all ${level === l
+                                                    ? 'bg-white text-slate-950 shadow-sm'
+                                                    : disabled
+                                                        ? 'cursor-not-allowed text-white/25'
+                                                        : 'text-white/65 hover:text-white'
+                                                }`}
+                                        >
+                                            {getLevelName(l)}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={handleFinalize}
+                            disabled={isSaving || !!(invoice.dunningLevel && invoice.dunningLevel >= 4)}
+                            className={cn(
+                                "flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-3 font-black shadow-lg transition-all sm:w-fit",
+                                (isSaving || (invoice.dunningLevel && invoice.dunningLevel >= 4))
+                                    ? "cursor-not-allowed bg-white/10 text-white/40 shadow-none"
+                                    : "bg-primary-gradient text-white shadow-fuchsia-950/30 hover:shadow-xl active:scale-95"
+                            )}
+                        >
+                            {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileCheck2 className="h-5 w-5" />}
+                            {invoice.dunningLevel && invoice.dunningLevel >= 4 ? "Maximalstufe erreicht" : isSaving ? "PDF wird gespeichert..." : "Finalisieren & Speichern"}
+                        </button>
+                    </div>
                 </div>
+                {error && (
+                    <div className="border-b border-rose-100 bg-rose-50 px-8 py-3 text-sm font-bold text-rose-600">
+                        {error}
+                    </div>
+                )}
 
                 {/* Preview Area */}
                 <div className="flex-1 overflow-y-auto bg-slate-100 p-8">
-                    <div className="max-w-[210mm] mx-auto bg-white shadow-xl scale-[0.85] origin-top transition-transform">
+                    <div ref={pdfRef} className="max-w-[210mm] mx-auto bg-white shadow-xl transition-transform">
                         <DunningPDF
                             invoice={invoice}
                             customer={customer}
@@ -135,20 +200,6 @@ export function DunningModal({ isOpen, onClose, invoice, customer, companySettin
                     </div>
                 </div>
             </div>
-
-            {/* Print Handler */}
-            {isPrinting && (
-                <InvoicePrintHandler onAfterPrint={handleAfterPrint}>
-                    <DunningPDF
-                        invoice={invoice}
-                        customer={customer}
-                        companySettings={companySettings}
-                        invoiceSettings={invoiceSettings}
-                        dunningLevel={level}
-                        dunningDate={dunningDate}
-                    />
-                </InvoicePrintHandler>
-            )}
         </div>
     );
 }

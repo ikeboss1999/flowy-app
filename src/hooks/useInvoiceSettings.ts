@@ -21,7 +21,9 @@ const initialData: InvoiceSettings = {
         level2: { fee: 10, period: 7 },
         level3: { fee: 10, period: 7 },
         level4: { fee: 0, period: 3 }
-    }
+    },
+    emailSubject: "Rechnung {documentNumber}",
+    emailBody: "Sehr geehrte Kundin, Sehr geehrter Kunde,\n\nvielen Dank für Ihre Beauftragung. Hiermit erhalten Sie unsere Rechnung {documentNumber}.\n\nMit freundlichen Grüßen"
 };
 
 export function useInvoiceSettings() {
@@ -33,9 +35,12 @@ export function useInvoiceSettings() {
     let data: InvoiceSettings = initialData;
     if (allSettings?.invoiceSettings) {
         const s = allSettings.invoiceSettings;
-        data = s.paymentTerms
-            ? s
-            : { ...s, paymentTerms: initialData.paymentTerms, defaultPaymentTermId: initialData.defaultPaymentTermId };
+        data = {
+            ...initialData,
+            ...s,
+            paymentTerms: s.paymentTerms || initialData.paymentTerms,
+            defaultPaymentTermId: s.defaultPaymentTermId || initialData.defaultPaymentTermId
+        };
     }
 
     const updateData = async (newData: Partial<InvoiceSettings>) => {

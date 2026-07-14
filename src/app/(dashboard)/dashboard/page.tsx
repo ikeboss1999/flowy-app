@@ -251,44 +251,48 @@ export default function DashboardPage() {
     }>;
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 2xl:p-12 space-y-8 lg:space-y-10 animate-in fade-in duration-500">
-            <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-                <div className="space-y-3">
-                    <div className="inline-flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-indigo-600">
-                        <ReceiptText className="h-4 w-4" />
-                        Übersicht
+        <div className="dashboard-page">
+            <section className="relative overflow-hidden rounded-[34px] border border-white/10 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white shadow-2xl shadow-indigo-950/15 sm:p-8">
+                <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-fuchsia-500/20 blur-3xl" />
+                <div className="absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-cyan-300/10 blur-3xl" />
+                <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+                    <div className="space-y-4">
+                        <div className="inline-flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-2 ring-1 ring-white/15">
+                            <ReceiptText className="h-5 w-5 text-cyan-100" />
+                            <span className="text-xs font-black uppercase tracking-[0.28em] text-cyan-100">Übersicht</span>
+                        </div>
+                        <div>
+                            <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl font-outfit">
+                                {greeting}, {accountSettings?.name || "Benutzer"}
+                            </h1>
+                            <p className="mt-2 max-w-2xl text-base font-semibold leading-7 text-white/70">
+                                Aktueller Stand für {companySettings?.companyName || "Ihr Unternehmen"} im Jahr {currentYear}.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-5xl font-black tracking-tight text-slate-900 font-outfit">
-                            {greeting}, {accountSettings?.name || "Benutzer"}
-                        </h1>
-                        <p className="mt-2 text-lg font-semibold text-slate-500">
-                            Aktueller Stand für {companySettings?.companyName || "Ihr Unternehmen"} im Jahr {currentYear}.
-                        </p>
-                    </div>
-                </div>
 
-                <div className="flex flex-wrap gap-3">
-                    {canWriteOffers && (
-                        <Link
-                            href="/offers/new"
-                            className="inline-flex h-13 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600"
-                        >
-                            <FileSignature className="h-4 w-4" />
-                            Neues Angebot
-                        </Link>
-                    )}
-                    {canWriteInvoices && (
-                        <Link
-                            href="/invoices/new"
-                            className="inline-flex h-13 items-center gap-2 rounded-2xl bg-primary-gradient px-5 py-3 text-sm font-black text-white shadow-xl shadow-indigo-500/20 transition hover:scale-[1.02] active:scale-95"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Neue Rechnung
-                        </Link>
-                    )}
+                    <div className="flex flex-wrap gap-3">
+                        {canWriteOffers && (
+                            <Link
+                                href="/offers/new"
+                                className="inline-flex h-12 items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-white hover:text-indigo-700"
+                            >
+                                <FileSignature className="h-4 w-4" />
+                                Neues Angebot
+                            </Link>
+                        )}
+                        {canWriteInvoices && (
+                            <Link
+                                href="/invoices/new"
+                                className="inline-flex h-12 items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-xl shadow-indigo-950/20 transition hover:scale-[1.02] active:scale-95"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Neue Rechnung
+                            </Link>
+                        )}
+                    </div>
                 </div>
-            </div>
+            </section>
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
                 {kpis.map((kpi) => {

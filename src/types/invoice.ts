@@ -25,6 +25,8 @@ export interface InvoiceSettings {
         level3: DunningLevel; // 2. Mahnung
         level4: DunningLevel; // Letzte Mahnung
     };
+    emailSubject?: string;
+    emailBody?: string;
 }
 
 export type InvoiceStatus = 'draft' | 'pending' | 'paid' | 'overdue' | 'canceled';
@@ -89,6 +91,8 @@ export interface Invoice {
         level: number;
         date: string;
         fee: number;
+        pdfUrl?: string;
+        pdfPath?: string;
     }[];
     createdAt: string;
     updatedAt: string;

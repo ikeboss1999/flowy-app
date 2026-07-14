@@ -438,7 +438,7 @@ export function UserManagement() {
 
             {/* Invite Modal */}
             {showInviteModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                <div className="fixed inset-0 bg-white/30 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
                     <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-2xl max-w-lg w-full space-y-6 relative animate-in zoom-in-95 duration-300">
                         <button
                             onClick={() => setShowInviteModal(false)}
@@ -569,7 +569,7 @@ export function UserManagement() {
 
             {/* Custom Confirmation Modal */}
             {confirmDialog?.isOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                <div className="fixed inset-0 bg-white/30 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
                     <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-2xl max-w-md w-full space-y-6 relative animate-in zoom-in-95 duration-300 text-center">
                         <div className="h-16 w-16 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 mx-auto animate-bounce">
                             <Trash2 className="h-8 w-8" />

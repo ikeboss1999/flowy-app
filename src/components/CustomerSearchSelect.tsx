@@ -138,7 +138,7 @@ export function CustomerSearchSelect({
 
             {/* Modal Overlay */}
             {isOpen && typeof document !== 'undefined' && createPortal((
-                <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 sm:p-8 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 sm:p-8 bg-white/30 animate-in fade-in duration-200">
                     {/* Modal Box */}
                     <div 
                         ref={modalRef}

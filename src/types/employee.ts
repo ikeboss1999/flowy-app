@@ -69,6 +69,7 @@ export interface Employee {
         emergencyContactPhone?: string;
         notes?: string;
         noTimeTrackingRequired?: boolean;
+        isDraft?: boolean;
     };
     weeklySchedule?: {
         monday: { enabled: boolean; hours: number };

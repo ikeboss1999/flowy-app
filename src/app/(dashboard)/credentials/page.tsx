@@ -221,26 +221,28 @@ export default function CredentialsPage() {
         <div className="dashboard-page">
             <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-8 animate-in fade-in duration-300">
             {/* Header section */}
-            <div className="relative overflow-hidden rounded-[32px] border border-indigo-100 bg-white p-6 shadow-sm sm:p-8">
-                <div className="absolute right-0 top-0 h-44 w-44 rounded-full bg-indigo-100/70 blur-3xl" />
-                <div className="absolute bottom-0 right-36 h-32 w-32 rounded-full bg-fuchsia-100/70 blur-3xl" />
+            <div className="relative overflow-hidden rounded-[34px] border border-white/10 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white shadow-2xl shadow-indigo-950/15 sm:p-8">
+                <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-fuchsia-500/20 blur-3xl" />
+                <div className="absolute -bottom-20 left-1/2 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
                 <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-3xl">
-                    <div className="mb-4 inline-flex items-center gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-2 text-xs font-black uppercase tracking-[0.28em] text-indigo-600">
-                        <KeyRound className="h-5 w-5" />
-                        Sicherheit & Zugänge
+                    <div className="mb-4 inline-flex items-center gap-3 text-cyan-200">
+                        <div className="rounded-2xl border border-white/10 bg-white/10 p-3 shadow-sm">
+                            <KeyRound className="h-6 w-6" />
+                        </div>
+                        <span className="text-xs font-black uppercase tracking-[0.35em]">Sicherheit & Zugänge</span>
                     </div>
-                    <h1 className="text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+                    <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
                         Zugangsdaten
                     </h1>
-                    <p className="mt-3 max-w-2xl text-base font-medium leading-relaxed text-slate-500">
+                    <p className="mt-3 max-w-2xl text-base font-semibold leading-relaxed text-white/70">
                         Verwalte deine Passwörter und Anmeldungen sicher verschlüsselt.
                     </p>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <button
                         onClick={handleLock}
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50"
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-white/15"
                         title="Tresor sperren"
                     >
                         <Lock className="h-4 w-4" />
@@ -248,7 +250,7 @@ export default function CredentialsPage() {
                     </button>
                     <button
                         onClick={handleOpenAddModal}
-                        className="gradient-button inline-flex items-center justify-center gap-2 py-3.5 text-sm font-bold shadow-lg shadow-purple-200 transition-all hover:scale-[1.02] active:scale-95"
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3.5 text-sm font-black text-indigo-700 shadow-lg shadow-indigo-950/20 transition-all hover:scale-[1.02] active:scale-95"
                     >
                         <Plus className="h-4 w-4" />
                         Zugang hinzufügen
@@ -469,7 +471,7 @@ export default function CredentialsPage() {
 
             {/* Modal: Add/Edit Credential */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/30 animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col animate-in zoom-in-95 duration-200">
                         
                         {/* Modal Header */}
@@ -635,7 +637,7 @@ export default function CredentialsPage() {
             )}
             {/* Modal: Delete Confirmation */}
             {isDeleteModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/30 animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 p-8 text-center space-y-6 animate-in zoom-in-95 duration-200">
                         <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center border border-rose-100 mx-auto text-rose-500">
                             <Trash2 className="h-8 w-8" />

@@ -18,6 +18,8 @@ export interface OrderSettings {
     prefix: string;
     defaultIntroText: string;
     defaultTerms: string;
+    emailSubject?: string;
+    emailBody?: string;
 }
 
 export interface OrderConfirmation {

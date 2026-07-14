@@ -1,5 +1,5 @@
 export type CustomerType = 'private' | 'business';
-export type CustomerStatus = 'active' | 'inactive' | 'blocked';
+export type CustomerStatus = 'active' | 'inactive' | 'blocked' | 'draft';
 
 export interface Address {
     street: string;
@@ -13,6 +13,7 @@ export interface Customer {
     status: CustomerStatus;
     salutation?: string; // e.g., Herr, Frau, Familie
     name: string;
+    contactPerson?: string; // Optional Ansprechpartner for business customers
     email: string;
     phone: string;
     address: Address;

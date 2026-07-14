@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
     X,
     User,
@@ -24,7 +24,9 @@ import {
     Activity,
     LogOut,
     Share2,
-    Camera
+    Camera,
+    Loader2,
+    CheckCircle2
 } from "lucide-react";
 import { Employee, EmploymentStatus, EmployeeDocument } from "@/types/employee";
 import { cn } from "@/lib/utils";
@@ -32,6 +34,9 @@ import { useRef } from "react";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import { useNotification } from "@/context/NotificationContext";
 import { useUsers } from "@/hooks/useUsers";
+import { useAutoSave } from "@/hooks/useAutoSave";
+import { useAuth } from "@/context/AuthContext";
+import { mutate } from "swr";
 
 interface EmployeeModalProps {
     isOpen: boolean;
@@ -70,6 +75,11 @@ const EUROPEAN_COUNTRIES = [
 ];
 
 export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, initialEmployee, getNextNumber }: EmployeeModalProps) {
+    const { user } = useAuth();
+    const [employeeId, setEmployeeId] = useState("");
+    const [isInitialized, setIsInitialized] = useState(false);
+    const initialValuesRef = useRef<any>(null);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState("personal");
     const [previewDoc, setPreviewDoc] = useState<EmployeeDocument | null>(null);
@@ -138,6 +148,11 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
     });
 
     useEffect(() => {
+        if (!isOpen) return;
+        const nextId = initialEmployee?.id || Math.random().toString(36).substr(2, 9);
+        setEmployeeId(nextId);
+        setIsInitialized(false);
+        initialValuesRef.current = null;
         if (initialEmployee) {
             setFormData({
                 ...initialEmployee,
@@ -177,7 +192,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
         } else {
             const nextNum = getNextNumber ? getNextNumber() : "";
             setFormData({
-                id: Math.random().toString(36).substr(2, 9),
+                id: nextId,
                 employeeNumber: nextNum,
                 personalData: {
                     firstName: "",
@@ -241,6 +256,60 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
             });
         }
     }, [initialEmployee, isOpen]);
+
+    useEffect(() => {
+        if (isOpen && !isInitialized && formData.id) {
+            initialValuesRef.current = {
+                ...formData,
+                additionalInfo: {
+                    ...formData.additionalInfo,
+                    isDraft: initialEmployee ? (formData.additionalInfo as any)?.isDraft : true
+                }
+            };
+            setIsInitialized(true);
+        }
+    }, [isOpen, isInitialized, formData, initialEmployee]);
+
+    const isDirty = useMemo(() => {
+        if (!initialValuesRef.current) return false;
+        return JSON.stringify(formData) !== JSON.stringify({
+            ...initialValuesRef.current,
+            additionalInfo: {
+                ...initialValuesRef.current.additionalInfo,
+                isDraft: formData.additionalInfo?.isDraft
+            }
+        });
+    }, [formData]);
+
+    const autoSavePayload = useMemo(() => {
+        const isDraftVal = initialEmployee ? (formData.additionalInfo as any)?.isDraft : true;
+        return {
+            ...formData,
+            additionalInfo: {
+                ...formData.additionalInfo,
+                isDraft: isDraftVal
+            }
+        };
+    }, [formData, initialEmployee]);
+
+    const { isSaving, lastSaved } = useAutoSave({
+        id: employeeId,
+        endpoint: "/api/employees",
+        data: autoSavePayload,
+        isDirty,
+        onSaveSuccess: () => {
+            initialValuesRef.current = {
+                ...formData,
+                additionalInfo: {
+                    ...formData.additionalInfo,
+                    isDraft: initialEmployee ? (formData.additionalInfo as any)?.isDraft : true
+                }
+            };
+            if (user) {
+                mutate(`/api/employees?userId=${user.id}`);
+            }
+        }
+    });
 
     const generateStaffId = () => {
         const id = Math.floor(10000000 + Math.random() * 90000000).toString();
@@ -398,7 +467,14 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 cancelLabel: "Ohne Dienstzettel anlegen",
                 onConfirm: () => setActiveTab("employment"),
                 onCancel: () => {
-                    onSave(formData, true);
+                    const finalEmployee = {
+                        ...formData,
+                        additionalInfo: {
+                            ...formData.additionalInfo,
+                            isDraft: false
+                        }
+                    };
+                    onSave(finalEmployee, true);
                     onClose();
                 },
                 variant: 'primary'
@@ -406,7 +482,14 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
             return;
         }
 
-        onSave(formData);
+        const finalEmployee = {
+            ...formData,
+            additionalInfo: {
+                ...formData.additionalInfo,
+                isDraft: false
+            }
+        };
+        onSave(finalEmployee);
         onClose();
     };
 
@@ -469,14 +552,16 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
     };
 
     return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-md">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-white/30 p-3 sm:p-4">
             <div className="absolute inset-0" onClick={onClose} />
 
-            <div className="relative flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-[34px] border border-white bg-white shadow-[0_32px_90px_rgba(15,23,42,0.35)]">
+            <div className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[32px] border border-white/20 bg-white shadow-2xl 2xl:max-w-7xl">
                 {/* Header */}
-                <div className="border-b border-slate-100 bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-500 px-6 py-5 text-white xl:px-8 xl:py-6">
-                    <div className="flex justify-between items-center gap-5">
-                    <div className="flex items-center gap-5 relative">
+                <div className="relative shrink-0 overflow-visible border-b border-white/10 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 px-5 py-5 text-white sm:px-7">
+                    <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-fuchsia-500/25 blur-3xl" />
+                    <div className="absolute -bottom-20 left-1/3 h-40 w-40 rounded-full bg-cyan-300/10 blur-3xl" />
+                    <div className="relative flex justify-between items-center gap-4">
+                    <div className="flex min-w-0 items-center gap-4 relative">
                         <div 
                             className="relative cursor-pointer group"
                             onClick={() => {
@@ -488,12 +573,12 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                             }}
                         >
                             {formData.avatar ? (
-                                <div className="h-16 w-16 rounded-2xl overflow-hidden shadow-md ring-4 ring-white/20 border-2 border-white/40 group-hover:opacity-90 transition-opacity">
+                                <div className="h-14 w-14 rounded-2xl overflow-hidden shadow-md ring-4 ring-white/20 border-2 border-white/40 group-hover:opacity-90 transition-opacity sm:h-16 sm:w-16">
                                     <img src={formData.avatar} alt="Profile" className="h-full w-full object-cover" />
                                 </div>
                             ) : (
-                                <div className="h-16 w-16 rounded-2xl bg-white/15 flex items-center justify-center text-white shadow-sm border border-white/20 group-hover:bg-white/20 transition-colors">
-                                    <User className="h-8 w-8" />
+                                <div className="h-14 w-14 rounded-2xl bg-white/15 flex items-center justify-center text-white shadow-sm border border-white/20 group-hover:bg-white/20 transition-colors sm:h-16 sm:w-16">
+                                    <User className="h-7 w-7 sm:h-8 sm:w-8" />
                                 </div>
                             )}
 
@@ -530,13 +615,25 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                             accept="image/*"
                             onChange={handleAvatarUpload}
                         />
-                        <div>
+                        <div className="min-w-0">
                             <p className="text-[11px] font-black uppercase tracking-[0.3em] text-cyan-100">Personalakte</p>
-                            <h2 className="mt-1 text-3xl font-black text-white leading-tight">
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <h2 className="text-2xl font-black text-white leading-none sm:text-[28px]">
                                 {initialEmployee ? "Mitarbeiter bearbeiten" : "Neuer Mitarbeiter"}
                             </h2>
-                            <div className="flex items-center gap-3">
-                                <p className="text-slate-500 text-sm font-medium">#{formData.employeeNumber || "---"} • Personalakte</p>
+                            {isSaving ? (
+                                <span className="flex items-center gap-1.5 px-3 py-1 bg-white/10 border border-white/20 rounded-full text-xs font-semibold text-white/80 animate-pulse">
+                                    <Loader2 className="h-3 w-3 animate-spin" /> Auto-Save...
+                                </span>
+                            ) : lastSaved ? (
+                                <span className="flex items-center gap-1.5 px-3 py-1 bg-white/10 border border-white/20 rounded-full text-xs font-semibold text-white/80">
+                                    <CheckCircle2 className="h-3 w-3 text-emerald-300" /> Gespeichert {lastSaved}
+                                </span>
+                            ) : null}
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-3">
+                                <p className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-white/75">#{formData.employeeNumber || "---"}</p>
+                                <p className="text-xs font-semibold text-white/50">Personalakte</p>
                                 {formData.avatar && (
                                     <button
                                         type="button"

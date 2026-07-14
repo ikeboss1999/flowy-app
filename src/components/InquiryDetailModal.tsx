@@ -82,64 +82,65 @@ export function InquiryDetailModal({ isOpen, onClose, inquiry, onStartEdit, onDe
     const initials = initialsFor(inquiry.clientName);
 
     return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-md">
-            <div className="flex max-h-[92vh] w-full max-w-[92rem] overflow-hidden rounded-[34px] border border-white bg-white shadow-[0_32px_90px_rgba(15,23,42,0.35)]">
-                <aside className="hidden w-96 shrink-0 flex-col justify-between bg-gradient-to-br from-indigo-800 via-violet-800 to-fuchsia-600 p-8 text-white lg:flex">
-                    <div>
-                        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-white text-3xl font-black text-indigo-700 shadow-xl">
-                            {initials}
-                        </div>
-
-                        <div className="mb-3 flex flex-wrap gap-2">
-                            <span className={cn("rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest", channelDef?.bg, channelDef?.color)}>
-                                {channelDef?.label || inquiry.channel}
-                            </span>
-                            <span className={cn("rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest", statusDef.bg, statusDef.color)}>
-                                {statusDef.label}
-                            </span>
-                        </div>
-
-                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-cyan-100">CRM Anfrage</p>
-                        <h3 className="mt-3 text-3xl font-black leading-tight">{inquiry.clientName}</h3>
-
-                        <div className="mt-8 space-y-5 border-t border-white/15 pt-6">
-                            <a
-                                href={inquiry.clientEmail ? `mailto:${inquiry.clientEmail}` : undefined}
-                                className="flex min-w-0 items-center justify-between gap-3 text-sm font-bold text-white/80"
-                            >
-                                <span className="flex min-w-0 items-center gap-3">
-                                    <Mail className="h-4 w-4 shrink-0 text-cyan-100" />
-                                    <span className="truncate">{inquiry.clientEmail || "Keine E-Mail"}</span>
-                                </span>
-                                {inquiry.clientEmail && <ExternalLink className="h-3.5 w-3.5 shrink-0 text-white/45" />}
-                            </a>
-
-                            <div className="flex min-w-0 items-center gap-3 text-sm font-bold text-white/80">
-                                <Phone className="h-4 w-4 shrink-0 text-cyan-100" />
-                                <span className="truncate">{inquiry.clientPhone || "Keine Telefonnummer"}</span>
-                            </div>
-
-                            <div className="flex min-w-0 items-center gap-3 text-sm font-bold text-white/80">
-                                <MapPin className="h-4 w-4 shrink-0 text-cyan-100" />
-                                <span className="truncate">{inquiry.location || "Kein Ort hinterlegt"}</span>
-                            </div>
-                        </div>
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-white/30 p-4">
+            <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-[36px] border border-white/20 bg-white shadow-2xl">
+                <aside className="relative shrink-0 overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white sm:p-8">
+                    <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-fuchsia-500/20 blur-3xl" />
+                    <div className="absolute bottom-0 left-1/3 h-44 w-44 rounded-full bg-cyan-400/20 blur-3xl" />
+                    <div className="absolute right-6 top-6 z-10">
+                        <button
+                            onClick={onClose}
+                            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white/75 transition hover:bg-white/15 hover:text-white"
+                            aria-label="Schließen"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
                     </div>
+                    <div className="relative flex flex-col gap-6 pr-14 lg:flex-row lg:items-end lg:justify-between">
+                        <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
+                            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[28px] bg-white text-3xl font-black text-indigo-700 shadow-xl">
+                                {initials}
+                            </div>
 
-                    <div className="rounded-3xl bg-white/10 p-4 ring-1 ring-white/15">
-                        <div className="flex justify-between text-xs font-black uppercase tracking-widest text-white/55">
-                            <span>Erfasst</span>
-                            <span>{formatDate(inquiry.createdAt)}</span>
+                            <div className="min-w-0">
+                                <div className="mb-3 flex flex-wrap gap-2">
+                                    <span className={cn("rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest", channelDef?.bg, channelDef?.color)}>
+                                        {channelDef?.label || inquiry.channel}
+                                    </span>
+                                    <span className={cn("rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest", statusDef.bg, statusDef.color)}>
+                                        {statusDef.label}
+                                    </span>
+                                </div>
+                                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/45">CRM Anfrage</p>
+                                <h3 className="mt-2 max-w-3xl break-words text-4xl font-black leading-tight tracking-tight">{inquiry.clientName}</h3>
+                                <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm font-bold text-white/70">
+                                    <span className="flex min-w-0 items-center gap-2"><Mail className="h-4 w-4 text-cyan-100" />{inquiry.clientEmail || "Keine E-Mail"}</span>
+                                    <span className="flex min-w-0 items-center gap-2"><Phone className="h-4 w-4 text-cyan-100" />{inquiry.clientPhone || "Keine Telefonnummer"}</span>
+                                    <span className="flex min-w-0 items-center gap-2"><MapPin className="h-4 w-4 text-cyan-100" />{inquiry.location || "Kein Ort hinterlegt"}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="mt-3 flex justify-between text-xs font-black uppercase tracking-widest text-white/55">
-                            <span>Aktualisiert</span>
-                            <span>{formatDate(inquiry.updatedAt)}</span>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            <button
+                                onClick={() => onStartEdit(inquiry)}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-lg transition hover:bg-indigo-50"
+                            >
+                                <Edit2 className="h-4 w-4" />
+                                Bearbeiten
+                            </button>
+                            <button
+                                onClick={onDelete}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200/20 bg-white/10 px-5 py-3 text-sm font-black text-rose-100 transition hover:bg-rose-400/20"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                Löschen
+                            </button>
                         </div>
                     </div>
                 </aside>
 
-                <section className="flex min-w-0 flex-1 flex-col">
-                    <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 sm:px-8">
+                <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+                    <header className="hidden">
                         <div className="min-w-0">
                             <p className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-500">Anfrage Details</p>
                             <h3 className="mt-1 truncate text-2xl font-black text-slate-950">{inquiry.clientName}</h3>

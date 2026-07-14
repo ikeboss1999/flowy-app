@@ -179,69 +179,113 @@ export function EmployeeDetailModal({
     };
 
     return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-md">
-            <div className="flex max-h-[92vh] w-full max-w-[92rem] overflow-hidden rounded-[34px] border border-white bg-white shadow-[0_32px_90px_rgba(15,23,42,0.35)]">
-                <aside className="hidden w-96 shrink-0 flex-col justify-between bg-gradient-to-br from-indigo-800 via-violet-800 to-fuchsia-600 p-8 text-white lg:flex">
-                    <div>
-                        {employee.avatar ? (
-                            <div className="mb-6 h-24 w-24 overflow-hidden rounded-3xl border border-white/20 bg-white shadow-xl">
-                                <img src={employee.avatar} alt={name} className="h-full w-full object-cover" />
-                            </div>
-                        ) : (
-                            <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-white text-3xl font-black text-indigo-700 shadow-xl">
-                                {initials}
-                            </div>
-                        )}
-
-                        <div className="mb-3 flex flex-wrap gap-2">
-                            <span className="rounded-full bg-white/12 px-3 py-1 text-[10px] font-black uppercase tracking-widest ring-1 ring-white/15">
-                                #{employee.employeeNumber || "---"}
-                            </span>
-                            <span className={cn(
-                                "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ring-1",
-                                isActive ? "bg-emerald-400/15 text-emerald-100 ring-emerald-300/20" : "bg-rose-400/15 text-rose-100 ring-rose-300/20"
-                            )}>
-                                {isActive ? "Aktiv" : "Archiviert"}
-                            </span>
-                        </div>
-
-                        <h3 className="text-3xl font-black leading-tight">{name}</h3>
-                        <p className="mt-2 text-sm font-semibold text-white/70">
-                            {employee.employment.position || "Keine Position"} · {employee.employment.status}
-                        </p>
-
-                        <div className="mt-8 space-y-5 border-t border-white/15 pt-6">
-                            <a href={employee.personalData.email ? `mailto:${employee.personalData.email}` : undefined} className="flex min-w-0 items-center gap-3 text-sm font-bold text-white/80">
-                                <Mail className="h-4 w-4 shrink-0 text-cyan-100" />
-                                <span className="truncate">{employee.personalData.email || "Keine E-Mail"}</span>
-                            </a>
-                            <div className="flex min-w-0 items-center gap-3 text-sm font-bold text-white/80">
-                                <Phone className="h-4 w-4 shrink-0 text-cyan-100" />
-                                <span className="truncate">{employee.personalData.phone || "Keine Telefonnummer"}</span>
-                            </div>
-                            <div className="flex items-start gap-3 text-sm font-bold leading-6 text-white/80">
-                                <MapPin className="mt-1 h-4 w-4 shrink-0 text-cyan-100" />
-                                <span>{employee.personalData.street || "-"}<br />{employee.personalData.zip || ""} {employee.personalData.city || ""}</span>
-                            </div>
-                        </div>
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-white/30 p-4">
+            <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-[36px] border border-white/20 bg-white shadow-2xl">
+                <aside className="relative shrink-0 overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white sm:p-8">
+                    <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-fuchsia-500/20 blur-3xl" />
+                    <div className="absolute bottom-0 left-1/3 h-44 w-44 rounded-full bg-cyan-400/20 blur-3xl" />
+                    <div className="absolute right-6 top-6 z-10">
+                        <button
+                            onClick={onClose}
+                            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white/75 transition hover:bg-white/15 hover:text-white"
+                            aria-label="Schließen"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
                     </div>
 
-                    <div className="rounded-3xl bg-white/10 p-4 ring-1 ring-white/15">
-                        <div className="flex justify-between text-xs font-black uppercase tracking-widest text-white/55">
-                            <span>Eintritt</span>
-                            <span>{formatDate(employee.employment.startDate)}</span>
-                        </div>
-                        {employee.employment.endDate && (
-                            <div className="mt-3 flex justify-between text-xs font-black uppercase tracking-widest text-rose-100">
-                                <span>Austritt</span>
-                                <span>{formatDate(employee.employment.endDate)}</span>
+                    <div className="relative flex flex-col gap-6 pr-14 lg:flex-row lg:items-end lg:justify-between">
+                        <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
+                            {employee.avatar ? (
+                                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[28px] border border-white/20 bg-white shadow-xl">
+                                    <img src={employee.avatar} alt={name} className="h-full w-full object-cover" />
+                                </div>
+                            ) : (
+                                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[28px] bg-white text-3xl font-black text-indigo-700 shadow-xl">
+                                    {initials}
+                                </div>
+                            )}
+
+                            <div className="min-w-0">
+                                <div className="mb-3 flex flex-wrap gap-2">
+                                    <span className="rounded-full bg-white/12 px-3 py-1 text-[10px] font-black uppercase tracking-widest ring-1 ring-white/15">
+                                        #{employee.employeeNumber || "---"}
+                                    </span>
+                                    <span className={cn(
+                                        "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ring-1",
+                                        isActive ? "bg-emerald-400/15 text-emerald-100 ring-emerald-300/20" : "bg-rose-400/15 text-rose-100 ring-rose-300/20"
+                                    )}>
+                                        {isActive ? "Aktiv" : "Archiviert"}
+                                    </span>
+                                </div>
+                                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/45">Personalakte</p>
+                                <h3 className="mt-2 max-w-3xl break-words text-4xl font-black leading-tight tracking-tight">{name}</h3>
+                                <p className="mt-2 text-sm font-semibold text-white/70">
+                                    {employee.employment.position || "Keine Position"} · {employee.employment.status}
+                                </p>
+                                <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm font-bold text-white/70">
+                                    <span className="flex min-w-0 items-center gap-2"><Mail className="h-4 w-4 text-cyan-100" />{employee.personalData.email || "Keine E-Mail"}</span>
+                                    <span className="flex min-w-0 items-center gap-2"><Phone className="h-4 w-4 text-cyan-100" />{employee.personalData.phone || "Keine Telefonnummer"}</span>
+                                    <span className="flex min-w-0 items-center gap-2"><MapPin className="h-4 w-4 text-cyan-100" />{employee.personalData.street || "-"}, {employee.personalData.zip || ""} {employee.personalData.city || ""}</span>
+                                </div>
                             </div>
-                        )}
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            <button
+                                onClick={() => onDownloadPDF(employee)}
+                                disabled={isDownloadingPDF}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-lg transition hover:bg-indigo-50 disabled:opacity-50"
+                            >
+                                {isDownloadingPDF ? <FileDown className="h-4 w-4 animate-pulse" /> : <FileDown className="h-4 w-4" />}
+                                PDF
+                            </button>
+                            {onStartEdit && (
+                                <button
+                                    onClick={() => onStartEdit(employee)}
+                                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-lg transition hover:bg-indigo-50"
+                                >
+                                    <Edit2 className="h-4 w-4" />
+                                    Bearbeiten
+                                </button>
+                            )}
+                            {isActive ? (
+                                onDeactivate && (
+                                    <button
+                                        onClick={() => onDeactivate(employee)}
+                                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200/20 bg-white/10 px-5 py-3 text-sm font-black text-rose-100 transition hover:bg-rose-400/20"
+                                    >
+                                        <UserX className="h-4 w-4" />
+                                        Abmelden
+                                    </button>
+                                )
+                            ) : (
+                                <>
+                                    {onReactivate && (
+                                        <button
+                                            onClick={() => onReactivate(employee)}
+                                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200/20 bg-white/10 px-5 py-3 text-sm font-black text-emerald-100 transition hover:bg-emerald-400/20"
+                                        >
+                                            <UserCheck className="h-4 w-4" />
+                                            Aktivieren
+                                        </button>
+                                    )}
+                                    {onDelete && (
+                                        <button
+                                            onClick={() => onDelete(employee.id)}
+                                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200/20 bg-white/10 px-5 py-3 text-sm font-black text-rose-100 transition hover:bg-rose-400/20"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                            Löschen
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </div>
                 </aside>
 
-                <section className="flex min-w-0 flex-1 flex-col">
-                    <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 sm:px-8">
+                <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+                    <header className="hidden">
                         <div className="min-w-0">
                             <p className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-500">Personalakte</p>
                             <h3 className="mt-1 truncate text-2xl font-black text-slate-950">{name}</h3>
@@ -457,7 +501,7 @@ export function EmployeeDetailModal({
             </div>
 
             {isUploadOpen && (
-                <div className="fixed inset-0 z-[170] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[170] flex items-center justify-center bg-white/30 p-4">
                     <div className="w-full max-w-xl rounded-[32px] border border-white bg-white p-6 shadow-2xl">
                         <div className="mb-6 flex items-start justify-between gap-4">
                             <div>

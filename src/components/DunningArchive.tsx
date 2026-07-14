@@ -32,7 +32,9 @@ export function DunningArchive() {
                     level: number,
                     date: string,
                     fee: number,
-                    invoiceId: string
+                    invoiceId: string,
+                    pdfPath?: string,
+                    pdfUrl?: string
                 }[]
             }>
         }> = {};
@@ -177,6 +179,8 @@ export function DunningArchive() {
                                                                         <span>Gebühr: € {entry.fee.toFixed(2)}</span>
                                                                     </>
                                                                 )}
+                                                                <span className="mx-1">•</span>
+                                                                <span>{entry.pdfPath || entry.pdfUrl ? "PDF gespeichert" : "Legacy-Vorschau"}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -203,6 +207,8 @@ export function DunningArchive() {
             {previewItem && (() => {
                 const customer = customers.find(c => c.id === previewItem.invoice.customerId);
                 if (!customer) return null;
+                const historyEntry = (previewItem.invoice.dunningHistory || [])
+                    .find(entry => entry.level === previewItem.level && entry.date === previewItem.date);
 
                 return (
                     <DunningPreviewModal
@@ -214,6 +220,7 @@ export function DunningArchive() {
                         invoiceSettings={invoiceSettings}
                         level={previewItem.level}
                         date={previewItem.date}
+                        pdfPath={historyEntry?.pdfPath || historyEntry?.pdfUrl}
                     />
                 );
             })()}

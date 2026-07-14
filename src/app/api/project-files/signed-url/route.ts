@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     const session = await getUserSession();
-    const userId = session?.userId;
+    const userId = session?.companyOwnerId || session?.userId;
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     if (!supabaseAdmin) {

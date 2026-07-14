@@ -273,6 +273,24 @@ export default function EmployeesPage() {
         });
     };
 
+    const handleDeleteDraftEmployee = (employee: Employee) => {
+        if (!employee.additionalInfo?.isDraft) {
+            showToast("Nur Mitarbeiter-Entwürfe können gelöscht werden.", "error");
+            return;
+        }
+
+        showConfirm({
+            title: "Entwurf löschen?",
+            message: `Der Entwurf #${employee.employeeNumber || "---"} wird endgültig entfernt. Die nächste Personalnummer wird danach wieder neu berechnet.`,
+            confirmLabel: "Entwurf löschen",
+            variant: "danger",
+            onConfirm: () => {
+                deleteEmployee(employee.id);
+                showToast("Mitarbeiter-Entwurf gelöscht.", "success");
+            },
+        });
+    };
+
     const handleDeactivateConfirm = async () => {
         if (!deactivatingEmployee) return;
         updateEmployee(deactivatingEmployee.id, {
@@ -399,20 +417,22 @@ export default function EmployeesPage() {
 
     return (
         <div className="dashboard-page">
-            <section className="relative overflow-hidden rounded-[34px] border border-white bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-500 p-7 text-white shadow-xl shadow-indigo-500/20">
-                <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
-                <div className="absolute -bottom-20 left-1/3 h-52 w-52 rounded-full bg-cyan-300/20 blur-3xl" />
+            <section className="relative overflow-hidden rounded-[34px] border border-white/10 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white shadow-2xl shadow-indigo-950/15 sm:p-8">
+                <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-fuchsia-500/20 blur-3xl" />
+                <div className="absolute -bottom-20 left-1/3 h-52 w-52 rounded-full bg-cyan-300/10 blur-3xl" />
 
                 <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                     <div>
-                        <div className="mb-4 inline-flex items-center gap-3 rounded-2xl bg-white/12 px-4 py-2 ring-1 ring-white/20">
-                            <UserSquare2 className="h-5 w-5 text-cyan-100" />
-                            <span className="text-xs font-black uppercase tracking-[0.3em] text-cyan-100">Personal</span>
+                        <div className="mb-4 inline-flex items-center gap-3 text-cyan-200">
+                            <div className="rounded-2xl border border-white/10 bg-white/10 p-3 shadow-sm">
+                                <UserSquare2 className="h-6 w-6" />
+                            </div>
+                            <span className="text-xs font-black uppercase tracking-[0.35em]">Personal</span>
                         </div>
                         <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
                             {viewMode === "list" ? "Mitarbeiter" : "Dokumenten-Archiv"}
                         </h1>
-                        <p className="mt-3 max-w-2xl text-base font-semibold leading-7 text-white/75">
+                        <p className="mt-3 max-w-2xl text-base font-semibold leading-7 text-white/70">
                             {viewMode === "list"
                                 ? "Personalstammdaten, Zeiteinteilung, Dokumente und Dienstzettel an einem Ort."
                                 : "Alle Personalunterlagen gesammelt und nach Mitarbeitern gruppiert."}
@@ -582,9 +602,10 @@ export default function EmployeesPage() {
                                                         </span>
                                                         <span className={cn(
                                                             "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
+                                                            employee.additionalInfo?.isDraft ? "bg-slate-100 text-slate-600" :
                                                             isActive ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
                                                         )}>
-                                                            {isActive ? "Aktiv" : "Archiviert"}
+                                                            {employee.additionalInfo?.isDraft ? "Entwurf" : isActive ? "Aktiv" : "Archiviert"}
                                                         </span>
                                                     </div>
                                                     <h3 className="truncate text-xl font-black text-slate-950 group-hover:text-indigo-700">{name}</h3>
@@ -630,7 +651,15 @@ export default function EmployeesPage() {
                                                 >
                                                     {downloadingId === employee.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
                                                 </button>
-                                                {canWrite && (isActive ? (
+                                                {canWrite && employee.additionalInfo?.isDraft ? (
+                                                    <button
+                                                        onClick={() => handleDeleteDraftEmployee(employee)}
+                                                        className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                                                        title="Entwurf löschen"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                ) : canWrite && (isActive ? (
                                                     <button
                                                         onClick={() => setDeactivatingEmployee(employee)}
                                                         className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 transition hover:bg-rose-100"
@@ -841,7 +870,7 @@ export default function EmployeesPage() {
             )}
 
             {deactivatingEmployee && (
-                <div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-md">
+                <div className="fixed inset-0 z-[160] flex items-center justify-center bg-white/30 p-4">
                     <div className="w-full max-w-md rounded-[32px] border border-white bg-white p-7 shadow-2xl">
                         <div className="text-center">
                             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">

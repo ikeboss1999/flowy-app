@@ -16,6 +16,8 @@ export interface OfferSettings {
     nextOfferNumber: number;
     defaultIntroText: string;
     defaultValidityDays?: number;
+    emailSubject?: string;
+    emailBody?: string;
 }
 
 export interface Offer {

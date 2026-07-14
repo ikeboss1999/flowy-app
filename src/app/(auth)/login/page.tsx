@@ -128,6 +128,10 @@ export default function LoginPage() {
                 // treat it as currentEmployee, which would pass AuthGuard
                 // but leave data hooks with user=null (empty dashboard on iOS).
                 localStorage.removeItem('flowy_employee_session')
+                if (session?.user?.id) {
+                    sessionStorage.setItem("flowy_app_unlocked_user", session.user.id)
+                    localStorage.setItem("flowy_last_active_at", String(Date.now()))
+                }
                 window.location.href = "/api/auth/start"
             } else {
                 const redirectUrl = `${window.location.origin}/auth/callback`;

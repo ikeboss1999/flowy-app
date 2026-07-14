@@ -2,7 +2,7 @@
 
 import React from "react";
 import dynamic from "next/dynamic";
-import { X, Download, Loader2, AlertTriangle, RotateCcw } from "lucide-react";
+import { X, Download, Loader2, AlertTriangle, RotateCcw, Mail } from "lucide-react";
 import { Invoice } from "@/types/invoice";
 import { Customer } from "@/types/customer";
 import { CompanyData } from "@/types/company";
@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import { invoicePdfFileName } from "@/lib/document-filenames";
 import { LockedPdfPreview } from "@/components/LockedPdfPreview";
+import { triggerMailto, replacePlaceholders } from "@/lib/email-helpers";
 
 const InvoicePDFPreview = dynamic(
     async () => {
@@ -74,6 +75,26 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
 
     const isStoredInvoice = invoice.status !== 'draft' && (!!invoice.pdfPath || !!invoice.pdfUrl);
     const canReopenInvoice = profile?.role === 'admin' || profile?.role === 'developer';
+
+    const handleSendEmail = () => {
+        const emailSubject = invoiceSettings?.emailSubject || "Rechnung {documentNumber}";
+        const emailBody = invoiceSettings?.emailBody || "Sehr geehrte Kundin, Sehr geehrter Kunde,\n\nvielen Dank für Ihre Beauftragung. Hiermit erhalten Sie unsere Rechnung {documentNumber}.\n\nMit freundlichen Grüßen";
+
+        const subject = replacePlaceholders(emailSubject, {
+            documentNumber: invoice.invoiceNumber,
+            customerName: customer?.name || invoice.customerName,
+            contactPerson: customer?.contactPerson
+        });
+        const body = replacePlaceholders(emailBody, {
+            documentNumber: invoice.invoiceNumber,
+            customerName: customer?.name || invoice.customerName,
+            contactPerson: customer?.contactPerson
+        });
+
+        triggerMailto(customer?.email, subject, body);
+        handlePrint();
+        showToast("E-Mail geöffnet. PDF wurde erstellt/heruntergeladen - bitte hängen Sie diese im E-Mail-Programm an.", "info");
+    };
 
     const handlePrint = async () => {
         if (isStoredInvoice) {
@@ -147,25 +168,26 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 no-print">
-            <div className="bg-white w-full max-w-4xl h-[90vh] rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col animate-in zoom-in-95 duration-200 no-print">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/30 animate-in fade-in duration-200 no-print">
+            <div className="bg-white w-full max-w-6xl h-[92vh] rounded-[32px] shadow-2xl overflow-hidden border border-white/20 flex flex-col animate-in zoom-in-95 duration-200 no-print">
                 {/* Header */}
-                <div className="px-8 py-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50 shrink-0 no-print">
-                    <div>
-                        <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                <div className="grid gap-4 bg-gradient-to-r from-slate-950 via-indigo-950 to-violet-900 px-6 py-5 text-white shrink-0 no-print lg:grid-cols-[minmax(260px,1fr)_auto] lg:items-center sm:px-8">
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-[0.35em] text-cyan-200">Rechnungsvorschau</p>
+                        <h2 className="mt-1 truncate text-2xl font-black tracking-tight">
                             Rechnung #{invoice.invoiceNumber}
                         </h2>
-                        <p className="text-sm text-slate-500 font-medium mt-1">
+                        <p className="mt-1 truncate text-sm text-white/60 font-medium">
                             {invoice.customerName} • {new Date(invoice.issueDate).toLocaleDateString('de-DE')}
                         </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-end">
                         {/* Dunning Button */}
                         {/* Dunning Button */}
                         {invoice.status !== 'draft' && invoice.status !== 'paid' && (
                             <button
                                 onClick={() => setIsDunningModalOpen(true)}
-                                className="px-4 py-3 bg-orange-50 text-orange-600 rounded-xl font-bold hover:bg-orange-100 transition-all flex items-center gap-2 mr-2"
+                                className="whitespace-nowrap px-4 py-3 bg-orange-500/15 text-orange-100 border border-orange-300/20 rounded-xl font-bold hover:bg-orange-500/25 transition-all flex items-center gap-2"
                             >
                                 <AlertTriangle className="h-4 w-4" />
                                 Mahnung
@@ -175,7 +197,7 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
                         {invoice.status !== 'draft' && canReopenInvoice && (
                             <button
                                 onClick={handleReopenAsDraft}
-                                className="px-4 py-3 bg-amber-50 text-amber-700 rounded-xl font-bold hover:bg-amber-100 transition-all flex items-center gap-2 mr-2"
+                                className="whitespace-nowrap px-4 py-3 bg-amber-500/15 text-amber-100 border border-amber-300/20 rounded-xl font-bold hover:bg-amber-500/25 transition-all flex items-center gap-2"
                             >
                                 <RotateCcw className="h-4 w-4" />
                                 In Entwurf
@@ -183,9 +205,18 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
                         )}
 
                         <button
+                            onClick={handleSendEmail}
+                            className="whitespace-nowrap px-4 py-3 bg-white/10 border border-white/10 text-white rounded-xl font-bold hover:bg-white/15 transition-all flex items-center gap-2"
+                            title="Dokument per E-Mail senden"
+                        >
+                            <Mail className="h-4 w-4" />
+                            Per Mail senden
+                        </button>
+
+                        <button
                             onClick={handlePrint}
                             disabled={isPrinting}
-                            className="px-6 py-3 bg-primary-gradient text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+                            className="whitespace-nowrap px-6 py-3 bg-primary-gradient text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
                         >
                             {isPrinting ? (
                                 <><Loader2 className="h-4 w-4 animate-spin" /> PDF wird erstellt...</>
@@ -195,7 +226,7 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
                         </button>
                         <button
                             onClick={onClose}
-                            className="h-10 w-10 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-100 transition-all shadow-sm"
+                            className="h-10 w-10 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/15 transition-all shadow-sm"
                         >
                             <X className="h-4 w-4" />
                         </button>

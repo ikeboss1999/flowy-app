@@ -59,6 +59,7 @@ export default function CustomersPage() {
                 const matchesSearch =
                     !query ||
                     (customer.name || "").toLowerCase().includes(query) ||
+                    (customer.contactPerson || "").toLowerCase().includes(query) ||
                     (customer.email || "").toLowerCase().includes(query) ||
                     (customer.phone || "").toLowerCase().includes(query) ||
                     (customer.customer_number || "").toLowerCase().includes(query) ||
@@ -263,6 +264,12 @@ export default function CustomersPage() {
                                                     <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
                                                     {[customer.address?.street, `${customer.address?.zip || ""} ${customer.address?.city || ""}`.trim()].filter(Boolean).join(", ") || "Keine Adresse"}
                                                 </p>
+                                                {isBusiness && customer.contactPerson && (
+                                                    <p className="mt-1 flex items-center gap-1.5 truncate text-sm font-semibold text-slate-500">
+                                                        <User className="h-4 w-4 shrink-0 text-slate-400" />
+                                                        Ansprechpartner: {customer.contactPerson}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
 
@@ -271,9 +278,10 @@ export default function CustomersPage() {
                                                 "hidden rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider sm:inline-flex",
                                                 customer.status === "active" ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" :
                                                     customer.status === "inactive" ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100" :
+                                                    customer.status === "draft" ? "bg-slate-100 text-slate-600 ring-1 ring-slate-200" :
                                                         "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
                                             )}>
-                                                {customer.status === "active" ? "Aktiv" : customer.status === "inactive" ? "Inaktiv" : "Gesperrt"}
+                                                {customer.status === "active" ? "Aktiv" : customer.status === "inactive" ? "Inaktiv" : customer.status === "draft" ? "Entwurf" : "Gesperrt"}
                                             </span>
                                             <button
                                                 onClick={(event) => {

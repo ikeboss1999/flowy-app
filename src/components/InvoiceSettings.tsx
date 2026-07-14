@@ -379,6 +379,42 @@ export function InvoiceSettings() {
                 </div>
             </AccordionSection>
 
+            {/* E-Mail Vorlage */}
+            <AccordionSection
+                title="E-Mail Vorlage für Rechnungsversand"
+                icon={Mail}
+                isOpen={openSection === "email"}
+                onToggle={() => toggleSection("email")}
+            >
+                <div className="space-y-6">
+                    <p className="text-sm font-medium text-slate-500 mb-2">
+                        Legen Sie das Betreff- und Textmuster fest, das beim Klick auf "Per Mail senden" automatisch vorausgefüllt wird. Verwenden Sie den Platzhalter <code className="bg-slate-100 px-1.5 py-0.5 rounded text-rose-600 font-bold text-xs">{`{documentNumber}`}</code> für die Rechnungsnummer.
+                    </p>
+                    <div>
+                        <label className={labelClasses}>Standard-Betreff</label>
+                        <input
+                            type="text"
+                            name="emailSubject"
+                            value={data.emailSubject || ""}
+                            onChange={handleChange}
+                            className={inputClasses}
+                            placeholder="z.B. Rechnung {documentNumber}"
+                        />
+                    </div>
+                    <div>
+                        <label className={labelClasses}>Standard-Nachrichtentext</label>
+                        <textarea
+                            rows={6}
+                            name="emailBody"
+                            value={data.emailBody || ""}
+                            onChange={(e) => updateData({ emailBody: e.target.value })}
+                            className={cn(inputClasses, "resize-y font-medium")}
+                            placeholder="Sehr geehrte Damen und Herren..."
+                        />
+                    </div>
+                </div>
+            </AccordionSection>
+
             <div className="pt-8 flex justify-end gap-4">
                 <button
                     onClick={handleSave}

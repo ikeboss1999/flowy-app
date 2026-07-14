@@ -15,6 +15,8 @@ const initialData: OrderSettings = {
     prefix: "AB-",
     defaultIntroText: DEFAULT_INTRO,
     defaultTerms: DEFAULT_TERMS,
+    emailSubject: "Auftragsbestätigung {documentNumber}",
+    emailBody: "Sehr geehrte Kundin, Sehr geehrter Kunde,\n\nvielen Dank für Ihre Beauftragung. Hiermit erhalten Sie unsere Auftragsbestätigung {documentNumber}.\n\nMit freundlichen Grüßen"
 };
 
 export function useOrderSettings() {

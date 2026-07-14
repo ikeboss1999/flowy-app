@@ -2,7 +2,7 @@
 
 import React from "react";
 import dynamic from "next/dynamic";
-import { X, Download, Loader2, FileSignature, CheckCircle2, Receipt } from "lucide-react";
+import { X, Download, Loader2, FileSignature, CheckCircle2, Receipt, Mail } from "lucide-react";
 import { Offer } from "@/types/offer";
 import { Customer } from "@/types/customer";
 import { CompanyData } from "@/types/company";
@@ -18,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import { nanoid } from "nanoid";
 import { offerPdfFileName } from "@/lib/document-filenames";
 import { LockedPdfPreview } from "@/components/LockedPdfPreview";
+import { triggerMailto, replacePlaceholders } from "@/lib/email-helpers";
 
 const OfferPDFPreview = dynamic(
     async () => {
@@ -119,6 +120,26 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
 
     const fmt = (d?: string) => d ? new Date(d).toLocaleDateString('de-DE') : '-';
     const isStoredOffer = offer.status !== 'draft' && !!offer.pdfUrl;
+
+    const handleSendEmail = () => {
+        const emailSubject = offerSettings?.emailSubject || "Angebot {documentNumber}";
+        const emailBody = offerSettings?.emailBody || "Sehr geehrte Kundin, Sehr geehrter Kunde,\n\nvielen Dank für Ihr Interesse an unseren Tätigkeiten. Wie vereinbart erhalten Sie beigefügt unser Angebot {documentNumber}.\n\nMit freundlichen Grüßen";
+
+        const subject = replacePlaceholders(emailSubject, {
+            documentNumber: offer.offerNumber,
+            customerName: customer?.name || offer.customerName,
+            contactPerson: customer?.contactPerson
+        });
+        const body = replacePlaceholders(emailBody, {
+            documentNumber: offer.offerNumber,
+            customerName: customer?.name || offer.customerName,
+            contactPerson: customer?.contactPerson
+        });
+
+        triggerMailto(customer?.email, subject, body);
+        handleDownloadPDF();
+        showToast("E-Mail geöffnet. PDF wurde erstellt/heruntergeladen - bitte hängen Sie diese im E-Mail-Programm an.", "info");
+    };
 
     const generatePDF = async () => {
         const { pdf } = await import('@react-pdf/renderer');
@@ -288,21 +309,22 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-4xl h-[92vh] rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/30 animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-6xl h-[92vh] rounded-[32px] shadow-2xl overflow-hidden border border-white/20 flex flex-col animate-in zoom-in-95 duration-200">
 
                 {/* ── Modal Header (Toolbar) ── */}
-                <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
-                    <div>
-                        <h2 className="text-lg font-black text-slate-900 tracking-tight leading-none">
+                <div className="grid gap-4 bg-gradient-to-r from-slate-950 via-indigo-950 to-violet-900 px-6 py-5 text-white shrink-0 lg:grid-cols-[minmax(260px,1fr)_auto] lg:items-center sm:px-8">
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-[0.35em] text-cyan-200">Angebotsvorschau</p>
+                        <h2 className="mt-1 truncate text-2xl font-black tracking-tight">
                             {offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot'} #{offer.offerNumber}
                         </h2>
-                        <p className="text-sm text-slate-400 font-medium mt-0.5">
+                        <p className="mt-1 truncate text-sm text-white/60 font-medium">
                             {offer.customerName} · {fmt(offer.issueDate)}
                             {offer.validUntil ? ` · Gültig bis ${fmt(offer.validUntil)}` : ''}
                         </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-end">
                         {canConfirmOrder && (showSuccess ? (
                             <div className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-200 animate-in zoom-in duration-300">
                                 <CheckCircle2 className="h-4 w-4" />
@@ -313,7 +335,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                                 onClick={handleCreateOrder}
                                 disabled={isConverting || offer.status !== 'sent'}
                                 className={cn(
-                                    "px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all flex items-center gap-2 disabled:opacity-50",
+                                    "whitespace-nowrap px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all flex items-center gap-2 disabled:opacity-50",
                                     offer.status !== 'sent'
                                         ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
                                         : "bg-indigo-600 text-white shadow-indigo-200 hover:scale-[1.02] active:scale-95"
@@ -334,7 +356,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                                 onClick={handleCreateInvoice}
                                 disabled={offer.status !== 'accepted' || alreadyInvoiced || isConvertingInvoice}
                                 className={cn(
-                                    "px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all flex items-center gap-2 disabled:opacity-50",
+                                    "whitespace-nowrap px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all flex items-center gap-2 disabled:opacity-50",
                                     (offer.status !== 'accepted' || alreadyInvoiced)
                                         ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
                                         : "bg-emerald-600 text-white shadow-emerald-200 hover:scale-[1.02] active:scale-95"
@@ -352,16 +374,25 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                             </button>
                         ))}
                         <button
+                            onClick={handleSendEmail}
+                            className="whitespace-nowrap px-5 py-2.5 bg-white/10 border border-white/10 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-white/15 transition-all flex items-center gap-2"
+                            title="Angebot per E-Mail senden"
+                        >
+                            <Mail className="h-4 w-4" />
+                            Per Mail senden
+                        </button>
+
+                        <button
                             onClick={handleDownloadPDF}
                             disabled={isDownloading}
-                            className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-all flex items-center gap-2 disabled:opacity-50"
+                            className="whitespace-nowrap px-5 py-2.5 bg-white/10 border border-white/10 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-white/15 transition-all flex items-center gap-2 disabled:opacity-50"
                         >
                             {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                             PDF
                         </button>
                         <button
                             onClick={onClose}
-                            className="h-9 w-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-200 transition-all shadow-sm"
+                            className="h-9 w-9 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/15 transition-all shadow-sm"
                         >
                             <X className="h-4 w-4" />
                         </button>

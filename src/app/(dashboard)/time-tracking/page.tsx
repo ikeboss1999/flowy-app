@@ -98,41 +98,45 @@ export default function TimeTrackingPage() {
 
     return (
         <div className="dashboard-page-centered">
-            <div className="max-w-[1400px] mx-auto space-y-8 lg:space-y-12 animate-in fade-in duration-500">
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 text-indigo-600 mb-2">
-                        <div className="p-2.5 bg-indigo-50 rounded-xl shadow-sm border border-indigo-100/50">
-                            <Clock className="h-6 w-6" />
+            <div className="max-w-[1400px] mx-auto space-y-6 lg:space-y-8 animate-in fade-in duration-500">
+                <div className="relative overflow-hidden rounded-[34px] border border-white/10 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white shadow-2xl shadow-indigo-950/15 sm:p-8">
+                    <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-fuchsia-500/20 blur-3xl" />
+                    <div className="absolute -bottom-20 left-1/2 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
+                    <div className="relative z-10 max-w-3xl">
+                        <div className="mb-4 flex items-center gap-3 text-cyan-200">
+                            <div className="rounded-2xl border border-white/10 bg-white/10 p-3 shadow-sm">
+                                <Clock className="h-6 w-6" />
+                            </div>
+                            <span className="text-xs font-black uppercase tracking-[0.35em]">Zeiterfassung</span>
                         </div>
-                        <span className="text-sm font-black uppercase tracking-[0.3em]">Zeiterfassung</span>
+                        <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Zeiten erfassen</h1>
+                        <p className="mt-3 max-w-2xl text-base font-semibold text-white/70">
+                            Wählen Sie einen Mitarbeiter aus, um den vergangenen Monat zu erfassen.
+                        </p>
                     </div>
-                    <h1 className="dashboard-title">Zeiten erfassen</h1>
-                    <p className="dashboard-subtitle max-w-2xl">
-                        Wählen Sie einen Mitarbeiter aus, um den vergangenen Monat zu erfassen.
-                    </p>
                 </div>
 
-                <div className="bg-white p-4 sm:p-6 rounded-[32px] border border-slate-100 shadow-sm relative overflow-hidden">
+                <div className="bg-white p-4 sm:p-5 2xl:p-6 rounded-[32px] border border-slate-100 shadow-sm relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
                         <Clock className="h-64 w-64 text-indigo-900" />
                     </div>
 
-                    <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4 mb-6">
-                        <div className="rounded-2xl bg-indigo-50 border border-indigo-100 p-5">
+                    <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3 2xl:gap-4 mb-5 2xl:mb-6">
+                        <div className="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 2xl:p-5">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">Abrechnungsmonat</p>
                             <p className="text-lg font-black text-indigo-900 mt-2">{monthLabel}</p>
                         </div>
-                        <div className="rounded-2xl bg-slate-50 border border-slate-100 p-5">
+                        <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 2xl:p-5">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Offen</p>
-                            <p className="text-3xl font-black text-slate-900 mt-2">{monthStats.open}</p>
+                            <p className="text-2xl 2xl:text-3xl font-black text-slate-900 mt-2">{monthStats.open}</p>
                         </div>
-                        <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-5">
+                        <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-4 2xl:p-5">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">Abgeschlossen</p>
-                            <p className="text-3xl font-black text-emerald-700 mt-2">{monthStats.finalized}</p>
+                            <p className="text-2xl 2xl:text-3xl font-black text-emerald-700 mt-2">{monthStats.finalized}</p>
                         </div>
-                        <div className="rounded-2xl bg-amber-50 border border-amber-100 p-5">
+                        <div className="rounded-2xl bg-amber-50 border border-amber-100 p-4 2xl:p-5">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Ohne Zeiterfassung</p>
-                            <p className="text-3xl font-black text-amber-700 mt-2">{monthStats.excluded}</p>
+                            <p className="text-2xl 2xl:text-3xl font-black text-amber-700 mt-2">{monthStats.excluded}</p>
                         </div>
                     </div>
 
@@ -202,9 +206,9 @@ export default function TimeTrackingPage() {
                                     <button
                                         key={emp.id}
                                         onClick={() => router.push(`/time-tracking/${emp.id}`)}
-                                        className="group flex items-center gap-4 p-5 bg-white hover:bg-indigo-50 border border-slate-100 hover:border-indigo-100 rounded-2xl text-left transition-all duration-200 hover:shadow-md hover:scale-[1.01]"
-                                    >
-                                        <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm shrink-0">
+                                className="group flex items-center gap-3 p-4 2xl:gap-4 2xl:p-5 bg-white hover:bg-indigo-50 border border-slate-100 hover:border-indigo-100 rounded-2xl text-left transition-all duration-200 hover:shadow-md hover:scale-[1.01]"
+                            >
+                                <div className="h-12 w-12 2xl:h-14 2xl:w-14 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm shrink-0">
                                             {emp.avatar ? (
                                                 <img src={emp.avatar} alt={name} className="h-full w-full object-cover" />
                                             ) : (

@@ -127,17 +127,17 @@ function PresetCard({
             {...listeners}
             {...attributes}
             className={cn(
-                "group cursor-grab overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg active:cursor-grabbing",
+                "group cursor-grab overflow-hidden rounded-[26px] border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg active:cursor-grabbing 2xl:rounded-[32px]",
                 isDragging && "opacity-30 ring-2 ring-indigo-300"
             )}
         >
-            <div className="flex h-full flex-col p-6">
-                <div className="mb-5 flex items-start justify-between gap-4">
+            <div className="flex h-full flex-col p-4 2xl:p-6">
+                <div className="mb-4 flex items-start justify-between gap-3 2xl:mb-5 2xl:gap-4">
                     <div className={cn(
-                        "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl",
+                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl 2xl:h-14 2xl:w-14",
                         isDetailed ? "bg-emerald-50 text-emerald-600" : "bg-indigo-50 text-indigo-600"
                     )}>
-                        {isDetailed ? <Layout className="h-7 w-7" /> : <Layers className="h-7 w-7" />}
+                        {isDetailed ? <Layout className="h-5 w-5 2xl:h-7 2xl:w-7" /> : <Layers className="h-5 w-5 2xl:h-7 2xl:w-7" />}
                     </div>
 
                     <div className="flex gap-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
@@ -170,7 +170,7 @@ function PresetCard({
                     </div>
                 </div>
 
-                <div className="min-h-[128px] flex-1">
+                <div className="min-h-[90px] flex-1 2xl:min-h-[128px]">
                     <div className="mb-3 flex flex-wrap items-center gap-2">
                         <span className={cn(
                             "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ring-1",
@@ -184,18 +184,18 @@ function PresetCard({
                             </span>
                         )}
                     </div>
-                    <h3 className="line-clamp-2 text-2xl font-black leading-tight text-slate-900 transition-colors group-hover:text-indigo-600">
+                    <h3 className="line-clamp-2 text-xl font-black leading-tight text-slate-900 transition-colors group-hover:text-indigo-600 2xl:text-2xl">
                         {preset.title}
                     </h3>
-                    <p className="mt-3 line-clamp-3 text-sm font-medium leading-relaxed text-slate-500">
+                    <p className="mt-2 line-clamp-2 text-sm font-medium leading-relaxed text-slate-500 2xl:mt-3 2xl:line-clamp-3">
                         {preset.description || "Keine Beschreibung hinterlegt."}
                     </p>
                 </div>
 
-                <div className="mt-6 rounded-3xl border border-slate-100 bg-slate-50/70 p-4">
+                <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-3 2xl:mt-6 2xl:rounded-3xl 2xl:p-4">
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vorlagenpreis</p>
                     <div className="mt-1 flex items-end justify-between gap-3">
-                        <span className="text-3xl font-black text-slate-900">
+                        <span className="text-2xl font-black text-slate-900 2xl:text-3xl">
                             € {(preset.price || 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}
                         </span>
                         <span className="pb-1 text-xs font-black uppercase tracking-widest text-slate-400">
@@ -490,7 +490,7 @@ export default function PositionPresetsPage() {
                         </div>
 
                         {positionPresets.length > 0 ? (
-                            <div className="grid grid-cols-1 gap-5 2xl:grid-cols-2">
+                            <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2 2xl:gap-5">
                                 {positionPresets.map(preset => (
                                     <PresetCard
                                         key={preset.id}

@@ -196,9 +196,9 @@ export default function CRMPage() {
 
     return (
         <div className="dashboard-page">
-            <section className="relative overflow-hidden rounded-[34px] border border-white bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-500 p-7 text-white shadow-xl shadow-indigo-500/20">
-                <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
-                <div className="absolute -bottom-20 left-1/3 h-52 w-52 rounded-full bg-cyan-300/20 blur-3xl" />
+            <section className="relative overflow-hidden rounded-[34px] border border-white/10 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white shadow-2xl shadow-indigo-950/15 sm:p-8">
+                <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-fuchsia-500/20 blur-3xl" />
+                <div className="absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-cyan-300/10 blur-3xl" />
 
                 <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                     <div>
@@ -217,7 +217,7 @@ export default function CRMPage() {
                             resetForm();
                             setIsCreateModalOpen(true);
                         }}
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-lg transition hover:-translate-y-0.5"
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-xl shadow-indigo-950/20 transition hover:-translate-y-0.5"
                     >
                         <Plus className="h-5 w-5" />
                         Neue Anfrage
@@ -535,7 +535,7 @@ function InquiryFormModal({
     showStatus = false,
 }: InquiryFormModalProps) {
     return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-md">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-white/30 p-4">
             <div className="w-full max-w-3xl overflow-hidden rounded-[34px] border border-white bg-white shadow-[0_32px_90px_rgba(15,23,42,0.35)]">
                 <div className="bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-500 px-7 py-6 text-white">
                     <div className="flex items-start justify-between gap-4">

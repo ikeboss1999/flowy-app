@@ -8,6 +8,7 @@ import {
     ChevronDown,
     ChevronUp,
     CheckCircle2,
+    Mail,
 } from "lucide-react";
 import { useOfferSettings } from "@/hooks/useOfferSettings";
 import { cn } from "@/lib/utils";
@@ -152,6 +153,40 @@ export function OfferSettings() {
                             </p>
                         </div>
                     )}
+                </div>
+            </AccordionSection>
+
+            {/* E-Mail Vorlage */}
+            <AccordionSection
+                title="E-Mail Vorlage für Angebotsversand"
+                icon={Mail}
+                isOpen={openSection === "email"}
+                onToggle={() => toggleSection("email")}
+            >
+                <div className="space-y-6">
+                    <p className="text-sm font-medium text-slate-500 mb-2">
+                        Legen Sie das Betreff- und Textmuster fest, das beim Klick auf "Per Mail senden" automatisch vorausgefüllt wird. Verwenden Sie den Platzhalter <code className="bg-slate-100 px-1.5 py-0.5 rounded text-rose-600 font-bold text-xs">{`{documentNumber}`}</code> für die Angebotsnummer.
+                    </p>
+                    <div>
+                        <label className={labelClasses}>Standard-Betreff</label>
+                        <input
+                            type="text"
+                            value={data.emailSubject || ""}
+                            onChange={(e) => updateData({ emailSubject: e.target.value })}
+                            className={inputClasses}
+                            placeholder="z.B. Angebot {documentNumber}"
+                        />
+                    </div>
+                    <div>
+                        <label className={labelClasses}>Standard-Nachrichtentext</label>
+                        <textarea
+                            rows={6}
+                            value={data.emailBody || ""}
+                            onChange={(e) => updateData({ emailBody: e.target.value })}
+                            className={cn(inputClasses, "resize-y font-medium")}
+                            placeholder="Sehr geehrte Damen und Herren..."
+                        />
+                    </div>
                 </div>
             </AccordionSection>
 

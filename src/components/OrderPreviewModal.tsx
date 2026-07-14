@@ -2,11 +2,13 @@
 
 import React from "react";
 import dynamic from "next/dynamic";
-import { X, Download, Loader2 } from "lucide-react";
+import { X, Download, Loader2, Mail } from "lucide-react";
+import { triggerMailto, replacePlaceholders } from "@/lib/email-helpers";
 import { OrderConfirmation } from "@/types/order";
 import { Customer } from "@/types/customer";
 import { CompanyData } from "@/types/company";
 import { useOrderSettings } from "@/hooks/useOrderSettings";
+import { useNotification } from "@/context/NotificationContext";
 import { orderPdfFileName } from "@/lib/document-filenames";
 import { LockedPdfPreview } from "@/components/LockedPdfPreview";
 
@@ -60,8 +62,29 @@ async function fetchSignedOrderPdfUrl(orderId: string) {
 export function OrderPreviewModal({ isOpen, onClose, order, customer, companySettings }: OrderPreviewModalProps) {
     const [isDownloading, setIsDownloading] = React.useState(false);
     const { data: orderSettings } = useOrderSettings();
+    const { showToast } = useNotification();
 
     if (!isOpen || !order) return null;
+
+    const handleSendEmail = () => {
+        const emailSubject = orderSettings?.emailSubject || "Auftragsbestätigung {documentNumber}";
+        const emailBody = orderSettings?.emailBody || "Sehr geehrte Kundin, Sehr geehrter Kunde,\n\nvielen Dank für Ihre Beauftragung. Hiermit erhalten Sie unsere Auftragsbestätigung {documentNumber}.\n\nMit freundlichen Grüßen";
+
+        const subject = replacePlaceholders(emailSubject, {
+            documentNumber: order.orderNumber,
+            customerName: customer?.name || order.customerName,
+            contactPerson: customer?.contactPerson
+        });
+        const body = replacePlaceholders(emailBody, {
+            documentNumber: order.orderNumber,
+            customerName: customer?.name || order.customerName,
+            contactPerson: customer?.contactPerson
+        });
+
+        triggerMailto(customer?.email, subject, body);
+        handleDownloadPDF();
+        showToast("E-Mail geöffnet. PDF wurde erstellt/heruntergeladen - bitte hängen Sie diese im E-Mail-Programm an.", "info");
+    };
 
     const fmt = (d?: string) => d ? new Date(d).toLocaleDateString('de-DE') : '-';
     const isStoredOrder = !!order.pdfUrl;
@@ -112,31 +135,41 @@ export function OrderPreviewModal({ isOpen, onClose, order, customer, companySet
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-4xl h-[92vh] rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/30 animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-5xl h-[92vh] rounded-[32px] shadow-2xl overflow-hidden border border-white/20 flex flex-col animate-in zoom-in-95 duration-200">
 
                 {/* Modal Header */}
-                <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
+                <div className="px-6 py-5 sm:px-8 flex flex-wrap justify-between items-center gap-4 bg-gradient-to-r from-slate-950 via-indigo-950 to-violet-900 text-white shrink-0">
                     <div>
-                        <h2 className="text-lg font-black text-slate-900 tracking-tight leading-none">
+                        <p className="text-[10px] font-black uppercase tracking-[0.35em] text-cyan-200">Auftragsvorschau</p>
+                        <h2 className="text-2xl font-black tracking-tight mt-1">
                             Auftrag #{order.orderNumber}
                         </h2>
-                        <p className="text-sm text-slate-400 font-medium mt-0.5">
+                        <p className="text-sm text-white/60 font-medium mt-1">
                             {order.customerName} · {fmt(order.issueDate)}
                         </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        <button
+                            onClick={handleSendEmail}
+                            className="px-5 py-2.5 bg-white/10 border border-white/10 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-white/15 transition-all flex items-center gap-2"
+                            title="Auftragsbestätigung per E-Mail senden"
+                        >
+                            <Mail className="h-4 w-4" />
+                            Per Mail senden
+                        </button>
+
                         <button
                             onClick={handleDownloadPDF}
                             disabled={isDownloading}
-                            className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-all flex items-center gap-2 disabled:opacity-50"
+                            className="px-5 py-2.5 bg-white/10 border border-white/10 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-white/15 transition-all flex items-center gap-2 disabled:opacity-50"
                         >
                             {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                             PDF
                         </button>
                         <button
                             onClick={onClose}
-                            className="h-9 w-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-200 transition-all shadow-sm"
+                            className="h-9 w-9 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/15 transition-all shadow-sm"
                         >
                             <X className="h-4 w-4" />
                         </button>

@@ -11,6 +11,8 @@ const initialData: OfferSettings = {
     nextOfferNumber: 1,
     defaultIntroText: DEFAULT_INTRO,
     defaultValidityDays: 20,
+    emailSubject: "Angebot {documentNumber}",
+    emailBody: "Sehr geehrte Kundin, Sehr geehrter Kunde,\n\nvielen Dank für Ihr Interesse an unseren Tätigkeiten. Wie vereinbart erhalten Sie beigefügt unser Angebot {documentNumber}.\n\nMit freundlichen Grüßen"
 };
 
 export function useOfferSettings() {

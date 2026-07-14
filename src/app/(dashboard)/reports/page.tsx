@@ -11,7 +11,6 @@ import {
     Edit2,
     Euro,
     FileText,
-    Filter,
     Loader2,
     PieChart,
     ReceiptText,
@@ -24,8 +23,6 @@ import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { cn } from "@/lib/utils";
 import { Invoice, InvoiceStatus } from "@/types/invoice";
 
-type ReportFilter = "billable" | "all" | InvoiceStatus;
-
 interface QuarterData {
     quarter: number;
     label: string;
@@ -37,15 +34,6 @@ interface QuarterData {
     openAmount: number;
     deviation: number;
 }
-
-const filterOptions: Array<{ value: ReportFilter; label: string; hint: string }> = [
-    { value: "billable", label: "Abgerechnet", hint: "ohne Entwürfe & Storno" },
-    { value: "all", label: "Alle", hint: "inkl. Entwürfe" },
-    { value: "pending", label: "Offen", hint: "nicht bezahlt" },
-    { value: "paid", label: "Bezahlt", hint: "erledigt" },
-    { value: "overdue", label: "Überfällig", hint: "Mahnrelevant" },
-    { value: "draft", label: "Entwürfe", hint: "noch nicht final" },
-];
 
 const statusLabels: Record<InvoiceStatus, string> = {
     draft: "Entwurf",
@@ -98,7 +86,7 @@ export default function ReportsPage() {
     const { invoices, updateInvoice, isLoading } = useInvoices();
     const { showToast } = useNotification();
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-    const [filter, setFilter] = useState<ReportFilter>("billable");
+    const [activeView, setActiveView] = useState<"details" | "chart">("details");
     const [expandedQuarters, setExpandedQuarters] = useState<string[]>([]);
     const [deviationModalInvoice, setDeviationModalInvoice] = useState<Invoice | null>(null);
     const [isExporting, setIsExporting] = useState(false);
@@ -118,12 +106,10 @@ export default function ReportsPage() {
             .filter((invoice) => {
                 const year = new Date(invoice.issueDate).getFullYear();
                 if (year !== selectedYear) return false;
-                if (filter === "all") return true;
-                if (filter === "billable") return invoice.status !== "draft" && invoice.status !== "canceled";
-                return invoice.status === filter;
+                return invoice.status !== "draft" && invoice.status !== "canceled";
             })
             .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
-    }, [invoices, selectedYear, filter]);
+    }, [invoices, selectedYear]);
 
     const quarterlyData = useMemo(() => {
         const quarters: QuarterData[] = [1, 2, 3, 4].map((quarter) => ({
@@ -174,7 +160,32 @@ export default function ReportsPage() {
         return new Set(filteredInvoices.map((invoice) => invoice.customerId || invoice.customerName)).size;
     }, [filteredInvoices]);
 
-    const selectedFilter = filterOptions.find((option) => option.value === filter) || filterOptions[0];
+    const comparisonData = useMemo(() => {
+        const build = (year: number) => {
+            const data = [1, 2, 3, 4].map((quarter) => ({ quarter, total: 0, paid: 0, open: 0, count: 0 }));
+            invoices.forEach((invoice) => {
+                const invoiceYear = new Date(invoice.issueDate).getFullYear();
+                if (invoiceYear !== year || invoice.status === "draft" || invoice.status === "canceled") return;
+                const target = data[getQuarter(invoice.issueDate) - 1];
+                const paid = getPaidAmount(invoice);
+                target.total += invoice.totalAmount;
+                target.paid += paid;
+                target.open += Math.max(invoice.totalAmount - paid, 0);
+                target.count += 1;
+            });
+            return data;
+        };
+
+        return {
+            current: build(selectedYear),
+            previous: build(selectedYear - 1),
+        };
+    }, [invoices, selectedYear]);
+
+    const maxChartValue = useMemo(() => {
+        const values = [...comparisonData.current, ...comparisonData.previous].map(item => item.total);
+        return Math.max(...values, 1);
+    }, [comparisonData]);
 
     const toggleQuarter = (quarterId: string) => {
         setExpandedQuarters((prev) =>
@@ -221,7 +232,7 @@ export default function ReportsPage() {
             doc.text(`Finanz-Auswertung ${selectedYear}`, margin + 6, y + 10);
             doc.setFont("helvetica", "normal");
             doc.setFontSize(9);
-            doc.text(`${selectedFilter.label} | ${filteredInvoices.length} Rechnungen | ${customerCount} Kunden`, margin + 6, y + 18);
+            doc.text(`Abgerechnet | ${filteredInvoices.length} Rechnungen | ${customerCount} Kunden`, margin + 6, y + 18);
             y += 35;
 
             const cards = [
@@ -313,7 +324,7 @@ export default function ReportsPage() {
             });
 
             addFooter();
-            doc.save(`Auswertung_${selectedYear}_${selectedFilter.label.replace(/\s+/g, "_")}.pdf`);
+            doc.save(`Auswertung_${selectedYear}.pdf`);
             showToast("PDF-Auswertung wurde erstellt.", "success");
         } catch (error) {
             console.error("Report PDF export failed", error);
@@ -336,15 +347,19 @@ export default function ReportsPage() {
 
     return (
         <div className="dashboard-page">
-            <section className="overflow-hidden rounded-[34px] border border-indigo-100 bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-500 p-6 text-white shadow-2xl shadow-indigo-200/60 lg:p-8">
-                <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+            <section className="relative overflow-hidden rounded-[34px] border border-white/10 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white shadow-2xl shadow-indigo-950/15 lg:p-8">
+                <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-fuchsia-500/20 blur-3xl" />
+                <div className="absolute -bottom-20 left-1/2 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
+                <div className="relative z-10 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
                     <div className="max-w-3xl">
-                        <div className="mb-4 inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.28em] text-cyan-100">
-                            <BarChart3 className="h-4 w-4" />
-                            Auswertungen
+                        <div className="mb-4 inline-flex items-center gap-3 text-cyan-200">
+                            <div className="rounded-2xl border border-white/10 bg-white/10 p-3 shadow-sm">
+                                <BarChart3 className="h-6 w-6" />
+                            </div>
+                            <span className="text-xs font-black uppercase tracking-[0.35em]">Auswertungen</span>
                         </div>
                         <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Finanzberichte</h1>
-                        <p className="mt-3 max-w-2xl text-base font-semibold text-indigo-100 sm:text-lg">
+                        <p className="mt-3 max-w-2xl text-base font-semibold text-white/70 sm:text-lg">
                             Übersichtliche Jahres- und Quartalsauswertung mit offenen Beträgen, Zahlungsabweichungen und PDF-Export.
                         </p>
                     </div>
@@ -357,8 +372,8 @@ export default function ReportsPage() {
                 </div>
             </section>
 
-            <section className="grid gap-4 rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1fr_auto] lg:items-center lg:p-5">
-                <div className="grid gap-3 md:grid-cols-[220px_1fr]">
+            <section className="grid gap-4 rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[260px_auto] lg:items-end lg:justify-between lg:p-5">
+                <div>
                     <label className="space-y-2">
                         <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
                             <Calendar className="h-3.5 w-3.5" />
@@ -374,31 +389,6 @@ export default function ReportsPage() {
                             ))}
                         </select>
                     </label>
-
-                    <div className="space-y-2">
-                        <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            <Filter className="h-3.5 w-3.5" />
-                            Ausgabe
-                        </span>
-                        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
-                            {filterOptions.map((option) => (
-                                <button
-                                    key={option.value}
-                                    type="button"
-                                    onClick={() => setFilter(option.value)}
-                                    className={cn(
-                                        "rounded-2xl border px-4 py-3 text-left transition-all",
-                                        filter === option.value
-                                            ? "border-indigo-200 bg-indigo-600 text-white shadow-lg shadow-indigo-200"
-                                            : "border-slate-200 bg-slate-50 text-slate-500 hover:border-indigo-200 hover:bg-white",
-                                    )}
-                                >
-                                    <p className="text-sm font-black">{option.label}</p>
-                                    <p className={cn("mt-0.5 text-[10px] font-bold", filter === option.value ? "text-indigo-100" : "text-slate-400")}>{option.hint}</p>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
                 </div>
 
                 <button
@@ -421,31 +411,64 @@ export default function ReportsPage() {
                 <SummaryCard icon={FileText} label="Abweichung" value={formatCurrency(yearTotal.deviation)} tone={yearTotal.deviation < 0 ? "red" : "green"} />
             </section>
 
-            <section className="grid gap-5 xl:grid-cols-4">
-                {quarterlyData.map((quarter) => {
-                    const percent = yearTotal.totalAmount > 0 ? Math.round((quarter.totalAmount / yearTotal.totalAmount) * 100) : 0;
-                    return (
-                        <div key={quarter.quarter} className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                            <div className="mb-5 flex items-start justify-between gap-3">
-                                <div>
-                                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-indigo-500">Q{quarter.quarter}</p>
-                                    <h3 className="mt-1 text-lg font-black text-slate-950">{quarter.label}</h3>
-                                </div>
-                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">{percent}%</span>
-                            </div>
-                            <div className="space-y-3">
-                                <MetricLine label="Brutto" value={formatCurrency(quarter.totalAmount)} />
-                                <MetricLine label="Bezahlt" value={formatCurrency(quarter.paidAmount)} tone="text-emerald-600" />
-                                <MetricLine label="Offen" value={formatCurrency(quarter.openAmount)} tone="text-amber-600" />
-                            </div>
-                            <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
-                                <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500" style={{ width: `${Math.min(percent, 100)}%` }} />
-                            </div>
+            <section className="rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-5 grid gap-2 rounded-2xl bg-slate-100 p-1 sm:grid-cols-2">
+                    <button
+                        type="button"
+                        onClick={() => setActiveView("details")}
+                        className={cn("rounded-xl px-4 py-3 text-sm font-black transition", activeView === "details" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}
+                    >
+                        Quartalsliste
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveView("chart")}
+                        className={cn("rounded-xl px-4 py-3 text-sm font-black transition", activeView === "chart" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}
+                    >
+                        Diagramm & Vorjahr
+                    </button>
+                </div>
+
+                {activeView === "chart" && (
+                    <div className="space-y-6">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-indigo-500">Jahresvergleich</p>
+                            <h2 className="mt-1 text-2xl font-black text-slate-950">{selectedYear} gegen {selectedYear - 1}</h2>
+                            <p className="mt-1 text-sm font-semibold text-slate-500">Brutto-Umsatz pro Quartal, damit Trends sofort sichtbar werden.</p>
                         </div>
-                    );
-                })}
+                        <div className="grid gap-5 xl:grid-cols-4">
+                            {comparisonData.current.map((item, index) => {
+                                const previous = comparisonData.previous[index];
+                                const diff = item.total - previous.total;
+                                return (
+                                    <div key={item.quarter} className="rounded-[28px] border border-slate-100 bg-slate-50 p-5">
+                                        <div className="mb-5 flex items-center justify-between">
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quartal</p>
+                                                <h3 className="text-2xl font-black text-slate-950">Q{item.quarter}</h3>
+                                            </div>
+                                            <span className={cn("rounded-full px-3 py-1 text-xs font-black", diff >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700")}>
+                                                {diff >= 0 ? "+" : ""}{formatCurrency(diff)}
+                                            </span>
+                                        </div>
+                                        <div className="flex h-44 items-end gap-4">
+                                            <ChartBar label={String(selectedYear - 1)} value={previous.total} max={maxChartValue} muted />
+                                            <ChartBar label={String(selectedYear)} value={item.total} max={maxChartValue} />
+                                        </div>
+                                        <div className="mt-5 space-y-2">
+                                            <MetricLine label="Aktuell" value={formatCurrency(item.total)} />
+                                            <MetricLine label="Vorjahr" value={formatCurrency(previous.total)} tone="text-slate-500" />
+                                            <MetricLine label="Offen" value={formatCurrency(item.open)} tone="text-amber-600" />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </section>
 
+            {activeView === "details" && (
             <section className="space-y-4">
                 {quarterlyData.map((quarter) => {
                     const quarterId = `Q${quarter.quarter}`;
@@ -548,6 +571,7 @@ export default function ReportsPage() {
                     );
                 })}
             </section>
+            )}
 
             <DeviationModal
                 isOpen={!!deviationModalInvoice}
@@ -606,6 +630,28 @@ function MetricLine({ label, value, tone = "text-slate-900" }: { label: string; 
         <div className="flex items-center justify-between gap-4">
             <span className="text-sm font-bold text-slate-400">{label}</span>
             <span className={cn("font-black tabular-nums", tone)}>{value}</span>
+        </div>
+    );
+}
+
+function ChartBar({ label, value, max, muted = false }: { label: string; value: number; max: number; muted?: boolean }) {
+    const height = Math.max(8, Math.round((value / max) * 100));
+
+    return (
+        <div className="flex flex-1 flex-col items-center justify-end gap-3 self-stretch">
+            <div className="flex h-full w-full items-end justify-center rounded-2xl bg-white p-2">
+                <div
+                    className={cn(
+                        "w-full rounded-xl transition-all",
+                        muted ? "bg-slate-300" : "bg-gradient-to-t from-indigo-600 to-fuchsia-500"
+                    )}
+                    style={{ height: `${height}%` }}
+                />
+            </div>
+            <div className="text-center">
+                <p className="text-xs font-black text-slate-500">{label}</p>
+                <p className="text-[10px] font-bold text-slate-400">{formatCurrency(value)}</p>
+            </div>
         </div>
     );
 }

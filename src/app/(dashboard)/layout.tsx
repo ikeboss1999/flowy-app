@@ -26,7 +26,7 @@ export default function DashboardLayout({
             <AppLock />
             <main className={cn(
                 "flex-1 min-h-screen text-lg transition-all duration-300",
-                isDrawerLayout ? "ml-0 pt-20" : "ml-[var(--sidebar-width,20rem)] [.sidebar-collapsed_&]:ml-0"
+                isDrawerLayout ? "ml-0 pt-20" : "ml-[var(--flowy-sidebar-offset,5.5rem)] [.sidebar-collapsed_&]:ml-0"
             )}>
                 {children}
             </main>

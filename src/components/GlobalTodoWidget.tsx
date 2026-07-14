@@ -68,7 +68,7 @@ export function GlobalTodoWidget() {
             {/* Overlay */}
             <div 
                 className={cn(
-                    "fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[110] transition-opacity duration-500",
+                    "fixed inset-0 bg-white/30 z-[110] transition-opacity duration-500",
                     isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
                 )}
                 onClick={() => setIsOpen(false)}
