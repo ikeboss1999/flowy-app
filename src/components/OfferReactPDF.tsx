@@ -221,8 +221,68 @@ const styles = StyleSheet.create({
         paddingLeft: 14,
         paddingRight: 14,
     },
+    discountBlock: {
+        fontSize: 9.5,
+        lineHeight: 1.5,
+        marginBottom: 16,
+        backgroundColor: '#f8fafc',
+        borderWidth: 0.5,
+        borderColor: '#e2e8f0',
+        borderRadius: 4,
+        paddingTop: 9,
+        paddingBottom: 9,
+        paddingLeft: 12,
+        paddingRight: 12,
+    },
     validityBold: {
         fontFamily: 'Helvetica-Bold',
+    },
+
+    acceptanceTitle: {
+        fontSize: 20,
+        fontFamily: 'Helvetica-Bold',
+        marginTop: 18,
+        marginBottom: 10,
+    },
+    acceptanceText: {
+        fontSize: 11,
+        lineHeight: 1.65,
+        marginBottom: 18,
+    },
+    acceptanceInfoBox: {
+        borderWidth: 0.5,
+        borderColor: '#dddddd',
+        borderRadius: 4,
+        paddingTop: 12,
+        paddingBottom: 12,
+        paddingLeft: 14,
+        paddingRight: 14,
+        marginBottom: 20,
+    },
+    acceptanceRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        borderBottomWidth: 0.5,
+        borderBottomColor: '#eeeeee',
+        paddingTop: 5,
+        paddingBottom: 5,
+        fontSize: 10,
+    },
+    acceptanceLabel: {
+        fontFamily: 'Helvetica-Bold',
+        color: '#333333',
+    },
+    signatureGrid: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 38,
+    },
+    signatureField: {
+        width: '45%',
+        borderTopWidth: 0.7,
+        borderTopColor: '#000000',
+        paddingTop: 7,
+        fontSize: 9,
     },
 
     // ─── Signature ───────────────────────────────────
@@ -288,6 +348,9 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
     const isRC = offer.isReverseCharge === true;
     const ceoName = `${companySettings.ceoFirstName || ''} ${companySettings.ceoLastName || ''}`.trim();
     const processor = (offer.processor && offer.processor !== 'Max Mustermann') ? offer.processor : ceoName || '-';
+    const discountDays = Number(offer.discountDays) || 0;
+    const discountPercent = Number(offer.discountPercent) || 0;
+    const showDiscount = offer.discountEnabled === true && discountDays > 0 && discountPercent > 0;
 
     const getSalutation = () => {
         if (customer?.type === 'business') return 'Sehr geehrte Damen und Herren,';
@@ -535,6 +598,15 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
                 </View>
 
                 {/* ── Signature ── */}
+                {showDiscount && (
+                    <View wrap={false} style={styles.discountBlock}>
+                        <Text>
+                            <Text style={styles.validityBold}>Skonto: </Text>
+                            Bei Zahlung innerhalb von {discountDays} Tagen ab Rechnungsdatum gewähren wir {discountPercent.toLocaleString('de-DE')} % Skonto.
+                        </Text>
+                    </View>
+                )}
+
                 <View wrap={false} style={styles.signatureSection}>
                     <Text>Mit freundlichen Grüßen</Text>
                     <Text style={styles.signatureName}>{ceoName}</Text>
@@ -578,6 +650,87 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
                 </View>
 
             </Page>
+
+            {offer.orderAcceptanceFormEnabled && (
+                <Page size="A4" style={styles.page}>
+                    {offer.status === 'draft' && (
+                        <Text fixed style={styles.draftWatermark}>ENTWURF</Text>
+                    )}
+
+                    <View style={styles.header}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <View>
+                                {companySettings.logo ? (
+                                    <Image src={companySettings.logo} style={styles.logoImg} />
+                                ) : (
+                                    <View>
+                                        <Text style={styles.companyName}>
+                                            <Text style={styles.companySlash}>//</Text>
+                                            {(companySettings.companyName || 'FIRMA').toUpperCase()}
+                                        </Text>
+                                        <Text style={styles.companyTagline}>Ihr Partner für Bauprojekte</Text>
+                                    </View>
+                                )}
+                            </View>
+                            <View style={styles.headerAddress}>
+                                <Text>
+                                    {companySettings.street} | {companySettings.zipCode} {companySettings.city}
+                                </Text>
+                                <Text>
+                                    {companySettings.email} | Tel.: {companySettings.phone}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    <Text style={styles.acceptanceTitle}>Auftragserteilung</Text>
+                    <Text style={styles.acceptanceText}>
+                        Hiermit beauftrage ich die Ausführung der angebotenen Leistungen gemäß dem vorliegenden Angebot.
+                    </Text>
+
+                    <View style={styles.acceptanceInfoBox}>
+                        <View style={styles.acceptanceRow}>
+                            <Text style={styles.acceptanceLabel}>Angebotsnummer</Text>
+                            <Text>{offer.offerNumber}</Text>
+                        </View>
+                        <View style={styles.acceptanceRow}>
+                            <Text style={styles.acceptanceLabel}>Angebotsdatum</Text>
+                            <Text>{fmt(offer.issueDate)}</Text>
+                        </View>
+                        <View style={styles.acceptanceRow}>
+                            <Text style={styles.acceptanceLabel}>Kunde</Text>
+                            <Text>{customer?.name || offer.customerName || '-'}</Text>
+                        </View>
+                        <View style={styles.acceptanceRow}>
+                            <Text style={styles.acceptanceLabel}>Bauvorhaben</Text>
+                            <Text>{offer.constructionProject || '-'}</Text>
+                        </View>
+                        <View style={[styles.acceptanceRow, { borderBottomWidth: 0 }]}>
+                            <Text style={styles.acceptanceLabel}>Auftragssumme</Text>
+                            <Text style={styles.validityBold}>
+                                {'€ ' + offer.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                            </Text>
+                        </View>
+                    </View>
+
+                    <Text style={styles.acceptanceText}>
+                        Der Auftraggeber bestätigt, das Angebot gelesen zu haben und erteilt auf dieser Grundlage den Auftrag zur Ausführung.
+                    </Text>
+
+                    <View style={styles.signatureGrid}>
+                        <View style={styles.signatureField}>
+                            <Text>Ort, Datum</Text>
+                        </View>
+                        <View style={styles.signatureField}>
+                            <Text>Unterschrift Auftraggeber</Text>
+                        </View>
+                    </View>
+
+                    <View style={{ marginTop: 45, width: '45%', borderTopWidth: 0.7, borderTopColor: '#000000', paddingTop: 7 }}>
+                        <Text style={{ fontSize: 9 }}>Name / Firmenstempel</Text>
+                    </View>
+                </Page>
+            )}
         </Document>
     );
 };

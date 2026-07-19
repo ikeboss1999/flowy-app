@@ -241,7 +241,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
   const [presetSearchTerm, setPresetSearchTerm] = useState('');
   const [expandedPresetFolders, setExpandedPresetFolders] = useState<Record<string, boolean>>({});
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const { showToast } = useNotification();
+  const { showToast, showConfirm } = useNotification();
   const pdfRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -696,6 +696,10 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     }
 
     const customer = customers.find((c) => c.id === customerId);
+    if (customer?.status === "draft") {
+      setError("Der ausgewählte Kunde ist noch ein Entwurf und kann nicht für Rechnungen verwendet werden.");
+      return;
+    }
 
     const invoiceData: Invoice = {
       id: initialData?.id || Math.random().toString(36).substr(2, 9),
@@ -781,6 +785,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
 
         setIsGeneratingPDF(false);
         showToast("Rechnung wurde finalisiert und als PDF gespeichert.", "success");
+        window.setTimeout(() => router.push("/invoices"), 1000);
       } catch (e) {
         console.error("PDF Upload Failed", e);
         setIsGeneratingPDF(false);
@@ -799,7 +804,14 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
       });
     }
 
-    showToast("Rechnung wurde als Entwurf gespeichert.", "success");
+    showConfirm({
+      title: "Entwurf gespeichert",
+      message: "Rechnung wurde als Entwurf gespeichert. Möchten Sie in der Rechnungserstellung bleiben oder zur Rechnungsübersicht wechseln?",
+      confirmLabel: "Zur Übersicht",
+      cancelLabel: "Hier bleiben",
+      variant: "primary",
+      onConfirm: () => router.push("/invoices"),
+    });
   };
 
   const handleSaveNewCustomer = (newCustomer: Customer) => {

@@ -38,6 +38,24 @@ export function AppSettings() {
         fetchReleases();
     }, []);
 
+    const renderInlineMarkdown = (text: string) => {
+        return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, index) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={index}>{part.slice(2, -2)}</strong>;
+            }
+
+            if (part.startsWith('`') && part.endsWith('`')) {
+                return (
+                    <code key={index} className="bg-slate-100 text-pink-600 px-1 py-0.5 rounded text-sm">
+                        {part.slice(1, -1)}
+                    </code>
+                );
+            }
+
+            return part;
+        });
+    };
+
     const parseMarkdown = (text: string) => {
         if (!text) return null;
         
@@ -47,22 +65,17 @@ export function AppSettings() {
             if (line.startsWith('### ')) return <h5 key={i} className="text-base font-bold text-slate-700 mt-4 mb-2">{line.replace('### ', '')}</h5>;
             
             if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-                let content = line.trim().substring(2);
-                content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                content = content.replace(/`(.*?)`/g, '<code class="bg-slate-100 text-pink-600 px-1 py-0.5 rounded text-sm">$1</code>');
+                const content = line.trim().substring(2);
                 return (
                     <li key={i} className="ml-5 list-disc text-slate-600 mb-1.5 marker:text-indigo-400">
-                        <span dangerouslySetInnerHTML={{ __html: content }} />
+                        <span>{renderInlineMarkdown(content)}</span>
                     </li>
                 );
             }
             
             if (line.trim() === '') return <div key={i} className="h-2" />;
             
-            let content = line;
-            content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            content = content.replace(/`(.*?)`/g, '<code class="bg-slate-100 text-pink-600 px-1 py-0.5 rounded text-sm">$1</code>');
-            return <p key={i} className="text-slate-600 leading-relaxed mb-2" dangerouslySetInnerHTML={{ __html: content }} />;
+            return <p key={i} className="text-slate-600 leading-relaxed mb-2">{renderInlineMarkdown(line)}</p>;
         });
     };
 

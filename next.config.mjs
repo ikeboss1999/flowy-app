@@ -14,7 +14,7 @@ const nextConfig = {
         ignoreBuildErrors: false,
     },
     eslint: {
-        ignoreDuringBuilds: true,
+        ignoreDuringBuilds: false,
     },
     webpack: (config) => {
         config.externals.push('better-sqlite3');

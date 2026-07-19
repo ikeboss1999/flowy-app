@@ -9,6 +9,7 @@ import {
     ChevronUp,
     CheckCircle2,
     Mail,
+    Percent,
 } from "lucide-react";
 import { useOfferSettings } from "@/hooks/useOfferSettings";
 import { cn } from "@/lib/utils";
@@ -104,7 +105,7 @@ export function OfferSettings() {
                     <div>
                         <label className={labelClasses}>Standard-Angebotsgültigkeit (in Tagen)</label>
                         <p className="text-xs text-slate-400 font-medium mb-3 ml-1">
-                            Wenn in der Angebotserstellung kein festes Gültigkeitsdatum gewählt wird, greift dieser Standardwert (z.B. "20 Tage ab Ausstellungsdatum").
+                            Wenn in der Angebotserstellung kein festes Gültigkeitsdatum gewählt wird, greift dieser Standardwert (z.B. &quot;20 Tage ab Ausstellungsdatum&quot;).
                         </p>
                         <input
                             type="number"
@@ -130,9 +131,9 @@ export function OfferSettings() {
                         <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 mb-4 flex items-start gap-3">
                             <CheckCircle2 className="h-5 w-5 text-indigo-500 shrink-0 mt-0.5" />
                             <p className="text-sm text-indigo-900 font-medium leading-relaxed">
-                                <span className="font-bold">Hinweis zur Anrede:</span> Sie müssen hier keine Anrede (wie "Sehr geehrte Damen und Herren") eintragen! 
+                                <span className="font-bold">Hinweis zur Anrede:</span> Sie müssen hier keine Anrede (wie &quot;Sehr geehrte Damen und Herren&quot;) eintragen! 
                                 Das System generiert die korrekte Anrede <span className="font-bold">vollautomatisch</span> basierend auf dem ausgewählten Kunden. 
-                                Tragen Sie hier nur den eigentlichen Text ein (z.B. "vielen Dank für Ihre Anfrage...").
+                                Tragen Sie hier nur den eigentlichen Text ein (z.B. &quot;vielen Dank für Ihre Anfrage...&quot;).
                             </p>
                         </div>
                         <textarea
@@ -156,6 +157,61 @@ export function OfferSettings() {
                 </div>
             </AccordionSection>
 
+            <AccordionSection
+                title="Skonto"
+                icon={Percent}
+                isOpen={openSection === "discount"}
+                onToggle={() => toggleSection("discount")}
+            >
+                <div className="space-y-6">
+                    <label className="flex items-center justify-between gap-5 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+                        <div>
+                            <p className="text-sm font-black text-slate-800">Skonto standardmäßig anbieten</p>
+                            <p className="mt-1 text-xs font-semibold text-slate-400">
+                                Diese Werte werden bei neuen Angeboten automatisch vorgeschlagen.
+                            </p>
+                        </div>
+                        <input
+                            type="checkbox"
+                            checked={!!data.defaultDiscountEnabled}
+                            onChange={(e) => updateData({ defaultDiscountEnabled: e.target.checked })}
+                            className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                    </label>
+
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                        <div>
+                            <label className={labelClasses}>Skontotage</label>
+                            <input
+                                type="number"
+                                min="1"
+                                value={data.defaultDiscountDays || 5}
+                                onChange={(e) => updateData({ defaultDiscountDays: Number(e.target.value) })}
+                                className={inputClasses}
+                            />
+                        </div>
+                        <div>
+                            <label className={labelClasses}>Skonto in %</label>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.1"
+                                value={data.defaultDiscountPercent || 3}
+                                onChange={(e) => updateData({ defaultDiscountPercent: Number(e.target.value) })}
+                                className={inputClasses}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5">
+                        <p className="text-xs font-black uppercase tracking-widest text-indigo-500">Vorschau im Angebot</p>
+                        <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-700">
+                            Bei Zahlung innerhalb von {data.defaultDiscountDays || 5} Tagen ab Rechnungsdatum gewähren wir {data.defaultDiscountPercent || 3} % Skonto.
+                        </p>
+                    </div>
+                </div>
+            </AccordionSection>
+
             {/* E-Mail Vorlage */}
             <AccordionSection
                 title="E-Mail Vorlage für Angebotsversand"
@@ -165,7 +221,7 @@ export function OfferSettings() {
             >
                 <div className="space-y-6">
                     <p className="text-sm font-medium text-slate-500 mb-2">
-                        Legen Sie das Betreff- und Textmuster fest, das beim Klick auf "Per Mail senden" automatisch vorausgefüllt wird. Verwenden Sie den Platzhalter <code className="bg-slate-100 px-1.5 py-0.5 rounded text-rose-600 font-bold text-xs">{`{documentNumber}`}</code> für die Angebotsnummer.
+                        Legen Sie das Betreff- und Textmuster fest, das beim Klick auf &quot;Per Mail senden&quot; automatisch vorausgefüllt wird. Verwenden Sie den Platzhalter <code className="bg-slate-100 px-1.5 py-0.5 rounded text-rose-600 font-bold text-xs">{`{documentNumber}`}</code> für die Angebotsnummer.
                     </p>
                     <div>
                         <label className={labelClasses}>Standard-Betreff</label>

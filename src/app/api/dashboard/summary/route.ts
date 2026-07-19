@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getUserSession } from '@/lib/auth-server';
+import { requireApiSession } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    const session = await getUserSession();
-    if (!session?.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireApiSession(['invoices_read', 'reports_read']);
+    if (!auth.ok) return auth.response;
+    const companyOwnerId = auth.companyOwnerId;
 
     const year = new Date().getFullYear();
     const startDate = `${year}-01-01`;
@@ -17,7 +18,7 @@ export async function GET() {
     try {
         // Try calling the single aggregation RPC first for maximum performance
         const { data: rpcData, error: rpcError } = await client.rpc('get_dashboard_summary', {
-            p_user_id: session.userId,
+            p_user_id: companyOwnerId,
             p_year: year
         });
 
@@ -38,13 +39,13 @@ export async function GET() {
         client
             .from('invoices')
             .select('status, totalAmount')
-            .eq('userId', session.userId)
+            .eq('userId', companyOwnerId)
             .gte('issueDate', startDate)
             .lte('issueDate', endDate),
         client
             .from('offers')
             .select('status, totalAmount')
-            .eq('userId', session.userId)
+            .eq('userId', companyOwnerId)
             .gte('issueDate', startDate)
             .lte('issueDate', endDate),
     ]);

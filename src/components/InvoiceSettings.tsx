@@ -388,7 +388,7 @@ export function InvoiceSettings() {
             >
                 <div className="space-y-6">
                     <p className="text-sm font-medium text-slate-500 mb-2">
-                        Legen Sie das Betreff- und Textmuster fest, das beim Klick auf "Per Mail senden" automatisch vorausgefüllt wird. Verwenden Sie den Platzhalter <code className="bg-slate-100 px-1.5 py-0.5 rounded text-rose-600 font-bold text-xs">{`{documentNumber}`}</code> für die Rechnungsnummer.
+                        Legen Sie das Betreff- und Textmuster fest, das beim Klick auf &quot;Per Mail senden&quot; automatisch vorausgefüllt wird. Verwenden Sie den Platzhalter <code className="bg-slate-100 px-1.5 py-0.5 rounded text-rose-600 font-bold text-xs">{`{documentNumber}`}</code> für die Rechnungsnummer.
                     </p>
                     <div>
                         <label className={labelClasses}>Standard-Betreff</label>

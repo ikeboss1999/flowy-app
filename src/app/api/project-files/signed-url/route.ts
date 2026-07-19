@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getUserSession } from '@/lib/auth-server';
+import { requireApiSession } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const session = await getUserSession();
-    const userId = session?.companyOwnerId || session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireApiSession('projects_files_read');
+    if (!auth.ok) return auth.response;
+    const userId = auth.companyOwnerId;
 
     if (!supabaseAdmin) {
         return NextResponse.json({ error: 'Storage not configured (missing SUPABASE_SERVICE_ROLE_KEY)' }, { status: 503 });

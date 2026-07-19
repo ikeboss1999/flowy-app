@@ -13,6 +13,9 @@ interface OfferPDFProps {
 export const OfferPDF = forwardRef<HTMLDivElement, OfferPDFProps>(({ offer, customer, companySettings, offerSettings }, ref) => {
     // Determine logo to use
     const logoSrc = companySettings?.logo;
+    const discountDays = Number(offer.discountDays) || 0;
+    const discountPercent = Number(offer.discountPercent) || 0;
+    const showDiscount = offer.discountEnabled === true && discountDays > 0 && discountPercent > 0;
 
     // Format dates
     const formatDate = (dateString: string) => {
@@ -218,6 +221,13 @@ export const OfferPDF = forwardRef<HTMLDivElement, OfferPDFProps>(({ offer, cust
                 </div>
             </div>
 
+            {showDiscount && (
+                <div style={{ fontSize: '10pt', lineHeight: 1.5, marginBottom: '25px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '12px 14px' }}>
+                    <strong>Skonto: </strong>
+                    Bei Zahlung innerhalb von {discountDays} Tagen ab Rechnungsdatum gewähren wir {discountPercent.toLocaleString('de-DE')} % Skonto.
+                </div>
+            )}
+
             {/* Signature Area */}
             <div style={{ fontSize: '10pt', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                 <div>Mit freundlichen Grüßen<br /><br /></div>
@@ -242,6 +252,55 @@ export const OfferPDF = forwardRef<HTMLDivElement, OfferPDFProps>(({ offer, cust
                     </div>
                 </div>
             </div>
+
+            {offer.orderAcceptanceFormEnabled && (
+                <div style={{ pageBreakBefore: 'always', minHeight: '296mm', paddingTop: '40px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '55px' }}>
+                        <div>
+                            {logoSrc ? (
+                                <img src={logoSrc} alt="Logo" style={{ maxHeight: '90px', maxWidth: '320px', objectFit: 'contain' }} />
+                            ) : (
+                                <div style={{ fontSize: '28pt', fontWeight: 900, fontStyle: 'italic', color: '#111', letterSpacing: '-1px' }}>
+                                    <span style={{ color: '#f43f5e', marginRight: '4px' }}>//</span>{(companySettings?.companyName || 'FLOWY').toUpperCase()}
+                                </div>
+                            )}
+                        </div>
+                        <div style={{ textAlign: 'right', fontSize: '10pt', color: '#444', borderTop: '1px solid #ddd', paddingTop: '8px', minWidth: '320px', lineHeight: '1.5' }}>
+                            {(companySettings?.street || '-')} | {(companySettings?.zipCode || '')} {(companySettings?.city || '')}<br />
+                            {(companySettings?.email || '-')} | Tel.: {(companySettings?.phone || '-')}
+                        </div>
+                    </div>
+
+                    <h2 style={{ fontSize: '22pt', marginBottom: '16px' }}>Auftragserteilung</h2>
+                    <p style={{ fontSize: '12pt', lineHeight: 1.6, marginBottom: '24px' }}>
+                        Hiermit beauftrage ich die Ausführung der angebotenen Leistungen gemäß dem vorliegenden Angebot.
+                    </p>
+                    <div style={{ border: '1px solid #ddd', borderRadius: '6px', padding: '16px', marginBottom: '28px', fontSize: '11pt' }}>
+                        {[
+                            ['Angebotsnummer', offer.offerNumber],
+                            ['Angebotsdatum', formatDate(offer.issueDate)],
+                            ['Kunde', customer?.name || offer.customerName || '-'],
+                            ['Bauvorhaben', offer.constructionProject || '-'],
+                            ['Auftragssumme', `€ ${offer.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}`],
+                        ].map(([label, value]) => (
+                            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', padding: '8px 0' }}>
+                                <strong>{label}</strong>
+                                <span>{value}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <p style={{ fontSize: '12pt', lineHeight: 1.6 }}>
+                        Der Auftraggeber bestätigt, das Angebot gelesen zu haben und erteilt auf dieser Grundlage den Auftrag zur Ausführung.
+                    </p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '80px' }}>
+                        <div style={{ width: '45%', borderTop: '1px solid #000', paddingTop: '10px' }}>Ort, Datum</div>
+                        <div style={{ width: '45%', borderTop: '1px solid #000', paddingTop: '10px' }}>Unterschrift Auftraggeber</div>
+                    </div>
+                    <div style={{ width: '45%', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '70px' }}>
+                        Name / Firmenstempel
+                    </div>
+                </div>
+            )}
         </div>
     );
 

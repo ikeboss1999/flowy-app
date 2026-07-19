@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { OfferForm } from "@/components/OfferForm";
 import { useOffers } from "@/hooks/useOffers";
 
@@ -11,8 +12,15 @@ interface EditOfferPageProps {
 }
 
 function EditOfferContent({ id }: { id: string }) {
+    const router = useRouter();
     const { offers, isLoading } = useOffers();
     const offer = offers.find(o => o.id === id);
+
+    useEffect(() => {
+        if (!isLoading && offer && offer.status !== 'draft') {
+            router.replace('/offers');
+        }
+    }, [offer, isLoading, router]);
 
     if (isLoading) {
         return <div className="dashboard-page text-slate-400 font-bold">Laden...</div>;
@@ -28,8 +36,8 @@ function EditOfferContent({ id }: { id: string }) {
 
     if (offer.status !== 'draft') {
         return (
-            <div className="dashboard-page text-amber-600 font-bold bg-amber-50 rounded-2xl border border-amber-100">
-                Nur Angebotsentwürfe können bearbeitet werden.
+            <div className="dashboard-page text-slate-400 font-bold">
+                Weiterleitung zur Angebotsübersicht...
             </div>
         );
     }

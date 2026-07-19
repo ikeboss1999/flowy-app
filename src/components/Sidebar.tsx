@@ -214,9 +214,17 @@ export function Sidebar() {
 
         const sharedSettings = [`/api/settings?userId=${activeUserId}`];
         const byHref: Record<string, string[]> = {
+            "/dashboard": ["/api/dashboard/summary"],
             "/customers": [`/api/customers?userId=${activeUserId}`],
             "/employees": [`/api/employees?userId=${activeUserId}`],
-            "/projects": [`/api/projects?userId=${activeUserId}`, ...sharedSettings],
+            "/projects": [
+                `/api/projects?userId=${activeUserId}`,
+                `/api/customers?userId=${activeUserId}`,
+                `/api/invoices?userId=${activeUserId}`,
+                `/api/offers?userId=${activeUserId}`,
+                `/api/orders?userId=${activeUserId}`,
+                ...sharedSettings,
+            ],
             "/services": [`/api/services?userId=${activeUserId}`],
             "/vehicles": [`/api/vehicles?userId=${activeUserId}`],
             "/time-tracking": [
@@ -233,8 +241,8 @@ export function Sidebar() {
             "/offers": [`/api/offers?userId=${activeUserId}`, `/api/customers?userId=${activeUserId}`, ...sharedSettings],
             "/orders": [`/api/orders?userId=${activeUserId}`, `/api/customers?userId=${activeUserId}`, ...sharedSettings],
             "/invoices": [`/api/invoices?userId=${activeUserId}`, `/api/customers?userId=${activeUserId}`, ...sharedSettings],
-            "/archive": [`/api/archive-files?userId=${activeUserId}`, `/api/archive-folders?userId=${activeUserId}`],
-            "/crm": [`/api/crm?userId=${activeUserId}`],
+            "/archive": ["/api/archive-files", "/api/archive-folders"],
+            "/crm": ["/api/crm"],
             "/calendar": [`/api/calendar-events?userId=${activeUserId}`],
         };
 

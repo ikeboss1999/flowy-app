@@ -132,7 +132,8 @@ export async function getUserSession() {
                 role: roleData?.role || defaultRole,
                 permissions: roleData?.permissions || defaultPerms,
                 email: email,
-                name: (payload as any).name || email.split('@')[0]
+                name: (payload as any).name || email.split('@')[0],
+                employeeId: payload.employeeId
             };
         }
     }

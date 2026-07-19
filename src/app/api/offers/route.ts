@@ -80,6 +80,20 @@ export async function POST(request: Request) {
 
         const client = supabaseAdmin || supabase;
 
+        if (offer.customerId) {
+            const { data: customer, error: customerError } = await client
+                .from('customers')
+                .select('id,status')
+                .eq('id', offer.customerId)
+                .eq('userId', companyOwnerId)
+                .maybeSingle();
+
+            if (customerError) throw customerError;
+            if (customer?.status === 'draft') {
+                return NextResponse.json({ error: 'Draft customers cannot be used for offers' }, { status: 400 });
+            }
+        }
+
         const { data: existingOffer, error: existingError } = offer.id
             ? await client
                 .from('offers')

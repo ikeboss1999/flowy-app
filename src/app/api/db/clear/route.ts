@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getUserSession } from '@/lib/auth-server';
+import { productionDisabledResponse } from '@/lib/api-auth';
 
 export async function POST(request: Request) {
+    const disabled = productionDisabledResponse();
+    if (disabled) return disabled;
+
     const session = await getUserSession();
 
     if (!session) {

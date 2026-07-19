@@ -43,13 +43,18 @@ export function CustomerSearchSelect({
     const [sortBy, setSortBy] = useState<'name' | 'number' | 'recent'>('name');
     const modalRef = useRef<HTMLDivElement>(null);
 
+    const selectableCustomers = useMemo(
+        () => customers.filter((customer) => customer.status !== "draft"),
+        [customers]
+    );
+
     const selectedCustomer = useMemo(() =>
-        customers.find(c => c.id === selectedId),
-        [customers, selectedId]);
+        selectableCustomers.find(c => c.id === selectedId),
+        [selectableCustomers, selectedId]);
 
     // Filter and sort customer list
     const processedCustomers = useMemo(() => {
-        let result = customers.filter(c => {
+        let result = selectableCustomers.filter(c => {
             const lowSearch = search.toLowerCase();
             const nameMatch = (c.name || '').toLowerCase().includes(lowSearch);
             const emailMatch = (c.email || '').toLowerCase().includes(lowSearch);
@@ -73,7 +78,7 @@ export function CustomerSearchSelect({
                 return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
             }
         });
-    }, [customers, search, filterType, sortBy]);
+    }, [selectableCustomers, search, filterType, sortBy]);
 
     // Handle clicks outside the modal to close it
     useEffect(() => {
@@ -340,7 +345,7 @@ export function CustomerSearchSelect({
                         
                         {/* Footer Summary */}
                         <div className="px-7 py-4 border-t border-slate-100 bg-white flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-                            <span>Kunden gesamt: {customers.length}</span>
+                            <span>Verfügbare Kunden: {selectableCustomers.length}</span>
                             <span>Gefiltert: {processedCustomers.length}</span>
                         </div>
                     </div>

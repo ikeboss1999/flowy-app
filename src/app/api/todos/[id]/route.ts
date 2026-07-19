@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getUserSession } from '@/lib/auth-server';
+import { requireApiSession } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-    const session = await getUserSession();
-    const userId = session?.userId;
+    const auth = await requireApiSession();
+    if (!auth.ok) return auth.response;
+    const userId = auth.actorUserId;
     const { id } = params;
-
-    if (!userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     try {
         const client = supabaseAdmin || supabase;

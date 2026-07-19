@@ -23,6 +23,18 @@ const ALLOWED_MIME_TYPES = new Set([
 
 const getClient = () => supabaseAdmin || supabase;
 
+async function verifyCustomerAccess(customerId: string, companyOwnerId: string) {
+    const { data, error } = await getClient()
+        .from("customers")
+        .select("id")
+        .eq("id", customerId)
+        .eq("userId", companyOwnerId)
+        .maybeSingle();
+
+    if (error) throw error;
+    return !!data;
+}
+
 function sanitizePart(value: string) {
     return value
         .toLowerCase()
@@ -85,6 +97,11 @@ export async function POST(request: Request) {
         if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
         if (!ALLOWED_MIME_TYPES.has(file.type)) {
             return NextResponse.json({ error: `File type "${file.type}" is not allowed.` }, { status: 400 });
+        }
+
+        const canAccessCustomer = await verifyCustomerAccess(customerId, companyOwnerId);
+        if (!canAccessCustomer) {
+            return NextResponse.json({ error: "Customer not found" }, { status: 404 });
         }
 
         const ext = file.name.split(".").pop()?.replace(/[^a-zA-Z0-9]/g, "") ?? "";

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getUserSession } from '@/lib/auth-server';
+import { requireApiSession } from '@/lib/api-auth';
 import { isAllowed } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -21,9 +21,9 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 // ─── GET: list files for a project ───────────────────────────────────────────
 
 export async function GET(request: Request) {
-    const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireApiSession('projects_files_read');
+    if (!auth.ok) return auth.response;
+    const userId = auth.companyOwnerId;
 
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId');
@@ -54,9 +54,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Zu viele Dateiuploads. Bitte warten Sie eine Minute.' }, { status: 429 });
     }
 
-    const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireApiSession('projects_write');
+    if (!auth.ok) return auth.response;
+    const userId = auth.companyOwnerId;
 
     if (!supabaseAdmin) {
         return NextResponse.json(
@@ -78,6 +78,22 @@ export async function POST(request: Request) {
 
     if (!file || !projectId || !folder) {
         return NextResponse.json({ error: 'Missing file, projectId, or folder' }, { status: 400 });
+    }
+
+    const { data: project, error: projectError } = await supabaseAdmin
+        .from('projects')
+        .select('id')
+        .eq('id', projectId)
+        .eq('userId', userId)
+        .maybeSingle();
+
+    if (projectError) {
+        console.error('[ProjectFiles] Project verification failed:', projectError);
+        return NextResponse.json({ error: 'Project verification failed' }, { status: 500 });
+    }
+
+    if (!project) {
+        return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
     }
 
     // Validate file size
@@ -141,9 +157,9 @@ export async function POST(request: Request) {
 // ─── PATCH: update a file ─────────────────────────────────────────────────────
 
 export async function PATCH(request: Request) {
-    const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireApiSession('projects_write');
+    if (!auth.ok) return auth.response;
+    const userId = auth.companyOwnerId;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -181,9 +197,9 @@ export async function PATCH(request: Request) {
 // ─── DELETE: remove a file ────────────────────────────────────────────────────
 
 export async function DELETE(request: Request) {
-    const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireApiSession('projects_write');
+    if (!auth.ok) return auth.response;
+    const userId = auth.companyOwnerId;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -222,7 +238,8 @@ export async function DELETE(request: Request) {
         const { error: dbError } = await client
             .from('project_files')
             .delete()
-            .eq('id', id);
+            .eq('id', id)
+            .eq('userId', userId);
 
         if (dbError) throw dbError;
 

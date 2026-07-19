@@ -2,17 +2,14 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { nanoid } from 'nanoid';
-import { getUserSession } from '@/lib/auth-server';
+import { requireApiSession } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const session = await getUserSession();
-    const userId = session?.userId;
-
-    if (!userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireApiSession();
+    if (!auth.ok) return auth.response;
+    const userId = auth.actorUserId;
 
     try {
         const client = supabaseAdmin || supabase;
@@ -31,12 +28,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-    const session = await getUserSession();
-    const userId = session?.userId;
-
-    if (!userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireApiSession();
+    if (!auth.ok) return auth.response;
+    const userId = auth.actorUserId;
 
     try {
         const payload = await request.json();
@@ -63,12 +57,9 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    const session = await getUserSession();
-    const userId = session?.userId;
-
-    if (!userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireApiSession();
+    if (!auth.ok) return auth.response;
+    const userId = auth.actorUserId;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

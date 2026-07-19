@@ -1,7 +1,9 @@
 export const fetcher = async (url: string) => {
     const response = await fetch(url, {
         credentials: 'same-origin',
-        cache: 'no-store',
+        headers: {
+            Accept: 'application/json',
+        },
     });
 
     if (!response.ok) {

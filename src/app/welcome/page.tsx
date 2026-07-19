@@ -117,7 +117,7 @@ export default function WelcomePage() {
                                         <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center mb-3">
                                             <Plus className="h-5 w-5 text-indigo-400" />
                                         </div>
-                                        <span className="text-xs font-bold text-white/70">2. "Zum Home-Bildschirm"</span>
+                                        <span className="text-xs font-bold text-white/70">2. &quot;Zum Home-Bildschirm&quot;</span>
                                     </div>
                                 </div>
                             </div>

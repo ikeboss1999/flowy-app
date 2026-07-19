@@ -73,15 +73,6 @@ export async function middleware(request: NextRequest) {
     }
 
     const isAuthenticated = isSessionValid || isSbValid;
-    console.log("[Middleware Debug]", {
-        pathname,
-        hasSessionToken: !!sessionToken,
-        hasSbAccessToken: !!sbAccessToken,
-        isSessionValid,
-        isSbValid,
-        isAuthenticated
-    });
-
     // 2. Protect API Routes (except auth)
     if (isApiRoute) {
         if (!isPublicApi && !isAuthenticated) {

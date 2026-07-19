@@ -18,6 +18,8 @@ import {
   ChevronUp,
   ChevronDown,
   Info,
+  Percent,
+  FileCheck2,
 } from "lucide-react";
 import { useNotification } from "@/context/NotificationContext";
 import {
@@ -204,7 +206,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
   const [presetSearchTerm, setPresetSearchTerm] = useState('');
   const [expandedPresetFolders, setExpandedPresetFolders] = useState<Record<string, boolean>>({});
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const { showToast } = useNotification();
+  const { showToast, showConfirm } = useNotification();
 
   useEffect(() => {
     if (isPresetDrawerOpen) {
@@ -249,6 +251,12 @@ export function OfferForm({ initialData }: OfferFormProps) {
   const [processor, setProcessor] = useState(initialData?.processor || "");
   const [introText, setIntroText] = useState(initialData?.introText || "");
   const [notes, setNotes] = useState(initialData?.notes || "");
+  const [discountEnabled, setDiscountEnabled] = useState(!!initialData?.discountEnabled);
+  const [discountDays, setDiscountDays] = useState(initialData?.discountDays || 5);
+  const [discountPercent, setDiscountPercent] = useState(initialData?.discountPercent || 3);
+  const [orderAcceptanceFormEnabled, setOrderAcceptanceFormEnabled] = useState(
+    !!initialData?.orderAcceptanceFormEnabled
+  );
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const [items, setItems] = useState<OfferItem[]>(
@@ -274,6 +282,9 @@ export function OfferForm({ initialData }: OfferFormProps) {
     const next = String(offerSettings.nextOfferNumber).padStart(2, "0");
     setOfferNumber(`${year}/A-${next}`);
     setIntroText(offerSettings.defaultIntroText);
+    setDiscountEnabled(!!offerSettings.defaultDiscountEnabled);
+    setDiscountDays(offerSettings.defaultDiscountDays || 5);
+    setDiscountPercent(offerSettings.defaultDiscountPercent || 3);
   }, [isOfferSettingsLoading, offerSettings, initialData, settingsLoaded]);
 
   // Set default processor from company settings
@@ -461,6 +472,13 @@ export function OfferForm({ initialData }: OfferFormProps) {
       validationErrors.push("Positionsbeschreibung bei allen berechneten Positionen ausfüllen");
     }
 
+    if (discountEnabled && (!discountDays || discountDays < 1)) {
+      validationErrors.push("Skontotage eintragen");
+    }
+    if (discountEnabled && (!discountPercent || discountPercent <= 0)) {
+      validationErrors.push("Skonto in Prozent eintragen");
+    }
+
     if (validationErrors.length > 0) {
       setError(`Bitte prüfe folgende Pflichtfelder:\n- ${validationErrors.join("\n- ")}`);
       return;
@@ -469,6 +487,12 @@ export function OfferForm({ initialData }: OfferFormProps) {
     setIsSaving(true);
     try {
       const customer = customers.find((c) => c.id === customerId);
+      if (customer?.status === "draft") {
+        setError("Der ausgewählte Kunde ist noch ein Entwurf und kann nicht für Angebote verwendet werden.");
+        setIsSaving(false);
+        return;
+      }
+
       const offerData: Offer = {
         id: initialData?.id || Math.random().toString(36).substring(2, 11),
         offerNumber,
@@ -487,6 +511,10 @@ export function OfferForm({ initialData }: OfferFormProps) {
         taxAmount,
         totalAmount,
         isReverseCharge,
+        discountEnabled,
+        discountDays: discountEnabled ? Number(discountDays) || 0 : undefined,
+        discountPercent: discountEnabled ? Number(discountPercent) || 0 : undefined,
+        orderAcceptanceFormEnabled,
         status,
         projectId: projectId || undefined,
         notes: notes || undefined,
@@ -538,12 +566,19 @@ export function OfferForm({ initialData }: OfferFormProps) {
         });
       }
 
-      showToast(
-        status === "draft"
-          ? "Angebot wurde als Entwurf gespeichert."
-          : "Angebot wurde finalisiert und als PDF gespeichert.",
-        "success",
-      );
+      if (status === "draft") {
+        showConfirm({
+          title: "Entwurf gespeichert",
+          message: "Angebot wurde als Entwurf gespeichert. Möchten Sie in der Angebotserstellung bleiben oder zur Angebotsübersicht wechseln?",
+          confirmLabel: "Zur Übersicht",
+          cancelLabel: "Hier bleiben",
+          variant: "primary",
+          onConfirm: () => router.push("/offers"),
+        });
+      } else {
+        showToast("Angebot wurde finalisiert und als PDF gespeichert.", "success");
+        window.setTimeout(() => router.push("/offers"), 1000);
+      }
     } catch (e) {
       console.error("Failed to save offer", e);
       setError("Speichern fehlgeschlagen. Die PDF konnte nicht gespeichert werden. Bitte erneut versuchen.");
@@ -1174,6 +1209,103 @@ export function OfferForm({ initialData }: OfferFormProps) {
               className={cn(inputClasses, "resize-y")}
               placeholder="vielen Dank für Ihre Anfrage..."
             />
+          </div>
+        </div>
+
+        <div className="space-y-5 xl:col-span-2 rounded-[1.5rem] border border-slate-100 bg-white p-5 xl:p-6 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+              <FileCheck2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-800 tracking-tight">
+                Optionen & Angebotsbedingungen
+              </h3>
+              <p className="text-xs font-semibold text-slate-400">
+                Zusätzliche Bedingungen und Dokumentseiten für dieses Angebot.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
+            <div className={cn(
+              "rounded-2xl border p-5 transition-all",
+              discountEnabled ? "border-indigo-200 bg-indigo-50/60" : "border-slate-100 bg-slate-50"
+            )}>
+              <label className="flex cursor-pointer items-start justify-between gap-4">
+                <div className="flex gap-3">
+                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-indigo-600 shadow-sm">
+                    <Percent className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-black text-slate-900">Skonto anbieten</p>
+                    <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-500">
+                      Skontohinweis im Angebot anzeigen.
+                    </p>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={discountEnabled}
+                  onChange={(e) => setDiscountEnabled(e.target.checked)}
+                  className="mt-2 h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+              </label>
+
+              {discountEnabled && (
+                <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className={labelClasses}>Skontotage</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={discountDays}
+                      onChange={(e) => setDiscountDays(Number(e.target.value))}
+                      className={inputClasses}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClasses}>Skonto in %</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={discountPercent}
+                      onChange={(e) => setDiscountPercent(Number(e.target.value))}
+                      className={inputClasses}
+                    />
+                  </div>
+                  <div className="sm:col-span-2 rounded-xl border border-indigo-100 bg-white p-4 text-sm font-semibold text-slate-600">
+                    Bei Zahlung innerhalb von {discountDays || 0} Tagen ab Rechnungsdatum gewähren wir {discountPercent || 0} % Skonto.
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className={cn(
+              "rounded-2xl border p-5 transition-all",
+              orderAcceptanceFormEnabled ? "border-emerald-200 bg-emerald-50/60" : "border-slate-100 bg-slate-50"
+            )}>
+              <label className="flex cursor-pointer items-start justify-between gap-4">
+                <div className="flex gap-3">
+                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-emerald-600 shadow-sm">
+                    <FileCheck2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-black text-slate-900">Auftragserteilung-Formular anhängen</p>
+                    <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-500">
+                      Erstellt automatisch eine zusätzliche Unterschriftenseite im Angebots-PDF.
+                    </p>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={orderAcceptanceFormEnabled}
+                  onChange={(e) => setOrderAcceptanceFormEnabled(e.target.checked)}
+                  className="mt-2 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+              </label>
+            </div>
           </div>
         </div>
             </div>

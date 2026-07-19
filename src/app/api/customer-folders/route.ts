@@ -9,6 +9,18 @@ export const dynamic = "force-dynamic";
 
 const getClient = () => supabaseAdmin || supabase;
 
+async function verifyCustomerAccess(customerId: string, companyOwnerId: string) {
+    const { data, error } = await getClient()
+        .from("customers")
+        .select("id")
+        .eq("id", customerId)
+        .eq("userId", companyOwnerId)
+        .maybeSingle();
+
+    if (error) throw error;
+    return !!data;
+}
+
 export async function GET(request: Request) {
     const session = await getUserSession();
     const companyOwnerId = session?.companyOwnerId;
@@ -48,6 +60,11 @@ export async function POST(request: Request) {
     try {
         const { customerId, name } = await request.json();
         if (!customerId || !name?.trim()) return NextResponse.json({ error: "Missing data" }, { status: 400 });
+
+        const canAccessCustomer = await verifyCustomerAccess(customerId, companyOwnerId);
+        if (!canAccessCustomer) {
+            return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+        }
 
         const { data, error } = await safeInsert(getClient(), "archive_folders", {
             id: nanoid(),

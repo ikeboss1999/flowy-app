@@ -16,6 +16,9 @@ export interface OfferSettings {
     nextOfferNumber: number;
     defaultIntroText: string;
     defaultValidityDays?: number;
+    defaultDiscountEnabled?: boolean;
+    defaultDiscountDays?: number;
+    defaultDiscountPercent?: number;
     emailSubject?: string;
     emailBody?: string;
 }
@@ -38,6 +41,10 @@ export interface Offer {
     taxAmount: number;
     totalAmount: number;
     isReverseCharge?: boolean;
+    discountEnabled?: boolean;
+    discountDays?: number;
+    discountPercent?: number;
+    orderAcceptanceFormEnabled?: boolean;
     status: OfferStatus;
     projectId?: string;
     notes?: string;

@@ -5,19 +5,30 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { Employee } from '@/types/employee';
 import { isAllowed } from '@/lib/rate-limit';
 import { decryptEmployee } from '@/lib/encryption';
+import { getClientIp, parseJsonBody } from '@/lib/api-validation';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
+const employeeLoginSchema = z.object({
+    staffId: z.string().trim().min(1).max(80),
+    pin: z.string().trim().min(1).max(32),
+});
+
 export async function POST(request: Request) {
     try {
-        const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
-        if (!isAllowed(`login-${ip}`, 5, 60 * 1000)) {
+        const ip = getClientIp(request);
+        if (!isAllowed(`employee-login-ip-${ip}`, 20, 60 * 1000)) {
             return NextResponse.json({ message: 'Zu viele Login-Versuche. Bitte versuchen Sie es in einer Minute erneut.' }, { status: 429 });
         }
 
-        const body = await request.json();
-        const staffId = body.staffId?.toString().trim();
-        const pin = body.pin?.toString().trim();
+        const parsed = await parseJsonBody(request, employeeLoginSchema);
+        if (!parsed.ok) return parsed.response;
+
+        const { staffId, pin } = parsed.data;
+        if (!isAllowed(`employee-login-staff-${ip}-${staffId}`, 5, 5 * 60 * 1000)) {
+            return NextResponse.json({ message: 'Zu viele Login-Versuche. Bitte versuchen Sie es in fünf Minuten erneut.' }, { status: 429 });
+        }
 
         if (!staffId || !pin) {
             return NextResponse.json({ message: 'Verfügernummer und PIN sind erforderlich' }, { status: 400 });
@@ -70,7 +81,8 @@ export async function POST(request: Request) {
         const sessionToken = await createSessionToken({
             userId: employee.userId!,
             email: employee.personalData.email || 'employee@flowy.local',
-            role: 'employee'
+            role: 'employee',
+            employeeId: employee.id
         });
 
         const supabaseToken = await createSupabaseToken({

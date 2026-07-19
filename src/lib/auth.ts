@@ -73,7 +73,7 @@ export const verifyPassword = async (password: string, hash: string): Promise<bo
     return await bcrypt.compare(password, hash);
 };
 
-export const createSessionToken = async (payload: { userId: string; email: string; role: string }) => {
+export const createSessionToken = async (payload: { userId: string; email: string; role: string; employeeId?: string }) => {
     return await new SignJWT(payload)
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
@@ -84,7 +84,7 @@ export const createSessionToken = async (payload: { userId: string; email: strin
 export const verifySessionToken = async (token: string) => {
     try {
         const { payload } = await jwtVerify(token, getJWTSecret());
-        return payload as { userId: string; email: string; role: string };
+        return payload as { userId: string; email: string; role: string; employeeId?: string };
     } catch (error) {
         return null;
     }

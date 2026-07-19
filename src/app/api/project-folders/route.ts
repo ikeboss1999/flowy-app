@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getUserSession } from '@/lib/auth-server';
+import { requireApiSession } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireApiSession('projects_files_read');
+    if (!auth.ok) return auth.response;
+    const userId = auth.companyOwnerId;
 
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId');
@@ -35,9 +35,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-    const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireApiSession('projects_write');
+    if (!auth.ok) return auth.response;
+    const userId = auth.companyOwnerId;
 
     try {
         const { projectId, name } = await request.json();
@@ -65,9 +65,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireApiSession('projects_write');
+    if (!auth.ok) return auth.response;
+    const userId = auth.companyOwnerId;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -81,6 +81,7 @@ export async function PATCH(request: Request) {
             .from('project_folders')
             .select('name, projectId')
             .eq('id', id)
+            .eq('userId', userId)
             .single();
 
         const { data: folder, error: folderError } = await client
@@ -110,9 +111,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    const session = await getUserSession();
-    const userId = session?.userId;
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireApiSession('projects_write');
+    if (!auth.ok) return auth.response;
+    const userId = auth.companyOwnerId;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

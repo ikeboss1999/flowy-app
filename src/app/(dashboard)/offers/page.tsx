@@ -303,16 +303,17 @@ export default function OffersPage() {
             {/* Offers List */}
             {processedOffers.length > 0 ? (
                 <div className="dashboard-table-card">
-                    <table className="w-full min-w-[1040px]">
+                    <table className="w-full min-w-[1180px]">
                         <thead className="bg-slate-50 border-b border-slate-100">
                             <tr>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Angebot</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Kunde</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Datum</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Gültig bis</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
-                                <th className="px-6 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-widest">Betrag</th>
-                                <th className="px-6 py-4 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Aktionen</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Angebot</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Kunde</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Bauvorhaben</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Datum</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Gültig bis</th>
+                                <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                                <th className="px-4 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-widest">Betrag</th>
+                                <th className="px-4 py-4 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Aktionen</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -324,21 +325,23 @@ export default function OffersPage() {
                                         className="group hover:bg-slate-50/30 transition-colors cursor-pointer"
                                         onClick={() => setPreviewOffer(offer)}
                                     >
-                                        <td className="px-6 py-5">
-                                            <p className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                        <td className="px-4 py-4">
+                                            <p className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
                                                 #{offer.offerNumber}
                                             </p>
-                                            {offer.constructionProject && (
-                                                <p className="text-xs text-slate-400 mt-0.5">{offer.constructionProject}</p>
-                                            )}
                                         </td>
-                                        <td className="px-6 py-5">
+                                        <td className="px-4 py-4">
                                             <div className="flex items-center gap-2">
                                                 <User className="h-4 w-4 text-slate-300" />
-                                                <p className="text-base font-medium text-slate-800">{offer.customerName}</p>
+                                                <p className="max-w-[210px] truncate text-sm font-semibold text-slate-800">{offer.customerName}</p>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5">
+                                        <td className="px-4 py-4">
+                                            <p className="max-w-[240px] truncate text-sm font-semibold text-slate-700">
+                                                {offer.constructionProject || <span className="text-slate-300">-</span>}
+                                            </p>
+                                        </td>
+                                        <td className="px-4 py-4">
                                             <div className="flex items-center gap-2">
                                                 <Calendar className="h-4 w-4 text-slate-300" />
                                                 <p className="text-sm font-medium text-slate-600">
@@ -346,7 +349,7 @@ export default function OffersPage() {
                                                 </p>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5">
+                                        <td className="px-4 py-4">
                                             <p className="text-sm font-medium text-slate-600">
                                                 {offer.validUntil
                                                     ? new Date(offer.validUntil).toLocaleDateString('de-DE')
@@ -354,7 +357,7 @@ export default function OffersPage() {
                                                 }
                                             </p>
                                         </td>
-                                        <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
+                                        <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                                             <select
                                                 value={offer.status}
                                                 onChange={(e) => {
@@ -397,18 +400,21 @@ export default function OffersPage() {
                                                 <option value="expired">Abgelaufen</option>
                                             </select>
                                         </td>
-                                        <td className="px-6 py-5 text-right">
+                                        <td className="px-4 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <Euro className="h-4 w-4 text-slate-300" />
-                                                <p className="text-base font-black text-slate-900">
+                                                <p className="text-sm font-black text-slate-900">
                                                     {offer.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                                                 </p>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 text-center">
+                                        <td className="px-4 py-4 text-center">
                                             <div className="flex items-center justify-center gap-2">
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); setPreviewOffer(offer); }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setPreviewOffer(offer);
+                                                    }}
                                                     className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all"
                                                 >
                                                     <Eye className="h-4 w-4" />

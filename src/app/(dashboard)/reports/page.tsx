@@ -15,6 +15,7 @@ import {
     PieChart,
     ReceiptText,
     TrendingUp,
+    User,
 } from "lucide-react";
 import { DeviationModal } from "@/components/DeviationModal";
 import { useNotification } from "@/context/NotificationContext";
@@ -86,7 +87,8 @@ export default function ReportsPage() {
     const { invoices, updateInvoice, isLoading } = useInvoices();
     const { showToast } = useNotification();
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-    const [activeView, setActiveView] = useState<"details" | "chart">("details");
+    const [activeView, setActiveView] = useState<"details" | "chart" | "open">("details");
+    const [openCustomerFilter, setOpenCustomerFilter] = useState("all");
     const [expandedQuarters, setExpandedQuarters] = useState<string[]>([]);
     const [deviationModalInvoice, setDeviationModalInvoice] = useState<Invoice | null>(null);
     const [isExporting, setIsExporting] = useState(false);
@@ -187,6 +189,54 @@ export default function ReportsPage() {
         return Math.max(...values, 1);
     }, [comparisonData]);
 
+    const openReceivables = useMemo(() => {
+        return filteredInvoices
+            .map((invoice) => {
+                const paidAmount = getPaidAmount(invoice);
+                const openAmount = Math.max(invoice.totalAmount - paidAmount, 0);
+                return { invoice, paidAmount, openAmount };
+            })
+            .filter((item) => item.openAmount > 0.01)
+            .sort((a, b) => {
+                if (b.openAmount !== a.openAmount) return b.openAmount - a.openAmount;
+                return new Date(a.invoice.issueDate).getTime() - new Date(b.invoice.issueDate).getTime();
+            });
+    }, [filteredInvoices]);
+
+    const openCustomerOptions = useMemo(() => {
+        const customers = new Map<string, { id: string; name: string; amount: number; count: number }>();
+        openReceivables.forEach(({ invoice, openAmount }) => {
+            const id = invoice.customerId || invoice.customerName || "unknown";
+            const current = customers.get(id) || {
+                id,
+                name: invoice.customerName || "Unbekannter Kunde",
+                amount: 0,
+                count: 0,
+            };
+            current.amount += openAmount;
+            current.count += 1;
+            customers.set(id, current);
+        });
+
+        return Array.from(customers.values()).sort((a, b) => b.amount - a.amount);
+    }, [openReceivables]);
+
+    const selectedOpenReceivables = useMemo(() => {
+        if (openCustomerFilter === "all") return openReceivables;
+        return openReceivables.filter(({ invoice }) => (invoice.customerId || invoice.customerName || "unknown") === openCustomerFilter);
+    }, [openCustomerFilter, openReceivables]);
+
+    const openReceivablesTotal = useMemo(() => {
+        return selectedOpenReceivables.reduce(
+            (acc, item) => ({
+                gross: acc.gross + item.invoice.totalAmount,
+                paid: acc.paid + item.paidAmount,
+                open: acc.open + item.openAmount,
+            }),
+            { gross: 0, paid: 0, open: 0 },
+        );
+    }, [selectedOpenReceivables]);
+
     const toggleQuarter = (quarterId: string) => {
         setExpandedQuarters((prev) =>
             prev.includes(quarterId)
@@ -223,6 +273,119 @@ export default function ReportsPage() {
                 doc.addPage();
                 y = 16;
             };
+
+            if (activeView === "open") {
+                const selectedCustomer = openCustomerOptions.find((customer) => customer.id === openCustomerFilter);
+                const filterLabel = openCustomerFilter === "all" ? "Alle Kunden" : selectedCustomer?.name || "Ausgewählter Kunde";
+
+                doc.setFillColor(15, 23, 42);
+                doc.roundedRect(margin, y, pageWidth - margin * 2, 27, 4, 4, "F");
+                doc.setTextColor(255, 255, 255);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(17);
+                doc.text(`Offene Posten ${selectedYear}`, margin + 6, y + 10);
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9);
+                doc.text(`${filterLabel} | ${selectedOpenReceivables.length} Rechnung${selectedOpenReceivables.length === 1 ? "" : "en"}`, margin + 6, y + 18);
+                y += 37;
+
+                const cards = [
+                    ["Brutto gesamt", openReceivablesTotal.gross],
+                    ["Bereits bezahlt", openReceivablesTotal.paid],
+                    ["Offen", openReceivablesTotal.open],
+                ];
+                const cardWidth = (pageWidth - margin * 2 - 5) / 3;
+                cards.forEach(([label, amount], index) => {
+                    const x = margin + index * (cardWidth + 2.5);
+                    doc.setFillColor(248, 250, 252);
+                    doc.setDrawColor(226, 232, 240);
+                    doc.roundedRect(x, y, cardWidth, 18, 3, 3, "FD");
+                    doc.setFontSize(7);
+                    doc.setTextColor(100, 116, 139);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(String(label).toUpperCase(), x + 3, y + 5.5);
+                    doc.setFontSize(11);
+                    doc.setTextColor(15, 23, 42);
+                    doc.text(formatCurrency(Number(amount)), x + 3, y + 13);
+                });
+                y += 30;
+
+                if (selectedOpenReceivables.length === 0) {
+                    doc.setTextColor(100, 116, 139);
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(11);
+                    doc.text("Keine offenen Posten für die aktuelle Auswahl.", margin, y);
+                    addFooter();
+                    doc.save(`Offene_Posten_${selectedYear}_${filterLabel.replace(/[^a-zA-Z0-9-]+/g, "_")}.pdf`);
+                    showToast("PDF für offene Posten wurde erstellt.", "success");
+                    return;
+                }
+
+                doc.setFillColor(15, 23, 42);
+                doc.rect(margin, y, pageWidth - margin * 2, 7, "F");
+                doc.setFontSize(7);
+                doc.setTextColor(255, 255, 255);
+                doc.setFont("helvetica", "bold");
+                doc.text("Nr.", margin + 2, y + 4.7);
+                doc.text("Kunde", margin + 28, y + 4.7);
+                doc.text("Datum", margin + 92, y + 4.7);
+                doc.text("Status", margin + 116, y + 4.7);
+                doc.text("Brutto", pageWidth - 63, y + 4.7, { align: "right" });
+                doc.text("Bezahlt", pageWidth - 38, y + 4.7, { align: "right" });
+                doc.text("Offen", pageWidth - margin - 2, y + 4.7, { align: "right" });
+                y += 8;
+
+                selectedOpenReceivables.forEach(({ invoice, paidAmount, openAmount }) => {
+                    ensureSpace(10);
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(15, 23, 42);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(invoice.invoiceNumber || "-", margin + 2, y + 5);
+                    doc.setFont("helvetica", "normal");
+                    const customer = doc.splitTextToSize(invoice.customerName || "-", 58)[0];
+                    doc.text(customer, margin + 28, y + 5);
+                    doc.text(formatDate(invoice.issueDate), margin + 92, y + 5);
+                    doc.text(statusLabels[invoice.status] || invoice.status, margin + 116, y + 5);
+                    doc.text(formatCurrency(invoice.totalAmount), pageWidth - 63, y + 5, { align: "right" });
+                    doc.text(formatCurrency(paidAmount), pageWidth - 38, y + 5, { align: "right" });
+                    doc.setFont("helvetica", "bold");
+                    doc.text(formatCurrency(openAmount), pageWidth - margin - 2, y + 5, { align: "right" });
+                    doc.setDrawColor(226, 232, 240);
+                    doc.line(margin, y + 8, pageWidth - margin, y + 8);
+                    y += 9;
+                });
+
+                if (openCustomerFilter === "all" && openCustomerOptions.length > 0) {
+                    y += 8;
+                    ensureSpace(16);
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(12);
+                    doc.setTextColor(15, 23, 42);
+                    doc.text("Zusammenfassung nach Kunden", margin, y);
+                    y += 8;
+
+                    openCustomerOptions.forEach((customer) => {
+                        ensureSpace(8);
+                        doc.setFontSize(8);
+                        doc.setFont("helvetica", "normal");
+                        doc.setTextColor(15, 23, 42);
+                        doc.text(doc.splitTextToSize(customer.name, 120)[0], margin + 2, y + 4.5);
+                        doc.setTextColor(100, 116, 139);
+                        doc.text(`${customer.count} offene Rechnung${customer.count === 1 ? "" : "en"}`, margin + 92, y + 4.5);
+                        doc.setFont("helvetica", "bold");
+                        doc.setTextColor(180, 83, 9);
+                        doc.text(formatCurrency(customer.amount), pageWidth - margin - 2, y + 4.5, { align: "right" });
+                        doc.setDrawColor(226, 232, 240);
+                        doc.line(margin, y + 7, pageWidth - margin, y + 7);
+                        y += 8;
+                    });
+                }
+
+                addFooter();
+                doc.save(`Offene_Posten_${selectedYear}_${filterLabel.replace(/[^a-zA-Z0-9-]+/g, "_")}.pdf`);
+                showToast("PDF für offene Posten wurde erstellt.", "success");
+                return;
+            }
 
             doc.setFillColor(79, 70, 229);
             doc.roundedRect(margin, y, pageWidth - margin * 2, 25, 4, 4, "F");
@@ -412,7 +575,7 @@ export default function ReportsPage() {
             </section>
 
             <section className="rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="mb-5 grid gap-2 rounded-2xl bg-slate-100 p-1 sm:grid-cols-2">
+                <div className="mb-5 grid gap-2 rounded-2xl bg-slate-100 p-1 sm:grid-cols-3">
                     <button
                         type="button"
                         onClick={() => setActiveView("details")}
@@ -426,6 +589,13 @@ export default function ReportsPage() {
                         className={cn("rounded-xl px-4 py-3 text-sm font-black transition", activeView === "chart" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}
                     >
                         Diagramm & Vorjahr
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveView("open")}
+                        className={cn("rounded-xl px-4 py-3 text-sm font-black transition", activeView === "open" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}
+                    >
+                        Offene Posten
                     </button>
                 </div>
 
@@ -464,6 +634,99 @@ export default function ReportsPage() {
                                 );
                             })}
                         </div>
+                    </div>
+                )}
+
+                {activeView === "open" && (
+                    <div className="space-y-5">
+                        <div className="grid gap-4 xl:grid-cols-[1fr_320px] xl:items-end">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-500">Offene Posten</p>
+                                <h2 className="mt-1 text-2xl font-black text-slate-950">Forderungen nach Kunde</h2>
+                                <p className="mt-1 text-sm font-semibold text-slate-500">
+                                    Alle nicht vollständig bezahlten Rechnungen im Jahr {selectedYear}, optional nach Kunde gefiltert.
+                                </p>
+                            </div>
+                            <label className="space-y-2">
+                                <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    <User className="h-3.5 w-3.5" />
+                                    Kunde filtern
+                                </span>
+                                <select
+                                    value={openCustomerFilter}
+                                    onChange={(event) => setOpenCustomerFilter(event.target.value)}
+                                    className="h-[52px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-black text-slate-800 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                >
+                                    <option value="all">Alle Kunden</option>
+                                    {openCustomerOptions.map((customer) => (
+                                        <option key={customer.id} value={customer.id}>
+                                            {customer.name} ({customer.count}) - {formatCurrency(customer.amount)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-3">
+                            <SummaryCard icon={ReceiptText} label="Brutto gesamt" value={formatCurrency(openReceivablesTotal.gross)} />
+                            <SummaryCard icon={Euro} label="Bereits bezahlt" value={formatCurrency(openReceivablesTotal.paid)} tone="green" />
+                            <SummaryCard icon={AlertCircle} label="Offen" value={formatCurrency(openReceivablesTotal.open)} tone="amber" strong />
+                        </div>
+
+                        {selectedOpenReceivables.length === 0 ? (
+                            <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
+                                <AlertCircle className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+                                <p className="font-black text-slate-800">Keine offenen Posten gefunden</p>
+                                <p className="mt-1 text-sm font-semibold text-slate-400">Für die aktuelle Auswahl ist alles bezahlt.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white">
+                                <div className="hidden grid-cols-[1fr_1.35fr_0.75fr_0.85fr_0.85fr_0.85fr] gap-4 border-b border-slate-100 bg-slate-950 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white xl:grid">
+                                    <span>Rechnung</span>
+                                    <span>Kunde</span>
+                                    <span>Status</span>
+                                    <span className="text-right">Brutto</span>
+                                    <span className="text-right">Bezahlt</span>
+                                    <span className="text-right">Offen</span>
+                                </div>
+                                <div className="divide-y divide-slate-100">
+                                    {selectedOpenReceivables.map(({ invoice, paidAmount, openAmount }) => (
+                                        <div key={invoice.id} className="grid gap-4 px-5 py-4 transition hover:bg-slate-50 xl:grid-cols-[1fr_1.35fr_0.75fr_0.85fr_0.85fr_0.85fr] xl:items-center">
+                                            <div>
+                                                <p className="font-black text-slate-950">#{invoice.invoiceNumber}</p>
+                                                <p className="text-xs font-bold text-slate-400">{formatDate(invoice.issueDate)}</p>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="truncate font-black text-slate-800">{invoice.customerName}</p>
+                                                <p className="truncate text-xs font-semibold text-slate-400">{invoice.constructionProject || invoice.subjectExtra || "Kein Betreff hinterlegt"}</p>
+                                            </div>
+                                            <div>
+                                                <span className={cn("inline-flex rounded-full border px-3 py-1 text-xs font-black", statusStyles[invoice.status])}>
+                                                    {statusLabels[invoice.status]}
+                                                </span>
+                                            </div>
+                                            <AmountCell value={invoice.totalAmount} />
+                                            <AmountCell value={paidAmount} className="text-emerald-600" />
+                                            <AmountCell value={openAmount} className="text-amber-600" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {openCustomerFilter === "all" && openCustomerOptions.length > 0 && (
+                            <div className="grid gap-3 lg:grid-cols-2">
+                                {openCustomerOptions.map((customer) => (
+                                    <div key={customer.id} className="flex items-center justify-between gap-4 rounded-3xl border border-slate-100 bg-slate-50 px-5 py-4">
+                                        <div className="min-w-0">
+                                            <p className="truncate font-black text-slate-900">{customer.name}</p>
+                                            <p className="text-xs font-bold text-slate-400">{customer.count} offene Rechnung{customer.count === 1 ? "" : "en"}</p>
+                                        </div>
+                                        <p className="shrink-0 text-lg font-black tabular-nums text-amber-600">{formatCurrency(customer.amount)}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </section>

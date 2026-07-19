@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
     Calendar as CalendarIcon,
     ChevronLeft,
@@ -20,6 +21,8 @@ interface DatePickerProps {
 export function DatePicker({ value, onChange, label, placeholder, className }: DatePickerProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
 
     // Current view state
     const [viewDate, setViewDate] = useState(value ? new Date(value) : new Date());
@@ -27,13 +30,43 @@ export function DatePicker({ value, onChange, label, placeholder, className }: D
     // Close on outside click
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            const clickedTrigger = containerRef.current?.contains(target);
+            const clickedDropdown = dropdownRef.current?.contains(target);
+            if (!clickedTrigger && !clickedDropdown) {
                 setIsOpen(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const updatePosition = () => {
+            const rect = containerRef.current?.getBoundingClientRect();
+            if (!rect) return;
+            const width = 340;
+            const padding = 16;
+            const left = Math.min(
+                Math.max(rect.left, padding),
+                window.innerWidth - width - padding
+            );
+            setDropdownPosition({
+                top: rect.bottom + 12,
+                left,
+            });
+        };
+
+        updatePosition();
+        window.addEventListener("resize", updatePosition);
+        window.addEventListener("scroll", updatePosition, true);
+        return () => {
+            window.removeEventListener("resize", updatePosition);
+            window.removeEventListener("scroll", updatePosition, true);
+        };
+    }, [isOpen]);
 
     const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
     const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
@@ -116,8 +149,12 @@ export function DatePicker({ value, onChange, label, placeholder, className }: D
                 )}
             </div>
 
-            {isOpen && (
-                <div className="absolute left-0 mt-3 w-[340px] bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 z-[100] animate-in fade-in zoom-in-95 duration-200 origin-top-left">
+            {isOpen && typeof document !== 'undefined' && createPortal((
+                <div
+                    ref={dropdownRef}
+                    style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
+                    className="fixed w-[340px] bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 z-[10000] animate-in fade-in zoom-in-95 duration-200 origin-top-left"
+                >
                     {/* Header */}
                     <div className="flex justify-between items-center mb-6">
                         <button
@@ -196,7 +233,7 @@ export function DatePicker({ value, onChange, label, placeholder, className }: D
                         </button>
                     </div>
                 </div>
-            )}
+            ), document.body)}
         </div>
     );
 }

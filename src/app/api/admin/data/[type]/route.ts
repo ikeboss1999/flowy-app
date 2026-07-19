@@ -29,10 +29,18 @@ const ALLOWED_TABLES = [
     'letters'
 ];
 
+function adminExplorerDisabled() {
+    return process.env.NODE_ENV === 'production' && process.env.ENABLE_ADMIN_EXPLORER !== 'true';
+}
+
 export async function GET(
     request: Request,
     { params }: { params: { type: string } }
 ) {
+    if (adminExplorerDisabled()) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const admin = await checkAdmin();
     if (!admin) {
         return NextResponse.json({ message: 'Nicht autorisiert' }, { status: 403 });
@@ -71,6 +79,10 @@ export async function POST(
     request: Request,
     { params }: { params: { type: string } }
 ) {
+    if (adminExplorerDisabled()) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const admin = await checkAdmin();
     if (!admin) return NextResponse.json({ message: 'Nicht autorisiert' }, { status: 403 });
 
@@ -105,6 +117,10 @@ export async function DELETE(
     request: Request,
     { params }: { params: { type: string } }
 ) {
+    if (adminExplorerDisabled()) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const admin = await checkAdmin();
     if (!admin) return NextResponse.json({ message: 'Nicht autorisiert' }, { status: 403 });
 

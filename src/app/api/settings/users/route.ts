@@ -71,14 +71,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        console.log('[DEBUG-API] NODE_ENV:', process.env.NODE_ENV);
-        console.log('[DEBUG-API] request.url:', request.url);
+        const isDevelopment = process.env.NODE_ENV === 'development';
 
         // Calculate redirect URL: Force localhost in dev mode, else use request origin or fallback to production URL
         let redirectOrigin = new URL(request.url).origin;
-        console.log('[DEBUG-API] Request origin:', redirectOrigin);
 
-        if (process.env.NODE_ENV === 'development') {
+        if (isDevelopment) {
             redirectOrigin = 'http://localhost:3000';
         } else {
             // If in production but request origin is localhost, fallback to official Vercel app
@@ -87,12 +85,14 @@ export async function POST(request: Request) {
             }
         }
 
-        console.log('[DEBUG-API] Resolved redirectOrigin:', redirectOrigin);
-        console.log('[DEBUG-API] Full redirectTo passed to Supabase:', `${redirectOrigin}/auth/callback`);
+        if (isDevelopment) {
+            console.log('[DEBUG-API] Resolved redirectOrigin:', redirectOrigin);
+            console.log('[DEBUG-API] Full redirectTo passed to Supabase:', `${redirectOrigin}/auth/callback`);
+        }
 
         let newUser;
 
-        if (process.env.NODE_ENV === 'development') {
+        if (isDevelopment) {
             // In dev mode, generate link directly to prevent email provider/scanner auto-consumption
             const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
                 type: 'invite',

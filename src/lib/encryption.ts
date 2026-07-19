@@ -1,27 +1,60 @@
 import crypto from 'crypto';
 import { Employee } from '@/types/employee';
 
-const ENCRYPTION_KEY_RAW = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || 'default-secret-key-32-chars-minimum-length-flowy!';
-// Derive a 32-byte key using SHA-256 for AES-256
-const ENCRYPTION_KEY = crypto.createHash('sha256').update(ENCRYPTION_KEY_RAW).digest();
-const IV_LENGTH = 16;
+const GCM_IV_LENGTH = 12;
+
+function getEncryptionKey(requireDedicatedKey = false): Buffer {
+    const rawKey = process.env.ENCRYPTION_KEY;
+
+    if (!rawKey && (requireDedicatedKey || process.env.NODE_ENV === 'production')) {
+        throw new Error('ENCRYPTION_KEY environment variable is required for encryption.');
+    }
+
+    const fallbackKey = process.env.JWT_SECRET || 'development-only-flowy-encryption-fallback';
+    return crypto.createHash('sha256').update(rawKey || fallbackKey).digest();
+}
+
+function getLegacyEncryptionKeys(): Buffer[] {
+    const keys = [
+        process.env.ENCRYPTION_KEY,
+        process.env.JWT_SECRET,
+        'default-secret-key-32-chars-minimum-length-flowy!',
+    ].filter((key): key is string => Boolean(key));
+
+    return Array.from(new Set(keys)).map((key) => crypto.createHash('sha256').update(key).digest());
+}
 
 export function encrypt(text: string): string {
     if (!text) return '';
-    // If the text already looks like encrypted data (contains hex iv and cipher separated by ':'), don't double encrypt
-    if (text.includes(':') && text.split(':')[0].length === 32) {
+    if (/^gcm:v1:[0-9a-fA-F]+:[0-9a-fA-F]+:[0-9a-fA-F]+$/.test(text)) {
         return text;
     }
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
-    let encrypted = cipher.update(text, 'utf8');
-    encrypted = Buffer.concat([encrypted, cipher.final()]);
-    return iv.toString('hex') + ':' + encrypted.toString('hex');
+    if (/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/.test(text)) {
+        return text;
+    }
+
+    const iv = crypto.randomBytes(GCM_IV_LENGTH);
+    const cipher = crypto.createCipheriv('aes-256-gcm', getEncryptionKey(), iv);
+    const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+    const authTag = cipher.getAuthTag();
+    return `gcm:v1:${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
 }
 
 export function decrypt(text: string): string {
     if (!text) return '';
     try {
+        if (text.startsWith('gcm:v1:')) {
+            const parts = text.split(':');
+            if (parts.length !== 5) return text;
+
+            const iv = Buffer.from(parts[2], 'hex');
+            const authTag = Buffer.from(parts[3], 'hex');
+            const encryptedText = Buffer.from(parts[4], 'hex');
+            const decipher = crypto.createDecipheriv('aes-256-gcm', getEncryptionKey(), iv);
+            decipher.setAuthTag(authTag);
+            return Buffer.concat([decipher.update(encryptedText), decipher.final()]).toString('utf8');
+        }
+
         if (!text.includes(':')) {
             return text; // Return plain text for legacy records
         }
@@ -31,10 +64,18 @@ export function decrypt(text: string): string {
         }
         const iv = Buffer.from(parts[0], 'hex');
         const encryptedText = Buffer.from(parts[1], 'hex');
-        const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
-        let decrypted = decipher.update(encryptedText);
-        decrypted = Buffer.concat([decrypted, decipher.final()]);
-        return decrypted.toString('utf8');
+
+        for (const legacyKey of getLegacyEncryptionKeys()) {
+            try {
+                const decipher = crypto.createDecipheriv('aes-256-cbc', legacyKey, iv);
+                const decrypted = Buffer.concat([decipher.update(encryptedText), decipher.final()]);
+                return decrypted.toString('utf8');
+            } catch {
+                // Try next legacy key.
+            }
+        }
+
+        return text;
     } catch (e) {
         // Fallback for legacy unencrypted data
         return text;

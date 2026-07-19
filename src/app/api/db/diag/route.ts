@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getUserSession } from '@/lib/auth-server';
+import { productionDisabledResponse } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
+        const disabled = productionDisabledResponse();
+        if (disabled) return disabled;
+
         const session = await getUserSession();
         if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

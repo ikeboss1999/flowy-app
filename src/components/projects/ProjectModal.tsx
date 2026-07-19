@@ -92,8 +92,12 @@ export function ProjectModal({ isOpen, onClose, onSave, onAddCustomer, customers
         }
     };
 
+    const selectedCustomer = customers.find((customer) => customer.id === formData.customerId);
+    const isSelectedCustomerUsable = !selectedCustomer || selectedCustomer.status !== "draft";
+
     const isFormValid = formData.name.trim() !== "" && 
                         formData.customerId !== "" && 
+                        isSelectedCustomerUsable &&
                         formData.budget !== "" && 
                         formData.street.trim() !== "" && 
                         formData.zip.trim() !== "" && 

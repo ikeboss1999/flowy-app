@@ -45,47 +45,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         permissions: data.user.permissions || {},
                         companyOwnerId: data.user.companyOwnerId
                     });
+                    setCurrentEmployee(data.employee || null);
                 } else {
                     setProfile(null);
+                    setCurrentEmployee(null);
                 }
             } else {
                 setProfile(null);
+                setCurrentEmployee(null);
             }
         } catch (e) {
             console.error("[AuthContext] Failed to fetch profile:", e);
             setProfile(null);
+            setCurrentEmployee(null);
         }
     };
 
     const refreshEmployee = async () => {
-        const savedEmployee = localStorage.getItem('flowy_employee_session');
-        if (!savedEmployee) return;
-
         try {
-            const employeeData = JSON.parse(savedEmployee);
-            if (!employeeData.appAccess?.staffId || !employeeData.appAccess?.accessPIN) return;
-
-            const response = await fetch('/api/auth/employee-login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    staffId: employeeData.appAccess.staffId,
-                    pin: employeeData.appAccess.accessPIN
-                })
-            });
-
+            const response = await fetch('/api/auth/me');
+            if (!response.ok) return;
             const data = await response.json();
-            if (data.success && data.employee) {
-                // IMPORTANT: Preserving PIN because API hides it for security
-                const updatedEmployee = {
-                    ...data.employee,
-                    appAccess: {
-                        ...data.employee.appAccess,
-                        accessPIN: employeeData.appAccess.accessPIN
-                    }
-                };
-                setCurrentEmployee(updatedEmployee);
-                localStorage.setItem('flowy_employee_session', JSON.stringify(updatedEmployee));
+            if (data.employee) {
+                setCurrentEmployee(data.employee);
             }
         } catch (e) {
             console.error("Auto-refresh failed", e);
@@ -96,26 +78,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let mounted = true;
 
         const initAuth = async () => {
-            // 1. Employee Session Check
-            const savedEmployee = localStorage.getItem('flowy_employee_session');
-            if (savedEmployee) {
-                try {
-                    const employeeData = JSON.parse(savedEmployee);
-                    setCurrentEmployee(employeeData); // Optimistic update
-
-                    // Attempt to restore cookie session
-                    if (employeeData.appAccess?.staffId && employeeData.appAccess?.accessPIN) {
-                        try {
-                            await refreshEmployee();
-                        } catch (e) {
-                            console.error("Session restore failed", e);
-                        }
-                    }
-                } catch (e) {
-                    console.error("Failed to parse employee session", e);
-                    localStorage.removeItem('flowy_employee_session');
-                }
-            }
+            // 1. Cookie-backed session check, including PIN employees.
+            await refreshProfile();
 
             // 2. Supabase Session Check
             try {
@@ -164,7 +128,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         body: JSON.stringify({ access_token: session.access_token })
                     });
                     if (syncRes.ok) {
-                        localStorage.removeItem('flowy_employee_session');
                         setCurrentEmployee(null);
                         setSession(session);
                         setUser(session.user ?? null);
@@ -176,13 +139,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         });
 
-        // Global focus listener for auto-refresh
-        const handleFocus = () => {
-            if (localStorage.getItem('flowy_employee_session')) {
-                refreshEmployee();
-            }
-        };
-
+        // Global focus listener for cookie-backed employee refresh
+        const handleFocus = () => refreshEmployee();
         window.addEventListener('focus', handleFocus);
         const visibilityHandler = () => {
             if (document.visibilityState === 'visible') handleFocus();
@@ -191,10 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Background refresh every 5 minutes while app is active
         const refreshInterval = setInterval(() => {
-            if (localStorage.getItem('flowy_employee_session')) {
-                console.log('[AuthContext] Running periodic background refresh...');
-                refreshEmployee();
-            }
+            refreshEmployee();
         }, 1000 * 60 * 5);
 
         return () => {
@@ -216,7 +171,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {
             console.error("Logout request failed", e);
         }
-        localStorage.removeItem('flowy_employee_session');
         document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         document.cookie = 'session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         setCurrentEmployee(null);
@@ -261,7 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setProfile(null);
 
                 setCurrentEmployee(data.employee);
-                localStorage.setItem('flowy_employee_session', JSON.stringify(data.employee));
+                await refreshProfile();
                 return { success: true };
             } else {
                 return { success: false, error: data.message || 'Login fehlgeschlagen' };
@@ -278,7 +232,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {
             console.error("Logout failed", e);
         } finally {
-            localStorage.removeItem('flowy_employee_session');
             document.cookie = 'session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             setCurrentEmployee(null);

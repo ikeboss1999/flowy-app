@@ -124,10 +124,6 @@ export default function LoginPage() {
                         body: JSON.stringify({ access_token: session.access_token })
                     })
                 }
-                // Clear any stale employee session so initAuth doesn't
-                // treat it as currentEmployee, which would pass AuthGuard
-                // but leave data hooks with user=null (empty dashboard on iOS).
-                localStorage.removeItem('flowy_employee_session')
                 if (session?.user?.id) {
                     sessionStorage.setItem("flowy_app_unlocked_user", session.user.id)
                     localStorage.setItem("flowy_last_active_at", String(Date.now()))
@@ -207,7 +203,6 @@ export default function LoginPage() {
             });
             sessionStorage.setItem("flowy_app_unlocked_user", quickUnlock.userId);
             localStorage.setItem("flowy_last_active_at", String(Date.now()));
-            localStorage.removeItem('flowy_employee_session');
             window.location.href = "/api/auth/start";
         } catch (error) {
             console.error("[QuickUnlock]", error);

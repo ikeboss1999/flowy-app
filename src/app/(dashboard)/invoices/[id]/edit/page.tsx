@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { InvoiceForm } from "@/components/InvoiceForm";
 import { useInvoices } from "@/hooks/useInvoices";
 
@@ -11,8 +12,15 @@ interface EditInvoicePageProps {
 }
 
 function EditInvoiceContent({ id }: { id: string }) {
+    const router = useRouter();
     const { invoices, isLoading } = useInvoices();
     const invoice = invoices.find(inv => inv.id === id);
+
+    useEffect(() => {
+        if (!isLoading && invoice && invoice.status !== 'draft') {
+            router.replace('/invoices');
+        }
+    }, [invoice, isLoading, router]);
 
     if (isLoading) {
         return <div className="dashboard-page text-slate-400 font-bold">Laden...</div>;
@@ -29,8 +37,8 @@ function EditInvoiceContent({ id }: { id: string }) {
     // Only allow editing drafts
     if (invoice.status !== 'draft') {
         return (
-            <div className="dashboard-page text-amber-600 font-bold bg-amber-50 rounded-2xl border border-amber-100">
-                Nur Rechnungsentwürfe können bearbeitet werden.
+            <div className="dashboard-page text-slate-400 font-bold">
+                Weiterleitung zur Rechnungsübersicht...
             </div>
         );
     }

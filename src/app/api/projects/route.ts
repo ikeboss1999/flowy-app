@@ -56,6 +56,20 @@ export async function POST(request: Request) {
 
         const client = supabaseAdmin || supabase;
 
+        if (project.customerId) {
+            const { data: customer, error: customerError } = await client
+                .from('customers')
+                .select('id,status')
+                .eq('id', project.customerId)
+                .eq('userId', companyOwnerId)
+                .maybeSingle();
+
+            if (customerError) throw customerError;
+            if (customer?.status === 'draft') {
+                return NextResponse.json({ error: 'Draft customers cannot be used for projects' }, { status: 400 });
+            }
+        }
+
         // Check if the record already exists to determine created_by
         const createdBy = project.id ? await safeGetCreatedBy(client, 'projects', project.id) : null;
 
