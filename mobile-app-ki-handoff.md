@@ -92,6 +92,12 @@ Die Web-Seite hat eine SQL-Arbeitsgrundlage vorbereitet:
 
 Diese Migration wurde am 22.07.2026 im Supabase SQL Editor erfolgreich ausgefuehrt.
 
+Zusatzmigration fuer den Mobile-Abgabe-Status:
+
+`migration_mobile_integration_phase2.sql`
+
+Diese Migration muss nach Phase 1 ausgefuehrt werden. Sie ergaenzt `timesheets.submittedAt` und erlaubt den Status `submitted`.
+
 Vorgesehene Tabellen:
 
 - `mobile_activation_codes`
@@ -175,12 +181,14 @@ Request:
 {
   "staffId": "12345678",
   "activationCode": "123456",
-  "pin": "1234",
+  "pin": "123456",
   "platform": "ios",
   "deviceName": "iPhone",
   "appVersion": "1.0.0"
 }
 ```
+
+Die persoenliche Mobile-PIN ist immer exakt sechsstellig und numerisch.
 
 Response:
 
@@ -205,7 +213,7 @@ Request:
 ```json
 {
   "staffId": "12345678",
-  "pin": "1234",
+  "pin": "123456",
   "platform": "android",
   "deviceName": "Pixel",
   "appVersion": "1.0.0"
@@ -335,7 +343,6 @@ Request:
   "date": "2026-07-22",
   "startTime": "07:00",
   "endTime": "16:00",
-  "breakDuration": 60,
   "type": "WORK",
   "projectId": "optional-assigned-project-id",
   "location": "Baustelle",
@@ -344,6 +351,7 @@ Request:
 ```
 
 Wenn `projectId` gesetzt ist, muss dieses Projekt dem Mitarbeiter in Web aktiv zugeordnet sein.
+`breakDuration` ist optional. In Phase 1 kann Mobile nur Beginn und Ende senden; Pause kann danach im Web ergaenzt werden. Wenn Mobile keine Pause sendet, speichert die API `breakDuration = 0`.
 
 ### Eintrag Aendern / Loeschen
 
@@ -364,7 +372,7 @@ Gibt Timesheet-Metadaten und eine einfache Summary zurueck.
 
 `POST /api/mobile/v1/timesheets/:month/submit`
 
-Aktueller Web-Stand kennt nur `draft` und `finalized`. Deshalb setzt Mobile-Submit derzeit `status = finalized`. Danach sind Mobile-Mutationen fuer diesen Monat gesperrt.
+Mobile-Submit setzt `status = submitted` und `submittedAt = now`. Danach sind Mobile-Mutationen fuer diesen Monat gesperrt. Die finale Abnahme/Archivierung im Web setzt spaeter `status = finalized`.
 
 ## Echte Mobile-Dokument Schnittstellen
 
@@ -548,8 +556,16 @@ Mobile muss damit rechnen:
 - Bautagebuch mit Storage-Anhang erscheint in Web.
 - Mobile-Profilbild aus `employee-avatars` erscheint in Web.
 - `GET /api/mobile/v1/dashboard?date=2026-07-23` erfolgreich mit `avatarUrl`, konsistenten Berechtigungen, Zeitstatus, Projektzuweisung, Dokumenten und Hinweisen.
+- Mobile-PIN-Vertrag auf sechs Ziffern festgezogen.
+- Mobile-Timesheet-Submit auf `submitted` statt `finalized` umgestellt.
+- `POST /api/mobile/v1/timesheets/2026-07/submit` erfolgreich: `status = submitted`, `submittedAt` gesetzt, `finalizedAt = null`.
+- Nach `submitted` blockiert `POST /api/mobile/v1/time-entries` fuer denselben Monat korrekt mit `409 Timesheet is locked for this month`.
+- Security-Test Projekt: nicht zugewiesenes/fremdes Projekt liefert `404 Project not found or not assigned to this mobile employee`.
+- Security-Test Dokument: fremdes/nicht vorhandenes Dokument liefert `404 Document not found`.
+- Security-Test Zeiteintrag: fremder/nicht eigener Zeiteintrag liefert `404 Time entry not found`.
+- Security-Test deaktivierter Zugang: Web-Deaktivierung setzt `appAccess.isAccessEnabled = false`, widerruft Sessions mit `revokedAt`, alter Mobile-Token erhaelt danach `401 Unauthorized`.
 
 ## Naechste Web-Schritte
 
-1. Optional: Timesheet-Statusmodell spaeter von `draft/finalized` auf `draft/submitted/finalized` erweitern.
-2. Vor Release gezielte Security-Grenztests durchfuehren: fremder Mitarbeiter, fremdes Projekt, fremdes Dokument, deaktivierter Zugang.
+1. Vor Release gezielte Security-Grenztests durchfuehren: fremder Mitarbeiter, fremdes Projekt, fremdes Dokument, deaktivierter Zugang.
+2. Web-Abnahmefluss fuer `submitted -> finalized` in der Zeiterfassung visuell ausbauen.
