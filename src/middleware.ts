@@ -53,6 +53,7 @@ export async function middleware(request: NextRequest) {
     const isApiRoute = pathname.startsWith('/api');
     const isPublicApi =
         pathname.startsWith('/api/auth') ||
+        pathname.startsWith('/api/mobile/v1') ||
         (pathname.startsWith('/api/partners') && request.method === 'GET');
     const isStaticFile = pathname.includes('.') || pathname.startsWith('/_next');
 

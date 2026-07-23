@@ -83,7 +83,8 @@ export interface Employee {
     documents: EmployeeDocument[];
     createdAt: string;
     updatedAt?: string;
-    avatar?: string; // Base64 string for profile picture
+    avatar?: string; // Base64 string or private storage reference for profile picture
+    avatarUrl?: string | null; // Resolved display URL, usually short-lived for private storage avatars
     userId?: string; // Owner of the employee data
     appAccess?: EmployeeAppAccess;
     pendingChanges?: Partial<Employee>;

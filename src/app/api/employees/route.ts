@@ -6,6 +6,7 @@ import { nanoid } from 'nanoid';
 import { getUserSession, hasPermission } from '@/lib/auth-server';
 import { encryptEmployee, decryptEmployee } from '@/lib/encryption';
 import { safeGetCreatedBy, safeUpsert } from '@/lib/supabase-helper';
+import { withResolvedEmployeeAvatar } from '@/lib/employee-avatar';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
             .order('createdAt', { ascending: false })
             .limit(200);
         if (error) throw error;
-        const decryptedEmployees = (employees || []).map(decryptEmployee);
+        const decryptedEmployees = await Promise.all((employees || []).map((employee) => withResolvedEmployeeAvatar(decryptEmployee(employee))));
         return NextResponse.json(decryptedEmployees);
     } catch (error) {
         console.error(error);

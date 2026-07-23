@@ -209,8 +209,8 @@ export default function TimeTrackingPage() {
                                 className="group flex items-center gap-3 p-4 2xl:gap-4 2xl:p-5 bg-white hover:bg-indigo-50 border border-slate-100 hover:border-indigo-100 rounded-2xl text-left transition-all duration-200 hover:shadow-md hover:scale-[1.01]"
                             >
                                 <div className="h-12 w-12 2xl:h-14 2xl:w-14 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm shrink-0">
-                                            {emp.avatar ? (
-                                                <img src={emp.avatar} alt={name} className="h-full w-full object-cover" />
+                                            {(emp.avatarUrl || emp.avatar) ? (
+                                                <img src={emp.avatarUrl || emp.avatar} alt={name} className="h-full w-full object-cover" />
                                             ) : (
                                                 <UserCircle className="h-8 w-8 text-slate-300" />
                                             )}

@@ -23,11 +23,13 @@ import {
     X,
 } from "lucide-react";
 import { Customer } from "@/types/customer";
+import { EmployeeDocument } from "@/types/employee";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useOffers } from "@/hooks/useOffers";
 import { useOrders } from "@/hooks/useOrders";
 import { cn } from "@/lib/utils";
+import { DocumentPreviewModal } from "./DocumentPreviewModal";
 
 interface CustomerDetailModalProps {
     isOpen: boolean;
@@ -73,6 +75,8 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
     const [newFolderName, setNewFolderName] = React.useState("");
     const [isLoadingFiles, setIsLoadingFiles] = React.useState(false);
     const [isUploading, setIsUploading] = React.useState(false);
+    const [previewFile, setPreviewFile] = React.useState<EmployeeDocument | null>(null);
+    const [openingFileId, setOpeningFileId] = React.useState<string | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     React.useEffect(() => {
@@ -192,11 +196,39 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
         }
     };
 
-    const openFile = async (file: any) => {
+    const getSignedFileUrl = async (file: any) => {
         const response = await fetch(`/api/project-files/signed-url?path=${encodeURIComponent(file.storagePath)}`);
-        if (!response.ok) return;
+        if (!response.ok) throw new Error(await response.text());
         const { url } = await response.json();
-        window.open(url, "_blank", "noopener,noreferrer");
+        return url as string;
+    };
+
+    const openFilePreview = async (file: any) => {
+        setOpeningFileId(file.id);
+        try {
+            const url = await getSignedFileUrl(file);
+            setPreviewFile({
+                id: file.id,
+                name: file.name,
+                type: file.mimeType || "application/octet-stream",
+                uploadDate: file.createdAt,
+                fileSize: `${Math.round((file.size || 0) / 1024)} KB`,
+                content: url,
+                category: "upload",
+            });
+        } finally {
+            setOpeningFileId(null);
+        }
+    };
+
+    const downloadFile = async (file: any) => {
+        const url = await getSignedFileUrl(file);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const deleteFile = async (file: any) => {
@@ -513,16 +545,37 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                                     ) : (
                                         <div className="grid gap-3">
                                             {customerFiles.filter(file => file.folder === selectedFolder).map((file) => (
-                                                <div key={file.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                                                <button
+                                                    key={file.id}
+                                                    type="button"
+                                                    onClick={() => openFilePreview(file)}
+                                                    className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left transition hover:border-indigo-200 hover:bg-white hover:shadow-lg hover:shadow-indigo-100/60"
+                                                >
                                                     <div className="min-w-0">
                                                         <p className="truncate font-black text-slate-900">{file.name}</p>
                                                         <p className="text-xs font-bold text-slate-400">{new Date(file.createdAt).toLocaleDateString("de-AT")} · {Math.round((file.size || 0) / 1024)} KB</p>
                                                     </div>
-                                                    <div className="flex gap-2">
-                                                        <button type="button" onClick={() => openFile(file)} className="rounded-xl bg-white p-2 text-slate-500 hover:text-indigo-600"><Download className="h-4 w-4" /></button>
-                                                        <button type="button" onClick={() => deleteFile(file)} className="rounded-xl bg-white p-2 text-slate-500 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>
+                                                    <div className="flex shrink-0 gap-2" onClick={(event) => event.stopPropagation()}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openFilePreview(file)}
+                                                            disabled={openingFileId === file.id}
+                                                            className="rounded-xl bg-white p-2 text-slate-500 hover:text-indigo-600 disabled:opacity-50"
+                                                            title="In der App ansehen"
+                                                        >
+                                                            {openingFileId === file.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => downloadFile(file)}
+                                                            className="rounded-xl bg-white p-2 text-slate-500 hover:text-indigo-600"
+                                                            title="Herunterladen"
+                                                        >
+                                                            <Download className="h-4 w-4" />
+                                                        </button>
+                                                        <button type="button" onClick={() => deleteFile(file)} className="rounded-xl bg-white p-2 text-slate-500 hover:text-rose-600" title="Löschen"><Trash2 className="h-4 w-4" /></button>
                                                     </div>
-                                                </div>
+                                                </button>
                                             ))}
                                         </div>
                                     )}
@@ -532,6 +585,11 @@ export function CustomerDetailModal({ isOpen, onClose, customer, onUpdateCustome
                     )}
                 </div>
             </div>
+            <DocumentPreviewModal
+                isOpen={!!previewFile}
+                onClose={() => setPreviewFile(null)}
+                document={previewFile}
+            />
         </div>
     );
 }

@@ -7,6 +7,7 @@ import {
     Briefcase,
     CreditCard,
     FileText,
+    Smartphone,
     Plus,
     Trash2,
     Download,
@@ -20,7 +21,6 @@ import {
     Clock,
     Eye,
     Folder,
-    Smartphone,
     Activity,
     LogOut,
     Share2,
@@ -53,7 +53,6 @@ const TABS = [
     { id: "schedule", label: "Zeiteinteilung", icon: Clock },
     { id: "bank", label: "Bankdaten", icon: CreditCard },
     { id: "documents", label: "Archiv", icon: FileText },
-    { id: "app-access", label: "Mobile App", icon: Smartphone, disabled: true },
 ];
 
 const EU_EWR_COUNTRIES = [
@@ -348,14 +347,14 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
         const reader = new FileReader();
         reader.onloadend = () => {
             const base64 = reader.result as string;
-            setFormData(prev => ({ ...prev, avatar: base64 }));
+            setFormData(prev => ({ ...prev, avatar: base64, avatarUrl: undefined }));
             setShowAvatarMenu(false);
         };
         reader.readAsDataURL(file);
     };
 
     const handleAvatarDelete = () => {
-        setFormData(prev => ({ ...prev, avatar: undefined }));
+        setFormData(prev => ({ ...prev, avatar: undefined, avatarUrl: undefined }));
         setShowAvatarMenu(false);
     };
 
@@ -572,9 +571,9 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                 }
                             }}
                         >
-                            {formData.avatar ? (
+                            {(formData.avatarUrl || formData.avatar) ? (
                                 <div className="h-14 w-14 rounded-2xl overflow-hidden shadow-md ring-4 ring-white/20 border-2 border-white/40 group-hover:opacity-90 transition-opacity sm:h-16 sm:w-16">
-                                    <img src={formData.avatar} alt="Profile" className="h-full w-full object-cover" />
+                                    <img src={formData.avatarUrl || formData.avatar} alt="Profile" className="h-full w-full object-cover" />
                                 </div>
                             ) : (
                                 <div className="h-14 w-14 rounded-2xl bg-white/15 flex items-center justify-center text-white shadow-sm border border-white/20 group-hover:bg-white/20 transition-colors sm:h-16 sm:w-16">
@@ -673,20 +672,13 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                             "flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-black text-sm min-h-14 whitespace-nowrap md:whitespace-normal border",
                                             active
                                                 ? "bg-white text-indigo-600 shadow-sm border-indigo-100"
-                                                : tab.disabled
-                                                    ? "opacity-60 text-slate-400 hover:text-slate-500 hover:bg-white/70 border-transparent"
-                                                    : "text-slate-500 hover:text-slate-800 hover:bg-white/80 border-transparent"
+                                                : "text-slate-500 hover:text-slate-800 hover:bg-white/80 border-transparent"
                                         )}
                                     >
                                         <Icon className={cn("h-5 w-5 shrink-0", active ? "text-indigo-600" : "text-slate-300")} />
                                         <div className="flex flex-col items-start leading-none">
                                             <span className="hidden md:block">{tab.label}</span>
                                             <span className="md:hidden text-xs">{tab.label}</span>
-                                            {tab.disabled && (
-                                                <span className="text-[8px] text-amber-600 font-bold bg-amber-50 px-1 py-0.5 rounded-md mt-0.5">
-                                                    In Arbeit
-                                                </span>
-                                            )}
                                         </div>
                                     </button>
                                 );
@@ -715,9 +707,9 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                     onClick={() => avatarInputRef.current?.click()}
                                                     title="Profilbild hochladen / ändern"
                                                 >
-                                                    {formData.avatar ? (
+                                                    {(formData.avatarUrl || formData.avatar) ? (
                                                         <div className="h-24 w-24 rounded-2xl overflow-hidden shadow-md ring-4 ring-indigo-50 border-2 border-white group-hover:opacity-90 transition-opacity">
-                                                            <img src={formData.avatar} alt="Profile" className="h-full w-full object-cover" />
+                                                            <img src={formData.avatarUrl || formData.avatar} alt="Profile" className="h-full w-full object-cover" />
                                                         </div>
                                                     ) : (
                                                         <div className="h-24 w-24 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-100 group-hover:bg-indigo-200 transition-colors">

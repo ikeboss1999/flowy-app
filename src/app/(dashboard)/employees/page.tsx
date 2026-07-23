@@ -359,6 +359,53 @@ export default function EmployeesPage() {
         showToast("Dokument wurde hochgeladen.", "success");
     };
 
+    const handleMobileAccessAction = async (
+        employeeId: string,
+        action:
+            | { action: "enable" }
+            | { action: "disable" }
+            | { action: "generateActivationCode" }
+            | { action: "revokeActivationCode" }
+            | {
+                action: "updatePermissions";
+                permissions: {
+                    timeTracking: boolean;
+                    documents: boolean;
+                    projectDiary: boolean;
+                };
+            }
+    ) => {
+        const response = await fetch(`/api/employees/${employeeId}/mobile-access`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(action),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            showToast(data?.error || "Mobile-Zugang konnte nicht aktualisiert werden.", "error");
+            return;
+        }
+
+        await mutateAll((key) => typeof key === "string" && key.startsWith("/api/employees"));
+
+        const messages: Record<string, string> = {
+            enable: "Mobile-Zugang wurde aktiviert.",
+            disable: "Mobile-Zugang wurde deaktiviert und offene Mobile-Sitzungen wurden widerrufen.",
+            generateActivationCode: "Aktivierungscode wurde erzeugt.",
+            revokeActivationCode: "Aktivierungscode wurde widerrufen.",
+            updatePermissions: "Mobile-Berechtigungen wurden aktualisiert.",
+        };
+
+        showToast(messages[action.action] || "Mobile-Zugang wurde aktualisiert.", "success");
+
+        return {
+            activationCode: data?.activationCode,
+            activationCodeExpiresAt: data?.activationCodeExpiresAt,
+        };
+    };
+
     const handlePreview = (doc: EmployeeDocument) => {
         setPreviewDoc(doc);
         setIsPreviewOpen(true);
@@ -586,9 +633,9 @@ export default function EmployeesPage() {
                                     >
                                         <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr_1.2fr_auto] xl:items-center">
                                             <div className="flex min-w-0 items-center gap-4">
-                                                {employee.avatar ? (
+                                                {(employee.avatarUrl || employee.avatar) ? (
                                                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                                                        <img src={employee.avatar} alt={name} className="h-full w-full object-cover" />
+                                                        <img src={employee.avatarUrl || employee.avatar} alt={name} className="h-full w-full object-cover" />
                                                     </div>
                                                 ) : (
                                                     <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-xl font-black text-indigo-600 ring-1 ring-indigo-100">
@@ -864,6 +911,8 @@ export default function EmployeesPage() {
                     } : undefined}
                     onDeleteDocument={canWrite ? (employeeId, docId) => handleDeleteDocument(employeeId, docId) : undefined}
                     onAddDocument={canWrite ? (employeeId, doc) => handleAddDocument(employeeId, doc) : undefined}
+                    onUpdateEmployee={canWrite ? (employee) => updateEmployee(employee.id, employee) : undefined}
+                    onMobileAccessAction={canWrite ? handleMobileAccessAction : undefined}
                     onPreviewDocument={(doc) => handlePreview(doc)}
                     isDownloadingPDF={downloadingId === activeSelectedEmployee.id}
                 />

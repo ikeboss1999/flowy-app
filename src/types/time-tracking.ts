@@ -29,8 +29,9 @@ export interface TimesheetMeta {
     id: string;
     employeeId: string;
     month: string; // YYYY-MM
-    status: 'draft' | 'finalized';
+    status: 'draft' | 'submitted' | 'finalized';
     finalizedAt?: string;
+    submittedAt?: string;
     userId?: string; // Owner of the timesheet
     pdfUrl?: string; // Private Storage path for finalized PDF
 }
