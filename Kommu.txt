@@ -1,48 +1,24 @@
+Die neue Übergabe entspricht fachlich weitgehend dem Mobile-Vertrag.
+
+Bitte jetzt alle lokalen Mobile-Integrationsänderungen committen und nach
+ikeboss1999/flowy-app pushen. Uncommittete lokale Dateien können von der
+Mobile-KI nicht geprüft oder angebunden werden.
+
+Bitte danach liefern:
+
 Branch:
-main
-
 Commit-ID:
-f8e67c2 aktuell lokaler HEAD, Mobile-Integration ist noch nicht committed.
+Vollständige Liste geänderter Dateien:
+Status migration_mobile_integration_phase1.sql:
+Status migration_mobile_integration_phase2.sql:
+Bestätigung MOBILE_JWT_SECRET in Production:
+Echte JSON-Responses für /me, /company, /dashboard, /projects und /timesheets:
+Cross-Tenant-Tests mit realen Daten aus zwei Firmen:
+Modulrecht-Tests:
+Refresh-Token-Rotationstest:
+Aktivierungscode-Replay-/Ablauftest:
+Lint/TypeScript/Build-Ergebnisse:
 
-Migrationen:
-migration_mobile_integration_phase1.sql
-migration_mobile_integration_phase2.sql
-
-Neue Umgebungsvariablen:
-Optional/Production: MOBILE_JWT_SECRET
-Fallback dev: JWT_SECRET bzw. dev fallback
-
-Implementierte Endpunkte:
-POST /api/mobile/v1/auth/activate
-POST /api/mobile/v1/auth/login
-POST /api/mobile/v1/auth/refresh
-POST /api/mobile/v1/auth/logout
-GET /api/mobile/v1/me
-GET /api/mobile/v1/company
-GET /api/mobile/v1/dashboard
-POST /api/mobile/v1/me/avatar-upload-url
-POST /api/mobile/v1/me/avatar
-DELETE /api/mobile/v1/me/avatar
-GET /api/mobile/v1/projects
-GET /api/mobile/v1/projects/:id
-GET /api/mobile/v1/projects/:id/diary
-POST /api/mobile/v1/projects/:id/diary
-POST /api/mobile/v1/projects/:id/diary/upload-url
-GET /api/mobile/v1/documents
-GET /api/mobile/v1/documents/:id/download-url
-POST /api/mobile/v1/documents/:id/read
-GET /api/mobile/v1/time-entries?month=YYYY-MM
-POST /api/mobile/v1/time-entries
-PATCH /api/mobile/v1/time-entries/:id
-DELETE /api/mobile/v1/time-entries/:id
-GET /api/mobile/v1/timesheets/:month
-POST /api/mobile/v1/timesheets/:month/submit
-
-Security-Tests:
-Nicht zugewiesenes Projekt: 404
-Fremdes Dokument: 404
-Fremder Zeiteintrag: 404
-Submitted-Monat blockiert Mutationen: 409
-Deaktivierter Mobile-Zugang: 401 nach Session-Revocation
-
-Bitte nicht nur main/f5ddb9b prüfen. Die Web-Änderungen sind lokal noch nicht committed. Maßgeblich ist die Datei scratch/mobile-app-ki-handoff.md plus die lokalen Änderungen im FlowY-Workspace.
+Wichtig:
+MOBILE_JWT_SECRET muss in Production verpflichtend sein.
+Die Änderungen dürfen nicht nur lokal bleiben.
