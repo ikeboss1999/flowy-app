@@ -5,7 +5,6 @@ import { OnboardingCheck } from "@/components/OnboardingCheck";
 import { ReloadButton } from "@/components/ReloadButton";
 import { GlobalTodoWidget } from "@/components/GlobalTodoWidget";
 import { DashboardPrefetch } from "@/components/DashboardPrefetch";
-import { AppLock } from "@/components/AppLock";
 import { useDevice } from "@/hooks/useDevice";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +22,6 @@ export default function DashboardLayout({
             <ReloadButton />
             <GlobalTodoWidget />
             <DashboardPrefetch />
-            <AppLock />
             <main className={cn(
                 "flex-1 min-h-screen text-lg transition-all duration-300",
                 isDrawerLayout ? "ml-0 pt-20" : "ml-[var(--flowy-sidebar-offset,5.5rem)] [.sidebar-collapsed_&]:ml-0"

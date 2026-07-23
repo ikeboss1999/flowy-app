@@ -296,13 +296,11 @@ export default function EmployeeTimeTrackingPage() {
         );
     }, [entries, employeeId, selectedMonth]);
 
-    const isFinalized = useMemo(() => {
-        return timesheets.some(t => t.employeeId === employeeId && t.month === selectedMonth && t.status === 'finalized');
-    }, [timesheets, employeeId, selectedMonth]);
-
     const currentTimesheet = useMemo(() => {
         return timesheets.find(t => t.employeeId === employeeId && t.month === selectedMonth);
     }, [timesheets, employeeId, selectedMonth]);
+
+    const isFinalized = currentTimesheet ? currentTimesheet.status !== 'draft' : false;
 
     const displayedMonthEntries = useMemo(() => {
         const merged = new Map<string, TimeEntry>();
@@ -828,9 +826,10 @@ export default function EmployeeTimeTrackingPage() {
                                     if (value >= startMonthStr) {
                                         const label = date.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
                                         const status = timesheets.find(t => t.employeeId === employeeId && t.month === value)?.status;
+                                        const labelStatus = status && status !== 'draft' ? 'gesperrt' : 'offen';
                                         options.push(
                                             <option key={value} value={value}>
-                                                {label} - {status === 'finalized' ? 'abgeschlossen' : 'offen'}
+                                                {label} - {labelStatus}
                                             </option>
                                         );
                                     }

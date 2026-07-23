@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireMobileSession } from '@/lib/mobile-auth';
-import { getTimesheetStatus } from '@/lib/mobile-time-tracking';
+import { getTimesheetStatus, monthRange } from '@/lib/mobile-time-tracking';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +12,7 @@ export async function GET(request: Request, { params }: { params: { month: strin
         if (!/^\d{4}-\d{2}$/.test(params.month)) {
             return NextResponse.json({ error: 'Month must be YYYY-MM' }, { status: 400 });
         }
+        const range = monthRange(params.month);
 
         const [timesheet, entriesResult] = await Promise.all([
             getTimesheetStatus(auth.client, {
@@ -24,8 +25,8 @@ export async function GET(request: Request, { params }: { params: { month: strin
                 .select('id,duration,overtime,type,date')
                 .eq('userId', auth.companyOwnerId)
                 .eq('employeeId', auth.employeeId)
-                .gte('date', `${params.month}-01`)
-                .lte('date', `${params.month}-31`),
+                .gte('date', range.start)
+                .lte('date', range.end),
         ]);
 
         if (entriesResult.error) throw entriesResult.error;

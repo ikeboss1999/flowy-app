@@ -11,13 +11,20 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-function serializeAttachment(attachment: any) {
+async function serializeAttachment(client: any, attachment: any) {
+    const { data } = await client
+        .storage
+        .from('project-diary-attachments')
+        .createSignedUrl(attachment.storagePath, 10 * 60);
+
     return {
         id: attachment.id,
         storagePath: attachment.storagePath,
         mimeType: attachment.mimeType,
         fileSize: attachment.fileSize,
         createdAt: attachment.createdAt,
+        url: data?.signedUrl || null,
+        expiresIn: 600,
     };
 }
 
@@ -61,7 +68,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             attachmentsByEntryId = new Map();
             for (const attachment of attachments || []) {
                 const current = attachmentsByEntryId.get(attachment.diaryEntryId) || [];
-                current.push(serializeAttachment(attachment));
+                current.push(await serializeAttachment(auth.client, attachment));
                 attachmentsByEntryId.set(attachment.diaryEntryId, current);
             }
         }
@@ -156,7 +163,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
             success: true,
             entry: {
                 ...entry,
-                attachments: attachments.map(serializeAttachment),
+                attachments: await Promise.all(attachments.map((attachment) => serializeAttachment(auth.client, attachment))),
             },
         }, { status: 201 });
     } catch (error) {

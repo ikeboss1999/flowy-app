@@ -76,6 +76,18 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid or expired activation code' }, { status: 401 });
         }
 
+        const { data: consumedCode, error: codeUpdateError } = await client
+            .from('mobile_activation_codes')
+            .update({ status: 'consumed', consumedAt: now, updatedAt: now })
+            .eq('id', codeRecord.id)
+            .eq('status', 'active')
+            .gt('expiresAt', now)
+            .select('id')
+            .maybeSingle();
+
+        if (codeUpdateError) throw codeUpdateError;
+        if (!consumedCode) return NextResponse.json({ error: 'Invalid or expired activation code' }, { status: 401 });
+
         const pinHash = await bcrypt.hash(pin, 10);
         const appAccess = {
             ...employee.appAccess,
@@ -90,15 +102,6 @@ export async function POST(request: Request) {
             lastLogin: now,
         };
 
-        const sessionResult = await createMobileSession({ companyOwnerId, employeeId: employee.id, platform, deviceName, appVersion });
-
-        const { error: codeUpdateError } = await client
-            .from('mobile_activation_codes')
-            .update({ status: 'consumed', consumedAt: now, updatedAt: now })
-            .eq('id', codeRecord.id);
-
-        if (codeUpdateError) throw codeUpdateError;
-
         const { error: employeeUpdateError } = await client
             .from('employees')
             .update({ appAccess, updatedAt: now })
@@ -106,6 +109,8 @@ export async function POST(request: Request) {
             .eq('userId', companyOwnerId);
 
         if (employeeUpdateError) throw employeeUpdateError;
+
+        const sessionResult = await createMobileSession({ companyOwnerId, employeeId: employee.id, platform, deviceName, appVersion });
 
         const employeeWithAccess = { ...employee, appAccess };
         const tokens = await issueMobileTokens({

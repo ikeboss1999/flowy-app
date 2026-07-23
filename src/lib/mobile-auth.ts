@@ -7,6 +7,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { decryptEmployee } from '@/lib/encryption';
 import { Employee } from '@/types/employee';
 import { resolveEmployeeAvatarUrl } from '@/lib/employee-avatar';
+import { APP_VERSION } from '@/lib/app-version';
 
 const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL_DAYS = 30;
@@ -98,6 +99,22 @@ export function getMobilePermissions(employee: Employee) {
         documents: employee.appAccess?.permissions?.documents ?? false,
         projectDiary: employee.appAccess?.permissions?.projectDiary ?? false,
     };
+}
+
+function logMobilePermissionCheck(params: {
+    employeeId: string;
+    module?: keyof ReturnType<typeof getMobilePermissions>;
+    tokenPermissions: MobileAccessPayload['permissions'];
+    dbPermissions: ReturnType<typeof getMobilePermissions>;
+}) {
+    console.info('[MobileAuth]', {
+        employeeId: params.employeeId,
+        requestedModule: params.module || 'none',
+        tokenPermissions: params.tokenPermissions,
+        dbPermissions: params.dbPermissions,
+        appVersion: APP_VERSION,
+        nodeEnv: process.env.NODE_ENV,
+    });
 }
 
 export async function resolveMobileEmployeeAvatarUrl(client: any, employee: Employee, companyOwnerId?: string) {
@@ -224,13 +241,6 @@ export async function requireMobileSession(request: Request, module?: keyof Retu
         return { ok: false as const, response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
     }
 
-    if (module && !payload.permissions[module]) {
-        return {
-            ok: false as const,
-            response: NextResponse.json({ error: 'Forbidden', reason: `Module ${module} is not enabled in this access token` }, { status: 403 }),
-        };
-    }
-
     const client = getMobileClient();
     const { data: session, error } = await client
         .from('employee_mobile_sessions')
@@ -255,11 +265,28 @@ export async function requireMobileSession(request: Request, module?: keyof Retu
         };
     }
 
+    const currentPermissions = getMobilePermissions(employee);
+    logMobilePermissionCheck({
+        employeeId: payload.employeeId,
+        module,
+        tokenPermissions: payload.permissions,
+        dbPermissions: currentPermissions,
+    });
+
+    if (module && !currentPermissions[module]) {
+        return {
+            ok: false as const,
+            response: NextResponse.json({ error: 'Forbidden', reason: `Module ${module} is not enabled for this employee` }, { status: 403 }),
+        };
+    }
+
     return {
         ok: true as const,
         client,
         session,
         payload,
+        tokenPermissions: payload.permissions,
+        permissions: currentPermissions,
         employee,
         companyOwnerId: payload.companyOwnerId,
         employeeId: payload.employeeId,

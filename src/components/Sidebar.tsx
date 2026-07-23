@@ -26,8 +26,7 @@ import {
     FolderOpen,
     Inbox,
     FileCheck,
-    KeyRound,
-    LockKeyhole
+    KeyRound
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/app-version";
@@ -185,11 +184,6 @@ export function Sidebar() {
                 ? prev.filter(item => item !== label)
                 : [...prev, label]
         );
-    };
-
-    const handleLockApp = () => {
-        window.dispatchEvent(new Event("flowy-lock-app"));
-        if (isDrawerMode) setIsOpen(false);
     };
 
     const getActiveUserId = () => profile?.companyOwnerId || currentEmployee?.userId;
@@ -628,23 +622,6 @@ export function Sidebar() {
                     "shrink-0 border-t border-white/10 pb-4",
                     isDrawerMode ? "mt-12 pt-8" : "mt-3 pt-4"
                 )}>
-                    <button
-                        onClick={handleLockApp}
-                        title="App sperren"
-                        className={cn(
-                            "group/item mb-2 flex rounded-2xl text-sidebar-foreground/70 transition-all duration-300 hover:bg-white/5 hover:text-white",
-                            isDrawerMode ? "w-full items-center gap-4 px-4 py-4 text-base font-bold" : "relative mx-auto h-12 w-12 items-center justify-center px-0"
-                        )}
-                    >
-                        <LockKeyhole className="h-6 w-6 shrink-0 transition-transform group-hover/item:scale-110" />
-                        {isDrawerMode ? (
-                            <span className="whitespace-nowrap transition-all duration-200">App sperren</span>
-                        ) : (
-                            <span className="pointer-events-none absolute left-[calc(100%+0.8rem)] top-1/2 z-[120] -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm font-black text-white opacity-0 shadow-2xl shadow-slate-950/40 backdrop-blur-xl ring-1 ring-white/10 transition-all duration-200 group-hover/item:translate-x-0 group-hover/item:opacity-100">
-                                App sperren
-                            </span>
-                        )}
-                    </button>
                     <button
                         onClick={handleLogout}
                         title="Ausloggen"

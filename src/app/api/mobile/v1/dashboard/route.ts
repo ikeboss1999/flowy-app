@@ -74,7 +74,7 @@ export async function GET(request: Request) {
         const month = toMonthKey(today);
         const weekStart = toDateKey(startOfIsoWeek(today));
         const weekEnd = toDateKey(endOfIsoWeek(today));
-        const permissions = auth.payload.permissions;
+        const permissions = auth.permissions;
 
         const timeTrackingEnabled = !!permissions.timeTracking;
         const documentsEnabled = !!permissions.documents;

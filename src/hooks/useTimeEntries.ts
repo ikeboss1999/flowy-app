@@ -117,12 +117,18 @@ export function useTimeEntries() {
         const id = `${employeeId}-${month}`;
         const current = timesheets.find(t => t.id === id);
         if (!current) return;
-        mutateTimesheets(timesheets.filter(t => t.id !== id), false);
+        const reopened: TimesheetMeta = {
+            ...current,
+            status: 'draft',
+            finalizedAt: undefined,
+            submittedAt: undefined,
+        };
+        mutateTimesheets(timesheets.map(t => t.id === id ? reopened : t), false);
         try {
             const res = await fetch('/api/timesheets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: activeUserId, timesheet: { ...current, status: 'draft', finalizedAt: undefined } })
+                body: JSON.stringify({ userId: activeUserId, timesheet: reopened })
             });
             if (!res.ok) {
                 const text = await res.text().catch(() => String(res.status));

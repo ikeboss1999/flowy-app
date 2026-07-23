@@ -50,12 +50,12 @@ export default function TimeTrackingPage() {
     }, [activeEmployees]);
 
     const getMonthState = (employeeId: string): MonthState => {
-        const isFinalized = timesheets.some(t =>
+        const monthSheet = timesheets.find(t =>
             t.employeeId === employeeId &&
-            t.month === statusMonth &&
-            t.status === "finalized"
+            t.month === statusMonth
         );
-        if (isFinalized) return "finalized";
+        if (monthSheet && monthSheet.status !== "draft") return "finalized";
+        if (monthSheet?.status === "draft") return "open";
 
         const hasEntries = entries.some(e =>
             e.employeeId === employeeId &&

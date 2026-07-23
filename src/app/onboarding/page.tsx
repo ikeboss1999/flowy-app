@@ -26,7 +26,7 @@ import { useAuth } from "@/context/AuthContext";
 
 type Step = "welcome" | "pin" | "username" | "company" | "bank" | "logo" | "success";
 
-const steps: Step[] = ["welcome", "pin", "username", "company", "bank", "logo", "success"];
+const steps: Step[] = ["welcome", "username", "company", "bank", "logo", "success"];
 
 const stepMeta: Record<Step, { label: string; title: string; description: string }> = {
     welcome: {
@@ -119,15 +119,9 @@ export default function OnboardingPage() {
 
             let nextStep: Step = "welcome";
 
-            if (accountSettings.pinCode) {
-                setPin(accountSettings.pinCode);
-                setConfirmPin(accountSettings.pinCode);
-                nextStep = "username";
-            }
-
             if (accountSettings.name && accountSettings.name !== "Benutzer") {
                 setUsername(accountSettings.name);
-                if (nextStep === "username") nextStep = "company";
+                nextStep = "company";
             }
 
             setCurrentStep(nextStep);
@@ -451,7 +445,7 @@ export default function OnboardingPage() {
                                     <div className="space-y-6">
                                         <div className="grid gap-4 lg:grid-cols-3">
                                             {[
-                                                { icon: Lock, title: "PIN-Schutz", text: "Schnell entsperren, wenn FlowY gesperrt ist." },
+                                                { icon: Lock, title: "Sicher anmelden", text: "Zugang erfolgt klassisch mit E-Mail und Passwort." },
                                                 { icon: FileText, title: "PDF-Daten", text: "Firmenkopf, Adresse und Bankdaten vorbereiten." },
                                                 { icon: WalletCards, title: "Startklar", text: "Danach können Rechnungen und Projekte sauber starten." },
                                             ].map((item) => (
@@ -464,7 +458,7 @@ export default function OnboardingPage() {
                                         </div>
                                         <button
                                             type="button"
-                                            onClick={() => setCurrentStep("pin")}
+                                            onClick={() => setCurrentStep("username")}
                                             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-pink-500 py-4 font-black shadow-xl shadow-indigo-950/30 transition hover:scale-[1.01]"
                                         >
                                             Einrichtung starten <ArrowRight className="h-5 w-5" />
@@ -754,7 +748,7 @@ export default function OnboardingPage() {
                             </div>
 
                             {currentStep !== "welcome" && (
-                                <LivePreview companyData={companyData} username={username} pinReady={pin.length >= 4 && pin === confirmPin} />
+                                <LivePreview companyData={companyData} username={username} />
                             )}
                         </div>
                     </section>
@@ -897,7 +891,6 @@ function StepActions({ onBack, onNext, disabled }: { onBack: () => void; onNext:
 function LivePreview({
     companyData,
     username,
-    pinReady,
 }: {
     companyData: {
         companyName: string;
@@ -913,7 +906,6 @@ function LivePreview({
         logo: string;
     };
     username: string;
-    pinReady: boolean;
 }) {
     const address = [companyData.street, [companyData.zipCode, companyData.city].filter(Boolean).join(" ")].filter(Boolean);
     const ceoName = [companyData.ceoFirstName, companyData.ceoLastName].filter(Boolean).join(" ");
@@ -952,7 +944,6 @@ function LivePreview({
                     </div>
                     <div className="grid gap-3 text-xs font-bold text-slate-600">
                         <PreviewRow label="Benutzer" value={username || "Noch nicht gesetzt"} />
-                        <PreviewRow label="PIN-Schutz" value={pinReady ? "Aktiv" : "Noch offen"} />
                         <PreviewRow label="Geschäftsführer" value={ceoName || "Optional"} />
                         <PreviewRow label="Bank" value={companyData.bankName || "Optional"} />
                         <PreviewRow label="IBAN" value={companyData.iban || "Optional"} />

@@ -53,11 +53,11 @@ export function DashboardPrefetch() {
             actorUserId ? `/api/todos?userId=${actorUserId}` : null,
             canUse("customers_read") ? `/api/customers?userId=${ownerUserId}` : null,
             canUse("projects_read") ? `/api/projects?userId=${ownerUserId}` : null,
+            canUse("employees_read") ? `/api/employees?userId=${ownerUserId}` : null,
         ].filter(Boolean) as string[];
 
         const timeKeys = canUse("time_tracking_use")
             ? [
-                `/api/employees?userId=${ownerUserId}`,
                 `/api/time-entries?userId=${ownerUserId}`,
                 `/api/timesheets?userId=${ownerUserId}`,
             ]

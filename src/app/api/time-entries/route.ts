@@ -64,8 +64,8 @@ export async function POST(request: Request) {
             .maybeSingle();
 
         if (timesheetError) throw timesheetError;
-        if (timesheet?.status === 'finalized') {
-            return NextResponse.json({ error: 'Finalized timesheets cannot be changed' }, { status: 409 });
+        if (timesheet && timesheet.status !== 'draft') {
+            return NextResponse.json({ error: 'Locked timesheets cannot be changed' }, { status: 409 });
         }
 
         const { error } = await client
@@ -123,8 +123,8 @@ export async function DELETE(request: Request) {
                 .eq('userId', userId)
                 .maybeSingle();
             if (timesheetError) throw timesheetError;
-            if (timesheet?.status === 'finalized') {
-                return NextResponse.json({ error: 'Finalized timesheets cannot be changed' }, { status: 409 });
+            if (timesheet && timesheet.status !== 'draft') {
+                return NextResponse.json({ error: 'Locked timesheets cannot be changed' }, { status: 409 });
             }
         }
 

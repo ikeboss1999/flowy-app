@@ -61,21 +61,34 @@ export async function POST(request: Request) {
 
         if (existingError) throw existingError;
 
-        if (existing?.status === 'finalized' && timesheet.status === 'draft' && session.role !== 'admin' && session.role !== 'developer') {
-            return NextResponse.json({ error: 'Only admins can reopen finalized timesheets' }, { status: 403 });
+        const nextStatus = timesheet.status || existing?.status || 'draft';
+        const isReopeningLockedMonth = existing && existing.status !== 'draft' && nextStatus === 'draft';
+
+        if (isReopeningLockedMonth && session.role !== 'admin' && session.role !== 'developer') {
+            return NextResponse.json({ error: 'Only admins can reopen locked timesheets' }, { status: 403 });
         }
 
-        const { error } = await client
+        const normalizedTimesheet = {
+            ...timesheet,
+            id: timesheetId,
+            userId: companyOwnerId,
+            status: nextStatus,
+            submittedAt: nextStatus === 'submitted'
+                ? (timesheet.submittedAt || existing?.submittedAt || now)
+                : null,
+            finalizedAt: nextStatus === 'finalized'
+                ? (timesheet.finalizedAt || existing?.finalizedAt || now)
+                : null
+        };
+
+        const { data, error } = await client
             .from('timesheets')
-            .upsert({
-                ...timesheet,
-                id: timesheetId,
-                userId: companyOwnerId,
-                finalizedAt: timesheet.status === 'finalized' ? (timesheet.finalizedAt || now) : null
-            });
+            .upsert(normalizedTimesheet)
+            .select('*')
+            .single();
         if (error) throw error;
 
-        return NextResponse.json({ success: true, id: timesheetId });
+        return NextResponse.json({ success: true, id: timesheetId, timesheet: data });
     } catch (e) {
         console.error(e);
         return NextResponse.json({ error: 'Failed' }, { status: 500 });

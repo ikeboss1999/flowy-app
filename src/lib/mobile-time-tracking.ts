@@ -2,39 +2,42 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 export const timeEntryTypeSchema = z.enum(['WORK', 'BAD_WEATHER', 'WORK_BAD_WEATHER', 'VACATION', 'SICK', 'HOLIDAY', 'OFF']);
+const hhmmSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Time must be HH:mm');
+const mobileTimeSchema = z.union([hhmmSchema, z.literal('')]);
 
 export const mobileTimeEntrySchema = z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    startTime: z.string().regex(/^\d{2}:\d{2}$/).optional().default(''),
-    endTime: z.string().regex(/^\d{2}:\d{2}$/).optional().default(''),
+    startTime: mobileTimeSchema.optional().default(''),
+    endTime: mobileTimeSchema.optional().default(''),
     breakDuration: z.number().int().min(0).max(24 * 60).optional().default(0),
     type: timeEntryTypeSchema,
     projectId: z.string().min(1).optional().nullable(),
     location: z.string().trim().max(160).optional().nullable(),
-    overtime: z.number().min(-24).max(24).optional().nullable(),
-    duration: z.number().int().min(0).max(24 * 60).optional().nullable(),
-    badWeatherDuration: z.number().int().min(0).max(24 * 60).optional().nullable(),
     notes: z.string().trim().max(1000).optional().nullable(),
     clientOperationId: z.string().trim().max(120).optional().nullable(),
 });
 
 export const mobileTimeEntryPatchSchema = z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    startTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-    endTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    startTime: mobileTimeSchema.optional(),
+    endTime: mobileTimeSchema.optional(),
     breakDuration: z.number().int().min(0).max(24 * 60).optional(),
     type: timeEntryTypeSchema.optional(),
     projectId: z.string().min(1).optional().nullable(),
     location: z.string().trim().max(160).optional().nullable(),
-    overtime: z.number().min(-24).max(24).optional().nullable(),
-    duration: z.number().int().min(0).max(24 * 60).optional().nullable(),
-    badWeatherDuration: z.number().int().min(0).max(24 * 60).optional().nullable(),
     notes: z.string().trim().max(1000).optional().nullable(),
     clientOperationId: z.string().trim().max(120).optional().nullable(),
 });
 
 export function monthFromDate(date: string) {
     return date.slice(0, 7);
+}
+
+export function monthRange(month: string) {
+    const [year, monthNumber] = month.split('-').map(Number);
+    const start = `${month}-01`;
+    const end = new Date(Date.UTC(year, monthNumber, 0)).toISOString().slice(0, 10);
+    return { start, end };
 }
 
 export function calculateDurationMinutes(startTime?: string, endTime?: string, breakDuration = 0) {
@@ -47,6 +50,49 @@ export function calculateDurationMinutes(startTime?: string, endTime?: string, b
     const end = endHour * 60 + endMinute;
     if (end <= start) return 0;
     return Math.max(0, end - start - breakDuration);
+}
+
+export function validateMobileEntryDate(date: string) {
+    const parsed = new Date(`${date}T00:00:00.000Z`);
+    if (Number.isNaN(parsed.getTime()) || date !== parsed.toISOString().slice(0, 10)) {
+        return NextResponse.json({ error: 'Invalid date' }, { status: 400 });
+    }
+
+    const today = new Date();
+    const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    if (parsed.getTime() > todayUtc.getTime()) {
+        return NextResponse.json({ error: 'Future dates are not allowed' }, { status: 400 });
+    }
+
+    const oldestAllowed = new Date(todayUtc);
+    oldestAllowed.setUTCMonth(oldestAllowed.getUTCMonth() - 2);
+    if (parsed.getTime() < oldestAllowed.getTime()) {
+        return NextResponse.json({ error: 'Date is outside the allowed mobile entry range' }, { status: 400 });
+    }
+
+    return null;
+}
+
+export function validateMobileEntryTimes(startTime?: string, endTime?: string, breakDuration = 0) {
+    if (!startTime && !endTime) return null;
+    if (!startTime || !endTime) {
+        return NextResponse.json({ error: 'Start and end time are required together' }, { status: 400 });
+    }
+
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+    const start = startHour * 60 + startMinute;
+    const end = endHour * 60 + endMinute;
+
+    if (end <= start) {
+        return NextResponse.json({ error: 'End time must be after start time' }, { status: 400 });
+    }
+
+    if (breakDuration >= end - start) {
+        return NextResponse.json({ error: 'Break duration must be shorter than working time' }, { status: 400 });
+    }
+
+    return null;
 }
 
 export async function getTimesheetStatus(client: any, params: { companyOwnerId: string; employeeId: string; month: string }) {
@@ -87,7 +133,7 @@ export async function verifyAssignedProject(client: any, params: { companyOwnerI
 }
 
 export function normalizeEntryPayload(input: z.infer<typeof mobileTimeEntrySchema>, employeeId: string, companyOwnerId: string) {
-    const duration = input.duration ?? calculateDurationMinutes(input.startTime, input.endTime, input.breakDuration);
+    const duration = calculateDurationMinutes(input.startTime, input.endTime, input.breakDuration);
     const location = input.location || input.notes || '';
 
     return {
@@ -100,8 +146,8 @@ export function normalizeEntryPayload(input: z.infer<typeof mobileTimeEntrySchem
         type: input.type,
         projectId: input.projectId || null,
         location,
-        overtime: input.overtime ?? 0,
+        overtime: 0,
         duration,
-        badWeatherDuration: input.badWeatherDuration ?? 0,
+        badWeatherDuration: input.type === 'BAD_WEATHER' ? duration : 0,
     };
 }

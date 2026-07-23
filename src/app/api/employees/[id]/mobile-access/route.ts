@@ -33,9 +33,25 @@ function generateNumericCode(length: number) {
     return code;
 }
 
-function buildDefaultAppAccess(employee: Employee) {
+async function generateUniqueStaffId(client: any) {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+        const staffId = generateNumericCode(8);
+        const { data, error } = await client
+            .from('employees')
+            .select('id')
+            .filter('appAccess->>staffId', 'eq', staffId)
+            .limit(1);
+
+        if (error) throw error;
+        if (!data || data.length === 0) return staffId;
+    }
+
+    throw new Error('Failed to generate unique mobile staff ID');
+}
+
+async function buildDefaultAppAccess(client: any, employee: Employee) {
     return {
-        staffId: employee.appAccess?.staffId || generateNumericCode(8),
+        staffId: employee.appAccess?.staffId || await generateUniqueStaffId(client),
         accessPIN: employee.appAccess?.accessPIN || '',
         isAccessEnabled: employee.appAccess?.isAccessEnabled ?? false,
         permissions: {
@@ -91,7 +107,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
         const employee = decryptEmployee(data as Employee);
         const now = new Date().toISOString();
-        let appAccess = buildDefaultAppAccess(employee);
+        let appAccess = await buildDefaultAppAccess(client, employee);
         let activationCode: string | undefined;
         let activationCodeExpiresAt: string | undefined;
 

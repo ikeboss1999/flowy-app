@@ -15,10 +15,10 @@ export async function GET(request: Request) {
                 ...employee,
                 appAccess: {
                     ...employee.appAccess,
-                    permissions: auth.payload.permissions,
+                    permissions: auth.permissions,
                 },
             },
-            permissions: auth.payload.permissions,
+            permissions: auth.permissions,
             session: {
                 id: auth.session.id,
                 platform: auth.session.platform,

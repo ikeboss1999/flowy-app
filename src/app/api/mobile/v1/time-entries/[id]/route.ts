@@ -7,6 +7,8 @@ import {
     mobileTimeEntryPatchSchema,
     monthFromDate,
     rejectLockedTimesheet,
+    validateMobileEntryDate,
+    validateMobileEntryTimes,
     verifyAssignedProject,
 } from '@/lib/mobile-time-tracking';
 
@@ -41,6 +43,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         if (!parsed.ok) return parsed.response;
 
         const nextDate = parsed.data.date || existing.date;
+        const dateValidation = validateMobileEntryDate(nextDate);
+        if (dateValidation) return dateValidation;
+
+        const startTime = parsed.data.startTime ?? existing.startTime;
+        const endTime = parsed.data.endTime ?? existing.endTime;
+        const breakDuration = parsed.data.breakDuration ?? existing.breakDuration ?? 0;
+        const timeValidation = validateMobileEntryTimes(startTime, endTime, breakDuration);
+        if (timeValidation) return timeValidation;
+
         const month = monthFromDate(nextDate);
         const timesheet = await getTimesheetStatus(auth.client, {
             companyOwnerId: auth.companyOwnerId,
@@ -71,13 +82,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
             return NextResponse.json({ error: 'Project is not assigned to this mobile employee' }, { status: 403 });
         }
 
-        const startTime = parsed.data.startTime ?? existing.startTime;
-        const endTime = parsed.data.endTime ?? existing.endTime;
-        const breakDuration = parsed.data.breakDuration ?? existing.breakDuration ?? 0;
         const updates: Record<string, unknown> = {};
 
         for (const [key, value] of Object.entries(parsed.data)) {
             if (key === 'notes') continue;
+            if (key === 'duration' || key === 'overtime' || key === 'badWeatherDuration') continue;
             if (value !== undefined) updates[key] = value;
         }
 
@@ -86,9 +95,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         }
 
         if (updates.projectId === undefined && nextProjectId === null) updates.projectId = null;
-        if (parsed.data.duration === undefined && (parsed.data.startTime !== undefined || parsed.data.endTime !== undefined || parsed.data.breakDuration !== undefined)) {
-            updates.duration = calculateDurationMinutes(startTime, endTime, breakDuration);
-        }
+        updates.duration = calculateDurationMinutes(startTime, endTime, breakDuration);
+        updates.overtime = 0;
+        updates.badWeatherDuration = (updates.type || existing.type) === 'BAD_WEATHER' ? updates.duration : 0;
 
         const { data, error } = await auth.client
             .from('time_entries')
@@ -99,6 +108,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
             .select()
             .single();
 
+        if (error?.code === '23505') {
+            return NextResponse.json({ error: 'Time entry already exists for this date' }, { status: 409 });
+        }
         if (error) throw error;
         return NextResponse.json({ success: true, entry: data });
     } catch (error) {

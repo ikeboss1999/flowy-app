@@ -6,9 +6,12 @@ import { requireMobileSession } from '@/lib/mobile-auth';
 import {
     getTimesheetStatus,
     mobileTimeEntrySchema,
+    monthRange,
     monthFromDate,
     normalizeEntryPayload,
     rejectLockedTimesheet,
+    validateMobileEntryDate,
+    validateMobileEntryTimes,
     verifyAssignedProject,
 } from '@/lib/mobile-time-tracking';
 
@@ -24,14 +27,15 @@ export async function GET(request: Request) {
         if (!month || !/^\d{4}-\d{2}$/.test(month)) {
             return NextResponse.json({ error: 'Query parameter month=YYYY-MM is required' }, { status: 400 });
         }
+        const range = monthRange(month);
 
         const { data, error } = await auth.client
             .from('time_entries')
             .select('*')
             .eq('userId', auth.companyOwnerId)
             .eq('employeeId', auth.employeeId)
-            .gte('date', `${month}-01`)
-            .lte('date', `${month}-31`)
+            .gte('date', range.start)
+            .lte('date', range.end)
             .order('date', { ascending: true });
 
         if (error) throw error;
@@ -49,6 +53,12 @@ export async function POST(request: Request) {
 
         const parsed = await parseJsonBody(request, mobileTimeEntrySchema);
         if (!parsed.ok) return parsed.response;
+
+        const dateValidation = validateMobileEntryDate(parsed.data.date);
+        if (dateValidation) return dateValidation;
+
+        const timeValidation = validateMobileEntryTimes(parsed.data.startTime, parsed.data.endTime, parsed.data.breakDuration);
+        if (timeValidation) return timeValidation;
 
         const month = monthFromDate(parsed.data.date);
         const timesheet = await getTimesheetStatus(auth.client, {
@@ -81,6 +91,9 @@ export async function POST(request: Request) {
             .select()
             .single();
 
+        if (error?.code === '23505') {
+            return NextResponse.json({ error: 'Time entry already exists for this date' }, { status: 409 });
+        }
         if (error) throw error;
         return NextResponse.json({ success: true, entry: data }, { status: 201 });
     } catch (error) {
