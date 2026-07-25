@@ -41,6 +41,15 @@ async function listAssignments(client: any, employeeId: string, userId: string) 
     return data || [];
 }
 
+function getQueryValueFromRawUrl(url: string, names: string[]) {
+    const query = url.includes('?') ? url.slice(url.indexOf('?') + 1).replace(/&amp;/g, '&') : '';
+    for (const name of names) {
+        const match = query.match(new RegExp(`(?:^|&)${name}=([^&]*)`));
+        if (match?.[1]) return decodeURIComponent(match[1].replace(/\+/g, ' ')).trim();
+    }
+    return '';
+}
+
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
     const auth = await requireApiSession('employees_read');
     if (!auth.ok) return auth.response;
@@ -164,6 +173,10 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     ).trim();
 
     if (!assignmentId) {
+        assignmentId = getQueryValueFromRawUrl(request.url, ['id', 'assignmentId', 'projectAssignmentId', 'amp;id']);
+    }
+
+    if (!assignmentId) {
         const rawQuery = request.url.includes('?') ? request.url.slice(request.url.indexOf('?') + 1) : '';
         if (rawQuery.includes('&')) {
             const recoveredParams = new URLSearchParams(rawQuery.replace(/&amp;/g, '&'));
@@ -182,6 +195,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
             error: 'Assignment ID required',
             received: {
                 hasId: false,
+                queryKeys: Array.from(searchParams.keys()),
             },
         }, { status: 400 });
     }

@@ -44,6 +44,15 @@ async function verifyEmployee(client: any, employeeId: string, userId: string) {
     return !!data;
 }
 
+function getQueryValueFromRawUrl(url: string, names: string[]) {
+    const query = url.includes('?') ? url.slice(url.indexOf('?') + 1).replace(/&amp;/g, '&') : '';
+    for (const name of names) {
+        const match = query.match(new RegExp(`(?:^|&)${name}=([^&]*)`));
+        if (match?.[1]) return decodeURIComponent(match[1].replace(/\+/g, ' ')).trim();
+    }
+    return '';
+}
+
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
     const auth = await requireApiSession('employees_read');
     if (!auth.ok) return auth.response;
@@ -267,6 +276,10 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
         ''
     ).trim();
 
+    if (!id) {
+        id = getQueryValueFromRawUrl(request.url, ['id', 'docId', 'documentId', 'folderId', 'amp;id']);
+    }
+
     if (!id && rawType.includes('&')) {
         const recoveredParams = new URLSearchParams(rawType.slice(rawType.indexOf('&') + 1));
         type = rawType.slice(0, rawType.indexOf('&')).trim();
@@ -286,6 +299,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
             received: {
                 type: type || null,
                 hasId: !!id,
+                queryKeys: Array.from(searchParams.keys()),
             },
         }, { status: 400 });
     }
