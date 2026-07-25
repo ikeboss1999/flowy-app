@@ -264,15 +264,20 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const auth = await requireApiSession('employees_write');
     if (!auth.ok) return auth.response;
 
+    const body = await request.clone().json().catch(() => ({}));
     const searchParams = request.nextUrl.searchParams;
     const rawType = searchParams.get('type') || '';
-    let type = rawType.trim();
+    let type = rawType.trim() || (typeof body?.type === 'string' ? body.type.trim() : '');
     let id = (
         searchParams.get('id') ||
         searchParams.get('docId') ||
         searchParams.get('documentId') ||
         searchParams.get('folderId') ||
         searchParams.get('amp;id') ||
+        (typeof body?.id === 'string' ? body.id : '') ||
+        (typeof body?.docId === 'string' ? body.docId : '') ||
+        (typeof body?.documentId === 'string' ? body.documentId : '') ||
+        (typeof body?.folderId === 'string' ? body.folderId : '') ||
         ''
     ).trim();
 
@@ -300,6 +305,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
                 type: type || null,
                 hasId: !!id,
                 queryKeys: Array.from(searchParams.keys()),
+                hasBodyId: !!body?.id,
             },
         }, { status: 400 });
     }

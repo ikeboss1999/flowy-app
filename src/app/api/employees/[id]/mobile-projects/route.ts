@@ -163,12 +163,16 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const auth = await requireApiSession('employees_write');
     if (!auth.ok) return auth.response;
 
+    const body = await request.clone().json().catch(() => ({}));
     const searchParams = request.nextUrl.searchParams;
     let assignmentId = (
         searchParams.get('id') ||
         searchParams.get('assignmentId') ||
         searchParams.get('projectAssignmentId') ||
         searchParams.get('amp;id') ||
+        (typeof body?.id === 'string' ? body.id : '') ||
+        (typeof body?.assignmentId === 'string' ? body.assignmentId : '') ||
+        (typeof body?.projectAssignmentId === 'string' ? body.projectAssignmentId : '') ||
         ''
     ).trim();
 
@@ -196,6 +200,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
             received: {
                 hasId: false,
                 queryKeys: Array.from(searchParams.keys()),
+                hasBodyId: !!body?.id,
             },
         }, { status: 400 });
     }

@@ -340,6 +340,8 @@ export function EmployeeDetailModal({
             const query = new URLSearchParams({ id: assignmentId });
             const response = await fetch(`/api/employees/${employee.id}/mobile-projects?${query.toString()}`, {
                 method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: assignmentId }),
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data?.error || "Projektzuordnung konnte nicht entfernt werden.");
@@ -414,6 +416,8 @@ export function EmployeeDetailModal({
             const query = new URLSearchParams({ type: "document", id });
             const response = await fetch(`/api/employees/${employee.id}/mobile-documents?${query.toString()}`, {
                 method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ type: "document", id }),
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data?.error || "Dokument konnte nicht geloescht werden.");
@@ -437,6 +441,8 @@ export function EmployeeDetailModal({
             const query = new URLSearchParams({ type: "folder", id });
             const response = await fetch(`/api/employees/${employee.id}/mobile-documents?${query.toString()}`, {
                 method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ type: "folder", id }),
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data?.error || "Ordner konnte nicht geloescht werden.");
