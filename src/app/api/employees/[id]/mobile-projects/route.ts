@@ -155,8 +155,36 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     if (!auth.ok) return auth.response;
 
     const { searchParams } = new URL(request.url);
-    const assignmentId = searchParams.get('id');
-    if (!assignmentId) return NextResponse.json({ error: 'Assignment ID required' }, { status: 400 });
+    let assignmentId = (
+        searchParams.get('id') ||
+        searchParams.get('assignmentId') ||
+        searchParams.get('projectAssignmentId') ||
+        searchParams.get('amp;id') ||
+        ''
+    ).trim();
+
+    if (!assignmentId) {
+        const rawQuery = request.url.includes('?') ? request.url.slice(request.url.indexOf('?') + 1) : '';
+        if (rawQuery.includes('&')) {
+            const recoveredParams = new URLSearchParams(rawQuery.replace(/&amp;/g, '&'));
+            assignmentId = (
+                recoveredParams.get('id') ||
+                recoveredParams.get('assignmentId') ||
+                recoveredParams.get('projectAssignmentId') ||
+                recoveredParams.get('amp;id') ||
+                ''
+            ).trim();
+        }
+    }
+
+    if (!assignmentId) {
+        return NextResponse.json({
+            error: 'Assignment ID required',
+            received: {
+                hasId: false,
+            },
+        }, { status: 400 });
+    }
 
     try {
         const client = supabaseAdmin || supabase;

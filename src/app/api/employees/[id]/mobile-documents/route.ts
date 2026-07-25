@@ -256,11 +256,38 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     if (!auth.ok) return auth.response;
 
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type');
-    const id = searchParams.get('id');
+    const rawType = searchParams.get('type') || '';
+    let type = rawType.trim();
+    let id = (
+        searchParams.get('id') ||
+        searchParams.get('docId') ||
+        searchParams.get('documentId') ||
+        searchParams.get('folderId') ||
+        searchParams.get('amp;id') ||
+        ''
+    ).trim();
+
+    if (!id && rawType.includes('&')) {
+        const recoveredParams = new URLSearchParams(rawType.slice(rawType.indexOf('&') + 1));
+        type = rawType.slice(0, rawType.indexOf('&')).trim();
+        id = (
+            recoveredParams.get('id') ||
+            recoveredParams.get('docId') ||
+            recoveredParams.get('documentId') ||
+            recoveredParams.get('folderId') ||
+            recoveredParams.get('amp;id') ||
+            ''
+        ).trim();
+    }
 
     if ((type !== 'folder' && type !== 'document') || !id) {
-        return NextResponse.json({ error: 'Missing or invalid type/id' }, { status: 400 });
+        return NextResponse.json({
+            error: 'Missing or invalid type/id',
+            received: {
+                type: type || null,
+                hasId: !!id,
+            },
+        }, { status: 400 });
     }
 
     try {
