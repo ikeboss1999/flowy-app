@@ -317,10 +317,16 @@ export function EmployeeDetailModal({
     };
 
     const removeMobileProjectAssignment = async (assignmentId: string) => {
+        if (!assignmentId) {
+            setMobileProjectsError("Projektzuordnung konnte nicht entfernt werden: Zuordnungs-ID fehlt.");
+            return;
+        }
+
         setIsMobileProjectsLoading(true);
         setMobileProjectsError(null);
         try {
-            const response = await fetch(`/api/employees/${employee.id}/mobile-projects?id=${encodeURIComponent(assignmentId)}`, {
+            const query = new URLSearchParams({ id: assignmentId });
+            const response = await fetch(`/api/employees/${employee.id}/mobile-projects?${query.toString()}`, {
                 method: "DELETE",
             });
             const data = await response.json().catch(() => ({}));
@@ -385,10 +391,16 @@ export function EmployeeDetailModal({
     };
 
     const deleteMobileDocument = async (id: string) => {
+        if (!id) {
+            setMobileDocumentsError("Dokument konnte nicht geloescht werden: Dokument-ID fehlt.");
+            return;
+        }
+
         setIsMobileDocumentsLoading(true);
         setMobileDocumentsError(null);
         try {
-            const response = await fetch(`/api/employees/${employee.id}/mobile-documents?type=document&id=${encodeURIComponent(id)}`, {
+            const query = new URLSearchParams({ type: "document", id });
+            const response = await fetch(`/api/employees/${employee.id}/mobile-documents?${query.toString()}`, {
                 method: "DELETE",
             });
             const data = await response.json().catch(() => ({}));
@@ -402,10 +414,16 @@ export function EmployeeDetailModal({
     };
 
     const deleteMobileFolder = async (id: string) => {
+        if (!id) {
+            setMobileDocumentsError("Ordner konnte nicht geloescht werden: Ordner-ID fehlt.");
+            return;
+        }
+
         setIsMobileDocumentsLoading(true);
         setMobileDocumentsError(null);
         try {
-            const response = await fetch(`/api/employees/${employee.id}/mobile-documents?type=folder&id=${encodeURIComponent(id)}`, {
+            const query = new URLSearchParams({ type: "folder", id });
+            const response = await fetch(`/api/employees/${employee.id}/mobile-documents?${query.toString()}`, {
                 method: "DELETE",
             });
             const data = await response.json().catch(() => ({}));
