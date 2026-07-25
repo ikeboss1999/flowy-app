@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
@@ -159,11 +159,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
     const auth = await requireApiSession('employees_write');
     if (!auth.ok) return auth.response;
 
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     let assignmentId = (
         searchParams.get('id') ||
         searchParams.get('assignmentId') ||

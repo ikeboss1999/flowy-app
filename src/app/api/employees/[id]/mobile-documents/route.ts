@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
@@ -260,11 +260,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
     const auth = await requireApiSession('employees_write');
     if (!auth.ok) return auth.response;
 
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const rawType = searchParams.get('type') || '';
     let type = rawType.trim();
     let id = (
