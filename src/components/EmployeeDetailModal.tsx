@@ -121,6 +121,9 @@ const sanitizeFileName = (name: string) =>
         .replace(/[<>:"/\\|?*]+/g, "")
         .replace(/\s+/g, "_") || "Dokument";
 
+const pickStringId = (...values: unknown[]) =>
+    values.find((value): value is string => typeof value === "string" && value.trim().length > 0)?.trim() || "";
+
 interface MobileDocumentFolder {
     id: string;
     name: string;
@@ -257,8 +260,14 @@ export function EmployeeDetailModal({
             const response = await fetch(`/api/employees/${employee.id}/mobile-documents`);
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data?.error || "Mobile-Dokumente konnten nicht geladen werden.");
-            setMobileFolders(data.folders || []);
-            setMobileDocuments(data.documents || []);
+            setMobileFolders((data.folders || []).map((folder: any) => ({
+                ...folder,
+                id: pickStringId(folder?.id, folder?.folderId),
+            })));
+            setMobileDocuments((data.documents || []).map((document: any) => ({
+                ...document,
+                id: pickStringId(document?.id, document?.documentId, document?.docId),
+            })));
         } catch (error: any) {
             setMobileDocumentsError(error?.message || "Mobile-Dokumente konnten nicht geladen werden.");
         } finally {
@@ -274,7 +283,10 @@ export function EmployeeDetailModal({
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data?.error || "Mobile-Projekte konnten nicht geladen werden.");
             setMobileProjects(data.projects || []);
-            setMobileProjectAssignments(data.assignments || []);
+            setMobileProjectAssignments((data.assignments || []).map((assignment: any) => ({
+                ...assignment,
+                id: pickStringId(assignment?.id, assignment?.assignmentId, assignment?.projectAssignmentId),
+            })));
             setMaxMobileProjectAssignments(data.maxActiveAssignments || 2);
         } catch (error: any) {
             setMobileProjectsError(error?.message || "Mobile-Projekte konnten nicht geladen werden.");
