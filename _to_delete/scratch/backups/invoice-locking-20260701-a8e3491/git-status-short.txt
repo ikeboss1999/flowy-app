@@ -1,0 +1,12 @@
+﻿ M package-lock.json
+ M src/app/(dashboard)/customers/page.tsx
+ M src/app/(dashboard)/settings/page.tsx
+ M src/app/api/settings/route.ts
+ M src/components/CustomerDetailModal.tsx
+ M src/components/CustomerModal.tsx
+ M src/components/Sidebar.tsx
+ M src/types/customer.ts
+?? migration_customer_numbers.sql
+?? src/components/AppInfo.tsx
+?? src/components/CustomerSettings.tsx
+?? src/hooks/useCustomerSettings.ts

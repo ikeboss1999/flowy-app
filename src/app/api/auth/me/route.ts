@@ -4,14 +4,17 @@ import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { decryptEmployee } from '@/lib/encryption';
 import { Employee } from '@/types/employee';
+import { logApiPerformance } from '@/lib/api-performance';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+    const startedAt = performance.now();
     try {
         const session = await getUserSession();
 
         if (!session) {
+            logApiPerformance('/api/auth/me', startedAt, { note: 'anonymous' });
             return NextResponse.json({ user: null }, { status: 200 });
         }
 
@@ -37,7 +40,7 @@ export async function GET() {
             }
         }
 
-        return NextResponse.json({
+        const payload = {
             user: {
                 id: session.userId,
                 name: session.name || session.email?.split('@')[0],
@@ -47,7 +50,9 @@ export async function GET() {
                 permissions: session.permissions
             },
             employee
-        }, { status: 200 });
+        };
+        logApiPerformance('/api/auth/me', startedAt, { payload, note: session.role });
+        return NextResponse.json(payload, { status: 200 });
     } catch (error) {
         console.error('[API Auth Me] GET Error:', error);
         return NextResponse.json({ user: null }, { status: 200 });

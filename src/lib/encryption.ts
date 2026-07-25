@@ -6,7 +6,10 @@ const GCM_IV_LENGTH = 12;
 function getEncryptionKey(requireDedicatedKey = false): Buffer {
     const rawKey = process.env.ENCRYPTION_KEY;
 
-    if (!rawKey && (requireDedicatedKey || process.env.NODE_ENV === 'production')) {
+    // Only throw for encrypt operations (requireDedicatedKey=true) – not for decrypt.
+    // This ensures old CBC-encrypted records can still be decrypted even when
+    // ENCRYPTION_KEY is not yet set in the environment (e.g. legacy deployments).
+    if (!rawKey && requireDedicatedKey) {
         throw new Error('ENCRYPTION_KEY environment variable is required for encryption.');
     }
 
@@ -50,9 +53,19 @@ export function decrypt(text: string): string {
             const iv = Buffer.from(parts[2], 'hex');
             const authTag = Buffer.from(parts[3], 'hex');
             const encryptedText = Buffer.from(parts[4], 'hex');
-            const decipher = crypto.createDecipheriv('aes-256-gcm', getEncryptionKey(), iv);
-            decipher.setAuthTag(authTag);
-            return Buffer.concat([decipher.update(encryptedText), decipher.final()]).toString('utf8');
+
+            // Try GCM decryption with all available keys
+            for (const rawKey of [process.env.ENCRYPTION_KEY, process.env.JWT_SECRET, 'default-secret-key-32-chars-minimum-length-flowy!'].filter(Boolean) as string[]) {
+                try {
+                    const key = crypto.createHash('sha256').update(rawKey).digest();
+                    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+                    decipher.setAuthTag(authTag);
+                    return Buffer.concat([decipher.update(encryptedText), decipher.final()]).toString('utf8');
+                } catch {
+                    // Try next key
+                }
+            }
+            return text;
         }
 
         if (!text.includes(':')) {
@@ -65,6 +78,7 @@ export function decrypt(text: string): string {
         const iv = Buffer.from(parts[0], 'hex');
         const encryptedText = Buffer.from(parts[1], 'hex');
 
+        // Try all legacy CBC keys
         for (const legacyKey of getLegacyEncryptionKeys()) {
             try {
                 const decipher = crypto.createDecipheriv('aes-256-cbc', legacyKey, iv);

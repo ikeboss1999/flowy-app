@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { nanoid } from 'nanoid';
 import { getUserSession, hasPermission } from '@/lib/auth-server';
 import { safeGetCreatedBy, safeUpsert } from '@/lib/supabase-helper';
+import { logApiPerformance } from '@/lib/api-performance';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,20 @@ function isStoredInvoicePdfReference(invoice: any, companyOwnerId: string) {
     }
 }
 
+function toInvoiceListItem(invoice: any) {
+    if (!invoice?.performancePeriod?.companySnapshot) return invoice;
+
+    return {
+        ...invoice,
+        performancePeriod: {
+            ...invoice.performancePeriod,
+            companySnapshot: undefined
+        }
+    };
+}
+
 export async function GET(request: Request) {
+    const startedAt = performance.now();
     const session = await getUserSession();
     const companyOwnerId = session?.companyOwnerId;
 
@@ -60,7 +74,9 @@ export async function GET(request: Request) {
             .order('issueDate', { ascending: false })
             .limit(500);
         if (error) throw error;
-        return NextResponse.json(invoices);
+        const listItems = (invoices || []).map(toInvoiceListItem);
+        logApiPerformance('/api/invoices', startedAt, { rows: listItems.length, payload: listItems });
+        return NextResponse.json(listItems);
     } catch (e) {
         console.error(e);
         return NextResponse.json({ error: 'Failed' }, { status: 500 });
@@ -161,8 +177,18 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Finalized invoices require a stored PDF' }, { status: 400 });
         }
 
+        const performancePeriod = existingInvoice?.performancePeriod?.companySnapshot
+            && invoice.performancePeriod
+            && !invoice.performancePeriod.companySnapshot
+            ? {
+                ...invoice.performancePeriod,
+                companySnapshot: existingInvoice.performancePeriod.companySnapshot
+            }
+            : invoice.performancePeriod;
+
         const invoiceData = {
             ...invoice,
+            performancePeriod,
             id: invoiceId,
             userId: companyOwnerId,
             updatedAt: now,

@@ -14,6 +14,8 @@ export interface ArchiveFile {
     size?: number;
     createdAt: string;
     updatedAt: string;
+    isEmployeeDoc?: boolean;
+    employeeId?: string;
 }
 
 export function useArchiveFiles() {
@@ -49,6 +51,10 @@ export function useArchiveFiles() {
     };
 
     const getSignedUrl = async (storagePath: string): Promise<string> => {
+        if (!storagePath) return '';
+        if (storagePath.startsWith('data:') || storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+            return storagePath;
+        }
         const res = await fetch(`/api/project-files/signed-url?path=${encodeURIComponent(storagePath)}`);
         if (!res.ok) throw new Error('Failed to get signed URL');
         const { url } = await res.json();

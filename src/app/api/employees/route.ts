@@ -68,8 +68,27 @@ export async function POST(request: Request) {
         const empId = id || nanoid();
         const client = supabaseAdmin || supabase;
 
-        // Check if record exists for created_by
-        const createdBy = employee.id ? await safeGetCreatedBy(client, 'employees', employee.id) : null;
+        // Fetch existing employee to preserve documents if summary mode payload is passed
+        let finalDocuments = documents;
+        let createdBy = null;
+        if (employee.id) {
+            const { data: existingRow } = await client
+                .from('employees')
+                .select('*')
+                .eq('id', employee.id)
+                .eq('userId', companyOwnerId)
+                .maybeSingle();
+
+            if (existingRow) {
+                createdBy = existingRow.created_by;
+                const existingDecrypted = decryptEmployee(existingRow as any);
+                const existingDocs = existingDecrypted.documents || [];
+                // If incoming documents is empty/undefined but DB has documents, keep DB documents
+                if ((!documents || documents.length === 0) && existingDocs.length > 0) {
+                    finalDocuments = existingDocs;
+                }
+            }
+        }
 
         const employeeData = {
             id: empId,
@@ -79,7 +98,7 @@ export async function POST(request: Request) {
             employment,
             additionalInfo,
             weeklySchedule,
-            documents,
+            documents: finalDocuments,
             avatar,
             appAccess,
             pendingChanges,

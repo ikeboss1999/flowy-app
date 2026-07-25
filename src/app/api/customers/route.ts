@@ -4,10 +4,12 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { nanoid } from 'nanoid';
 import { getUserSession, hasPermission } from '@/lib/auth-server';
 import { safeGetCreatedBy, safeUpsert } from '@/lib/supabase-helper';
+import { logApiPerformance } from '@/lib/api-performance';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+    const startedAt = performance.now();
     const session = await getUserSession();
     const companyOwnerId = session?.companyOwnerId;
 
@@ -28,6 +30,7 @@ export async function GET(request: Request) {
             .order('createdAt', { ascending: false })
             .limit(500);
         if (error) throw error;
+        logApiPerformance('/api/customers', startedAt, { payload: customers });
         return NextResponse.json(customers);
     } catch (e) {
         console.error(e);

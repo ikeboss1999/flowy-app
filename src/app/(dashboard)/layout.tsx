@@ -1,12 +1,17 @@
 "use client";
 
-import { Sidebar } from "@/components/Sidebar";
+import dynamic from "next/dynamic";
 import { OnboardingCheck } from "@/components/OnboardingCheck";
 import { ReloadButton } from "@/components/ReloadButton";
 import { GlobalTodoWidget } from "@/components/GlobalTodoWidget";
 import { DashboardPrefetch } from "@/components/DashboardPrefetch";
 import { useDevice } from "@/hooks/useDevice";
 import { cn } from "@/lib/utils";
+
+const Sidebar = dynamic(
+    () => import("@/components/Sidebar").then((mod) => mod.Sidebar),
+    { ssr: false }
+);
 
 export default function DashboardLayout({
     children,

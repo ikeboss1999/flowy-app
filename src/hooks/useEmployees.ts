@@ -9,7 +9,7 @@ export function useEmployees() {
     const { user, currentEmployee, refreshEmployee } = useAuth();
 
     const activeUserId = user?.id || currentEmployee?.userId;
-    const key = activeUserId ? `/api/employees?userId=${activeUserId}` : null;
+    const key = activeUserId ? `/api/employees?summary=1&userId=${activeUserId}` : null;
 
     const { data = [], isLoading, mutate } = useSWR<Employee[]>(key, fetcher);
 

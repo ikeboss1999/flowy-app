@@ -27,7 +27,6 @@ export async function GET(request: Request) {
             .from('projects')
             .select('id,projectNumber,name,description,status,address,startDate,endDate')
             .eq('userId', auth.companyOwnerId)
-            .eq('status', 'active')
             .in('id', projectIds);
 
         if (projectsError) throw projectsError;

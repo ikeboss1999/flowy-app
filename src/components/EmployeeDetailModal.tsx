@@ -202,9 +202,26 @@ export function EmployeeDetailModal({
     const [mobileProjectTask, setMobileProjectTask] = useState("");
     const [maxMobileProjectAssignments, setMaxMobileProjectAssignments] = useState(2);
 
+    const [fullEmployee, setFullEmployee] = useState<Employee>(employee);
+
+    useEffect(() => {
+        setFullEmployee(employee);
+        if (isOpen && employee?.id) {
+            fetch(`/api/employees/${employee.id}`)
+                .then((res) => res.json())
+                .then((data) => {
+                    if (data && !data.error) {
+                        setFullEmployee(data);
+                    }
+                })
+                .catch((err) => console.error("Error fetching full employee details:", err));
+        }
+    }, [isOpen, employee]);
+
     if (!isOpen || !employee) return null;
 
-    const name = `${employee.personalData.firstName} ${employee.personalData.lastName}`.trim() || "Unbenannter Mitarbeiter";
+    const currentEmp = fullEmployee || employee;
+    const name = `${currentEmp.personalData.firstName} ${currentEmp.personalData.lastName}`.trim() || "Unbenannter Mitarbeiter";
     const initials =
         name
             .split(" ")
@@ -212,14 +229,15 @@ export function EmployeeDetailModal({
             .join("")
             .slice(0, 2)
             .toUpperCase() || "?";
-    const isActive = employee.employment.isActive !== false;
-    const docs = employee.documents || [];
-    const appAccess = employee.appAccess;
+    const isActive = currentEmp.employment.isActive !== false;
+    const docs = currentEmp.documents || [];
+    const appAccess = currentEmp.appAccess;
+    const isAccessEnabled = !!appAccess?.isAccessEnabled;
     const sharedLegacyDocs = docs.filter((doc) => doc.isShared).length;
     const appPermissions: Array<{ key: "timeTracking" | "documents" | "projectDiary"; label: string; description: string; enabled?: boolean }> = [
-        { key: "timeTracking", label: "Zeiterfassung", description: "Zeiten-Tab, Tagesstatus und Monatsabgabe", enabled: appAccess?.permissions?.timeTracking },
-        { key: "projectDiary", label: "Projekte & Bautagebuch", description: "Zugewiesene Projekte, Route, Notizen und Fotos", enabled: appAccess?.permissions?.projectDiary },
-        { key: "documents", label: "Dokumente", description: "Freigegebene Mitarbeiterdokumente und Downloads", enabled: appAccess?.permissions?.documents },
+        { key: "timeTracking", label: "Zeiterfassung", description: "Zeiten-Tab, Tagesstatus und Monatsabgabe", enabled: isAccessEnabled && !!appAccess?.permissions?.timeTracking },
+        { key: "projectDiary", label: "Projekte & Bautagebuch", description: "Zugewiesene Projekte, Route, Notizen und Fotos", enabled: isAccessEnabled && !!appAccess?.permissions?.projectDiary },
+        { key: "documents", label: "Dokumente", description: "Freigegebene Mitarbeiterdokumente und Downloads", enabled: isAccessEnabled && !!appAccess?.permissions?.documents },
     ];
     const assignedMobileProjectIds = new Set(mobileProjectAssignments.map((assignment) => assignment.projectId));
     const assignableMobileProjects = mobileProjects.filter((project) => !assignedMobileProjectIds.has(project.id));
@@ -483,6 +501,10 @@ export function EmployeeDetailModal({
                 subType: documentType === "other" ? sanitizeFileName(customDocumentType).toLowerCase() : documentType,
             };
 
+            setFullEmployee((prev) => ({
+                ...prev,
+                documents: [...(prev.documents || []), document],
+            }));
             onAddDocument(employee.id, document);
             resetUpload();
         };
@@ -803,7 +825,13 @@ export function EmployeeDetailModal({
                                                 </button>
                                                 {onDeleteDocument && (
                                                     <button
-                                                        onClick={() => onDeleteDocument(employee.id, doc.id)}
+                                                        onClick={() => {
+                                                            setFullEmployee((prev) => ({
+                                                                ...prev,
+                                                                documents: (prev.documents || []).filter((d) => d.id !== doc.id),
+                                                            }));
+                                                            onDeleteDocument(employee.id, doc.id);
+                                                        }}
                                                         className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-500 transition hover:bg-rose-100 hover:text-rose-700"
                                                         title="Löschen"
                                                     >
@@ -953,7 +981,8 @@ export function EmployeeDetailModal({
                                     </div>
                                 </div>
 
-                                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                                {isAccessEnabled && !!appAccess?.permissions?.projectDiary && (
+                                    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                         <div className="flex items-start gap-4">
                                             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
@@ -991,7 +1020,7 @@ export function EmployeeDetailModal({
                                                     className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
                                                 >
                                                     <option value="">
-                                                        {assignableMobileProjects.length > 0 ? "Aktives Projekt auswaehlen" : "Keine aktiven Projekte verfuegbar"}
+                                                        {assignableMobileProjects.length > 0 ? "Projekt auswaehlen" : "Keine Projekte verfuegbar"}
                                                     </option>
                                                     {assignableMobileProjects.map((project) => (
                                                         <option key={project.id} value={project.id}>
@@ -1077,8 +1106,10 @@ export function EmployeeDetailModal({
                                         </div>
                                     </div>
                                 </div>
+                                )}
 
-                                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                                {isAccessEnabled && !!appAccess?.permissions?.documents && (
+                                    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                         <div className="flex items-start gap-4">
                                             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
@@ -1245,6 +1276,7 @@ export function EmployeeDetailModal({
                                         </div>
                                     </div>
                                 </div>
+                                )}
                             </div>
                         )}
                     </div>

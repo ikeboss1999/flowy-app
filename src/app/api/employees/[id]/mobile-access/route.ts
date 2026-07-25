@@ -55,7 +55,7 @@ async function buildDefaultAppAccess(client: any, employee: Employee) {
         accessPIN: employee.appAccess?.accessPIN || '',
         isAccessEnabled: employee.appAccess?.isAccessEnabled ?? false,
         permissions: {
-            timeTracking: employee.appAccess?.permissions?.timeTracking ?? true,
+            timeTracking: employee.appAccess?.permissions?.timeTracking ?? false,
             documents: employee.appAccess?.permissions?.documents ?? false,
             personalData: employee.appAccess?.permissions?.personalData ?? true,
             projectDiary: employee.appAccess?.permissions?.projectDiary ?? false,
@@ -122,6 +122,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
             appAccess = {
                 ...appAccess,
                 isAccessEnabled: false,
+                permissions: {
+                    timeTracking: false,
+                    documents: false,
+                    personalData: true,
+                    projectDiary: false,
+                },
             };
 
             await client

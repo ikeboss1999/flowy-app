@@ -72,7 +72,6 @@ import { ServiceSelectionModal } from "@/components/ServiceSelectionModal";
 import { ServiceModal } from "@/components/ServiceModal";
 import { Service } from "@/types/service";
 import { CustomerSearchSelect } from "@/components/CustomerSearchSelect";
-import { pdf } from "@react-pdf/renderer";
 import { InvoiceReactPDF } from "@/components/InvoiceReactPDF";
 
 interface InvoiceFormProps {
@@ -742,7 +741,8 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     if ((status === "pending" || status === "paid") && !isGeneratingPDF) {
       setIsGeneratingPDF(true);
       try {
-        // Generate Blob using React-PDF
+        // Generate Blob using React-PDF dynamically
+        const { pdf } = await import("@react-pdf/renderer");
         const blob = await pdf(
           <InvoiceReactPDF
             invoice={invoiceData}

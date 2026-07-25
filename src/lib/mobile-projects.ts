@@ -64,7 +64,6 @@ export async function getAssignedMobileProject(client: any, params: {
         .select('id,projectNumber,name,description,status,address,startDate,endDate,customerId,budget,createdAt,updatedAt')
         .eq('id', params.projectId)
         .eq('userId', params.companyOwnerId)
-        .eq('status', 'active')
         .maybeSingle();
 
     if (projectError) throw projectError;

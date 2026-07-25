@@ -55,7 +55,6 @@ export async function GET(_request: Request, { params }: { params: { id: string 
                 .from('projects')
                 .select('id,projectNumber,name,description,status,address,startDate,endDate')
                 .eq('userId', auth.companyOwnerId)
-                .eq('status', 'active')
                 .order('name', { ascending: true }),
             listAssignments(client, params.id, auth.companyOwnerId),
         ]);
@@ -100,10 +99,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
         if (projectError) throw projectError;
         if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-        if (project.status !== 'active') {
-            return NextResponse.json({ error: 'Only active projects can be assigned to mobile users' }, { status: 400 });
-        }
-
         const { data: existing, error: existingError } = await client
             .from('project_assignments')
             .select('id')

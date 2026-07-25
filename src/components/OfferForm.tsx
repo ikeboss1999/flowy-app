@@ -61,7 +61,6 @@ import { ServiceSelectionModal } from "@/components/ServiceSelectionModal";
 import { ServiceModal } from "@/components/ServiceModal";
 import { Service } from "@/types/service";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
-import { pdf } from "@react-pdf/renderer";
 import { OfferReactPDF } from "@/components/OfferReactPDF";
 
 interface OfferFormProps {
@@ -524,6 +523,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
       };
 
       if (status !== "draft") {
+        const { pdf } = await import("@react-pdf/renderer");
         const blob = await pdf(
           <OfferReactPDF
             offer={offerData}

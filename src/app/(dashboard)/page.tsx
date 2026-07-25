@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -18,13 +18,10 @@ import {
   Users,
 } from "lucide-react";
 import { RealtimeClock } from "@/components/RealtimeClock";
+import { useAuth } from "@/context/AuthContext";
+import { useStartup } from "@/hooks/useStartup";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAccountSettings } from "@/hooks/useAccountSettings";
-import { useAuth } from "@/context/AuthContext";
-import { useInvoices } from "@/hooks/useInvoices";
-import { useOffers } from "@/hooks/useOffers";
-import { useProjects } from "@/hooks/useProjects";
-import { useEmployees } from "@/hooks/useEmployees";
 import { cn } from "@/lib/utils";
 
 const formatDate = (date: Date) =>
@@ -33,17 +30,19 @@ const formatDate = (date: Date) =>
     day: "2-digit",
     month: "long",
     year: "numeric",
-  });
+});
 
 export default function Home() {
   const router = useRouter();
-  const { profile } = useAuth();
+  const { profile, currentEmployee } = useAuth();
+  const { data: startup } = useStartup();
   const { data: companySettings } = useCompanySettings();
   const { data: accountSettings } = useAccountSettings();
-  const { invoices } = useInvoices();
-  const { offers } = useOffers();
-  const { projects } = useProjects();
-  const { employees } = useEmployees();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   React.useEffect(() => {
     if (profile?.role === "developer") {
@@ -52,17 +51,20 @@ export default function Home() {
   }, [profile, router]);
 
   const today = new Date();
-  const currentYear = today.getFullYear();
-  const companyName = companySettings?.companyName || "FlowY";
-  const companyLogo = companySettings?.logo;
-  const companyLocation = [companySettings?.zipCode, companySettings?.city].filter(Boolean).join(" ");
+  const companyName = companySettings?.companyName || startup.company.companyName || "FlowY";
+  const companyLogo = companySettings?.logo || startup.company.logo;
+  const companyLocation = [
+    companySettings?.zipCode || startup.company.zipCode,
+    companySettings?.city || startup.company.city
+  ].filter(Boolean).join(" ");
   const companyInitials = companyName
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("") || "FY";
-  const userName = accountSettings?.name || "Benutzer";
+
+  const userName = accountSettings?.name || startup.account.name || "Benutzer";
 
   const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
   const canWriteInvoices = isAdminOrDev || !!profile?.permissions?.invoices_write;
@@ -74,18 +76,7 @@ export default function Home() {
   const canUseTime = isAdminOrDev || !!profile?.permissions?.time_tracking_use;
   const canUseCalendar = isAdminOrDev || !!profile?.permissions?.calendar_use;
 
-  const status = useMemo(() => {
-    const yearInvoices = invoices.filter((invoice) => new Date(invoice.issueDate).getFullYear() === currentYear);
-    const yearOffers = offers.filter((offer) => new Date(offer.issueDate).getFullYear() === currentYear);
-
-    return {
-      invoiceDrafts: yearInvoices.filter((invoice) => invoice.status === "draft").length,
-      overdueInvoices: yearInvoices.filter((invoice) => invoice.status === "overdue").length,
-      openOffers: yearOffers.filter((offer) => offer.status === "sent").length,
-      activeProjects: projects.filter((project: any) => project.status !== "completed" && project.status !== "archived").length,
-      employees: employees.length,
-    };
-  }, [currentYear, employees.length, invoices, offers, projects]);
+  const status = startup.status;
 
   const primaryActions = [
     canWriteInvoices && {
@@ -179,9 +170,17 @@ export default function Home() {
     tone: "indigo" | "emerald" | "amber" | "rose" | "slate";
   }>;
 
+  if (!mounted) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 2xl:p-12 space-y-8 lg:space-y-10">
+        <section className="rounded-[2.25rem] border border-indigo-100/60 bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-700 p-5 sm:p-8 shadow-2xl min-h-[320px] animate-pulse" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 2xl:p-12 space-y-8 lg:space-y-10 animate-in fade-in duration-500">
-      <section className="rounded-[2.25rem] border border-indigo-100/60 bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-700 p-5 sm:p-8 shadow-2xl shadow-indigo-950/10 overflow-hidden relative text-white">
+      <section suppressHydrationWarning className="rounded-[2.25rem] border border-indigo-100/60 bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-700 p-5 sm:p-8 shadow-2xl shadow-indigo-950/10 overflow-hidden relative text-white">
         <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl pointer-events-none" />
         <div className="absolute right-0 top-0 h-full w-2/3 bg-gradient-to-l from-pink-400/25 via-indigo-400/10 to-transparent pointer-events-none" />
         <div className="absolute bottom-0 right-16 h-40 w-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
@@ -196,27 +195,27 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-              <div className="flex h-36 w-36 shrink-0 items-center justify-center rounded-[2.4rem] border border-white/20 bg-white p-5 text-4xl font-black text-indigo-700 shadow-2xl shadow-indigo-950/25 sm:h-40 sm:w-40 2xl:h-44 2xl:w-44">
-                {companyLogo ? (
+              <div suppressHydrationWarning className="flex h-36 w-36 shrink-0 items-center justify-center rounded-[2.4rem] border border-white/20 bg-white p-5 text-4xl font-black text-indigo-700 shadow-2xl shadow-indigo-950/25 sm:h-40 sm:w-40 2xl:h-44 2xl:w-44">
+                {mounted && companyLogo ? (
                   <img src={companyLogo} alt={`${companyName} Logo`} className="h-full w-full object-contain" />
                 ) : (
                   companyInitials
                 )}
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-200/90">{companyName}</p>
-                {companyLocation && (
-                  <p className="mt-1 text-sm font-bold text-white/50">{companyLocation}</p>
-                )}
+              <div suppressHydrationWarning className="min-w-0">
+                <p suppressHydrationWarning className="text-sm font-black uppercase tracking-[0.2em] text-cyan-200/90">{companyName}</p>
+                {mounted && companyLocation ? (
+                  <p suppressHydrationWarning className="mt-1 text-sm font-bold text-white/50">{companyLocation}</p>
+                ) : null}
               </div>
             </div>
 
             <div>
-              <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl 2xl:text-6xl font-outfit">
-                Willkommen, {userName}
+              <h1 suppressHydrationWarning className="text-4xl font-black tracking-tight text-white sm:text-5xl 2xl:text-6xl font-outfit">
+                {`Willkommen, ${userName}`}
               </h1>
-              <p className="mt-3 max-w-3xl text-base font-semibold leading-relaxed text-white/75 sm:text-lg">
-                {companyName} ist bereit. Wählen Sie direkt den nächsten Arbeitsschritt oder öffnen Sie die Übersicht.
+              <p suppressHydrationWarning className="mt-3 max-w-3xl text-base font-semibold leading-relaxed text-white/75 sm:text-lg">
+                {`${companyName} ist bereit. Wählen Sie direkt den nächsten Arbeitsschritt oder öffnen Sie die Übersicht.`}
               </p>
             </div>
 
@@ -258,14 +257,14 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="rounded-[2rem] border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
+      <section suppressHydrationWarning className="rounded-[2rem] border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-2xl font-black text-slate-900">Schnellstart</h2>
             <p className="text-sm font-semibold text-slate-500">Die wichtigsten Aktionen direkt griffbereit.</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div suppressHydrationWarning className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {quickStartActions.map((item) => {
           const Icon = item.icon;
           return (
@@ -281,14 +280,14 @@ export default function Home() {
                 <ArrowUpRight className="h-5 w-5 text-slate-300 transition group-hover:text-indigo-500" />
               </div>
               <p className="mt-5 text-lg font-black text-slate-900">{item.label}</p>
-              <p className="mt-1 text-sm font-bold leading-relaxed text-slate-500">{item.description}</p>
+              <p suppressHydrationWarning className="mt-1 text-sm font-bold leading-relaxed text-slate-500">{item.description}</p>
             </Link>
           );
         })}
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <section suppressHydrationWarning className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
           <div className="mb-6 flex items-center justify-between">
             <div>
@@ -296,7 +295,7 @@ export default function Home() {
               <p className="text-sm font-semibold text-slate-500">Direkt in den passenden Bereich springen.</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
+          <div suppressHydrationWarning className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
             {modules.map((module) => {
               const Icon = module.icon;
               return (
@@ -312,14 +311,14 @@ export default function Home() {
                     <ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:text-indigo-500" />
                   </div>
                   <p className="mt-5 text-lg font-black text-slate-900">{module.label}</p>
-                  <p className="mt-1 text-sm font-bold text-slate-500">{module.description}</p>
+                  <p suppressHydrationWarning className="mt-1 text-sm font-bold text-slate-500">{module.description}</p>
                 </Link>
               );
             })}
           </div>
         </div>
 
-        <aside className="space-y-5">
+        <aside suppressHydrationWarning className="space-y-5">
           <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-black text-slate-900">Heute nützlich</h2>
             <div className="mt-5 space-y-3">

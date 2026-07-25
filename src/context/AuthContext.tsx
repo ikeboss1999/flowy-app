@@ -9,6 +9,7 @@ type AuthProfile = {
     role: string
     permissions: any
     companyOwnerId: string
+    name?: string
 } | null
 
 type AuthContextType = {
@@ -30,8 +31,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
     const [session, setSession] = useState<Session | null>(null)
-    const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null)
-    const [profile, setProfile] = useState<AuthProfile>(null)
+    const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const cached = localStorage.getItem('flowy_auth_employee');
+                if (cached) return JSON.parse(cached);
+            } catch { }
+        }
+        return null;
+    })
+    const [profile, setProfile] = useState<AuthProfile>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const cached = localStorage.getItem('flowy_auth_profile');
+                if (cached) return JSON.parse(cached);
+            } catch { }
+        }
+        return null;
+    })
     const [isLoading, setIsLoading] = useState(true);
 
     const refreshProfile = async () => {
@@ -40,15 +57,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (res.ok) {
                 const data = await res.json();
                 if (data.user) {
-                    setProfile({
+                    const prof = {
                         role: data.user.role,
                         permissions: data.user.permissions || {},
-                        companyOwnerId: data.user.companyOwnerId
-                    });
+                        companyOwnerId: data.user.companyOwnerId,
+                        name: data.user.name
+                    };
+                    setProfile(prof);
                     setCurrentEmployee(data.employee || null);
+                    try {
+                        localStorage.setItem('flowy_auth_profile', JSON.stringify(prof));
+                        if (data.employee) {
+                            localStorage.setItem('flowy_auth_employee', JSON.stringify(data.employee));
+                        } else {
+                            localStorage.removeItem('flowy_auth_employee');
+                        }
+                    } catch { }
                 } else {
                     setProfile(null);
                     setCurrentEmployee(null);
+                    try {
+                        localStorage.removeItem('flowy_auth_profile');
+                        localStorage.removeItem('flowy_auth_employee');
+                    } catch { }
                 }
             } else {
                 setProfile(null);
@@ -56,8 +87,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         } catch (e) {
             console.error("[AuthContext] Failed to fetch profile:", e);
-            setProfile(null);
-            setCurrentEmployee(null);
         }
     };
 
@@ -85,17 +114,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (mounted && session) {
+                    setSession(session);
+                    setUser(session.user ?? null);
                     try {
-                        const syncRes = await fetch('/api/auth/sync-session', {
+                        await fetch('/api/auth/sync-session', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ access_token: session.access_token })
                         });
-                        if (syncRes.ok) {
-                            setSession(session);
-                            setUser(session.user ?? null);
-                            await refreshProfile();
-                        }
                     } catch (e) {
                         console.error('[Auth] Session sync failed', e);
                     }
@@ -114,6 +140,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (event === 'SIGNED_OUT') {
                 document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                try {
+                    localStorage.removeItem('flowy_auth_profile');
+                    localStorage.removeItem('flowy_auth_employee');
+                    localStorage.removeItem('flowy_startup_cache');
+                } catch { }
                 setSession(null);
                 setUser(null);
                 setProfile(null);
@@ -139,8 +170,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         });
 
-        // Global focus listener for cookie-backed employee refresh
-        const handleFocus = () => refreshEmployee();
+        // Throttled focus listener (max once per minute)
+        let lastFocusTime = 0;
+        const handleFocus = () => {
+            const now = Date.now();
+            if (now - lastFocusTime > 60000) {
+                lastFocusTime = now;
+                refreshEmployee();
+            }
+        };
+
         window.addEventListener('focus', handleFocus);
         const visibilityHandler = () => {
             if (document.visibilityState === 'visible') handleFocus();

@@ -171,7 +171,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     ...initialEmployee.appAccess,
                     staffId: initialEmployee.appAccess.staffId || Math.floor(10000000 + Math.random() * 90000000).toString(),
                     permissions: initialEmployee.appAccess.permissions || {
-                        timeTracking: true,
+                        timeTracking: false,
                         documents: false,
                         personalData: true,
                         projectDiary: false
@@ -181,13 +181,27 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     accessPIN: "",
                     isAccessEnabled: false,
                     permissions: {
-                        timeTracking: true,
+                        timeTracking: false,
                         documents: false,
                         personalData: true,
                         projectDiary: false
                     }
                 }
             });
+
+            if (initialEmployee.id) {
+                fetch(`/api/employees/${initialEmployee.id}`)
+                    .then((res) => res.json())
+                    .then((data) => {
+                        if (data && Array.isArray(data.documents)) {
+                            setFormData((prev) => ({
+                                ...prev,
+                                documents: data.documents,
+                            }));
+                        }
+                    })
+                    .catch((err) => console.error("Error fetching full employee details in modal:", err));
+            }
         } else {
             const nextNum = getNextNumber ? getNextNumber() : "";
             setFormData({
@@ -246,7 +260,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     accessPIN: "",
                     isAccessEnabled: false,
                     permissions: {
-                        timeTracking: true,
+                        timeTracking: false,
                         documents: false,
                         personalData: true,
                         projectDiary: false
@@ -270,7 +284,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
     }, [isOpen, isInitialized, formData, initialEmployee]);
 
     const isDirty = useMemo(() => {
-        if (!initialValuesRef.current) return false;
+        if (!initialEmployee || !initialValuesRef.current) return false;
         return JSON.stringify(formData) !== JSON.stringify({
             ...initialValuesRef.current,
             additionalInfo: {
@@ -278,10 +292,10 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 isDraft: formData.additionalInfo?.isDraft
             }
         });
-    }, [formData]);
+    }, [formData, initialEmployee]);
 
     const autoSavePayload = useMemo(() => {
-        const isDraftVal = initialEmployee ? (formData.additionalInfo as any)?.isDraft : true;
+        const isDraftVal = initialEmployee ? (formData.additionalInfo as any)?.isDraft : false;
         return {
             ...formData,
             additionalInfo: {
@@ -301,7 +315,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 ...formData,
                 additionalInfo: {
                     ...formData.additionalInfo,
-                    isDraft: initialEmployee ? (formData.additionalInfo as any)?.isDraft : true
+                    isDraft: initialEmployee ? (formData.additionalInfo as any)?.isDraft : false
                 }
             };
             if (user) {
@@ -318,7 +332,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 ...(prev.appAccess || {
                     accessPIN: "",
                     isAccessEnabled: false,
-                    permissions: { timeTracking: true, documents: false, personalData: true, projectDiary: false }
+                    permissions: { timeTracking: false, documents: false, personalData: true, projectDiary: false }
                 }),
                 staffId: id
             }
@@ -333,7 +347,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 ...(prev.appAccess || {
                     staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
                     isAccessEnabled: false,
-                    permissions: { timeTracking: true, documents: false, personalData: true, projectDiary: false }
+                    permissions: { timeTracking: false, documents: false, personalData: true, projectDiary: false }
                 }),
                 accessPIN: pin
             }
@@ -489,6 +503,18 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
             }
         };
         onSave(finalEmployee);
+        onClose();
+    };
+
+    const handleSaveDraft = () => {
+        const draftEmployee = {
+            ...formData,
+            additionalInfo: {
+                ...formData.additionalInfo,
+                isDraft: true
+            }
+        };
+        onSave(draftEmployee);
         onClose();
     };
 
@@ -1514,12 +1540,21 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                             >
                                 Abbrechen
                             </button>
+                            {(!initialEmployee || initialEmployee.additionalInfo?.isDraft) && (
+                                <button
+                                    type="button"
+                                    onClick={handleSaveDraft}
+                                    className="rounded-2xl bg-slate-200/80 px-6 py-3.5 text-sm font-black text-slate-700 transition-all hover:bg-slate-300 active:scale-95"
+                                >
+                                    Als Entwurf speichern
+                                </button>
+                            )}
                             <button
                                 type="submit"
                                 onClick={handleSubmit}
                                 className="min-w-[220px] rounded-2xl bg-gradient-to-r from-indigo-600 to-fuchsia-500 px-7 py-3.5 text-sm font-black text-white shadow-xl shadow-indigo-500/25 transition-all hover:-translate-y-0.5 active:scale-95"
                             >
-                                {initialEmployee ? "Änderungen speichern" : "Mitarbeiter anlegen"}
+                                {initialEmployee ? (initialEmployee.additionalInfo?.isDraft ? "Entwurf finalisieren & anlegen" : "Änderungen speichern") : "Mitarbeiter anlegen"}
                             </button>
                         </div>
                     </div>

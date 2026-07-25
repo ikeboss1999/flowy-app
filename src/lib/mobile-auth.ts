@@ -95,7 +95,7 @@ export async function getEmployeeForMobile(client: any, employeeId: string, comp
 
 export function getMobilePermissions(employee: Employee) {
     return {
-        timeTracking: employee.appAccess?.permissions?.timeTracking ?? true,
+        timeTracking: employee.appAccess?.permissions?.timeTracking ?? false,
         documents: employee.appAccess?.permissions?.documents ?? false,
         projectDiary: employee.appAccess?.permissions?.projectDiary ?? false,
     };

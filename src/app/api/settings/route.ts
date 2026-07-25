@@ -3,10 +3,12 @@ import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getUserSession } from '@/lib/auth-server';
 import { safeUpsert } from '@/lib/supabase-helper';
+import { logApiPerformance } from '@/lib/api-performance';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+    const startedAt = performance.now();
     const session = await getUserSession();
     const companyOwnerId = session?.companyOwnerId;
 
@@ -27,7 +29,9 @@ export async function GET(request: Request) {
         if (data) {
             // Employees only get companyData (needed for document headers), no account/financial settings
             if (session?.role === 'employee') {
-                return NextResponse.json({ companyData: data.companyData || {} });
+                const payload = { companyData: data.companyData || {} };
+                logApiPerformance('/api/settings', startedAt, { payload, note: 'employee' });
+                return NextResponse.json(payload);
             }
 
             const processed = { ...data };
@@ -38,9 +42,11 @@ export async function GET(request: Request) {
             if (processed.orderSettings && Object.keys(processed.orderSettings).length === 0) processed.orderSettings = null;
             if (processed.projectSettings && Object.keys(processed.projectSettings).length === 0) processed.projectSettings = null;
             if (processed.customerSettings && Object.keys(processed.customerSettings).length === 0) processed.customerSettings = null;
+            logApiPerformance('/api/settings', startedAt, { payload: processed });
             return NextResponse.json(processed);
         }
 
+        logApiPerformance('/api/settings', startedAt, { payload: {}, note: 'empty' });
         return NextResponse.json({});
     } catch (e) {
         console.error('[SettingsAPI] GET failed:', e);

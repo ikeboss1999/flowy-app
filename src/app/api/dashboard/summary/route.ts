@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireApiSession } from '@/lib/api-auth';
+import { logApiPerformance } from '@/lib/api-performance';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+    const startedAt = performance.now();
     const auth = await requireApiSession(['invoices_read', 'reports_read']);
     if (!auth.ok) return auth.response;
     const companyOwnerId = auth.companyOwnerId;
@@ -24,6 +26,7 @@ export async function GET() {
 
         if (!rpcError && rpcData) {
             const summary = typeof rpcData === 'string' ? JSON.parse(rpcData) : rpcData;
+            logApiPerformance('/api/dashboard/summary', startedAt, { payload: summary, note: 'rpc' });
             return NextResponse.json(summary);
         }
         
@@ -56,12 +59,17 @@ export async function GET() {
     const invoices = invoiceResult.data ?? [];
     const offers = offerResult.data ?? [];
 
-    return NextResponse.json({
+    const summary = {
         year,
         totalRevenue: invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.totalAmount, 0),
         openAmount: invoices.filter(i => i.status === 'pending' || i.status === 'overdue').reduce((s, i) => s + i.totalAmount, 0),
         openInvoicesCount: invoices.filter(i => i.status === 'pending' || i.status === 'overdue').length,
         openOffersCount: offers.filter(o => o.status === 'sent').length,
         openOffersAmount: offers.filter(o => o.status === 'sent').reduce((s, o) => s + o.totalAmount, 0),
+    };
+    logApiPerformance('/api/dashboard/summary', startedAt, {
+        payload: summary,
+        note: `fallback invoices=${invoices.length} offers=${offers.length}`
     });
+    return NextResponse.json(summary);
 }

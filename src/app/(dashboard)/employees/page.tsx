@@ -33,6 +33,7 @@ import { DienstzettelPDF } from "@/components/DienstzettelPDF";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
 import { cn } from "@/lib/utils";
 import { useEmployees } from "@/hooks/useEmployees";
+import { useArchiveFiles } from "@/hooks/useArchiveFiles";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useNotification } from "@/context/NotificationContext";
 import { useAuth } from "@/context/AuthContext";
@@ -56,6 +57,7 @@ const initialsFor = (employee: Employee) =>
 
 export default function EmployeesPage() {
     const { employees, addEmployee, updateEmployee, deleteEmployee, getNextEmployeeNumber, isLoading } = useEmployees();
+    const { files: globalArchiveFiles = [] } = useArchiveFiles();
     const { data: companySettings } = useCompanySettings();
     usePermissionGuard("employees_read");
 
@@ -336,27 +338,42 @@ export default function EmployeesPage() {
             title: "Dokument löschen?",
             message: "Möchten Sie dieses Dokument wirklich aus dem Archiv entfernen?",
             variant: "danger",
-            onConfirm: () => {
-                const employee = employees.find((entry) => entry.id === employeeId);
-                if (!employee) return;
-                updateEmployee(employeeId, {
-                    ...employee,
-                    documents: employee.documents.filter((doc) => doc.id !== docId),
-                });
-                showToast("Dokument gelöscht.", "success");
+            onConfirm: async () => {
+                try {
+                    const response = await fetch(`/api/employees/${employeeId}/documents?docId=${encodeURIComponent(docId)}`, {
+                        method: "DELETE",
+                    });
+                    if (response.ok) {
+                        showToast("Dokument gelöscht.", "success");
+                        await mutateAll((key) => typeof key === "string" && (key.startsWith("/api/employees") || key.startsWith("/api/archive")));
+                    } else {
+                        showToast("Fehler beim Löschen des Dokuments.", "error");
+                    }
+                } catch (e) {
+                    console.error("Error deleting employee document:", e);
+                    showToast("Fehler beim Löschen des Dokuments.", "error");
+                }
             },
         });
     };
 
-    const handleAddDocument = (employeeId: string, doc: EmployeeDocument) => {
-        const employee = employees.find((entry) => entry.id === employeeId);
-        if (!employee) return;
-
-        updateEmployee(employeeId, {
-            ...employee,
-            documents: [...(employee.documents || []), doc],
-        });
-        showToast("Dokument wurde hochgeladen.", "success");
+    const handleAddDocument = async (employeeId: string, doc: EmployeeDocument) => {
+        try {
+            const response = await fetch(`/api/employees/${employeeId}/documents`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ document: doc }),
+            });
+            if (response.ok) {
+                showToast("Dokument wurde hochgeladen.", "success");
+                await mutateAll((key) => typeof key === "string" && (key.startsWith("/api/employees") || key.startsWith("/api/archive")));
+            } else {
+                showToast("Fehler beim Speichern des Dokuments.", "error");
+            }
+        } catch (e) {
+            console.error("Error adding employee document:", e);
+            showToast("Fehler beim Speichern des Dokuments.", "error");
+        }
     };
 
     const handleMobileAccessAction = async (
@@ -452,10 +469,15 @@ export default function EmployeesPage() {
         }, 500);
     };
 
-    if (isLoading) {
+    const [mounted, setMounted] = React.useState(false);
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    if (!mounted || isLoading) {
         return (
             <div className="dashboard-page flex items-center justify-center">
-                <div className="rounded-3xl border border-slate-200 bg-white px-8 py-6 text-sm font-black text-slate-500 shadow-sm">
+                <div className="rounded-3xl border border-slate-200 bg-white px-8 py-6 text-sm font-black text-slate-500 shadow-sm animate-pulse">
                     Mitarbeiter werden geladen...
                 </div>
             </div>
@@ -770,12 +792,16 @@ export default function EmployeesPage() {
                         />
                     </div>
 
-                    {archiveEmployees.length > 0 ? (
-                        archiveEmployees.map((employee) => {
-                            const docs = employee.documents.filter((doc) => {
+                    {employees.length > 0 ? (
+                        employees.map((employee) => {
+                            const empName = employeeName(employee);
+                            const folderName = `Personal - ${empName}`;
+                            const docs = globalArchiveFiles.filter((file) => {
+                                const matchesEmployee = file.employeeId === employee.id || file.folder === folderName || file.folder?.startsWith(folderName + "/");
+                                if (!matchesEmployee) return false;
                                 const query = searchQuery.trim().toLowerCase();
                                 if (!query) return true;
-                                return doc.name.toLowerCase().includes(query) || employeeName(employee).toLowerCase().includes(query);
+                                return file.name.toLowerCase().includes(query) || empName.toLowerCase().includes(query);
                             });
                             const isExpanded = expandedFolders[employee.id];
 
@@ -792,7 +818,7 @@ export default function EmployeesPage() {
                                                 <Folder className="h-6 w-6" />
                                             </div>
                                             <div className="min-w-0">
-                                                <h3 className="truncate text-lg font-black text-slate-950">#{employee.employeeNumber || "---"} - {employeeName(employee)}</h3>
+                                                <h3 className="truncate text-lg font-black text-slate-950">#{employee.employeeNumber || "---"} - {empName}</h3>
                                                 <p className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
                                                     {employee.employment.position || "Mitarbeiter"} · {docs.length} Dokumente
                                                 </p>
@@ -804,52 +830,62 @@ export default function EmployeesPage() {
                                     {isExpanded && (
                                         <div className="border-t border-slate-100 bg-slate-50/60 p-4">
                                             <div className="grid gap-2">
-                                                {docs.map((doc) => (
-                                                    <button
-                                                        key={doc.id}
-                                                        onClick={() => handlePreview(doc)}
-                                                        className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-200 hover:shadow-sm"
-                                                    >
-                                                        <div className="flex min-w-0 items-center gap-3">
-                                                            <div className={cn(
-                                                                "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
-                                                                doc.category === "system" ? "bg-emerald-50 text-emerald-600" : "bg-indigo-50 text-indigo-600"
-                                                            )}>
-                                                                <FileText className="h-5 w-5" />
+                                                {docs.map((doc) => {
+                                                    const rawDocId = doc.id?.replace(/^emp-doc-/, "") || doc.id;
+                                                    const fileContent = doc.storagePath || "";
+                                                    const formattedSize = doc.size ? `${(doc.size / 1024).toFixed(0)} KB` : "-";
+
+                                                    return (
+                                                        <button
+                                                            key={doc.id}
+                                                            onClick={() => handlePreview({
+                                                                id: rawDocId,
+                                                                name: doc.name,
+                                                                type: doc.mimeType || "application/pdf",
+                                                                uploadDate: doc.createdAt,
+                                                                fileSize: formattedSize,
+                                                                content: fileContent,
+                                                            })}
+                                                            className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-200 hover:shadow-sm"
+                                                        >
+                                                            <div className="flex min-w-0 items-center gap-3">
+                                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                                                                    <FileText className="h-5 w-5" />
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="truncate font-black text-slate-900 group-hover:text-indigo-700">{doc.name}</p>
+                                                                    <p className="mt-1 text-xs font-bold text-slate-400">{formatDate(doc.createdAt)} · {formattedSize}</p>
+                                                                </div>
                                                             </div>
-                                                            <div className="min-w-0">
-                                                                <p className="truncate font-black text-slate-900 group-hover:text-indigo-700">{doc.name}</p>
-                                                                <p className="mt-1 text-xs font-bold text-slate-400">{formatDate(doc.uploadDate)} · {doc.fileSize || "-"}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-2" onClick={(event) => event.stopPropagation()}>
-                                                            <button
-                                                                onClick={() => {
-                                                                    if (!doc.content) return;
-                                                                    const link = document.createElement("a");
-                                                                    link.href = doc.content;
-                                                                    link.download = doc.name;
-                                                                    document.body.appendChild(link);
-                                                                    link.click();
-                                                                    document.body.removeChild(link);
-                                                                }}
-                                                                className="flex h-10 items-center gap-2 rounded-xl bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:bg-slate-100"
-                                                            >
-                                                                <Download className="h-4 w-4" />
-                                                                Download
-                                                            </button>
-                                                            {canWrite && (
+                                                            <div className="flex gap-2" onClick={(event) => event.stopPropagation()}>
                                                                 <button
-                                                                    onClick={() => handleDeleteDocument(employee.id, doc.id)}
-                                                                    className="flex h-10 items-center gap-2 rounded-xl bg-rose-50 px-3 text-xs font-black text-rose-600 transition hover:bg-rose-100"
+                                                                    onClick={() => {
+                                                                        if (!fileContent) return;
+                                                                        const link = document.createElement("a");
+                                                                        link.href = fileContent;
+                                                                        link.download = doc.name;
+                                                                        document.body.appendChild(link);
+                                                                        link.click();
+                                                                        document.body.removeChild(link);
+                                                                    }}
+                                                                    className="flex h-10 items-center gap-2 rounded-xl bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:bg-slate-100"
                                                                 >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                    Löschen
+                                                                    <Download className="h-4 w-4" />
+                                                                    Download
                                                                 </button>
-                                                            )}
-                                                        </div>
-                                                    </button>
-                                                ))}
+                                                                {canWrite && (
+                                                                    <button
+                                                                        onClick={() => handleDeleteDocument(employee.id, rawDocId)}
+                                                                        className="flex h-10 items-center gap-2 rounded-xl bg-rose-50 px-3 text-xs font-black text-rose-600 transition hover:bg-rose-100"
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                        Löschen
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     )}

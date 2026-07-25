@@ -3,6 +3,8 @@ import { supabase } from './supabase';
 import { supabaseAdmin } from './supabase-admin';
 import { verifySessionToken } from './auth';
 
+const sessionCache = new Map<string, { session: any; expiresAt: number }>();
+
 export async function getUserSession() {
     let cookieStore;
     try {
@@ -16,6 +18,11 @@ export async function getUserSession() {
     // 1. Try Supabase Session (Manual cookie check for reliability)
     const sbAccessToken = (await cookieStore).get('sb-access-token')?.value;
     if (sbAccessToken) {
+        const cached = sessionCache.get(sbAccessToken);
+        if (cached && cached.expiresAt > Date.now()) {
+            return cached.session;
+        }
+
         try {
             const { data: { user }, error } = await supabase.auth.getUser(sbAccessToken);
             if (user) {
@@ -58,7 +65,7 @@ export async function getUserSession() {
 
                 const defaultRole = user.email === 'elsword.ie@gmail.com' ? 'developer' : 'admin';
 
-                return {
+                const resolvedSession = {
                     userId: user.id,
                     companyOwnerId: roleData?.company_owner_id || user.id,
                     role: roleData?.role || defaultRole,
@@ -67,6 +74,8 @@ export async function getUserSession() {
                     name: user.user_metadata?.full_name || user.email?.split('@')[0],
                     accessToken: sbAccessToken
                 };
+                sessionCache.set(sbAccessToken, { session: resolvedSession, expiresAt: Date.now() + 5000 });
+                return resolvedSession;
             }
         } catch (e) {
             console.error('[AuthServer] Supabase session check failed:', e);

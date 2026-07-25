@@ -23,6 +23,7 @@ const ALLOWED_MIME_TYPES = new Set([
 
 const getClient = () => supabaseAdmin || supabase;
 
+
 export async function GET(request: Request) {
     const session = await getUserSession();
     const companyOwnerId = session?.companyOwnerId;
@@ -34,17 +35,20 @@ export async function GET(request: Request) {
     }
 
     try {
-        const { data, error } = await getClient()
+        const client = getClient();
+        const { data: archiveFiles, error } = await client
             .from('archive_files')
             .select('*')
             .eq('userId', companyOwnerId)
             .order('createdAt', { ascending: false });
 
-        if (error) {
-            if (error.code === '42P01') return NextResponse.json([]);
+        if (error && error.code !== '42P01') {
             throw error;
         }
-        return NextResponse.json(data || []);
+
+        const filesList = archiveFiles || [];
+
+        return NextResponse.json(filesList);
     } catch (e) {
         console.error('[ArchiveFiles] GET failed:', e);
         return NextResponse.json({ error: 'Failed to fetch files' }, { status: 500 });

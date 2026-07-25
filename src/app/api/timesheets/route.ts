@@ -3,10 +3,12 @@ import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { nanoid } from 'nanoid';
 import { getUserSession, hasPermission } from '@/lib/auth-server';
+import { logApiPerformance } from '@/lib/api-performance';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+    const startedAt = performance.now();
     const session = await getUserSession();
     const userId = session?.companyOwnerId;
 
@@ -25,6 +27,7 @@ export async function GET(request: Request) {
             .select('*')
             .eq('userId', userId);
         if (error) throw error;
+        logApiPerformance('/api/timesheets', startedAt, { payload: timesheets });
         return NextResponse.json(timesheets);
     } catch (e) {
         console.error(e);

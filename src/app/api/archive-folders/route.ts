@@ -4,10 +4,13 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getUserSession, hasPermission } from '@/lib/auth-server';
 import { nanoid } from 'nanoid';
 import { safeInsert, safeUpdate } from '@/lib/supabase-helper';
+// nanoid still needed for folder creation in POST
 
 export const dynamic = 'force-dynamic';
 
 const getClient = () => supabaseAdmin || supabase;
+
+
 
 export async function GET(request: Request) {
     const session = await getUserSession();
@@ -20,17 +23,32 @@ export async function GET(request: Request) {
     }
 
     try {
-        const { data, error } = await getClient()
+        const client = getClient();
+        const { data: dbFolders, error } = await client
             .from('archive_folders')
             .select('*')
             .eq('userId', companyOwnerId)
             .order('name', { ascending: true });
 
-        if (error) {
-            if (error.code === '42P01') return NextResponse.json([]);
+        if (error && error.code !== '42P01') {
             throw error;
         }
-        return NextResponse.json(data || []);
+
+        // Find and delete any employee folders that may have been persisted to the DB
+        const employeeFolders = (dbFolders || []).filter(
+            (f) => f.isEmployeeFolder === true || (typeof f.name === 'string' && f.name.startsWith('Personal - '))
+        );
+        if (employeeFolders.length > 0) {
+            const ids = employeeFolders.map((f) => f.id);
+            await client.from('archive_folders').delete().in('id', ids).eq('userId', companyOwnerId);
+        }
+
+        // Only return real archive folders (no employee folders)
+        const realFolders = (dbFolders || [])
+            .filter((f) => !f.isEmployeeFolder && !(typeof f.name === 'string' && f.name.startsWith('Personal - ')))
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        return NextResponse.json(realFolders);
     } catch (e) {
         console.error('[ArchiveFolders] GET failed:', e);
         return NextResponse.json({ error: 'Failed to fetch folders' }, { status: 500 });

@@ -5,16 +5,43 @@ import { Customer } from '@/types/customer';
 import { useAuth } from '@/context/AuthContext';
 import { fetcher } from '@/lib/fetcher';
 
-export function useCustomers() {
-    const { user } = useAuth();
+function getCachedCustomers(): Customer[] {
+    if (typeof window !== "undefined") {
+        try {
+            const cached = localStorage.getItem("flowy_customers_cache");
+            if (cached) return JSON.parse(cached);
+        } catch { }
+    }
+    return [];
+}
 
-    const key = user ? `/api/customers?userId=${user.id}` : null;
-    const { data = [], isLoading, mutate } = useSWR<Customer[]>(key, fetcher);
+export function useCustomers() {
+    const { user, currentEmployee, profile } = useAuth();
+
+    const activeUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
+    const key = activeUserId ? `/api/customers?userId=${activeUserId}` : null;
+    const initialFallback = getCachedCustomers();
+
+    const { data = initialFallback, isLoading, mutate } = useSWR<Customer[]>(key, fetcher, {
+        fallbackData: initialFallback,
+        revalidateOnFocus: false,
+        onSuccess: (freshData) => {
+            if (typeof window !== "undefined" && freshData && Array.isArray(freshData)) {
+                try {
+                    localStorage.setItem("flowy_customers_cache", JSON.stringify(freshData));
+                } catch { }
+            }
+        }
+    });
 
     const addCustomer = async (customer: Customer) => {
-        if (!user) return;
-        const newCustomer = { ...customer, userId: user.id, updatedAt: customer.createdAt };
-        mutate([newCustomer, ...data], false);
+        if (!activeUserId) return;
+        const newCustomer = { ...customer, userId: activeUserId, updatedAt: customer.createdAt };
+        const updatedList = [newCustomer, ...data];
+        mutate(updatedList, false);
+        if (typeof window !== "undefined") {
+            try { localStorage.setItem("flowy_customers_cache", JSON.stringify(updatedList)); } catch { }
+        }
         try {
             await fetch('/api/customers', {
                 method: 'POST',
@@ -28,9 +55,13 @@ export function useCustomers() {
     };
 
     const updateCustomer = async (id: string, updatedCustomer: Customer) => {
-        if (!user) return;
-        const updated = { ...updatedCustomer, userId: user.id, updatedAt: new Date().toISOString() };
-        mutate(data.map(c => c.id === id ? updated : c), false);
+        if (!activeUserId) return;
+        const updated = { ...updatedCustomer, userId: activeUserId, updatedAt: new Date().toISOString() };
+        const updatedList = data.map(c => c.id === id ? updated : c);
+        mutate(updatedList, false);
+        if (typeof window !== "undefined") {
+            try { localStorage.setItem("flowy_customers_cache", JSON.stringify(updatedList)); } catch { }
+        }
         try {
             await fetch('/api/customers', {
                 method: 'POST',
@@ -44,7 +75,11 @@ export function useCustomers() {
     };
 
     const deleteCustomer = async (id: string) => {
-        mutate(data.filter(c => c.id !== id), false);
+        const updatedList = data.filter(c => c.id !== id);
+        mutate(updatedList, false);
+        if (typeof window !== "undefined") {
+            try { localStorage.setItem("flowy_customers_cache", JSON.stringify(updatedList)); } catch { }
+        }
         try {
             await fetch(`/api/customers?id=${id}`, { method: 'DELETE' });
         } catch (e) {
@@ -53,5 +88,5 @@ export function useCustomers() {
         }
     };
 
-    return { customers: data, addCustomer, updateCustomer, deleteCustomer, isLoading };
+    return { customers: data, addCustomer, updateCustomer, deleteCustomer, isLoading: isLoading && data.length === 0 };
 }

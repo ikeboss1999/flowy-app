@@ -1,0 +1,5 @@
+﻿branch=main
+head=a8e3491
+backup_branch=backup-before-invoice-locking-a8e3491-20260701
+backup_created=2026-07-01
+purpose=before invoice immutability changes

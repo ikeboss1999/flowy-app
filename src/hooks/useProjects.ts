@@ -6,19 +6,45 @@ import { useAuth } from "@/context/AuthContext";
 import { fetcher } from '@/lib/fetcher';
 import { useProjectSettings } from './useProjectSettings';
 
+function getCachedProjects(): Project[] {
+    if (typeof window !== "undefined") {
+        try {
+            const cached = localStorage.getItem("flowy_projects_cache");
+            if (cached) return JSON.parse(cached);
+        } catch { }
+    }
+    return [];
+}
+
 export function useProjects() {
-    const { user, currentEmployee } = useAuth();
+    const { user, currentEmployee, profile } = useAuth();
     const { data: projectSettings, updateData: updateProjectSettings } = useProjectSettings();
 
-    const activeUserId = user?.id || currentEmployee?.userId;
+    const activeUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
     const key = activeUserId ? `/api/projects?userId=${activeUserId}` : null;
-    const { data = [], isLoading, mutate } = useSWR<Project[]>(key, fetcher);
+    const initialFallback = getCachedProjects();
+
+    const { data = initialFallback, isLoading, mutate } = useSWR<Project[]>(key, fetcher, {
+        fallbackData: initialFallback,
+        revalidateOnFocus: false,
+        onSuccess: (freshData) => {
+            if (typeof window !== "undefined" && freshData && Array.isArray(freshData)) {
+                try {
+                    localStorage.setItem("flowy_projects_cache", JSON.stringify(freshData));
+                } catch { }
+            }
+        }
+    });
 
     const addProject = async (project: Project) => {
         if (!activeUserId) return;
         const projectNumber = `${projectSettings.projectNumberPrefix}${projectSettings.nextProjectNumber}`;
         const newProject = { ...project, userId: activeUserId, projectNumber };
-        mutate([newProject, ...data], false);
+        const updatedList = [newProject, ...data];
+        mutate(updatedList, false);
+        if (typeof window !== "undefined") {
+            try { localStorage.setItem("flowy_projects_cache", JSON.stringify(updatedList)); } catch { }
+        }
         try {
             await fetch('/api/projects', {
                 method: 'POST',
@@ -37,7 +63,11 @@ export function useProjects() {
         const current = data.find(p => p.id === id);
         if (!current) return;
         const updated = { ...current, ...updates, updatedAt: new Date().toISOString() };
-        mutate(data.map(p => p.id === id ? updated : p), false);
+        const updatedList = data.map(p => p.id === id ? updated : p);
+        mutate(updatedList, false);
+        if (typeof window !== "undefined") {
+            try { localStorage.setItem("flowy_projects_cache", JSON.stringify(updatedList)); } catch { }
+        }
         try {
             await fetch('/api/projects', {
                 method: 'POST',
@@ -52,7 +82,11 @@ export function useProjects() {
 
     const deleteProject = async (id: string) => {
         if (!activeUserId) return;
-        mutate(data.filter(p => p.id !== id), false);
+        const updatedList = data.filter(p => p.id !== id);
+        mutate(updatedList, false);
+        if (typeof window !== "undefined") {
+            try { localStorage.setItem("flowy_projects_cache", JSON.stringify(updatedList)); } catch { }
+        }
         try {
             await fetch(`/api/projects?id=${id}`, { method: 'DELETE' });
         } catch (e) {
@@ -63,5 +97,5 @@ export function useProjects() {
 
     const getProject = (id: string) => data.find(p => p.id === id);
 
-    return { projects: data, isLoading, addProject, updateProject, deleteProject, getProject };
+    return { projects: data, isLoading: isLoading && data.length === 0, addProject, updateProject, deleteProject, getProject };
 }

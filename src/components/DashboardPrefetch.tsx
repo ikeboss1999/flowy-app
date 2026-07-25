@@ -1,26 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useSWRConfig } from "swr";
 import { useAuth } from "@/context/AuthContext";
 import { fetcher } from "@/lib/fetcher";
 
-function scheduleIdleTask(callback: () => void, timeout = 1200) {
-    if (typeof window === "undefined") return;
-
-    const idleCallback = (window as any).requestIdleCallback as
-        | ((cb: () => void, options?: { timeout: number }) => number)
-        | undefined;
-
-    if (idleCallback) {
-        idleCallback(callback, { timeout });
-        return;
-    }
-
-    window.setTimeout(callback, Math.min(timeout, 800));
-}
-
 export function DashboardPrefetch() {
+    const pathname = usePathname();
     const { user, currentEmployee, profile } = useAuth();
     const { cache, mutate } = useSWRConfig();
     const ownerUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
@@ -48,22 +35,50 @@ export function DashboardPrefetch() {
             return !!profile.permissions?.[permission];
         };
 
+        const isPrivileged = profile?.role === "admin" || profile?.role === "developer";
+
+        // Priority fetch for current active page (always, for all users)
+        let activeKey: string | null = null;
+        if (pathname.startsWith("/projects") && canUse("projects_read")) {
+            activeKey = `/api/projects?userId=${ownerUserId}`;
+        } else if (pathname.startsWith("/invoices") && canUse("invoices_read")) {
+            activeKey = `/api/invoices?userId=${ownerUserId}`;
+        } else if (pathname.startsWith("/offers") && canUse("offers_read")) {
+            activeKey = `/api/offers?userId=${ownerUserId}`;
+        } else if (pathname.startsWith("/customers") && canUse("customers_read")) {
+            activeKey = `/api/customers?userId=${ownerUserId}`;
+        } else if (pathname.startsWith("/employees") && canUse("employees_read")) {
+            activeKey = `/api/employees?summary=1&userId=${ownerUserId}`;
+        } else if (pathname.startsWith("/time-tracking") && canUse("time_tracking_use")) {
+            activeKey = `/api/time-entries?userId=${ownerUserId}`;
+        }
+
+        if (activeKey) {
+            prefetch(activeKey);
+        }
+
+        // Background prefetching only for privileged users (admin / developer)
+        // to avoid saturating the DB with statement timeouts for regular employees
+        if (!isPrivileged) {
+            return;
+        }
+
         const coreKeys = [
-            `/api/settings?userId=${ownerUserId}`,
             actorUserId ? `/api/todos?userId=${actorUserId}` : null,
             canUse("customers_read") ? `/api/customers?userId=${ownerUserId}` : null,
             canUse("projects_read") ? `/api/projects?userId=${ownerUserId}` : null,
-            canUse("employees_read") ? `/api/employees?userId=${ownerUserId}` : null,
-        ].filter(Boolean) as string[];
+            canUse("employees_read") ? `/api/employees?summary=1&userId=${ownerUserId}` : null,
+        ].filter(Boolean).filter((k) => k !== activeKey) as string[];
 
         const timeKeys = canUse("time_tracking_use")
             ? [
                 `/api/time-entries?userId=${ownerUserId}`,
                 `/api/timesheets?userId=${ownerUserId}`,
-            ]
+            ].filter((k) => k !== activeKey)
             : [];
 
         const secondaryKeys = [
+            `/api/settings?userId=${ownerUserId}`,
             canUse("invoices_read") ? `/api/invoices?userId=${ownerUserId}` : null,
             canUse("offers_read") ? `/api/offers?userId=${ownerUserId}` : null,
             canUse("orders_read") ? `/api/orders?userId=${ownerUserId}` : null,
@@ -74,12 +89,23 @@ export function DashboardPrefetch() {
             canUse("archive_read") ? "/api/archive-files" : null,
             canUse("archive_read") ? "/api/archive-folders" : null,
             (canUse("invoices_read") || canUse("reports_read")) ? "/api/dashboard/summary" : null,
-        ].filter(Boolean) as string[];
+        ].filter(Boolean).filter((k) => k !== activeKey) as string[];
 
-        scheduleIdleTask(() => coreKeys.forEach(prefetch), 700);
-        scheduleIdleTask(() => timeKeys.forEach(prefetch), 1600);
-        scheduleIdleTask(() => secondaryKeys.forEach(prefetch), 2600);
-    }, [ownerUserId, actorUserId, user, profile, cache, mutate]);
+        // Stagger background prefetches with 600ms gap between each call
+        const keysToPrefetch = [...coreKeys, ...timeKeys, ...secondaryKeys];
+        const timers: number[] = [];
+
+        keysToPrefetch.forEach((key, index) => {
+            const timer = window.setTimeout(() => {
+                prefetch(key);
+            }, 800 + index * 600);
+            timers.push(timer);
+        });
+
+        return () => {
+            timers.forEach((t) => clearTimeout(t));
+        };
+    }, [ownerUserId, actorUserId, user, profile, cache, mutate, pathname]);
 
     return null;
 }

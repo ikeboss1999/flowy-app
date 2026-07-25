@@ -1,0 +1,280 @@
+
+> flowy@1.4.8 dev
+> next dev --hostname 127.0.0.1
+
+  ▲ Next.js 14.2.16
+  - Local:        http://127.0.0.1:3000
+  - Network:      http://127.0.0.1:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1952ms
+ ✓ Compiled /src/middleware in 204ms (138 modules)
+ ○ Compiling /api/auth/me ...
+ ✓ Compiled /api/auth/me in 3.6s (862 modules)
+[Perf] /api/auth/me | 1ms | anonymous
+ GET /api/auth/me 200 in 3848ms
+ ✓ Compiled in 467ms (351 modules)
+ GET /login 200 in 4048ms
+ ✓ Compiled /manifest.webmanifest in 160ms (542 modules)
+ GET /manifest.webmanifest 200 in 227ms
+[Perf] /api/auth/me | 1ms | anonymous
+ GET /api/auth/me 200 in 45ms
+[Perf] /api/auth/me | 0ms | anonymous
+ GET /api/auth/me 200 in 17ms
+ ✓ Compiled /favicon.ico in 74ms (544 modules)
+ GET /favicon.ico 200 in 109ms
+[Perf] /api/auth/me | 1ms | anonymous
+ GET /api/auth/me 200 in 24ms
+ ○ Compiling /welcome ...
+ ✓ Compiled /welcome in 1121ms (911 modules)
+ GET /welcome 200 in 1299ms
+[Perf] /api/auth/me | 0ms | anonymous
+ GET /api/auth/me 200 in 24ms
+[Perf] /api/auth/me | 0ms | anonymous
+ GET /api/auth/me 200 in 17ms
+ GET /manifest.webmanifest 200 in 22ms
+[Perf] /api/auth/me | 0ms | anonymous
+ GET /api/auth/me 200 in 9ms
+ ✓ Compiled /api/auth/sync-session in 93ms (562 modules)
+ POST /api/auth/sync-session 200 in 334ms
+ ✓ Compiled /api/auth/start in 129ms (564 modules)
+ GET /api/auth/start 307 in 162ms
+[Perf] /api/auth/me | 238ms | payload=0kb | admin
+ GET /api/auth/me 200 in 264ms
+ ○ Compiling / ...
+ ✓ Compiled / in 651ms (1024 modules)
+ POST /api/auth/sync-session 200 in 716ms
+ GET / 200 in 829ms
+ GET /api/auth/start 307 in 11ms
+ GET / 200 in 33ms
+ GET /manifest.webmanifest 200 in 19ms
+[Perf] /api/auth/me | 206ms | payload=0kb | admin
+ GET /api/auth/me 200 in 220ms
+ POST /api/auth/sync-session 200 in 200ms
+[Perf] /api/auth/me | 257ms | payload=0kb | admin
+ GET /api/auth/me 200 in 267ms
+ ✓ Compiled /api/offers in 224ms (623 modules)
+ ✓ Compiled /api/employees in 0ms (635 modules)
+ ✓ Compiled in 0ms (638 modules)
+ ✓ Compiled in 1ms (638 modules)
+ ✓ Compiled in 1ms (638 modules)
+ GET /api/todos?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 1349ms
+[Perf] /api/offers | 546ms | rows=9 | payload=23kb
+ GET /api/offers?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 1407ms
+[Perf] /api/projects | 576ms | rows=1 | payload=127kb
+ GET /api/projects?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 1437ms
+ ✓ Compiled /api/customers in 139ms (640 modules)
+[Perf] /api/settings | 799ms | payload=353kb
+ GET /api/settings?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 1547ms
+ ✓ Compiled /api/orders in 129ms (642 modules)
+ ✓ Compiled (646 modules)
+[Perf] /api/invoices | 1073ms | rows=9 | payload=1523kb
+ GET /api/invoices?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 1943ms
+[Perf] /api/time-entries | 252ms | rows=89 | payload=31kb
+ GET /api/time-entries?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 628ms
+ ✓ Compiled /api/services in 125ms (648 modules)
+[Perf] /api/customers | 300ms | rows=5 | payload=3kb
+ GET /api/customers?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 737ms
+[Perf] /api/timesheets | 287ms | rows=3 | payload=1kb
+ GET /api/timesheets?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 605ms
+ GET /api/orders?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 563ms
+ ✓ Compiled /api/archive-files in 167ms (650 modules)
+ GET /api/services?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 354ms
+ ✓ Compiled /api/archive-folders in 0ms (657 modules)
+[Perf] /api/employees | 1641ms | rows=3 | payload=2731kb | rawRows=3
+ GET /api/employees?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 2348ms
+ ✓ Compiled in 1ms (659 modules)
+ ✓ Compiled /api/dashboard/summary in 0ms (659 modules)
+ ✓ Compiled in 0ms (661 modules)
+ GET /api/vehicles?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 925ms
+ GET /api/archive-files 200 in 1032ms
+[Perf] /api/crm | 222ms | rows=1 | payload=0kb
+ GET /api/crm 200 in 1072ms
+ GET /api/calendar-events?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 1076ms
+[Perf] /api/auth/me | 86ms | payload=0kb | admin
+ GET /api/auth/me 200 in 131ms
+ GET /api/archive-folders 200 in 971ms
+ POST /api/auth/sync-session 200 in 125ms
+ GET /api/todos?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 196ms
+[Perf] /api/offers | 180ms | rows=9 | payload=23kb
+ GET /api/offers?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 200ms
+[Perf] /api/dashboard/summary | 288ms | payload=0kb | fallback invoices=9 offers=9
+ GET /api/dashboard/summary 200 in 723ms
+[Perf] /api/projects | 289ms | rows=1 | payload=127kb
+ GET /api/projects?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 301ms
+[Perf] /api/time-entries | 175ms | rows=89 | payload=31kb
+ GET /api/time-entries?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 194ms
+[Perf] /api/timesheets | 168ms | rows=3 | payload=1kb
+ GET /api/timesheets?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 190ms
+[Perf] /api/customers | 185ms | rows=5 | payload=3kb
+ GET /api/customers?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 202ms
+[Perf] /api/settings | 325ms | payload=353kb
+ GET /api/settings?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 350ms
+ GET /api/orders?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 179ms
+ GET /api/vehicles?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 183ms
+ GET /api/services?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 239ms
+ GET /api/archive-files 200 in 181ms
+[Perf] /api/invoices | 572ms | rows=9 | payload=1523kb
+ GET /api/invoices?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 609ms
+[Perf] /api/crm | 191ms | rows=1 | payload=0kb
+ GET /api/crm 200 in 202ms
+[Perf] /api/auth/me | 94ms | payload=0kb | admin
+ GET /api/auth/me 200 in 107ms
+ GET /api/calendar-events?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 200ms
+ GET /api/archive-folders 200 in 187ms
+ GET /api/todos?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 287ms
+[Perf] /api/offers | 251ms | rows=9 | payload=23kb
+ GET /api/offers?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 290ms
+[Perf] /api/time-entries | 165ms | rows=89 | payload=31kb
+ GET /api/time-entries?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 176ms
+[Perf] /api/dashboard/summary | 284ms | payload=0kb | fallback invoices=9 offers=9
+ GET /api/dashboard/summary 200 in 302ms
+[Perf] /api/employees | 729ms | rows=3 | payload=2731kb | rawRows=3
+ GET /api/employees?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 765ms
+[Perf] /api/projects | 345ms | rows=1 | payload=127kb
+ GET /api/projects?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 357ms
+[Perf] /api/timesheets | 166ms | rows=3 | payload=1kb
+ GET /api/timesheets?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 205ms
+[Perf] /api/customers | 176ms | rows=5 | payload=3kb
+ GET /api/customers?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 210ms
+[Perf] /api/settings | 208ms | payload=353kb
+ GET /api/settings?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 253ms
+ GET /api/orders?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 212ms
+ GET /api/vehicles?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 186ms
+ GET /api/services?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 223ms
+ GET /api/archive-files 200 in 198ms
+[Perf] /api/auth/me | 87ms | payload=0kb | admin
+ GET /api/auth/me 200 in 156ms
+[Perf] /api/crm | 170ms | rows=1 | payload=0kb
+ GET /api/crm 200 in 236ms
+ GET /api/calendar-events?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 188ms
+ GET /api/archive-folders 200 in 177ms
+[Perf] /api/offers | 169ms | rows=9 | payload=23kb
+ GET /api/offers?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 183ms
+ GET /api/todos?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 208ms
+[Perf] /api/invoices | 398ms | rows=9 | payload=1523kb
+ GET /api/invoices?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 421ms
+[Perf] /api/time-entries | 171ms | rows=89 | payload=31kb
+ GET /api/time-entries?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 181ms
+[Perf] /api/timesheets | 164ms | rows=3 | payload=1kb
+ GET /api/timesheets?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 178ms
+[Perf] /api/dashboard/summary | 283ms | payload=0kb | fallback invoices=9 offers=9
+ GET /api/dashboard/summary 200 in 291ms
+[Perf] /api/customers | 200ms | rows=5 | payload=3kb
+ GET /api/customers?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 214ms
+[Perf] /api/projects | 224ms | rows=1 | payload=127kb
+ GET /api/projects?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 254ms
+ GET /api/vehicles?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 171ms
+ GET /api/orders?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 181ms
+[Perf] /api/settings | 329ms | payload=353kb
+ GET /api/settings?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 341ms
+[Perf] /api/crm | 162ms | rows=1 | payload=0kb
+ GET /api/crm 200 in 184ms
+ GET /api/archive-files 200 in 328ms
+ GET /api/archive-folders 200 in 171ms
+ GET /api/calendar-events?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 199ms
+ GET /api/services?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 425ms
+[Perf] /api/offers | 166ms | rows=9 | payload=23kb
+ GET /api/offers?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 194ms
+ GET /api/todos?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 196ms
+[Perf] /api/time-entries | 186ms | rows=89 | payload=31kb
+ GET /api/time-entries?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 208ms
+[Perf] /api/employees | 922ms | rows=3 | payload=2731kb | rawRows=3
+ GET /api/employees?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 948ms
+[Perf] /api/timesheets | 220ms | rows=3 | payload=1kb
+ GET /api/timesheets?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 230ms
+[Perf] /api/customers | 199ms | rows=5 | payload=3kb
+ GET /api/customers?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 208ms
+[Perf] /api/invoices | 393ms | rows=9 | payload=1523kb
+ GET /api/invoices?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 428ms
+ GET /api/vehicles?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 186ms
+[Perf] /api/dashboard/summary | 297ms | payload=0kb | fallback invoices=9 offers=9
+ GET /api/dashboard/summary 200 in 308ms
+ GET /api/orders?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 182ms
+[Perf] /api/projects | 286ms | rows=1 | payload=127kb
+ GET /api/projects?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 295ms
+[Perf] /api/crm | 183ms | rows=1 | payload=0kb
+ GET /api/crm 200 in 191ms
+[Perf] /api/settings | 237ms | payload=353kb
+ GET /api/settings?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 265ms
+ GET /api/calendar-events?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 183ms
+ GET /api/archive-folders 200 in 184ms
+ GET /api/archive-files 200 in 200ms
+ GET /api/services?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 172ms
+[Perf] /api/offers | 186ms | rows=9 | payload=23kb
+ GET /api/offers?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 195ms
+ GET /api/todos?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 179ms
+[Perf] /api/time-entries | 175ms | rows=89 | payload=31kb
+ GET /api/time-entries?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 195ms
+[Perf] /api/timesheets | 170ms | rows=3 | payload=1kb
+ GET /api/timesheets?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 199ms
+[Perf] /api/customers | 160ms | rows=5 | payload=3kb
+ GET /api/customers?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 179ms
+ GET /api/vehicles?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 256ms
+[Perf] /api/projects | 276ms | rows=1 | payload=127kb
+ GET /api/projects?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 291ms
+ GET /api/orders?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 293ms
+[Perf] /api/employees | 546ms | rows=3 | payload=2731kb | rawRows=3
+ GET /api/employees?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 595ms
+[Perf] /api/dashboard/summary | 382ms | payload=0kb | fallback invoices=9 offers=9
+ GET /api/dashboard/summary 200 in 397ms
+[Perf] /api/crm | 176ms | rows=1 | payload=0kb
+ GET /api/crm 200 in 186ms
+[Perf] /api/invoices | 497ms | rows=9 | payload=1523kb
+ GET /api/invoices?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 517ms
+ GET /api/calendar-events?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 187ms
+[Perf] /api/settings | 223ms | payload=353kb
+ GET /api/settings?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 242ms
+ GET /api/archive-folders 200 in 256ms
+ GET /api/archive-files 200 in 257ms
+ GET /api/services?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 253ms
+[Perf] /api/offers | 170ms | rows=9 | payload=23kb
+ GET /api/offers?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 187ms
+ GET /api/vehicles?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 193ms
+[Perf] /api/projects | 177ms | rows=1 | payload=127kb
+ GET /api/projects?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 187ms
+[Perf] /api/settings | 400ms | payload=353kb
+ GET /api/settings?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 415ms
+[Perf] /api/dashboard/summary | 421ms | payload=0kb | fallback invoices=9 offers=9
+ GET /api/dashboard/summary 200 in 451ms
+[Perf] /api/invoices | 527ms | rows=9 | payload=1523kb
+ GET /api/invoices?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 566ms
+[Perf] /api/employees | 628ms | rows=3 | payload=2731kb | rawRows=3
+ GET /api/employees?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 667ms
+[Perf] /api/dashboard/summary | 284ms | payload=0kb | fallback invoices=9 offers=9
+ GET /api/dashboard/summary 200 in 297ms
+[Perf] /api/invoices | 401ms | rows=9 | payload=1523kb
+ GET /api/invoices?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 423ms
+[Perf] /api/employees | 627ms | rows=3 | payload=2731kb | rawRows=3
+ GET /api/employees?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 652ms
+[Perf] /api/employees | 606ms | rows=3 | payload=2731kb | rawRows=3
+ GET /api/employees?userId=68d8a0e4-411a-4efb-8e06-763e7a78eb7e 200 in 632ms
+ ✓ Compiled /api/auth/logout in 202ms (663 modules)
+ POST /api/auth/logout 200 in 228ms
+ POST /api/auth/logout 200 in 12ms
+ GET /manifest.webmanifest 200 in 24ms
+ GET /login 200 in 113ms
+ GET /manifest.webmanifest 200 in 16ms
+[Perf] /api/auth/me | 0ms | anonymous
+ GET /api/auth/me 200 in 20ms
+[Perf] /api/auth/me | 0ms | anonymous
+ GET /api/auth/me 200 in 12ms
+[Perf] /api/auth/me | 0ms | anonymous
+ GET /api/auth/me 200 in 11ms
+[Perf] /api/auth/me | 0ms | anonymous
+ GET /api/auth/me 200 in 13ms
+ GET /welcome 200 in 43ms
+[Perf] /api/auth/me | 0ms | anonymous
+ GET /api/auth/me 200 in 12ms
+[Perf] /api/auth/me | 0ms | anonymous
+ GET /api/auth/me 200 in 11ms
+[Perf] /api/auth/me | 0ms | anonymous
+ GET /api/auth/me 200 in 11ms
+ GET /welcome 200 in 30ms
+ GET /manifest.webmanifest 200 in 19ms
+[Perf] /api/auth/me | 0ms | anonymous
+ GET /api/auth/me 200 in 13ms
+[Perf] /api/auth/me | 0ms | anonymous
+ GET /api/auth/me 200 in 13ms
+ GET /favicon.ico 200 in 14ms

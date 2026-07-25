@@ -94,7 +94,7 @@ export async function POST(request: Request) {
             accessPIN: pinHash,
             isAccessEnabled: true,
             permissions: {
-                timeTracking: employee.appAccess.permissions?.timeTracking ?? true,
+                timeTracking: employee.appAccess.permissions?.timeTracking ?? false,
                 documents: employee.appAccess.permissions?.documents ?? false,
                 personalData: true,
                 projectDiary: employee.appAccess.permissions?.projectDiary ?? false,

@@ -555,14 +555,14 @@ export function Sidebar() {
                         <img src="/logo.png" alt="Logo" className="h-12 w-12 shrink-0 rounded-2xl bg-white/10 object-contain p-1 xl:h-12 xl:w-12" />
                         {!isDrawerMode && (
                             <div className="pointer-events-none absolute left-[calc(100%+0.8rem)] top-1/2 z-[120] -translate-y-1/2 translate-x-1 rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-left text-white opacity-0 shadow-2xl shadow-slate-950/40 backdrop-blur-xl ring-1 ring-white/10 transition-all duration-200 group-hover/logo:translate-x-0 group-hover/logo:opacity-100">
-                                <div className="whitespace-nowrap text-sm font-black">{companySettings?.companyName || "FlowY"}</div>
+                                <div suppressHydrationWarning className="whitespace-nowrap text-sm font-black">{companySettings?.companyName || "FlowY"}</div>
                                 <div className="mt-1 whitespace-nowrap text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Professional</div>
                             </div>
                         )}
                     </div>
                     {isDrawerMode && (
                     <div className="flex min-w-0 flex-col items-center transition-all duration-200">
-                        <span className="max-w-[14rem] break-words text-xl font-black leading-none tracking-tight text-white xl:text-2xl">
+                        <span suppressHydrationWarning className="max-w-[14rem] break-words text-xl font-black leading-none tracking-tight text-white xl:text-2xl">
                             {companySettings?.companyName || "FlowY"}
                         </span>
                         <span className="text-[10px] text-white/40 uppercase font-black tracking-widest mt-1">
