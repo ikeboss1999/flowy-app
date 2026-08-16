@@ -19,12 +19,16 @@ import {
     Send,
     PlusCircle,
     ArrowUpDown,
-    ChevronDown
+    MoreHorizontal,
+    FolderKanban,
+    Link2
 } from "lucide-react";
 import { useOffers } from "@/hooks/useOffers";
 import { useCustomers } from "@/hooks/useCustomers";
+import { useProjects } from "@/hooks/useProjects";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import nextDynamic from "next/dynamic";
+import { Modal } from "@/components/ui/Modal";
 
 const OfferPreviewModal = nextDynamic(
     () => import("@/components/OfferPreviewModal").then((mod) => mod.OfferPreviewModal),
@@ -62,6 +66,7 @@ export default function OffersPage() {
     const router = useRouter();
     const { offers, updateOffer, deleteOffer, isLoading } = useOffers();
     const { customers } = useCustomers();
+    const { projects } = useProjects();
     const { data: companySettings } = useCompanySettings();
     const { showToast, showConfirm } = useNotification();
     const { profile } = useAuth();
@@ -72,10 +77,51 @@ export default function OffersPage() {
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [previewOffer, setPreviewOffer] = useState<Offer | null>(null);
     const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+    const [actionMenuOfferId, setActionMenuOfferId] = useState<string | null>(null);
+    const [assigningOffer, setAssigningOffer] = useState<Offer | null>(null);
+    const [selectedProjectId, setSelectedProjectId] = useState("");
+    const [isAssigningProject, setIsAssigningProject] = useState(false);
 
     // Sorting State
     const [sortBy, setSortBy] = useState<string>("number");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+    const activeProjects = useMemo(() => {
+        return projects
+            .filter(project => project.status === 'active')
+            .sort((a, b) => (a.projectNumber || a.name).localeCompare(b.projectNumber || b.name, undefined, { numeric: true }));
+    }, [projects]);
+
+    const getProjectLabel = (projectId?: string) => {
+        if (!projectId) return "";
+        const project = projects.find(p => p.id === projectId);
+        if (!project) return "Projekt zugeordnet";
+        return `${project.projectNumber ? `${project.projectNumber} - ` : ""}${project.name}`;
+    };
+
+    const openProjectAssignment = (offer: Offer) => {
+        if (offer.projectId) return;
+        setAssigningOffer(offer);
+        setSelectedProjectId("");
+        setActionMenuOfferId(null);
+    };
+
+    const handleAssignProject = async () => {
+        if (!assigningOffer || !selectedProjectId || assigningOffer.projectId) return;
+
+        setIsAssigningProject(true);
+        try {
+            await updateOffer(assigningOffer.id, { projectId: selectedProjectId });
+            showToast("Angebot wurde dem Projekt zugeordnet.", "success");
+            setAssigningOffer(null);
+            setSelectedProjectId("");
+        } catch (error) {
+            console.error("[Offer Project Assignment]", error);
+            showToast("Projekt konnte nicht zugeordnet werden.", "error");
+        } finally {
+            setIsAssigningProject(false);
+        }
+    };
 
     const handleDownload = async (offer: Offer, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -319,6 +365,7 @@ export default function OffersPage() {
                         <tbody className="divide-y divide-slate-50">
                             {processedOffers.map((offer) => {
                                 const sc = STATUS_CONFIG[offer.status] || STATUS_CONFIG.draft;
+                                const assignedProjectLabel = getProjectLabel(offer.projectId);
                                 return (
                                     <tr
                                         key={offer.id}
@@ -462,6 +509,33 @@ export default function OffersPage() {
                                                         <Trash2 className="h-4 w-4" />
                                                     </button>
                                                 )}
+                                                <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        onClick={() => setActionMenuOfferId(prev => prev === offer.id ? null : offer.id)}
+                                                        className="p-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-all"
+                                                        title="Weitere Aktionen"
+                                                    >
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </button>
+                                                    {actionMenuOfferId === offer.id && (
+                                                        <div className="absolute right-0 top-11 z-30 w-56 overflow-hidden rounded-2xl border border-slate-100 bg-white p-1 shadow-2xl shadow-slate-950/10">
+                                                            <button
+                                                                onClick={() => openProjectAssignment(offer)}
+                                                                disabled={!!offer.projectId}
+                                                                className={cn(
+                                                                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-black transition-all",
+                                                                    offer.projectId
+                                                                        ? "cursor-not-allowed bg-slate-50 text-slate-300"
+                                                                        : "text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                                                                )}
+                                                                title={offer.projectId ? assignedProjectLabel : "Projekt zuordnen"}
+                                                            >
+                                                                <Link2 className="h-4 w-4" />
+                                                                <span>{offer.projectId ? "Bereits zugeordnet" : "Projekt zuordnen"}</span>
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
@@ -496,6 +570,86 @@ export default function OffersPage() {
                 customer={customers.find(c => c.id === previewOffer?.customerId)}
                 companySettings={companySettings}
             />
+
+            <Modal
+                isOpen={!!assigningOffer}
+                onClose={() => {
+                    if (isAssigningProject) return;
+                    setAssigningOffer(null);
+                    setSelectedProjectId("");
+                }}
+                title="Projekt zuordnen"
+            >
+                <div className="space-y-6">
+                    <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-500">Angebot</p>
+                        <h4 className="mt-1 text-lg font-black text-slate-950">#{assigningOffer?.offerNumber}</h4>
+                        <p className="mt-1 text-sm font-semibold text-slate-500">{assigningOffer?.customerName}</p>
+                    </div>
+
+                    {activeProjects.length > 0 ? (
+                        <div className="space-y-3">
+                            {activeProjects.map(project => {
+                                const selected = selectedProjectId === project.id;
+                                return (
+                                    <button
+                                        key={project.id}
+                                        onClick={() => setSelectedProjectId(project.id)}
+                                        className={cn(
+                                            "flex w-full items-start gap-4 rounded-2xl border p-4 text-left transition-all",
+                                            selected
+                                                ? "border-indigo-500 bg-indigo-50 shadow-lg shadow-indigo-500/10"
+                                                : "border-slate-100 bg-white hover:border-indigo-200 hover:bg-slate-50"
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                                            selected ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500"
+                                        )}>
+                                            <FolderKanban className="h-5 w-5" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-black text-slate-950">
+                                                {project.projectNumber ? `${project.projectNumber} - ` : ""}{project.name}
+                                            </p>
+                                            <p className="mt-1 text-sm font-semibold text-slate-500">
+                                                {[project.address.street, project.address.zip, project.address.city].filter(Boolean).join(", ") || "Keine Adresse hinterlegt"}
+                                            </p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6 text-center">
+                            <FolderKanban className="mx-auto h-10 w-10 text-slate-300" />
+                            <p className="mt-3 font-black text-slate-700">Keine aktiven Projekte gefunden</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-400">Es können nur aktive Projekte zugeordnet werden.</p>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
+                        <button
+                            onClick={() => {
+                                setAssigningOffer(null);
+                                setSelectedProjectId("");
+                            }}
+                            disabled={isAssigningProject}
+                            className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-black text-slate-600 transition-all hover:bg-slate-200 disabled:opacity-50"
+                        >
+                            Abbrechen
+                        </button>
+                        <button
+                            onClick={handleAssignProject}
+                            disabled={!selectedProjectId || isAssigningProject}
+                            className="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {isAssigningProject && <Loader2 className="h-4 w-4 animate-spin" />}
+                            Zuordnen
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

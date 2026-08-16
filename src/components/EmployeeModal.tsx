@@ -36,6 +36,7 @@ import { useNotification } from "@/context/NotificationContext";
 import { useUsers } from "@/hooks/useUsers";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { mutate } from "swr";
 
 interface EmployeeModalProps {
@@ -73,10 +74,14 @@ const EUROPEAN_COUNTRIES = [
     "Spanien", "Tschechien", "Türkei", "Ukraine", "Ungarn", "Vatikanstadt", "Vereinigtes Königreich"
 ];
 
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
+
 export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, initialEmployee, getNextNumber }: EmployeeModalProps) {
-    const { user } = useAuth();
+    const { user, currentEmployee, profile } = useAuth();
+    const activeUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
     const [employeeId, setEmployeeId] = useState("");
     const [isInitialized, setIsInitialized] = useState(false);
+    const [isHydratingEmployee, setIsHydratingEmployee] = useState(false);
     const initialValuesRef = useRef<any>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -151,6 +156,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
         const nextId = initialEmployee?.id || Math.random().toString(36).substr(2, 9);
         setEmployeeId(nextId);
         setIsInitialized(false);
+        setIsHydratingEmployee(!!initialEmployee?.id);
         initialValuesRef.current = null;
         if (initialEmployee) {
             setFormData({
@@ -193,14 +199,58 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 fetch(`/api/employees/${initialEmployee.id}`)
                     .then((res) => res.json())
                     .then((data) => {
-                        if (data && Array.isArray(data.documents)) {
-                            setFormData((prev) => ({
-                                ...prev,
-                                documents: data.documents,
-                            }));
+                        if (data && !data.error) {
+                            const fullEmployee = {
+                                ...data,
+                                employment: {
+                                    ...data.employment,
+                                    workerType: data.employment?.workerType || "Arbeiter",
+                                    classification: data.employment?.classification || "",
+                                    verwendung: data.employment?.verwendung || "",
+                                    annualLeave: data.employment?.annualLeave ?? 25,
+                                },
+                                additionalInfo: {
+                                    ...data.additionalInfo,
+                                    noTimeTrackingRequired: data.additionalInfo?.noTimeTrackingRequired ?? false,
+                                },
+                                documents: data.documents || [],
+                                appAccess: data.appAccess ? {
+                                    ...data.appAccess,
+                                    staffId: data.appAccess.staffId || Math.floor(10000000 + Math.random() * 90000000).toString(),
+                                    permissions: data.appAccess.permissions || {
+                                        timeTracking: false,
+                                        documents: false,
+                                        personalData: true,
+                                        projectDiary: false
+                                    }
+                                } : {
+                                    staffId: Math.floor(10000000 + Math.random() * 90000000).toString(),
+                                    accessPIN: "",
+                                    isAccessEnabled: false,
+                                    permissions: {
+                                        timeTracking: false,
+                                        documents: false,
+                                        personalData: true,
+                                        projectDiary: false
+                                    }
+                                }
+                            };
+                            setFormData(fullEmployee);
+                            initialValuesRef.current = {
+                                ...fullEmployee,
+                                additionalInfo: {
+                                    ...fullEmployee.additionalInfo,
+                                    isDraft: (fullEmployee.additionalInfo as any)?.isDraft
+                                }
+                            };
+                            setIsInitialized(true);
+                            setIsHydratingEmployee(false);
                         }
                     })
-                    .catch((err) => console.error("Error fetching full employee details in modal:", err));
+                    .catch((err) => {
+                        console.error("Error fetching full employee details in modal:", err);
+                        showToast("Mitarbeiterdaten konnten nicht vollständig geladen werden.", "error");
+                    });
             }
         } else {
             const nextNum = getNextNumber ? getNextNumber() : "";
@@ -267,10 +317,12 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     }
                 }
             });
+            setIsHydratingEmployee(false);
         }
-    }, [initialEmployee, isOpen]);
+    }, [initialEmployee, isOpen, getNextNumber, showToast]);
 
     useEffect(() => {
+        if (isHydratingEmployee) return;
         if (isOpen && !isInitialized && formData.id) {
             initialValuesRef.current = {
                 ...formData,
@@ -281,7 +333,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
             };
             setIsInitialized(true);
         }
-    }, [isOpen, isInitialized, formData, initialEmployee]);
+    }, [isOpen, isInitialized, formData, initialEmployee, isHydratingEmployee]);
 
     const isDirty = useMemo(() => {
         if (!initialEmployee || !initialValuesRef.current) return false;
@@ -310,6 +362,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
         endpoint: "/api/employees",
         data: autoSavePayload,
         isDirty,
+        enabled: !isHydratingEmployee,
         onSaveSuccess: () => {
             initialValuesRef.current = {
                 ...formData,
@@ -318,8 +371,8 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     isDraft: initialEmployee ? (formData.additionalInfo as any)?.isDraft : false
                 }
             };
-            if (user) {
-                mutate(`/api/employees?userId=${user.id}`);
+            if (activeUserId) {
+                mutate(`/api/employees?summary=1&userId=${activeUserId}`);
             }
         }
     });
@@ -354,21 +407,54 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
         }));
     };
 
-    const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        e.target.value = "";
 
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const base64 = reader.result as string;
-            setFormData(prev => ({ ...prev, avatar: base64, avatarUrl: undefined }));
+        if (file.size > MAX_AVATAR_SIZE) {
+            showToast("Profilbild ist zu groß. Maximal erlaubt sind 5 MB.", "error");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/employees/${employeeId}/avatar-upload-url`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    fileName: file.name,
+                    mimeType: file.type,
+                    fileSize: file.size,
+                }),
+            });
+
+            const uploadInfo = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(uploadInfo?.error || "Upload-URL konnte nicht erstellt werden.");
+            }
+
+            const { error } = await supabase.storage
+                .from(uploadInfo.bucket || "employee-avatars")
+                .uploadToSignedUrl(uploadInfo.storagePath, uploadInfo.token, file, {
+                    contentType: file.type,
+                    upsert: true,
+                });
+
+            if (error) throw error;
+
+            const avatarReference = `storage:employee-avatars:${uploadInfo.storagePath}`;
+            const localPreview = URL.createObjectURL(file);
+            setFormData(prev => ({ ...prev, avatar: avatarReference, avatarUrl: localPreview }));
             setShowAvatarMenu(false);
-        };
-        reader.readAsDataURL(file);
+            showToast("Profilbild wurde hochgeladen.", "success");
+        } catch (error) {
+            console.error("Avatar upload failed:", error);
+            showToast("Profilbild konnte nicht hochgeladen werden.", "error");
+        }
     };
 
     const handleAvatarDelete = () => {
-        setFormData(prev => ({ ...prev, avatar: undefined, avatarUrl: undefined }));
+        setFormData(prev => ({ ...prev, avatar: null as any, avatarUrl: undefined }));
         setShowAvatarMenu(false);
     };
 

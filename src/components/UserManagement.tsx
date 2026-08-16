@@ -256,6 +256,7 @@ export function UserManagement() {
     };
 
     const categories = Array.from(new Set(PERMISSION_METADATA.map(m => m.category)));
+    const inviteEnabledPermissionCount = PERMISSION_METADATA.filter(perm => invitePermissions[perm.key]).length;
 
     if (isLoading) {
         return (
@@ -439,7 +440,7 @@ export function UserManagement() {
             {/* Invite Modal */}
             {showInviteModal && (
                 <div className="fixed inset-0 bg-white/30 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-2xl max-w-lg w-full space-y-6 relative animate-in zoom-in-95 duration-300">
+                    <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-2xl max-w-4xl w-full max-h-[92vh] overflow-y-auto custom-scrollbar space-y-6 relative animate-in zoom-in-95 duration-300">
                         <button
                             onClick={() => setShowInviteModal(false)}
                             className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-all"
@@ -464,7 +465,8 @@ export function UserManagement() {
                             </div>
                         )}
 
-                        <form onSubmit={handleInviteUser} className="space-y-4">
+                        <form onSubmit={handleInviteUser} className="space-y-5">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div>
                                 <label className="block text-xs font-bold text-slate-600 mb-1.5 ml-1">Vollständiger Name</label>
                                 <input
@@ -473,7 +475,7 @@ export function UserManagement() {
                                     value={inviteName}
                                     onChange={(e) => setInviteName(e.target.value)}
                                     placeholder="z. B. Max Mustermann"
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-800"
+                                    className="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold text-slate-800"
                                 />
                             </div>
 
@@ -485,8 +487,9 @@ export function UserManagement() {
                                     value={inviteEmail}
                                     onChange={(e) => setInviteEmail(e.target.value)}
                                     placeholder="max.mustermann@firma.de"
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-800"
+                                    className="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold text-slate-800"
                                 />
+                            </div>
                             </div>
 
                             <div>
@@ -494,7 +497,7 @@ export function UserManagement() {
                                 <select
                                     value={inviteRole}
                                     onChange={(e) => setInviteRole(e.target.value as any)}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold text-slate-800"
+                                    className="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-black text-slate-800"
                                 >
                                     <option value="employee">Mitarbeiter (Eingeschränkter Zugang)</option>
                                     <option value="admin">Administrator (Vollzugriff)</option>
@@ -502,45 +505,82 @@ export function UserManagement() {
                             </div>
 
                             {inviteRole === 'employee' && (
-                                <div className="space-y-2">
-                                    <label className="block text-xs font-bold text-slate-600 ml-1">Standard-Rechte aktivieren</label>
-                                    <div className="grid grid-cols-2 gap-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl max-h-[160px] overflow-y-auto custom-scrollbar">
-                                        {PERMISSION_METADATA.map((perm) => {
-                                            const isChecked = invitePermissions[perm.key];
-                                            return (
-                                                <div
-                                                    key={perm.key}
-                                                    onClick={() => setInvitePermissions(prev => ({ ...prev, [perm.key]: !prev[perm.key] }))}
-                                                    className="flex items-center gap-2 cursor-pointer p-1.5 hover:bg-slate-100 rounded-lg transition-all"
-                                                >
-                                                    <div className={cn(
-                                                        "w-4 h-4 rounded border flex items-center justify-center transition-all",
-                                                        isChecked ? "border-indigo-600 bg-indigo-600 text-white" : "border-slate-300"
-                                                    )}>
-                                                        {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
-                                                    </div>
-                                                    <span className="text-[11px] font-semibold text-slate-600 select-none truncate" title={perm.label}>
-                                                        {perm.label}
-                                                    </span>
+                                <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5">
+                                    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-[0.25em] text-indigo-500">Standard-Rechte aktivieren</p>
+                                            <h4 className="mt-1 text-xl font-black text-slate-950">Zugriffsrechte auswählen</h4>
+                                            <p className="mt-1 text-sm font-semibold text-slate-500">Wählen Sie die Bereiche, die der neue Mitarbeiter nutzen darf.</p>
+                                        </div>
+                                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm">
+                                            <p className="text-2xl font-black text-indigo-600">{inviteEnabledPermissionCount}</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">aktiv</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                                        {categories.map(category => (
+                                            <div key={category} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                                <h5 className="mb-3 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">{category}</h5>
+                                                <div className="space-y-2">
+                                                    {PERMISSION_METADATA.filter(perm => perm.category === category).map((perm) => {
+                                                        const isChecked = invitePermissions[perm.key];
+                                                        const PermIcon = perm.icon;
+                                                        return (
+                                                            <button
+                                                                type="button"
+                                                                key={perm.key}
+                                                                onClick={() => setInvitePermissions(prev => ({ ...prev, [perm.key]: !prev[perm.key] }))}
+                                                                className={cn(
+                                                                    "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all",
+                                                                    isChecked
+                                                                        ? "border-indigo-200 bg-indigo-50 text-indigo-700"
+                                                                        : "border-transparent bg-slate-50 text-slate-600 hover:border-slate-200 hover:bg-white"
+                                                                )}
+                                                            >
+                                                                <div className={cn(
+                                                                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                                                                    isChecked ? "bg-indigo-600 text-white" : "bg-white text-slate-400"
+                                                                )}>
+                                                                    <PermIcon className="h-4 w-4" />
+                                                                </div>
+                                                                <span className="min-w-0 flex-1 text-sm font-black leading-snug">{perm.label}</span>
+                                                                <div className={cn(
+                                                                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
+                                                                    isChecked ? "border-indigo-600 bg-indigo-600 text-white" : "border-slate-300 bg-white"
+                                                                )}>
+                                                                    {isChecked && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })}
                                                 </div>
-                                            );
-                                        })}
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}
 
-                            <div className="pt-4 flex gap-4">
+                            {inviteRole === 'admin' && (
+                                <div className="rounded-[28px] border border-indigo-100 bg-indigo-50 p-6 text-center">
+                                    <Shield className="mx-auto h-10 w-10 text-indigo-600" />
+                                    <h4 className="mt-3 text-lg font-black text-slate-900">Administrator mit Vollzugriff</h4>
+                                    <p className="mt-1 text-sm font-semibold text-slate-500">Einzelne Standard-Rechte müssen für diese Rolle nicht aktiviert werden.</p>
+                                </div>
+                            )}
+
+                            <div className="pt-4 flex flex-col gap-3 border-t border-slate-100 sm:flex-row sm:justify-end">
                                 <button
                                     type="button"
                                     onClick={() => setShowInviteModal(false)}
-                                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-2xl transition-all active:scale-95 text-sm"
+                                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-black px-6 py-3.5 rounded-2xl transition-all active:scale-95 text-sm"
                                 >
                                     Abbrechen
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={inviteLoading}
-                                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-2xl transition-all shadow-lg shadow-indigo-100 active:scale-95 text-sm"
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-7 py-3.5 rounded-2xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95 text-sm disabled:opacity-50"
                                 >
                                     {inviteLoading ? 'Wird eingeladen...' : 'Einladung senden'}
                                 </button>

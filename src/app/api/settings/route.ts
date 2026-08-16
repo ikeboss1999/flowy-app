@@ -4,8 +4,55 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getUserSession } from '@/lib/auth-server';
 import { safeUpsert } from '@/lib/supabase-helper';
 import { logApiPerformance } from '@/lib/api-performance';
+import { encrypt } from '@/lib/encryption';
 
 export const dynamic = 'force-dynamic';
+
+function sanitizeEmailDeliveryForClient(delivery: any = {}) {
+    const { smtpPassword, smtpPasswordEncrypted, ...safeDelivery } = delivery || {};
+    return {
+        ...safeDelivery,
+        hasSmtpPassword: !!smtpPasswordEncrypted || !!smtpPassword,
+    };
+}
+
+function sanitizeAccountSettingsForClient(accountSettings: any = {}) {
+    if (!accountSettings?.emailDelivery) return accountSettings;
+    return {
+        ...accountSettings,
+        emailDelivery: sanitizeEmailDeliveryForClient(accountSettings.emailDelivery),
+    };
+}
+
+function prepareAccountSettingsForSave(nextAccountSettings: any = {}, currentAccountSettings: any = {}) {
+    if (!nextAccountSettings?.emailDelivery) return nextAccountSettings;
+
+    const incomingDelivery = nextAccountSettings.emailDelivery || {};
+    const currentDelivery = currentAccountSettings.emailDelivery || {};
+    const { smtpPassword, hasSmtpPassword, clearSmtpPassword, ...safeIncomingDelivery } = incomingDelivery;
+
+    const nextDelivery: any = {
+        ...currentDelivery,
+        ...safeIncomingDelivery,
+    };
+
+    if (clearSmtpPassword) {
+        delete nextDelivery.smtpPasswordEncrypted;
+    } else if (typeof smtpPassword === 'string' && smtpPassword.trim()) {
+        nextDelivery.smtpPasswordEncrypted = encrypt(smtpPassword.trim());
+    } else if (currentDelivery.smtpPasswordEncrypted) {
+        nextDelivery.smtpPasswordEncrypted = currentDelivery.smtpPasswordEncrypted;
+    }
+
+    delete nextDelivery.smtpPassword;
+    delete nextDelivery.hasSmtpPassword;
+    delete nextDelivery.clearSmtpPassword;
+
+    return {
+        ...nextAccountSettings,
+        emailDelivery: nextDelivery,
+    };
+}
 
 export async function GET(request: Request) {
     const startedAt = performance.now();
@@ -37,6 +84,7 @@ export async function GET(request: Request) {
             const processed = { ...data };
             if (processed.companyData && Object.keys(processed.companyData).length === 0) processed.companyData = null;
             if (processed.accountSettings && Object.keys(processed.accountSettings).length === 0) processed.accountSettings = null;
+            if (processed.accountSettings) processed.accountSettings = sanitizeAccountSettingsForClient(processed.accountSettings);
             if (processed.invoiceSettings && Object.keys(processed.invoiceSettings).length === 0) processed.invoiceSettings = null;
             if (processed.offerSettings && Object.keys(processed.offerSettings).length === 0) processed.offerSettings = null;
             if (processed.orderSettings && Object.keys(processed.orderSettings).length === 0) processed.orderSettings = null;
@@ -95,7 +143,9 @@ export async function POST(request: Request) {
 
         if (payload.type && payload.data) {
             if (payload.type === 'company') updatedSettings.companyData = payload.data;
-            if (payload.type === 'account') updatedSettings.accountSettings = payload.data;
+            if (payload.type === 'account') {
+                updatedSettings.accountSettings = prepareAccountSettingsForSave(payload.data, currentSettings.accountSettings || {});
+            }
             if (payload.type === 'invoice') updatedSettings.invoiceSettings = payload.data;
             if (payload.type === 'offer') updatedSettings.offerSettings = payload.data;
             if (payload.type === 'order') updatedSettings.orderSettings = payload.data;

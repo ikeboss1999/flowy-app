@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTimeEntries } from '@/hooks/useTimeEntries';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -26,12 +26,43 @@ export function TimesheetArchiveList() {
     const [searchTerm, setSearchTerm] = useState('');
     const [yearFilter, setYearFilter] = useState('all');
     const [employeeFilter, setEmployeeFilter] = useState('all');
+    const [showInactiveEmployees, setShowInactiveEmployees] = useState(false);
+    const [hasMounted, setHasMounted] = useState(false);
 
     const getEmployee = (id: string) => employees.find(e => e.id === id) ?? null;
+    const isActiveEmployee = (employee: Employee | null) => !!employee && employee.employment.isActive !== false;
+
+    const employeesWithFinalizedTimesheets = useMemo(() => {
+        return employees
+            .filter(emp => timesheets.some(t => t.status === 'finalized' && t.employeeId === emp.id))
+            .sort((a, b) => (a.employeeNumber || '').localeCompare(b.employeeNumber || ''));
+    }, [employees, timesheets]);
+
+    const inactiveEmployeesWithFinalizedTimesheets = useMemo(() => {
+        return employeesWithFinalizedTimesheets.filter(emp => !isActiveEmployee(emp));
+    }, [employeesWithFinalizedTimesheets]);
+
+    const selectableEmployees = useMemo(() => {
+        return employeesWithFinalizedTimesheets.filter(emp => showInactiveEmployees || isActiveEmployee(emp));
+    }, [employeesWithFinalizedTimesheets, showInactiveEmployees]);
+
+    useEffect(() => {
+        setHasMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (employeeFilter === 'all' || showInactiveEmployees) return;
+
+        const selected = getEmployee(employeeFilter);
+        if (!isActiveEmployee(selected)) {
+            setEmployeeFilter('all');
+        }
+    }, [employeeFilter, employees, showInactiveEmployees]);
 
     const finalized = useMemo(() => {
         return timesheets
             .filter(t => t.status === 'finalized')
+            .filter(t => showInactiveEmployees || isActiveEmployee(getEmployee(t.employeeId)))
             .filter(t => yearFilter === 'all' || t.month.startsWith(yearFilter))
             .filter(t => employeeFilter === 'all' || t.employeeId === employeeFilter)
             .filter(t => {
@@ -42,7 +73,7 @@ export function TimesheetArchiveList() {
                 return employeeName.includes(searchTerm.toLowerCase()) || monthLabel.includes(searchTerm.toLowerCase());
             })
             .sort((a, b) => new Date(b.month).getTime() - new Date(a.month).getTime());
-    }, [timesheets, employees, searchTerm, yearFilter, employeeFilter]);
+    }, [timesheets, employees, searchTerm, yearFilter, employeeFilter, showInactiveEmployees]);
 
     const years = useMemo(() => {
         return Array.from(new Set(
@@ -175,7 +206,7 @@ export function TimesheetArchiveList() {
             .sort((a, b) => a.date.localeCompare(b.date));
     };
 
-    if (employeesLoading || timeEntriesLoading) {
+    if (!hasMounted || employeesLoading || timeEntriesLoading) {
         return (
             <div className="h-64 flex flex-col items-center justify-center gap-3 text-slate-400">
                 <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
@@ -198,7 +229,7 @@ export function TimesheetArchiveList() {
 
     return (
         <div className="space-y-4">
-            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 grid grid-cols-1 md:grid-cols-[1fr_180px_240px] gap-3">
+            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 grid grid-cols-1 md:grid-cols-[1fr_180px_240px_auto] gap-3">
                 <input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -219,15 +250,27 @@ export function TimesheetArchiveList() {
                     className="px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none font-bold text-slate-700"
                 >
                     <option value="all">Alle Mitarbeiter</option>
-                    {employees
-                        .filter(emp => timesheets.some(t => t.status === 'finalized' && t.employeeId === emp.id))
-                        .sort((a, b) => (a.employeeNumber || '').localeCompare(b.employeeNumber || ''))
-                        .map(emp => (
-                            <option key={emp.id} value={emp.id}>
-                                #{emp.employeeNumber || '---'} {emp.personalData.firstName} {emp.personalData.lastName}
-                            </option>
-                        ))}
+                    {selectableEmployees.map(emp => (
+                        <option key={emp.id} value={emp.id}>
+                            #{emp.employeeNumber || '---'} {emp.personalData.firstName} {emp.personalData.lastName}
+                            {!isActiveEmployee(emp) ? ' (Archiviert)' : ''}
+                        </option>
+                    ))}
                 </select>
+                <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 md:justify-center md:whitespace-nowrap">
+                    <input
+                        type="checkbox"
+                        checked={showInactiveEmployees}
+                        onChange={(e) => setShowInactiveEmployees(e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span>Archivierte anzeigen</span>
+                    {inactiveEmployeesWithFinalizedTimesheets.length > 0 && (
+                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-black text-slate-500">
+                            {inactiveEmployeesWithFinalizedTimesheets.length}
+                        </span>
+                    )}
+                </label>
             </div>
 
             {finalized.length === 0 && (

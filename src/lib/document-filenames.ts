@@ -31,6 +31,10 @@ export function orderPdfFileName(order: Pick<OrderConfirmation, "orderNumber" | 
     return buildName(["Auftrag", order.orderNumber, order.customerName]);
 }
 
+export function dunningPdfFileName(invoice: Pick<Invoice, "invoiceNumber" | "customerName">, level: number) {
+    return buildName(["Mahnung", level, invoice.invoiceNumber, invoice.customerName]);
+}
+
 export function timesheetPdfFileName(employeeName: string, month: string) {
     return buildName(["Stundenzettel", employeeName, month]);
 }

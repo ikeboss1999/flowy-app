@@ -6,9 +6,9 @@ import { useAuth } from '@/context/AuthContext';
 import { fetcher } from '@/lib/fetcher';
 
 export function useEmployees() {
-    const { user, currentEmployee, refreshEmployee } = useAuth();
+    const { user, currentEmployee, profile, refreshEmployee } = useAuth();
 
-    const activeUserId = user?.id || currentEmployee?.userId;
+    const activeUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
     const key = activeUserId ? `/api/employees?summary=1&userId=${activeUserId}` : null;
 
     const { data = [], isLoading, mutate } = useSWR<Employee[]>(key, fetcher);

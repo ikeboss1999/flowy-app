@@ -210,7 +210,7 @@ export function Sidebar() {
         const byHref: Record<string, string[]> = {
             "/dashboard": ["/api/dashboard/summary"],
             "/customers": [`/api/customers?userId=${activeUserId}`],
-            "/employees": [`/api/employees?userId=${activeUserId}`],
+            "/employees": [`/api/employees?summary=1&userId=${activeUserId}`],
             "/projects": [
                 `/api/projects?userId=${activeUserId}`,
                 `/api/customers?userId=${activeUserId}`,
@@ -222,12 +222,12 @@ export function Sidebar() {
             "/services": [`/api/services?userId=${activeUserId}`],
             "/vehicles": [`/api/vehicles?userId=${activeUserId}`],
             "/time-tracking": [
-                `/api/employees?userId=${activeUserId}`,
+                `/api/employees?summary=1&userId=${activeUserId}`,
                 `/api/time-entries?userId=${activeUserId}`,
                 `/api/timesheets?userId=${activeUserId}`,
             ],
             "/time-tracking/archive": [
-                `/api/employees?userId=${activeUserId}`,
+                `/api/employees?summary=1&userId=${activeUserId}`,
                 `/api/time-entries?userId=${activeUserId}`,
                 `/api/timesheets?userId=${activeUserId}`,
                 ...sharedSettings,
@@ -273,7 +273,7 @@ export function Sidebar() {
                 // PIN Employee fallback
                 const perms = currentEmployee.appAccess?.permissions;
                 if (item.adminOnly) return false;
-                if (item.href === '/credentials' || item.href === '/settings') return false;
+                if (item.href === '/credentials') return false;
                 
                 if (item.href === '/time-tracking') return true;
                 if (item.href === '/archive') return !!perms?.documents;
@@ -311,7 +311,7 @@ export function Sidebar() {
             const perms = profile.permissions || {};
 
             // Hard exclusions
-            if (item.href === '/credentials' || item.href === '/settings') {
+            if (item.href === '/credentials') {
                 return false;
             }
 

@@ -8,7 +8,7 @@ import { logApiPerformance } from '@/lib/api-performance';
 
 export const dynamic = 'force-dynamic';
 
-const offerMutableAfterFinalization = ['status'];
+const offerMutableAfterFinalization = ['status', 'projectId'];
 
 function pickMutableOfferFields(offer: any) {
     return offerMutableAfterFinalization.reduce((fields, key) => {
@@ -17,6 +17,18 @@ function pickMutableOfferFields(offer: any) {
         }
         return fields;
     }, {} as Record<string, any>);
+}
+
+async function verifyAssignableProject(client: any, projectId: string, companyOwnerId: string) {
+    const { data: project, error } = await client
+        .from('projects')
+        .select('id,status')
+        .eq('id', projectId)
+        .eq('userId', companyOwnerId)
+        .maybeSingle();
+
+    if (error) throw error;
+    return project?.status === 'active';
 }
 
 function isStoredOfferPdfReference(offer: any, companyOwnerId: string) {
@@ -111,6 +123,28 @@ export async function POST(request: Request) {
         // Check if record exists for created_by
         const createdBy = existingOffer?.created_by || (offer.id ? await safeGetCreatedBy(client, 'offers', offer.id) : null);
 
+        const requestedProjectId = typeof offer.projectId === 'string' && offer.projectId.trim()
+            ? offer.projectId.trim()
+            : undefined;
+
+        if (existingOffer?.projectId && requestedProjectId && requestedProjectId !== existingOffer.projectId) {
+            return NextResponse.json({ error: 'Offer already assigned to a project' }, { status: 409 });
+        }
+
+        if (!existingOffer && requestedProjectId) {
+            const isAssignableProject = await verifyAssignableProject(client, requestedProjectId, companyOwnerId);
+            if (!isAssignableProject) {
+                return NextResponse.json({ error: 'Project is not active or not found' }, { status: 400 });
+            }
+        }
+
+        if (existingOffer && !existingOffer.projectId && requestedProjectId) {
+            const isAssignableProject = await verifyAssignableProject(client, requestedProjectId, companyOwnerId);
+            if (!isAssignableProject) {
+                return NextResponse.json({ error: 'Project is not active or not found' }, { status: 400 });
+            }
+        }
+
         if (existingOffer && existingOffer.status !== 'draft') {
             if (offer.status === 'draft') {
                 if (session.role !== 'admin' && session.role !== 'developer') {
@@ -137,6 +171,7 @@ export async function POST(request: Request) {
             const mutableOfferData = {
                 ...existingOffer,
                 ...pickMutableOfferFields(offer),
+                projectId: existingOffer.projectId || requestedProjectId || existingOffer.projectId,
                 id: existingOffer.id,
                 userId: companyOwnerId,
                 updatedAt: now,
@@ -160,6 +195,7 @@ export async function POST(request: Request) {
         const offerData = {
             ...offer,
             id: offerId,
+            projectId: existingOffer?.projectId || requestedProjectId || offer.projectId,
             userId: companyOwnerId,
             updatedAt: now,
             updated_by: session.userId,

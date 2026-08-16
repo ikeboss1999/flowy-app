@@ -565,9 +565,9 @@ export function EmployeeDetailModal({
 
                     <div className="relative flex flex-col gap-6 pr-14 lg:flex-row lg:items-end lg:justify-between">
                         <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
-                            {(employee.avatarUrl || employee.avatar) ? (
+                            {(currentEmp.avatarUrl || currentEmp.avatar) ? (
                                 <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[28px] border border-white/20 bg-white shadow-xl">
-                                    <img src={employee.avatarUrl || employee.avatar} alt={name} className="h-full w-full object-cover" />
+                                    <img src={currentEmp.avatarUrl || currentEmp.avatar} alt={name} className="h-full w-full object-cover" />
                                 </div>
                             ) : (
                                 <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[28px] bg-white text-3xl font-black text-indigo-700 shadow-xl">
