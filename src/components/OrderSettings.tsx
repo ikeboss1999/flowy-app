@@ -14,6 +14,10 @@ import {
 import { useOrderSettings } from "@/hooks/useOrderSettings";
 import { cn } from "@/lib/utils";
 
+interface OrderSettingsProps {
+    readOnly?: boolean;
+}
+
 interface AccordionSectionProps {
     title: string;
     icon: React.ElementType;
@@ -53,7 +57,7 @@ function AccordionSection({ title, icon: Icon, isOpen, onToggle, children }: Acc
     );
 }
 
-export function OrderSettings() {
+export function OrderSettings({ readOnly = false }: OrderSettingsProps) {
     const { data, updateData, isLoading } = useOrderSettings();
     const [openSection, setOpenSection] = useState<string | null>("general");
     const [showSuccess, setShowSuccess] = useState(false);
@@ -65,17 +69,22 @@ export function OrderSettings() {
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        if (readOnly) return;
         const { name, value } = e.target;
         const finalValue = e.target.type === 'number' ? Number(value) : value;
         updateData({ [name]: finalValue });
     };
 
     const handleSave = () => {
+        if (readOnly) return;
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
     };
 
-    const inputClasses = "w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400 font-medium";
+    const inputClasses = cn(
+        "w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400 font-medium",
+        readOnly && "cursor-not-allowed bg-slate-100 text-slate-500"
+    );
     const labelClasses = "block text-sm font-bold text-slate-700 mb-2 ml-1";
 
     return (
@@ -102,6 +111,7 @@ export function OrderSettings() {
                             name="prefix"
                             value={data.prefix}
                             onChange={handleChange}
+                            disabled={readOnly}
                             className={inputClasses}
                             placeholder="AB-2024-"
                         />
@@ -113,6 +123,7 @@ export function OrderSettings() {
                             name="nextOrderNumber"
                             value={data.nextOrderNumber}
                             onChange={handleChange}
+                            disabled={readOnly}
                             className={inputClasses}
                         />
                     </div>
@@ -133,6 +144,7 @@ export function OrderSettings() {
                             name="defaultIntroText"
                             value={data.defaultIntroText}
                             onChange={handleChange}
+                            disabled={readOnly}
                             rows={4}
                             className={cn(inputClasses, "resize-none")}
                         />
@@ -143,6 +155,7 @@ export function OrderSettings() {
                             name="defaultTerms"
                             value={data.defaultTerms}
                             onChange={handleChange}
+                            disabled={readOnly}
                             rows={4}
                             className={cn(inputClasses, "resize-none")}
                         />
@@ -168,6 +181,7 @@ export function OrderSettings() {
                             name="emailSubject"
                             value={data.emailSubject || ""}
                             onChange={handleChange}
+                            disabled={readOnly}
                             className={inputClasses}
                             placeholder="z.B. Auftragsbestätigung {documentNumber}"
                         />
@@ -179,6 +193,7 @@ export function OrderSettings() {
                             name="emailBody"
                             value={data.emailBody || ""}
                             onChange={handleChange}
+                            disabled={readOnly}
                             className={cn(inputClasses, "resize-y font-medium")}
                             placeholder="Sehr geehrte Damen und Herren..."
                         />
@@ -187,27 +202,29 @@ export function OrderSettings() {
             </AccordionSection>
 
             <div className="pt-8 flex justify-end gap-4">
-                <button
-                    onClick={handleSave}
-                    className={cn(
-                        "px-10 py-5 rounded-2xl font-black text-lg shadow-xl transition-all active:scale-95 flex items-center gap-3",
-                        showSuccess
-                            ? "bg-emerald-500 text-white shadow-emerald-200"
-                            : "bg-indigo-600 text-white shadow-indigo-200 hover:scale-[1.02]"
-                    )}
-                >
-                    {showSuccess ? (
-                        <>
-                            <CheckCircle2 className="h-6 w-6 animate-in zoom-in duration-300" />
-                            Gespeichert!
-                        </>
-                    ) : (
-                        <>
-                            <CheckCircle2 className="h-6 w-6" />
-                            Einstellungen speichern
-                        </>
-                    )}
-                </button>
+                {!readOnly && (
+                    <button
+                        onClick={handleSave}
+                        className={cn(
+                            "px-10 py-5 rounded-2xl font-black text-lg shadow-xl transition-all active:scale-95 flex items-center gap-3",
+                            showSuccess
+                                ? "bg-emerald-500 text-white shadow-emerald-200"
+                                : "bg-indigo-600 text-white shadow-indigo-200 hover:scale-[1.02]"
+                        )}
+                    >
+                        {showSuccess ? (
+                            <>
+                                <CheckCircle2 className="h-6 w-6 animate-in zoom-in duration-300" />
+                                Gespeichert!
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle2 className="h-6 w-6" />
+                                Einstellungen speichern
+                            </>
+                        )}
+                    </button>
+                )}
             </div>
         </div>
     );

@@ -5,7 +5,11 @@ import { Save, Loader2, Hash, CheckCircle2 } from 'lucide-react';
 import { useProjectSettings } from '@/hooks/useProjectSettings';
 import { cn } from '@/lib/utils';
 
-export function ProjectSettings() {
+interface ProjectSettingsProps {
+    readOnly?: boolean;
+}
+
+export function ProjectSettings({ readOnly = false }: ProjectSettingsProps) {
     const { data, isLoading, updateData } = useProjectSettings();
     const [prefix, setPrefix] = useState('PRJ-');
     const [nextNum, setNextNum] = useState('1');
@@ -20,6 +24,7 @@ export function ProjectSettings() {
     }, [isLoading, data]);
 
     const handleSave = async () => {
+        if (readOnly) return;
         setIsSaving(true);
         await updateData({
             projectNumberPrefix: prefix,
@@ -50,8 +55,12 @@ export function ProjectSettings() {
                     <input
                         type="text"
                         value={prefix}
-                        onChange={e => setPrefix(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 font-bold transition-all"
+                        onChange={e => !readOnly && setPrefix(e.target.value)}
+                        disabled={readOnly}
+                        className={cn(
+                            "w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 font-bold transition-all",
+                            readOnly && "cursor-not-allowed bg-slate-100 text-slate-500"
+                        )}
                         placeholder="PRJ-"
                     />
                 </div>
@@ -60,9 +69,13 @@ export function ProjectSettings() {
                     <input
                         type="number"
                         value={nextNum}
-                        onChange={e => setNextNum(e.target.value)}
+                        onChange={e => !readOnly && setNextNum(e.target.value)}
+                        disabled={readOnly}
                         min={1}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 font-bold transition-all"
+                        className={cn(
+                            "w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 font-bold transition-all",
+                            readOnly && "cursor-not-allowed bg-slate-100 text-slate-500"
+                        )}
                     />
                 </div>
             </div>
@@ -72,7 +85,7 @@ export function ProjectSettings() {
                 <span className="font-black text-indigo-600 text-lg tracking-wide">{preview}</span>
             </div>
 
-            <div className="flex justify-end">
+            {!readOnly && <div className="flex justify-end">
                 <button
                     onClick={handleSave}
                     disabled={isSaving}
@@ -91,7 +104,7 @@ export function ProjectSettings() {
                         <><Save className="h-4 w-4" /> Speichern</>
                     )}
                 </button>
-            </div>
+            </div>}
         </div>
     );
 }

@@ -65,7 +65,7 @@ const statusClass = (status: string) => {
 export default function DashboardPage() {
     const currentYear = new Date().getFullYear();
     const router = useRouter();
-    const { profile } = useAuth();
+    const { user, profile, currentEmployee } = useAuth();
     const { invoices, isLoading: invoicesLoading } = useInvoices();
     const { offers, isLoading: offersLoading } = useOffers();
     const { orders, isLoading: ordersLoading } = useOrders();
@@ -74,6 +74,12 @@ export default function DashboardPage() {
     const { data: accountSettings } = useAccountSettings();
     const { summary } = useDashboardSummary();
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+    const employeeName = currentEmployee
+        ? `${currentEmployee.personalData.firstName} ${currentEmployee.personalData.lastName}`.trim()
+        : "";
+    const userName = user
+        ? (profile?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Benutzer")
+        : employeeName || accountSettings?.name || "Benutzer";
 
     React.useEffect(() => {
         if (profile?.role === "developer") {
@@ -263,7 +269,7 @@ export default function DashboardPage() {
                         </div>
                         <div>
                             <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl font-outfit">
-                                {greeting}, {accountSettings?.name || "Benutzer"}
+                                {greeting}, {userName}
                             </h1>
                             <p className="mt-2 max-w-2xl text-base font-semibold leading-7 text-white/70">
                                 Aktueller Stand für {companySettings?.companyName || "Ihr Unternehmen"} im Jahr {currentYear}.

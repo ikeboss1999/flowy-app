@@ -19,6 +19,10 @@ import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { cn } from "@/lib/utils";
 import { DunningLevel, PaymentTerm } from '@/types/invoice';
 
+interface InvoiceSettingsProps {
+    readOnly?: boolean;
+}
+
 interface AccordionSectionProps {
     title: string;
     icon: React.ElementType;
@@ -65,10 +69,14 @@ interface DunningCardProps {
     bgColor: string;
     borderColor: string;
     textColor: string;
+    readOnly?: boolean;
 }
 
-function DunningCard({ title, level, onChange, bgColor, borderColor, textColor }: DunningCardProps) {
-    const inputClasses = "w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400 font-medium";
+function DunningCard({ title, level, onChange, bgColor, borderColor, textColor, readOnly = false }: DunningCardProps) {
+    const inputClasses = cn(
+        "w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400 font-medium",
+        readOnly && "cursor-not-allowed bg-slate-100 text-slate-500"
+    );
     const labelClasses = "block text-sm font-bold text-slate-700 mb-2 ml-1";
 
     return (
@@ -80,7 +88,8 @@ function DunningCard({ title, level, onChange, bgColor, borderColor, textColor }
                     <input
                         type="number"
                         value={level.fee}
-                        onChange={(e) => onChange({ fee: Number(e.target.value) })}
+                        onChange={(e) => !readOnly && onChange({ fee: Number(e.target.value) })}
+                        disabled={readOnly}
                         className={inputClasses}
                     />
                 </div>
@@ -89,7 +98,8 @@ function DunningCard({ title, level, onChange, bgColor, borderColor, textColor }
                     <input
                         type="number"
                         value={level.period}
-                        onChange={(e) => onChange({ period: Number(e.target.value) })}
+                        onChange={(e) => !readOnly && onChange({ period: Number(e.target.value) })}
+                        disabled={readOnly}
                         className={inputClasses}
                     />
                 </div>
@@ -98,7 +108,7 @@ function DunningCard({ title, level, onChange, bgColor, borderColor, textColor }
     );
 }
 
-export function InvoiceSettings() {
+export function InvoiceSettings({ readOnly = false }: InvoiceSettingsProps) {
     const { data, updateData, updateDunningLevel, isLoading } = useInvoiceSettings();
     const [openSection, setOpenSection] = useState<string | null>("general");
     const [showSuccess, setShowSuccess] = useState(false);
@@ -114,18 +124,20 @@ export function InvoiceSettings() {
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        if (readOnly) return;
         const { name, value } = e.target;
         const finalValue = e.target.type === 'number' ? Number(value) : value;
         updateData({ [name]: finalValue });
     };
 
     const handleSave = () => {
+        if (readOnly) return;
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
     };
 
     const handleAddTerm = () => {
-        if (!newTerm.name || !newTerm.text) return;
+        if (readOnly || !newTerm.name || !newTerm.text) return;
 
         const term: PaymentTerm = {
             id: editingTermId || Math.random().toString(36).substr(2, 9),
@@ -143,8 +155,14 @@ export function InvoiceSettings() {
         setEditingTermId(null);
     };
 
-    const inputClasses = "w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400 font-medium";
-    const selectClasses = "w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 font-medium appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22m19%209-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1.25rem_center] bg-no-repeat";
+    const inputClasses = cn(
+        "w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400 font-medium",
+        readOnly && "cursor-not-allowed bg-slate-100 text-slate-500"
+    );
+    const selectClasses = cn(
+        "w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 font-medium appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22m19%209-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1.25rem_center] bg-no-repeat",
+        readOnly && "cursor-not-allowed bg-slate-100 text-slate-500"
+    );
     const labelClasses = "block text-sm font-bold text-slate-700 mb-2 ml-1";
 
     return (
@@ -172,6 +190,7 @@ export function InvoiceSettings() {
                                 name="nextInvoiceNumber"
                                 value={data.nextInvoiceNumber}
                                 onChange={handleChange}
+                                disabled={readOnly}
                                 className={inputClasses}
                             />
                         </div>
@@ -186,6 +205,7 @@ export function InvoiceSettings() {
                                 name="defaultTaxRate"
                                 value={data.defaultTaxRate}
                                 onChange={handleChange}
+                                disabled={readOnly}
                                 className={inputClasses}
                             />
                         </div>
@@ -195,6 +215,7 @@ export function InvoiceSettings() {
                                 name="defaultCurrency"
                                 value={data.defaultCurrency}
                                 onChange={handleChange}
+                                disabled={readOnly}
                                 className={selectClasses}
                             >
                                 <option value="EUR (€)">EUR (€)</option>
@@ -227,7 +248,7 @@ export function InvoiceSettings() {
                                     </div>
                                     <p className="text-sm text-slate-500 font-medium">{term.text}</p>
                                 </div>
-                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {!readOnly && <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button
                                         onClick={() => {
                                             setNewTerm(term);
@@ -251,12 +272,12 @@ export function InvoiceSettings() {
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </button>
-                                </div>
+                                </div>}
                             </div>
                         ))}
                     </div>
 
-                    <div className="p-8 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/50 space-y-6">
+                    {!readOnly && <div className="p-8 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/50 space-y-6">
                         <h4 className="text-lg font-black text-slate-800 tracking-tight">
                             {editingTermId ? 'Zahlungskondition bearbeiten' : 'Neue Zahlungskondition hinzufügen'}
                         </h4>
@@ -312,7 +333,7 @@ export function InvoiceSettings() {
                                 {editingTermId ? 'Aktualisieren' : 'Hinzufügen'}
                             </button>
                         </div>
-                    </div>
+                    </div>}
 
                     <div className="pt-4 border-t border-slate-100">
                         <label className={labelClasses}>Standard-Kondition für neue Rechnungen</label>
@@ -320,6 +341,7 @@ export function InvoiceSettings() {
                             name="defaultPaymentTermId"
                             value={data.defaultPaymentTermId}
                             onChange={handleChange}
+                            disabled={readOnly}
                             className={selectClasses}
                         >
                             {data.paymentTerms.map(term => (
@@ -351,6 +373,7 @@ export function InvoiceSettings() {
                         bgColor="bg-indigo-50/30"
                         borderColor="border-indigo-100"
                         textColor="text-indigo-900"
+                        readOnly={readOnly}
                     />
                     <DunningCard
                         title="1. Mahnung (Stufe 2)"
@@ -359,6 +382,7 @@ export function InvoiceSettings() {
                         bgColor="bg-orange-50/30"
                         borderColor="border-orange-100"
                         textColor="text-orange-900"
+                        readOnly={readOnly}
                     />
                     <DunningCard
                         title="2. Mahnung (Stufe 3)"
@@ -367,6 +391,7 @@ export function InvoiceSettings() {
                         bgColor="bg-red-50/30"
                         borderColor="border-red-100"
                         textColor="text-red-900"
+                        readOnly={readOnly}
                     />
                     <DunningCard
                         title="Letzte Mahnung (Stufe 4)"
@@ -375,6 +400,7 @@ export function InvoiceSettings() {
                         bgColor="bg-slate-50/50"
                         borderColor="border-slate-200"
                         textColor="text-slate-900"
+                        readOnly={readOnly}
                     />
                 </div>
             </AccordionSection>
@@ -397,6 +423,7 @@ export function InvoiceSettings() {
                             name="emailSubject"
                             value={data.emailSubject || ""}
                             onChange={handleChange}
+                            disabled={readOnly}
                             className={inputClasses}
                             placeholder="z.B. Rechnung {documentNumber}"
                         />
@@ -407,7 +434,8 @@ export function InvoiceSettings() {
                             rows={6}
                             name="emailBody"
                             value={data.emailBody || ""}
-                            onChange={(e) => updateData({ emailBody: e.target.value })}
+                            onChange={(e) => !readOnly && updateData({ emailBody: e.target.value })}
+                            disabled={readOnly}
                             className={cn(inputClasses, "resize-y font-medium")}
                             placeholder="Sehr geehrte Damen und Herren..."
                         />
@@ -416,27 +444,29 @@ export function InvoiceSettings() {
             </AccordionSection>
 
             <div className="pt-8 flex justify-end gap-4">
-                <button
-                    onClick={handleSave}
-                    className={cn(
-                        "px-10 py-5 rounded-2xl font-black text-lg shadow-xl transition-all active:scale-95 flex items-center gap-3",
-                        showSuccess
-                            ? "bg-emerald-500 text-white shadow-emerald-200"
-                            : "bg-indigo-600 text-white shadow-indigo-200 hover:scale-[1.02]"
-                    )}
-                >
-                    {showSuccess ? (
-                        <>
-                            <CheckCircle2 className="h-6 w-6 animate-in zoom-in duration-300" />
-                            Einstellungen gespeichert!
-                        </>
-                    ) : (
-                        <>
-                            <CheckCircle2 className="h-6 w-6" />
-                            Einstellungen speichern
-                        </>
-                    )}
-                </button>
+                {!readOnly && (
+                    <button
+                        onClick={handleSave}
+                        className={cn(
+                            "px-10 py-5 rounded-2xl font-black text-lg shadow-xl transition-all active:scale-95 flex items-center gap-3",
+                            showSuccess
+                                ? "bg-emerald-500 text-white shadow-emerald-200"
+                                : "bg-indigo-600 text-white shadow-indigo-200 hover:scale-[1.02]"
+                        )}
+                    >
+                        {showSuccess ? (
+                            <>
+                                <CheckCircle2 className="h-6 w-6 animate-in zoom-in duration-300" />
+                                Einstellungen gespeichert!
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle2 className="h-6 w-6" />
+                                Einstellungen speichern
+                            </>
+                        )}
+                    </button>
+                )}
             </div>
         </div>
     );

@@ -14,6 +14,10 @@ import {
 import { useOfferSettings } from "@/hooks/useOfferSettings";
 import { cn } from "@/lib/utils";
 
+interface OfferSettingsProps {
+    readOnly?: boolean;
+}
+
 interface AccordionSectionProps {
     title: string;
     icon: React.ElementType;
@@ -53,7 +57,7 @@ function AccordionSection({ title, icon: Icon, isOpen, onToggle, children }: Acc
     );
 }
 
-export function OfferSettings() {
+export function OfferSettings({ readOnly = false }: OfferSettingsProps) {
     const { data, updateData, isLoading } = useOfferSettings();
     const [openSection, setOpenSection] = useState<string | null>("general");
     const [showSuccess, setShowSuccess] = useState(false);
@@ -65,11 +69,19 @@ export function OfferSettings() {
     };
 
     const handleSave = () => {
+        if (readOnly) return;
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
     };
 
-    const inputClasses = "w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400 font-medium";
+    const updateReadonlySafe = (payload: Parameters<typeof updateData>[0]) => {
+        if (!readOnly) updateData(payload);
+    };
+
+    const inputClasses = cn(
+        "w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400 font-medium",
+        readOnly && "cursor-not-allowed bg-slate-100 text-slate-500"
+    );
     const labelClasses = "block text-sm font-bold text-slate-700 mb-2 ml-1";
 
     return (
@@ -98,7 +110,8 @@ export function OfferSettings() {
                             type="number"
                             min="1"
                             value={data.nextOfferNumber}
-                            onChange={(e) => updateData({ nextOfferNumber: Number(e.target.value) })}
+                            onChange={(e) => updateReadonlySafe({ nextOfferNumber: Number(e.target.value) })}
+                            disabled={readOnly}
                             className={inputClasses}
                         />
                     </div>
@@ -111,7 +124,8 @@ export function OfferSettings() {
                             type="number"
                             min="1"
                             value={data.defaultValidityDays}
-                            onChange={(e) => updateData({ defaultValidityDays: Number(e.target.value) })}
+                            onChange={(e) => updateReadonlySafe({ defaultValidityDays: Number(e.target.value) })}
+                            disabled={readOnly}
                             className={inputClasses}
                         />
                     </div>
@@ -139,7 +153,8 @@ export function OfferSettings() {
                         <textarea
                             rows={6}
                             value={data.defaultIntroText}
-                            onChange={(e) => updateData({ defaultIntroText: e.target.value })}
+                            onChange={(e) => updateReadonlySafe({ defaultIntroText: e.target.value })}
+                            disabled={readOnly}
                             className={cn(inputClasses, "resize-y")}
                             placeholder="vielen Dank für Ihre Anfrage..."
                         />
@@ -174,7 +189,8 @@ export function OfferSettings() {
                         <input
                             type="checkbox"
                             checked={!!data.defaultDiscountEnabled}
-                            onChange={(e) => updateData({ defaultDiscountEnabled: e.target.checked })}
+                            onChange={(e) => updateReadonlySafe({ defaultDiscountEnabled: e.target.checked })}
+                            disabled={readOnly}
                             className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                         />
                     </label>
@@ -186,7 +202,8 @@ export function OfferSettings() {
                                 type="number"
                                 min="1"
                                 value={data.defaultDiscountDays || 5}
-                                onChange={(e) => updateData({ defaultDiscountDays: Number(e.target.value) })}
+                                onChange={(e) => updateReadonlySafe({ defaultDiscountDays: Number(e.target.value) })}
+                                disabled={readOnly}
                                 className={inputClasses}
                             />
                         </div>
@@ -197,7 +214,8 @@ export function OfferSettings() {
                                 min="0"
                                 step="0.1"
                                 value={data.defaultDiscountPercent || 3}
-                                onChange={(e) => updateData({ defaultDiscountPercent: Number(e.target.value) })}
+                                onChange={(e) => updateReadonlySafe({ defaultDiscountPercent: Number(e.target.value) })}
+                                disabled={readOnly}
                                 className={inputClasses}
                             />
                         </div>
@@ -228,7 +246,8 @@ export function OfferSettings() {
                         <input
                             type="text"
                             value={data.emailSubject || ""}
-                            onChange={(e) => updateData({ emailSubject: e.target.value })}
+                            onChange={(e) => updateReadonlySafe({ emailSubject: e.target.value })}
+                            disabled={readOnly}
                             className={inputClasses}
                             placeholder="z.B. Angebot {documentNumber}"
                         />
@@ -238,7 +257,8 @@ export function OfferSettings() {
                         <textarea
                             rows={6}
                             value={data.emailBody || ""}
-                            onChange={(e) => updateData({ emailBody: e.target.value })}
+                            onChange={(e) => updateReadonlySafe({ emailBody: e.target.value })}
+                            disabled={readOnly}
                             className={cn(inputClasses, "resize-y font-medium")}
                             placeholder="Sehr geehrte Damen und Herren..."
                         />
@@ -247,27 +267,29 @@ export function OfferSettings() {
             </AccordionSection>
 
             <div className="pt-8 flex justify-end gap-4">
-                <button
-                    onClick={handleSave}
-                    className={cn(
-                        "px-10 py-5 rounded-2xl font-black text-lg shadow-xl transition-all active:scale-95 flex items-center gap-3",
-                        showSuccess
-                            ? "bg-emerald-500 text-white shadow-emerald-200"
-                            : "bg-indigo-600 text-white shadow-indigo-200 hover:scale-[1.02]"
-                    )}
-                >
-                    {showSuccess ? (
-                        <>
-                            <CheckCircle2 className="h-6 w-6 animate-in zoom-in duration-300" />
-                            Einstellungen gespeichert!
-                        </>
-                    ) : (
-                        <>
-                            <CheckCircle2 className="h-6 w-6" />
-                            Einstellungen speichern
-                        </>
-                    )}
-                </button>
+                {!readOnly && (
+                    <button
+                        onClick={handleSave}
+                        className={cn(
+                            "px-10 py-5 rounded-2xl font-black text-lg shadow-xl transition-all active:scale-95 flex items-center gap-3",
+                            showSuccess
+                                ? "bg-emerald-500 text-white shadow-emerald-200"
+                                : "bg-indigo-600 text-white shadow-indigo-200 hover:scale-[1.02]"
+                        )}
+                    >
+                        {showSuccess ? (
+                            <>
+                                <CheckCircle2 className="h-6 w-6 animate-in zoom-in duration-300" />
+                                Einstellungen gespeichert!
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle2 className="h-6 w-6" />
+                                Einstellungen speichern
+                            </>
+                        )}
+                    </button>
+                )}
             </div>
         </div>
     );

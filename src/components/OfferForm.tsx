@@ -450,6 +450,37 @@ export function OfferForm({ initialData }: OfferFormProps) {
     );
   };
 
+  const serviceToOfferItem = (service: Service): OfferItem => ({
+    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+    itemType: service.itemType || "standard",
+    title: service.title,
+    description: service.description || "",
+    quantity: 1,
+    unit: (service.unit as any) || "Stk",
+    pricePerUnit: service.price || 0,
+    totalPrice: service.price || 0,
+  });
+
+  const serviceToOfferUpdates = (service: Service, item?: OfferItem): Partial<OfferItem> => {
+    const isPosition = service.category === "Position";
+    const quantity = item?.quantity ?? 1;
+
+    return {
+      ...(isPosition
+        ? {
+            title: service.title,
+            description: service.description || "",
+            itemType: service.itemType || "standard",
+          }
+        : item?.itemType === "standard"
+          ? { description: service.title }
+          : { title: service.title }),
+      pricePerUnit: service.price,
+      unit: service.unit as any,
+      totalPrice: calculateItemTotal(quantity, service.price || 0),
+    };
+  };
+
   const handleSave = async (status: OfferStatus) => {
     setError(null);
 
@@ -607,23 +638,32 @@ export function OfferForm({ initialData }: OfferFormProps) {
   const handleServiceSelect = (service: Service) => {
     if (activeServiceItemId) {
       const item = items.find((i) => i.id === activeServiceItemId);
-      const isPosition = service.category === "Position";
-
-      batchUpdateItem(activeServiceItemId, {
-        ...(isPosition
-          ? {
-              title: service.title,
-              description: service.description || "",
-              itemType: service.itemType || "standard",
-            }
-          : item?.itemType === "standard"
-            ? { description: service.title }
-            : { title: service.title }),
-        pricePerUnit: service.price,
-        unit: service.unit as any,
-      });
+      batchUpdateItem(activeServiceItemId, serviceToOfferUpdates(service, item));
       setActiveServiceItemId(null);
     }
+  };
+
+  const handleServiceSelectMany = (selectedServices: Service[]) => {
+    if (!activeServiceItemId || selectedServices.length === 0) return;
+
+    setItems((prev) => {
+      const activeIndex = prev.findIndex((item) => item.id === activeServiceItemId);
+      if (activeIndex === -1) return prev;
+
+      const [firstService, ...restServices] = selectedServices;
+      const activeItem = prev[activeIndex];
+      const updatedActiveItem = {
+        ...activeItem,
+        ...serviceToOfferUpdates(firstService, activeItem),
+      };
+      const insertedItems = restServices.map(serviceToOfferItem);
+      const next = [...prev];
+      next.splice(activeIndex, 1, updatedActiveItem, ...insertedItems);
+      return next;
+    });
+
+    showToast(`${selectedServices.length} Vorlagen eingefuegt`, "success");
+    setActiveServiceItemId(null);
   };
 
   const inputClasses =
@@ -1859,6 +1899,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
         isOpen={activeServiceItemId !== null}
         onClose={() => setActiveServiceItemId(null)}
         onSelect={handleServiceSelect}
+        onSelectMany={handleServiceSelectMany}
         services={services}
         onCreateNew={() => setIsServiceModalOpen(true)}
       />

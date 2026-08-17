@@ -10,6 +10,7 @@ interface ProjectDiaryProps {
     project: Project;
     onUpdate: (entries: DiaryEntry[]) => void;
     onGeneratePDF: () => void;
+    canWrite?: boolean;
 }
 
 interface WebDiaryAttachment {
@@ -36,7 +37,7 @@ interface WebDiaryEntry {
     attachments: WebDiaryAttachment[];
 }
 
-export function ProjectDiary({ project, onGeneratePDF }: ProjectDiaryProps) {
+export function ProjectDiary({ project, onGeneratePDF, canWrite = true }: ProjectDiaryProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [newDescription, setNewDescription] = useState("");
     const [newImages, setNewImages] = useState<string[]>([]);
@@ -50,6 +51,7 @@ export function ProjectDiary({ project, onGeneratePDF }: ProjectDiaryProps) {
     const diaryEntries = data?.entries || [];
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!canWrite) return;
         const files = e.target.files;
         if (!files) return;
 
@@ -63,10 +65,12 @@ export function ProjectDiary({ project, onGeneratePDF }: ProjectDiaryProps) {
     };
 
     const removeImage = (index: number) => {
+        if (!canWrite) return;
         setNewImages((prev) => prev.filter((_, i) => i !== index));
     };
 
     const handleSaveEntry = async () => {
+        if (!canWrite) return;
         if (!newDescription.trim() && newImages.length === 0) return;
 
         if (newImages.length > 0) {
@@ -97,6 +101,7 @@ export function ProjectDiary({ project, onGeneratePDF }: ProjectDiaryProps) {
     };
 
     const deleteEntry = async (id: string) => {
+        if (!canWrite) return;
         try {
             const response = await fetch(`/api/projects/${project.id}/diary?id=${encodeURIComponent(id)}`, {
                 method: "DELETE",
@@ -130,7 +135,7 @@ export function ProjectDiary({ project, onGeneratePDF }: ProjectDiaryProps) {
                     >
                         Bericht erstellen (PDF)
                     </button>
-                    {!isAdding && (
+                    {canWrite && !isAdding && (
                         <button
                             onClick={() => setIsAdding(true)}
                             className="bg-primary-gradient flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition-all hover:-translate-y-0.5 active:scale-95"
@@ -141,7 +146,7 @@ export function ProjectDiary({ project, onGeneratePDF }: ProjectDiaryProps) {
                 </div>
             </div>
 
-            {isAdding && (
+            {canWrite && isAdding && (
                 <div className="animate-in slide-in-from-top-4 rounded-[32px] border border-indigo-100 bg-white p-6 shadow-xl shadow-indigo-500/5 duration-300">
                     <div className="mb-4 flex items-start justify-between">
                         <h4 className="font-bold text-slate-900">Neuer Tagebucheintrag</h4>
@@ -219,9 +224,11 @@ export function ProjectDiary({ project, onGeneratePDF }: ProjectDiaryProps) {
                             <ImageIcon className="h-8 w-8" />
                         </div>
                         <p className="font-medium text-slate-500">Noch keine Eintraege im Bautagebuch vorhanden.</p>
-                        <button onClick={() => setIsAdding(true)} className="mt-4 font-bold text-indigo-600 hover:underline">
-                            Ersten Eintrag erstellen
-                        </button>
+                        {canWrite && (
+                            <button onClick={() => setIsAdding(true)} className="mt-4 font-bold text-indigo-600 hover:underline">
+                                Ersten Eintrag erstellen
+                            </button>
+                        )}
                     </div>
                 ) : (
                     diaryEntries.map((entry) => (
@@ -252,7 +259,7 @@ export function ProjectDiary({ project, onGeneratePDF }: ProjectDiaryProps) {
                                             </div>
                                         </div>
                                     </div>
-                                    {entry.source !== "web-legacy" && (
+                                    {canWrite && entry.source !== "web-legacy" && (
                                         <button
                                             onClick={() => deleteEntry(entry.id)}
                                             className="p-2 text-slate-300 transition-colors hover:text-rose-500"

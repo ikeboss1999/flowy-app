@@ -20,9 +20,10 @@ const initialData: OrderSettings = {
 };
 
 export function useOrderSettings() {
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
+    const ownerId = profile?.companyOwnerId || user?.id;
 
-    const key = user ? `/api/settings?userId=${user.id}` : null;
+    const key = ownerId ? `/api/settings?userId=${ownerId}` : null;
     const { data: allSettings, isLoading, mutate } = useSWR(key, fetcher);
 
     const data: OrderSettings = allSettings?.orderSettings
@@ -30,14 +31,14 @@ export function useOrderSettings() {
         : initialData;
 
     const updateData = async (newData: Partial<OrderSettings>) => {
-        if (!user) return;
+        if (!ownerId) return;
         const updated = { ...data, ...newData };
         mutate({ ...allSettings, orderSettings: updated }, false);
         try {
             await fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, type: 'order', data: updated })
+                body: JSON.stringify({ userId: ownerId, type: 'order', data: updated })
             });
         } catch (e) {
             console.error('Failed to update order settings', e);

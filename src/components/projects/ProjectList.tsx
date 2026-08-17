@@ -22,6 +22,7 @@ interface ProjectListProps {
     onEdit: (project: Project) => void;
     onDelete: (id: string) => void;
     onView: (project: Project) => void;
+    canWrite?: boolean;
 }
 
 const STATUS_OPTIONS: Array<{ id: ProjectStatus | "all"; label: string }> = [
@@ -32,7 +33,7 @@ const STATUS_OPTIONS: Array<{ id: ProjectStatus | "all"; label: string }> = [
     { id: "completed", label: "Abgeschlossen" },
 ];
 
-export function ProjectList({ projects, customers, onEdit, onDelete, onView }: ProjectListProps) {
+export function ProjectList({ projects, customers, onEdit, onDelete, onView, canWrite = true }: ProjectListProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">("all");
 
@@ -224,28 +225,30 @@ export function ProjectList({ projects, customers, onEdit, onDelete, onView }: P
                                                 </div>
                                             </td>
                                             <td className="px-6 py-5">
-                                                <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                                                    <button
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            onEdit(project);
-                                                        }}
-                                                        className="rounded-xl border border-transparent p-2.5 text-slate-400 transition-all hover:border-slate-100 hover:bg-white hover:text-indigo-600 hover:shadow-md"
-                                                        title="Bearbeiten"
-                                                    >
-                                                        <Edit2 className="h-4 w-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            onDelete(project.id);
-                                                        }}
-                                                        className="rounded-xl border border-transparent p-2.5 text-slate-400 transition-all hover:border-rose-100 hover:bg-white hover:text-rose-600 hover:shadow-md"
-                                                        title="Loeschen"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
-                                                </div>
+                                                {canWrite && (
+                                                    <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                                                        <button
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                onEdit(project);
+                                                            }}
+                                                            className="rounded-xl border border-transparent p-2.5 text-slate-400 transition-all hover:border-slate-100 hover:bg-white hover:text-indigo-600 hover:shadow-md"
+                                                            title="Bearbeiten"
+                                                        >
+                                                            <Edit2 className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                onDelete(project.id);
+                                                            }}
+                                                            className="rounded-xl border border-transparent p-2.5 text-slate-400 transition-all hover:border-rose-100 hover:bg-white hover:text-rose-600 hover:shadow-md"
+                                                            title="Loeschen"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}

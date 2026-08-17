@@ -13,7 +13,7 @@ const LOCK_EVENT = "flowy-lock-app";
 const INACTIVITY_LIMIT_MS = 1000 * 60 * 30;
 
 export function AppLock() {
-    const { user, currentEmployee, signOut } = useAuth();
+    const { user, currentEmployee, profile, signOut } = useAuth();
     const { data: accountSettings, isLoading } = useAccountSettings();
     const { data: companySettings } = useCompanySettings();
     const [isLocked, setIsLocked] = useState(false);
@@ -27,7 +27,12 @@ export function AppLock() {
     const shouldShowLock = shouldUseLock && isLocked;
     const pinLength = Math.max(targetPin.length || 4, 4);
     const companyName = companySettings?.companyName || "FlowY";
-    const userName = accountSettings?.name || user?.email || "Benutzer";
+    const employeeName = currentEmployee
+        ? `${currentEmployee.personalData.firstName} ${currentEmployee.personalData.lastName}`.trim()
+        : "";
+    const userName = user
+        ? (profile?.name || user.user_metadata?.full_name || user.email || "Benutzer")
+        : employeeName || accountSettings?.name || "Benutzer";
     const companyLogo = companySettings?.logo;
     const companyInitials = companyName
         .split(" ")

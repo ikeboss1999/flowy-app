@@ -55,9 +55,11 @@ interface ProjectDetailsProps {
     onBack: () => void;
     onEdit: () => void;
     onCreateInvoice: (type: 'partial' | 'final') => void;
+    canWrite?: boolean;
+    canReadFiles?: boolean;
 }
 
-export function ProjectDetails({ project, customer, invoices, offers, orders, onBack, onEdit, onCreateInvoice }: ProjectDetailsProps) {
+export function ProjectDetails({ project, customer, invoices, offers, orders, onBack, onEdit, onCreateInvoice, canWrite = true, canReadFiles = true }: ProjectDetailsProps) {
     const router = useRouter();
     const { updateProject } = useProjects();
     const { data: companySettings } = useCompanySettings();
@@ -69,6 +71,10 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
     const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
     const [previewOffer, setPreviewOffer] = useState<Offer | null>(null);
     const [previewOrder, setPreviewOrder] = useState<OrderConfirmation | null>(null);
+    const visibleTabs = useMemo(
+        () => TABS.filter(tab => tab.id !== 'files' || canReadFiles),
+        [canReadFiles]
+    );
 
     const financials = useMemo(() => {
         const planItemIds = (project.paymentPlan || []).map(p => String(p.id));
@@ -107,10 +113,16 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
     }, [invoices, project.id, project.budget, project.paymentPlan]);
 
     React.useEffect(() => {
-        if (financials.hasActiveFinalInvoice && project.status !== 'completed') {
+        if (canWrite && financials.hasActiveFinalInvoice && project.status !== 'completed') {
             updateProject(project.id, { status: 'completed' });
         }
-    }, [financials.hasActiveFinalInvoice, project.id, project.status]);
+    }, [canWrite, financials.hasActiveFinalInvoice, project.id, project.status]);
+
+    React.useEffect(() => {
+        if (activeTab === 'files' && !canReadFiles) {
+            setActiveTab('overview');
+        }
+    }, [activeTab, canReadFiles]);
 
     const projectOffers = useMemo(
         () => offers.filter(o => o.projectId === project.id),
@@ -135,10 +147,12 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
     }, [projectOffers, financials.invoices, orders, project.id]);
 
     const handleSavePaymentPlan = (plan: PaymentPlanItem[]) => {
+        if (!canWrite) return;
         updateProject(project.id, { paymentPlan: plan });
     };
 
     const handleCreateInvoiceFromPlan = (item: PaymentPlanItem) => {
+        if (!canWrite) return;
         const index = project.paymentPlan?.findIndex(p => p.id === item.id) ?? -1;
         const partialNumber = index !== -1 ? index + 1 : undefined;
         const type = item.type || (item.name.toLowerCase().includes('schluss') ? 'final' : 'partial');
@@ -155,6 +169,7 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
     };
 
     const handleUpdateDiary = (entries: DiaryEntry[]) => {
+        if (!canWrite) return;
         updateProject(project.id, { diaryEntries: entries });
     };
 
@@ -273,12 +288,14 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                         </div>
 
                         <div className="relative flex flex-wrap gap-3 xl:justify-end">
-                            <button
-                                onClick={onEdit}
-                                className="rounded-2xl border border-white/10 bg-white px-5 py-3 text-sm font-black text-slate-900 shadow-lg shadow-black/10 transition-all hover:-translate-y-0.5"
-                            >
-                                Bearbeiten
-                            </button>
+                            {canWrite && (
+                                <button
+                                    onClick={onEdit}
+                                    className="rounded-2xl border border-white/10 bg-white px-5 py-3 text-sm font-black text-slate-900 shadow-lg shadow-black/10 transition-all hover:-translate-y-0.5"
+                                >
+                                    Bearbeiten
+                                </button>
+                            )}
                             {financials.hasActiveFinalInvoice && (
                                 <div className="flex items-center gap-2 rounded-2xl border border-emerald-300/30 bg-emerald-400/15 px-5 py-3 text-sm font-black text-emerald-100">
                                     <CheckCircle className="h-4 w-4" /> Projekt abgerechnet
@@ -309,7 +326,7 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
 
                 <div className="border-t border-slate-100 bg-slate-50/80 p-3">
                     <div className="grid gap-2 md:grid-cols-5">
-                        {TABS.map(({ id, label, icon: Icon }) => {
+                        {visibleTabs.map(({ id, label, icon: Icon }) => {
                             const count =
                                 id === 'documents' ? documents.length :
                                 id === 'payment' ? (project.paymentPlan?.length || 0) :
@@ -629,23 +646,27 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                                     <p className="text-sm font-medium text-slate-500">Teilrechnungen und Schlussrechnung zentral planen.</p>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => setIsPaymentPlanModalOpen(true)}
-                                className="rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5 hover:bg-indigo-700"
-                            >
-                                Plan bearbeiten
-                            </button>
+                            {canWrite && (
+                                <button
+                                    onClick={() => setIsPaymentPlanModalOpen(true)}
+                                    className="rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5 hover:bg-indigo-700"
+                                >
+                                    Plan bearbeiten
+                                </button>
+                            )}
                         </div>
 
                         {!project.paymentPlan || project.paymentPlan.length === 0 ? (
                             <div className="rounded-[32px] border border-dashed border-indigo-200 bg-indigo-50/40 p-12 text-center">
                                 <p className="mb-4 font-black text-slate-800">Noch kein Zahlungsplan hinterlegt.</p>
-                                <button
-                                    onClick={() => setIsPaymentPlanModalOpen(true)}
-                                    className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 font-black text-indigo-600 shadow-sm ring-1 ring-indigo-100 transition-all hover:-translate-y-0.5"
-                                >
-                                    <Plus className="h-4 w-4" /> Zahlungsplan erstellen
-                                </button>
+                                {canWrite && (
+                                    <button
+                                        onClick={() => setIsPaymentPlanModalOpen(true)}
+                                        className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 font-black text-indigo-600 shadow-sm ring-1 ring-indigo-100 transition-all hover:-translate-y-0.5"
+                                    >
+                                        <Plus className="h-4 w-4" /> Zahlungsplan erstellen
+                                    </button>
+                                )}
                             </div>
                         ) : (
                             <div className="overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm">
@@ -705,7 +726,7 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
-                                                        {(!linkedInvoice || !isLocked) && (
+                                                        {canWrite && (!linkedInvoice || !isLocked) && (
                                                             <button
                                                                 onClick={() => handleCreateInvoiceFromPlan(item)}
                                                                 className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1 ml-auto"
@@ -732,9 +753,9 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
             )}
 
             {/* ── TAB: Dateien ─────────────────────────────────────────────── */}
-            {activeTab === 'files' && (
+            {activeTab === 'files' && canReadFiles && (
                 <div className="animate-in fade-in duration-300">
-                    <ProjectFiles projectId={project.id} />
+                    <ProjectFiles projectId={project.id} canWrite={canWrite} />
                 </div>
             )}
 
@@ -745,6 +766,7 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                         project={project}
                         onUpdate={handleUpdateDiary}
                         onGeneratePDF={() => setIsPrintingDiary(true)}
+                        canWrite={canWrite}
                     />
                 </div>
             )}
@@ -759,12 +781,14 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                 </InvoicePrintHandler>
             )}
 
-            <PaymentPlanModal
-                isOpen={isPaymentPlanModalOpen}
-                onClose={() => setIsPaymentPlanModalOpen(false)}
-                project={project}
-                onSave={handleSavePaymentPlan}
-            />
+            {canWrite && (
+                <PaymentPlanModal
+                    isOpen={isPaymentPlanModalOpen}
+                    onClose={() => setIsPaymentPlanModalOpen(false)}
+                    project={project}
+                    onSave={handleSavePaymentPlan}
+                />
+            )}
 
             {/* Document Preview Modals */}
             {previewInvoice && (

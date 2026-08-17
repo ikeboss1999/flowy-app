@@ -13,6 +13,10 @@ import {
 import { useCustomerSettings } from "@/hooks/useCustomerSettings";
 import { cn } from "@/lib/utils";
 
+interface CustomerSettingsProps {
+    readOnly?: boolean;
+}
+
 interface AccordionSectionProps {
     title: string;
     icon: React.ElementType;
@@ -52,7 +56,7 @@ function AccordionSection({ title, icon: Icon, isOpen, onToggle, children }: Acc
     );
 }
 
-export function CustomerSettings() {
+export function CustomerSettings({ readOnly = false }: CustomerSettingsProps) {
     const { data, updateData, isLoading } = useCustomerSettings();
     const [openSection, setOpenSection] = useState<string | null>("general");
     const [showSuccess, setShowSuccess] = useState(false);
@@ -64,12 +68,14 @@ export function CustomerSettings() {
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (readOnly) return;
         const { name, value } = e.target;
         const finalValue = e.target.type === 'number' ? Number(value) : value;
         updateData({ [name]: finalValue });
     };
 
     const handleSave = () => {
+        if (readOnly) return;
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
     };
@@ -82,7 +88,10 @@ export function CustomerSettings() {
         return `${data.prefix || ''}${formattedNum}`;
     };
 
-    const inputClasses = "w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400 font-medium";
+    const inputClasses = cn(
+        "w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400 font-medium",
+        readOnly && "cursor-not-allowed bg-slate-100 text-slate-500"
+    );
     const labelClasses = "block text-sm font-bold text-slate-700 mb-2 ml-1";
 
     return (
@@ -109,6 +118,7 @@ export function CustomerSettings() {
                             name="prefix"
                             value={data.prefix}
                             onChange={handleChange}
+                            disabled={readOnly}
                             className={inputClasses}
                             placeholder="KD-"
                         />
@@ -120,6 +130,7 @@ export function CustomerSettings() {
                             name="nextNumber"
                             value={data.nextNumber}
                             onChange={handleChange}
+                            disabled={readOnly}
                             className={inputClasses}
                         />
                     </div>
@@ -130,6 +141,7 @@ export function CustomerSettings() {
                             name="mindestLaenge"
                             value={data.mindestLaenge}
                             onChange={handleChange}
+                            disabled={readOnly}
                             className={inputClasses}
                             min={1}
                             max={10}
@@ -150,27 +162,29 @@ export function CustomerSettings() {
             </AccordionSection>
 
             <div className="pt-8 flex justify-end gap-4">
-                <button
-                    onClick={handleSave}
-                    className={cn(
-                        "px-10 py-5 rounded-2xl font-black text-lg shadow-xl transition-all active:scale-95 flex items-center gap-3",
-                        showSuccess
-                            ? "bg-emerald-500 text-white shadow-emerald-200"
-                            : "bg-indigo-600 text-white shadow-indigo-200 hover:scale-[1.02]"
-                    )}
-                >
-                    {showSuccess ? (
-                        <>
-                            <CheckCircle2 className="h-6 w-6 animate-in zoom-in duration-300" />
-                            Gespeichert!
-                        </>
-                    ) : (
-                        <>
-                            <CheckCircle2 className="h-6 w-6" />
-                            Einstellungen speichern
-                        </>
-                    )}
-                </button>
+                {!readOnly && (
+                    <button
+                        onClick={handleSave}
+                        className={cn(
+                            "px-10 py-5 rounded-2xl font-black text-lg shadow-xl transition-all active:scale-95 flex items-center gap-3",
+                            showSuccess
+                                ? "bg-emerald-500 text-white shadow-emerald-200"
+                                : "bg-indigo-600 text-white shadow-indigo-200 hover:scale-[1.02]"
+                        )}
+                    >
+                        {showSuccess ? (
+                            <>
+                                <CheckCircle2 className="h-6 w-6 animate-in zoom-in duration-300" />
+                                Gespeichert!
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle2 className="h-6 w-6" />
+                                Einstellungen speichern
+                            </>
+                        )}
+                    </button>
+                )}
             </div>
         </div>
     );

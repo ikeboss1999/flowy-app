@@ -19,9 +19,10 @@ const initialData: OfferSettings = {
 };
 
 export function useOfferSettings() {
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
+    const ownerId = profile?.companyOwnerId || user?.id;
 
-    const key = user ? `/api/settings?userId=${user.id}` : null;
+    const key = ownerId ? `/api/settings?userId=${ownerId}` : null;
     const { data: allSettings, isLoading, mutate } = useSWR(key, fetcher);
 
     const data: OfferSettings = allSettings?.offerSettings
@@ -29,14 +30,14 @@ export function useOfferSettings() {
         : initialData;
 
     const updateData = async (newData: Partial<OfferSettings>) => {
-        if (!user) return;
+        if (!ownerId) return;
         const updated = { ...data, ...newData };
         mutate({ ...allSettings, offerSettings: updated }, false);
         try {
             await fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, type: 'offer', data: updated })
+                body: JSON.stringify({ userId: ownerId, type: 'offer', data: updated })
             });
         } catch (e) {
             console.error('Failed to update offer settings', e);

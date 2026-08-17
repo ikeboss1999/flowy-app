@@ -5,14 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowUpRight,
+  AlertTriangle,
   BarChart3,
+  BookOpen,
   Briefcase,
   Calendar,
+  Car,
   Clock,
+  FileCheck,
   FileSignature,
   FileText,
   FolderOpen,
-  Plus,
+  Inbox,
   ReceiptText,
   Settings,
   Users,
@@ -32,7 +36,7 @@ const formatDate = (date: Date) =>
 
 export default function Home() {
   const router = useRouter();
-  const { profile, currentEmployee } = useAuth();
+  const { user, profile, currentEmployee } = useAuth();
   const { data: startup } = useStartup();
 
   React.useEffect(() => {
@@ -55,19 +59,33 @@ export default function Home() {
     .map((part) => part[0]?.toUpperCase())
     .join("") || "FY";
 
-  const userName = currentEmployee
+  const employeeName = currentEmployee
     ? `${currentEmployee.personalData.firstName} ${currentEmployee.personalData.lastName}`.trim()
-    : startup.account.name || "Benutzer";
+    : "";
+  const userName = user
+    ? (profile?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Benutzer")
+    : employeeName || startup.account.name || "Benutzer";
 
   const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
-  const canWriteInvoices = isAdminOrDev || !!profile?.permissions?.invoices_write;
-  const canWriteOffers = isAdminOrDev || !!profile?.permissions?.offers_write;
-  const canReadInvoices = isAdminOrDev || !!profile?.permissions?.invoices_read;
-  const canReadOffers = isAdminOrDev || !!profile?.permissions?.offers_read;
-  const canReadProjects = isAdminOrDev || !!profile?.permissions?.projects_read;
-  const canReadEmployees = isAdminOrDev || !!profile?.permissions?.employees_read;
-  const canUseTime = isAdminOrDev || !!profile?.permissions?.time_tracking_use;
-  const canUseCalendar = isAdminOrDev || !!profile?.permissions?.calendar_use;
+  const permissions = profile?.permissions || {};
+  const canUse = (permission: string) => isAdminOrDev || permissions["*"] === true || !!permissions[permission];
+  const canWriteInvoices = canUse("invoices_write");
+  const canWriteOffers = canUse("offers_write");
+  const canReadCrm = canUse("crm_read");
+  const canReadCustomers = canUse("customers_read");
+  const canReadInvoices = canUse("invoices_read");
+  const canReadOffers = canUse("offers_read");
+  const canReadOrders = canUse("orders_read");
+  const canReadProjects = canUse("projects_read");
+  const canUseVehicles = canUse("vehicles_use");
+  const canReadEmployees = canUse("employees_read");
+  const canUseTime = canUse("time_tracking_use");
+  const canUseCalendar = canUse("calendar_use");
+  const canReadArchive = canUse("archive_read");
+  const canReadDunning = canUse("dunning_read");
+  const canReadReports = canUse("reports_read");
+  const canUseCatalog = canWriteInvoices || canWriteOffers;
+  const canOpenDashboard = canReadInvoices || canReadOffers || canReadOrders || canReadProjects || canReadEmployees || canUseTime || canReadReports;
 
   const status = startup.status;
 
@@ -93,6 +111,20 @@ export default function Home() {
   ].filter(Boolean) as Array<{ label: string; href: string; icon: React.ElementType; color: string }>;
 
   const modules = [
+    canReadCrm && {
+      label: "Anfragen (CRM)",
+      href: "/crm",
+      icon: Inbox,
+      description: "Neue Anfragen bearbeiten",
+      tone: "indigo",
+    },
+    canReadCustomers && {
+      label: "Kunden",
+      href: "/customers",
+      icon: Users,
+      description: "Kundenstamm einsehen",
+      tone: "slate",
+    },
     canReadInvoices && {
       label: "Rechnungen",
       href: "/invoices",
@@ -107,12 +139,33 @@ export default function Home() {
       description: `${status.openOffers} offene Angebote`,
       tone: "emerald",
     },
+    canReadOrders && {
+      label: "Aufträge",
+      href: "/orders",
+      icon: FileCheck,
+      description: "Auftragsbestand einsehen",
+      tone: "indigo",
+    },
     canReadProjects && {
       label: "Projekte",
       href: "/projects",
       icon: Briefcase,
       description: `${status.activeProjects} aktive Projekte`,
       tone: "amber",
+    },
+    canUseCatalog && {
+      label: "Katalog",
+      href: "/services",
+      icon: BookOpen,
+      description: "Leistungen und Positions-Vorlagen",
+      tone: "emerald",
+    },
+    canUseVehicles && {
+      label: "Fahrzeuge",
+      href: "/vehicles",
+      icon: Car,
+      description: "Fuhrpark und Unterlagen",
+      tone: "slate",
     },
     canReadEmployees && {
       label: "Mitarbeiter",
@@ -128,7 +181,28 @@ export default function Home() {
       description: "Monatszeiten bearbeiten",
       tone: "indigo",
     },
-    {
+    canUseTime && {
+      label: "Zeit-Archiv",
+      href: "/time-tracking/archive",
+      icon: FileText,
+      description: "Stundenaufzeichnungen einsehen",
+      tone: "slate",
+    },
+    canReadDunning && {
+      label: "Mahnwesen",
+      href: "/invoices/dunning",
+      icon: AlertTriangle,
+      description: "Offene Mahnungen verfolgen",
+      tone: "rose",
+    },
+    canReadReports && {
+      label: "Auswertungen",
+      href: "/reports",
+      icon: BarChart3,
+      description: "Statistiken und Kennzahlen",
+      tone: "indigo",
+    },
+    canReadArchive && {
       label: "Dokumenten-Archiv",
       href: "/archive",
       icon: FolderOpen,
@@ -223,13 +297,15 @@ export default function Home() {
                   </Link>
                 );
               })}
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white shadow-sm backdrop-blur transition hover:bg-white/15"
-              >
-                <BarChart3 className="h-4 w-4" />
-                Zur Übersicht
-              </Link>
+              {canOpenDashboard && (
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white shadow-sm backdrop-blur transition hover:bg-white/15"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Zur Übersicht
+                </Link>
+              )}
             </div>
           </div>
 
@@ -242,6 +318,7 @@ export default function Home() {
         </div>
       </section>
 
+      {quickStartActions.length > 0 && (
       <section suppressHydrationWarning className="rounded-[2rem] border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -271,6 +348,7 @@ export default function Home() {
         })}
         </div>
       </section>
+      )}
 
       <section suppressHydrationWarning className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
@@ -323,13 +401,15 @@ export default function Home() {
                 </span>
                 <ArrowUpRight className="h-4 w-4" />
               </Link>
-              <Link href="/archive" className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 font-black text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600">
-                <span className="flex items-center gap-3">
-                  <FolderOpen className="h-4 w-4" />
-                  Archiv
-                </span>
-                <ArrowUpRight className="h-4 w-4" />
-              </Link>
+              {canReadArchive && (
+                <Link href="/archive" className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 font-black text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600">
+                  <span className="flex items-center gap-3">
+                    <FolderOpen className="h-4 w-4" />
+                    Archiv
+                  </span>
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
+              )}
             </div>
           </div>
 

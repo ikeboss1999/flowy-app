@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Customer } from "@/types/customer";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 // Mock data (matching the main page for consistency)
 const MOCK_CUSTOMERS: Customer[] = [
@@ -53,8 +54,10 @@ const MOCK_CUSTOMERS: Customer[] = [
 
 export default function CustomerDetailPage() {
     usePermissionGuard("customers_read");
+    const { profile } = useAuth();
     const params = useParams();
     const id = params.id as string;
+    const canWriteCustomers = profile?.role === "admin" || profile?.role === "developer" || profile?.permissions?.["*"] === true || !!profile?.permissions?.customers_write;
 
     const customer = useMemo(() => {
         return MOCK_CUSTOMERS.find(c => c.id === id) || MOCK_CUSTOMERS[0];
@@ -71,6 +74,7 @@ export default function CustomerDetailPage() {
                     <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
                     Zurück zur Übersicht
                 </Link>
+                {canWriteCustomers && (
                 <div className="flex gap-3">
                     <button className="px-6 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition-all flex items-center gap-2">
                         <Edit2 className="h-4 w-4" /> Bearbeiten
@@ -79,6 +83,7 @@ export default function CustomerDetailPage() {
                         <Plus className="h-4 w-4" /> Neue Rechnung
                     </button>
                 </div>
+                )}
             </div>
 
             {/* Main Profile Header */}
@@ -252,9 +257,11 @@ export default function CustomerDetailPage() {
                             <p className="text-white/80 text-sm leading-relaxed italic">
                                 &quot;{customer.notes || 'Keine speziellen Notizen vorhanden.'}&quot;
                             </p>
-                            <button className="w-full py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-bold border border-white/20 transition-all flex items-center justify-center gap-2">
-                                <Plus className="h-4 w-4" /> Notiz hinzufügen
-                            </button>
+                            {canWriteCustomers && (
+                                <button className="w-full py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-bold border border-white/20 transition-all flex items-center justify-center gap-2">
+                                    <Plus className="h-4 w-4" /> Notiz hinzufuegen
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -262,3 +269,4 @@ export default function CustomerDetailPage() {
         </div>
     );
 }
+

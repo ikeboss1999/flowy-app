@@ -89,7 +89,35 @@ const PERMISSION_METADATA = [
     { key: 'dunning_write', label: 'Mahnungen erstellen / bearbeiten', category: 'Finanzen', icon: AlertCircle },
     
     { key: 'reports_read', label: 'Auswertungen / Statistiken einsehen', category: 'Finanzen', icon: BarChart3 },
-];
+].filter((permission) => permission.category !== 'Personal');
+
+const PERSONAL_PERMISSION_KEYS = ['time_tracking_use', 'employees_read', 'employees_create', 'employees_write'];
+
+function normalizePermissions(permissions: Record<string, boolean>) {
+    const next = { ...permissions };
+    PERSONAL_PERMISSION_KEYS.forEach((key) => {
+        next[key] = false;
+    });
+
+    if (next.crm_write) next.crm_read = true;
+    if (next.customers_write) next.customers_read = true;
+    if (next.projects_write) next.projects_read = true;
+    if (next.orders_write) next.orders_read = true;
+    if (next.invoices_write) next.invoices_read = true;
+    if (next.offers_write) next.offers_read = true;
+    if (next.dunning_write) next.dunning_read = true;
+
+    if (next.invoices_read || next.invoices_write || next.offers_read || next.offers_write) {
+        next.customers_read = true;
+        next.customers_write = true;
+    }
+
+    if (next.reports_read && !next.invoices_read) {
+        next.reports_read = false;
+    }
+
+    return next;
+}
 
 export function UserManagement() {
     const [users, setUsers] = useState<UserRole[]>([]);
@@ -152,10 +180,10 @@ export function UserManagement() {
     const handlePermissionToggle = (key: string) => {
         if (!selectedUser) return;
         
-        const updatedPermissions = {
+        const updatedPermissions = normalizePermissions({
             ...(selectedUser.permissions || {}),
             [key]: !selectedUser.permissions?.[key]
-        };
+        });
 
         setSelectedUser({
             ...selectedUser,
@@ -174,7 +202,7 @@ export function UserManagement() {
                 body: JSON.stringify({
                     userId: selectedUser.user_id,
                     role: selectedUser.role,
-                    permissions: selectedUser.permissions
+                    permissions: normalizePermissions(selectedUser.permissions || {})
                 })
             });
 
@@ -204,7 +232,7 @@ export function UserManagement() {
                     email: inviteEmail.trim(),
                     name: inviteName.trim(),
                     role: inviteRole,
-                    permissions: inviteRole === 'admin' ? { '*': true } : invitePermissions
+                    permissions: inviteRole === 'admin' ? { '*': true } : normalizePermissions(invitePermissions)
                 })
             });
 
@@ -397,12 +425,18 @@ export function UserManagement() {
                                             <div className="space-y-2">
                                                 {PERMISSION_METADATA.filter(m => m.category === category).map((perm) => {
                                                     const isChecked = !!selectedUser.permissions?.[perm.key];
+                                                    const isDisabled = perm.key === 'reports_read' && !selectedUser.permissions?.invoices_read;
                                                     const PermIcon = perm.icon;
                                                     return (
                                                         <div
                                                             key={perm.key}
-                                                            onClick={() => handlePermissionToggle(perm.key)}
-                                                            className="flex items-center justify-between p-3.5 hover:bg-slate-50/50 rounded-2xl border border-transparent hover:border-slate-100 cursor-pointer transition-all"
+                                                            onClick={() => !isDisabled && handlePermissionToggle(perm.key)}
+                                                            className={cn(
+                                                                "flex items-center justify-between p-3.5 rounded-2xl border border-transparent transition-all",
+                                                                isDisabled
+                                                                    ? "cursor-not-allowed opacity-45"
+                                                                    : "cursor-pointer hover:bg-slate-50/50 hover:border-slate-100"
+                                                            )}
                                                         >
                                                             <div className="flex items-center gap-3">
                                                                 <div className="p-2 bg-indigo-50/30 rounded-xl border border-indigo-100/10 text-indigo-600">
@@ -525,14 +559,17 @@ export function UserManagement() {
                                                 <div className="space-y-2">
                                                     {PERMISSION_METADATA.filter(perm => perm.category === category).map((perm) => {
                                                         const isChecked = invitePermissions[perm.key];
+                                                        const isDisabled = perm.key === 'reports_read' && !invitePermissions.invoices_read;
                                                         const PermIcon = perm.icon;
                                                         return (
                                                             <button
                                                                 type="button"
                                                                 key={perm.key}
-                                                                onClick={() => setInvitePermissions(prev => ({ ...prev, [perm.key]: !prev[perm.key] }))}
+                                                                disabled={isDisabled}
+                                                                onClick={() => setInvitePermissions(prev => normalizePermissions({ ...prev, [perm.key]: !prev[perm.key] }))}
                                                                 className={cn(
                                                                     "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all",
+                                                                    isDisabled && "cursor-not-allowed opacity-45",
                                                                     isChecked
                                                                         ? "border-indigo-200 bg-indigo-50 text-indigo-700"
                                                                         : "border-transparent bg-slate-50 text-slate-600 hover:border-slate-200 hover:bg-white"

@@ -28,6 +28,7 @@ import {
     SlidersHorizontal,
     ChevronRight,
     Mail,
+    LockKeyhole,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -92,13 +93,16 @@ const DOC_SUBTABS = [
     { id: "employee", label: "Mitarbeiter", icon: Users2 },
 ];
 
+const EMPLOYEE_TAB_IDS = new Set(["Dokumente", "E-Mail Versand", "Neuigkeiten", "Mein Konto", "App Info"]);
+
 export default function SettingsPage() {
     const { profile, currentEmployee, isLoading } = useAuth();
     const [hasMounted, setHasMounted] = useState(false);
     const [activeTab, setActiveTab] = useState("Stammdaten");
     const [docSubTab, setDocSubTab] = useState("customer");
     const isEmployee = profile?.role === "employee" || (!profile && !!currentEmployee);
-    const visibleTabs = isEmployee ? TABS.filter((tab) => tab.id === "E-Mail Versand") : TABS;
+    const visibleTabs = isEmployee ? TABS.filter((tab) => EMPLOYEE_TAB_IDS.has(tab.id)) : TABS;
+    const visibleDocSubtabs = isEmployee ? DOC_SUBTABS.filter((tab) => tab.id !== "employee") : DOC_SUBTABS;
     const activeTabMeta = visibleTabs.find((tab) => tab.id === activeTab) ?? visibleTabs[0] ?? TABS[0];
     const ActiveIcon = activeTabMeta.icon;
 
@@ -107,10 +111,16 @@ export default function SettingsPage() {
     }, []);
 
     useEffect(() => {
-        if (isEmployee && activeTab !== "E-Mail Versand") {
-            setActiveTab("E-Mail Versand");
+        if (!visibleTabs.some((tab) => tab.id === activeTab)) {
+            setActiveTab(visibleTabs[0]?.id ?? "Dokumente");
         }
-    }, [activeTab, isEmployee]);
+    }, [activeTab, visibleTabs]);
+
+    useEffect(() => {
+        if (isEmployee && docSubTab === "employee") {
+            setDocSubTab("customer");
+        }
+    }, [docSubTab, isEmployee]);
 
     if (!hasMounted || (isLoading && !profile && !currentEmployee)) {
         return <div className="p-8 text-slate-400 font-bold">Laden...</div>;
@@ -134,7 +144,7 @@ export default function SettingsPage() {
                             </h1>
                             <p className="mt-3 max-w-2xl text-base font-medium leading-relaxed text-slate-500">
                                 {isEmployee
-                                    ? "Verwalten Sie hier Ihre eigene SMTP-Anbindung fuer den Versand aus FlowY."
+                                    ? "Lesen Sie freigegebene Einstellungen, verwalten Sie Ihre eigene SMTP-Anbindung und passen Sie Ihr Benutzerkonto an."
                                     : "Verwalten Sie Stammdaten, Dokumentnummern, Benutzerrechte und Ihr Konto an einem zentralen Ort."}
                             </p>
                         </div>
@@ -236,10 +246,21 @@ export default function SettingsPage() {
                                 </div>
                             )}
 
-                            {!isEmployee && activeTab === "Dokumente" && (
+                            {activeTab === "Dokumente" && (
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+                                    {isEmployee && (
+                                        <div className="flex items-start gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4 text-slate-500">
+                                            <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" />
+                                            <div>
+                                                <p className="text-sm font-black text-slate-700">Nur Ansicht</p>
+                                                <p className="mt-1 text-sm font-semibold">
+                                                    Nummernkreise und Dokumentvorlagen sind sichtbar, koennen aber nur vom Administrator bearbeitet werden.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="grid grid-cols-2 gap-2 rounded-3xl border border-slate-100 bg-slate-50 p-2 sm:grid-cols-3 lg:grid-cols-6">
-                                        {DOC_SUBTABS.map(({ id, label, icon: Icon }) => (
+                                        {visibleDocSubtabs.map(({ id, label, icon: Icon }) => (
                                             <button
                                                 key={id}
                                                 type="button"
@@ -257,12 +278,12 @@ export default function SettingsPage() {
                                         ))}
                                     </div>
 
-                                    {docSubTab === "customer" && <CustomerSettings />}
-                                    {docSubTab === "offer" && <OfferSettings />}
-                                    {docSubTab === "order" && <OrderSettings />}
-                                    {docSubTab === "invoice" && <InvoiceSettings />}
-                                    {docSubTab === "project" && <ProjectSettings />}
-                                    {docSubTab === "employee" && <EmployeeSettings />}
+                                    {docSubTab === "customer" && <CustomerSettings readOnly={isEmployee} />}
+                                    {docSubTab === "offer" && <OfferSettings readOnly={isEmployee} />}
+                                    {docSubTab === "order" && <OrderSettings readOnly={isEmployee} />}
+                                    {docSubTab === "invoice" && <InvoiceSettings readOnly={isEmployee} />}
+                                    {docSubTab === "project" && <ProjectSettings readOnly={isEmployee} />}
+                                    {!isEmployee && docSubTab === "employee" && <EmployeeSettings />}
                                 </div>
                             )}
 
@@ -278,19 +299,19 @@ export default function SettingsPage() {
                                 </div>
                             )}
 
-                            {!isEmployee && activeTab === "Neuigkeiten" && (
+                            {activeTab === "Neuigkeiten" && (
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     <AppSettings />
                                 </div>
                             )}
 
-                            {!isEmployee && activeTab === "Mein Konto" && (
+                            {activeTab === "Mein Konto" && (
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <AccountSettings />
+                                    <AccountSettings nameOnly={isEmployee} />
                                 </div>
                             )}
 
-                            {!isEmployee && activeTab === "App Info" && (
+                            {activeTab === "App Info" && (
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     <AppInfo />
                                 </div>

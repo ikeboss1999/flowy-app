@@ -23,6 +23,7 @@ import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { InquiryDetailModal } from "@/components/InquiryDetailModal";
+import { useAuth } from "@/context/AuthContext";
 
 const STATUS_CONFIG: Record<InquiryStatus, { label: string; color: string; bg: string; border: string; dot: string }> = {
     new: { label: "Neu", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", dot: "bg-blue-500" },
@@ -64,6 +65,7 @@ const initialsFor = (name: string) =>
 export default function CRMPage() {
     usePermissionGuard("crm_read");
 
+    const { profile } = useAuth();
     const { inquiries, addInquiry, updateInquiry, deleteInquiry, isLoading } = useCRM();
     const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -79,6 +81,8 @@ export default function CRMPage() {
     const [budget, setBudget] = useState("");
     const [status, setStatus] = useState<InquiryStatus>("new");
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+    const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
+    const canWriteCrm = isAdminOrDev || profile?.permissions?.["*"] === true || !!profile?.permissions?.crm_write;
 
     const filteredInquiries = useMemo(() => {
         const query = searchQuery.trim().toLowerCase();
@@ -129,6 +133,7 @@ export default function CRMPage() {
     };
 
     const handleCreateInquiry = async () => {
+        if (!canWriteCrm) return;
         if (!clientName.trim()) return;
 
         await addInquiry({
@@ -146,6 +151,7 @@ export default function CRMPage() {
     };
 
     const handleStartEdit = (inquiry: Inquiry) => {
+        if (!canWriteCrm) return;
         setClientName(inquiry.clientName);
         setClientPhone(inquiry.clientPhone || "");
         setClientEmail(inquiry.clientEmail || "");
@@ -158,6 +164,7 @@ export default function CRMPage() {
     };
 
     const handleSaveInquiryEdit = async () => {
+        if (!canWriteCrm) return;
         if (!selectedInquiry || !clientName.trim()) return;
 
         const updated = {
@@ -177,6 +184,7 @@ export default function CRMPage() {
     };
 
     const handleDeleteInquiryConfirm = async () => {
+        if (!canWriteCrm) return;
         if (!selectedInquiry) return;
         await deleteInquiry(selectedInquiry.id);
         setSelectedInquiry(null);
@@ -212,16 +220,18 @@ export default function CRMPage() {
                         </p>
                     </div>
 
-                    <button
-                        onClick={() => {
-                            resetForm();
-                            setIsCreateModalOpen(true);
-                        }}
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-xl shadow-indigo-950/20 transition hover:-translate-y-0.5"
-                    >
-                        <Plus className="h-5 w-5" />
-                        Neue Anfrage
-                    </button>
+                    {canWriteCrm && (
+                        <button
+                            onClick={() => {
+                                resetForm();
+                                setIsCreateModalOpen(true);
+                            }}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-xl shadow-indigo-950/20 transition hover:-translate-y-0.5"
+                        >
+                            <Plus className="h-5 w-5" />
+                            Neue Anfrage
+                        </button>
+                    )}
                 </div>
             </section>
 
@@ -418,7 +428,7 @@ export default function CRMPage() {
                 </section>
             )}
 
-            {isCreateModalOpen && (
+            {canWriteCrm && isCreateModalOpen && (
                 <InquiryFormModal
                     title="Neue Anfrage erfassen"
                     onClose={() => setIsCreateModalOpen(false)}
@@ -447,6 +457,7 @@ export default function CRMPage() {
                     inquiry={selectedInquiry}
                     onStartEdit={(inquiry) => handleStartEdit(inquiry)}
                     onDelete={() => setConfirmDeleteOpen(true)}
+                    canWrite={canWriteCrm}
                 />
             )}
 

@@ -70,7 +70,9 @@ export default function OffersPage() {
     const { data: companySettings } = useCompanySettings();
     const { showToast, showConfirm } = useNotification();
     const { profile } = useAuth();
-    const canReopenOffer = profile?.role === 'admin' || profile?.role === 'developer';
+    const isAdminOrDev = profile?.role === 'admin' || profile?.role === 'developer';
+    const canReopenOffer = isAdminOrDev;
+    const canWriteOffers = isAdminOrDev || profile?.permissions?.["*"] === true || !!profile?.permissions?.offers_write;
 
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState<OfferStatus | "all">("all");
@@ -246,13 +248,15 @@ export default function OffersPage() {
                                 ))}
                             </select>
                         </div>
-                        <button
-                            onClick={() => router.push('/offers/new')}
-                            className="flex items-center gap-2 px-6 py-3 bg-white text-indigo-700 rounded-xl font-bold shadow-lg shadow-indigo-950/20 hover:scale-[1.02] active:scale-95 transition-all"
-                        >
-                            <PlusCircle className="h-5 w-5" />
-                            Neues Angebot
-                        </button>
+                        {canWriteOffers && (
+                            <button
+                                onClick={() => router.push('/offers/new')}
+                                className="flex items-center gap-2 px-6 py-3 bg-white text-indigo-700 rounded-xl font-bold shadow-lg shadow-indigo-950/20 hover:scale-[1.02] active:scale-95 transition-all"
+                            >
+                                <PlusCircle className="h-5 w-5" />
+                                Neues Angebot
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -479,7 +483,7 @@ export default function OffersPage() {
                                                         <Download className="h-4 w-4" />
                                                     )}
                                                 </button>
-                                                {offer.status === 'draft' && (
+                                                {canWriteOffers && offer.status === 'draft' && (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); router.push(`/offers/${offer.id}/edit`); }}
                                                         className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-all"
@@ -488,7 +492,7 @@ export default function OffersPage() {
                                                         <Edit2 className="h-4 w-4" />
                                                     </button>
                                                 )}
-                                                {offer.status === 'draft' && (
+                                                {canWriteOffers && offer.status === 'draft' && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -509,7 +513,7 @@ export default function OffersPage() {
                                                         <Trash2 className="h-4 w-4" />
                                                     </button>
                                                 )}
-                                                <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                                {canWriteOffers && <div className="relative" onClick={(e) => e.stopPropagation()}>
                                                     <button
                                                         onClick={() => setActionMenuOfferId(prev => prev === offer.id ? null : offer.id)}
                                                         className="p-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-all"
@@ -535,7 +539,7 @@ export default function OffersPage() {
                                                             </button>
                                                         </div>
                                                     )}
-                                                </div>
+                                                </div>}
                                             </div>
                                         </td>
                                     </tr>
@@ -553,13 +557,15 @@ export default function OffersPage() {
                         <h4 className="text-xl font-bold text-slate-900">Keine Angebote gefunden</h4>
                         <p className="text-slate-500 font-medium">Erstellen Sie Ihr erstes Angebot.</p>
                     </div>
-                    <button
-                        onClick={() => router.push('/offers/new')}
-                        className="mt-4 flex items-center gap-2 px-6 py-3 bg-primary-gradient text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all"
-                    >
-                        <PlusCircle className="h-5 w-5" />
-                        Neues Angebot erstellen
-                    </button>
+                    {canWriteOffers && (
+                        <button
+                            onClick={() => router.push('/offers/new')}
+                            className="mt-4 flex items-center gap-2 px-6 py-3 bg-primary-gradient text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+                        >
+                            <PlusCircle className="h-5 w-5" />
+                            Neues Angebot erstellen
+                        </button>
+                    )}
                 </div>
             )}
 

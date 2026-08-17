@@ -35,8 +35,32 @@ export async function GET() {
                     ...decrypted,
                     appAccess: decrypted.appAccess
                         ? { ...decrypted.appAccess, accessPIN: '' }
-                        : decrypted.appAccess,
+                    : decrypted.appAccess,
                 };
+            }
+        }
+
+        if (session.role === 'employee' && !employee && session.email) {
+            const client = supabaseAdmin || supabase;
+            const { data, error } = await client
+                .from('employees')
+                .select('*')
+                .eq('userId', session.companyOwnerId);
+
+            if (!error && data) {
+                const sessionEmail = String(session.email).trim().toLowerCase();
+                const matched = (data as Employee[])
+                    .map((item) => decryptEmployee(item as Employee))
+                    .find((item) => String(item.personalData?.email || '').trim().toLowerCase() === sessionEmail);
+
+                if (matched) {
+                    employee = {
+                        ...matched,
+                        appAccess: matched.appAccess
+                            ? { ...matched.appAccess, accessPIN: '' }
+                            : matched.appAccess,
+                    };
+                }
             }
         }
 

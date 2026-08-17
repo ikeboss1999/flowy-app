@@ -27,9 +27,10 @@ const initialData: InvoiceSettings = {
 };
 
 export function useInvoiceSettings() {
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
+    const ownerId = profile?.companyOwnerId || user?.id;
 
-    const key = user ? `/api/settings?userId=${user.id}` : null;
+    const key = ownerId ? `/api/settings?userId=${ownerId}` : null;
     const { data: allSettings, isLoading, mutate } = useSWR(key, fetcher);
 
     let data: InvoiceSettings = initialData;
@@ -44,14 +45,14 @@ export function useInvoiceSettings() {
     }
 
     const updateData = async (newData: Partial<InvoiceSettings>) => {
-        if (!user) return;
+        if (!ownerId) return;
         const updated = { ...data, ...newData };
         mutate({ ...allSettings, invoiceSettings: updated }, false);
         try {
             await fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, type: 'invoice', data: updated })
+                body: JSON.stringify({ userId: ownerId, type: 'invoice', data: updated })
             });
         } catch (e) {
             console.error('Failed to update invoice settings', e);
@@ -60,7 +61,7 @@ export function useInvoiceSettings() {
     };
 
     const updateDunningLevel = async (levelKey: keyof InvoiceSettings['dunningLevels'], newData: Partial<{ fee: number; period: number }>) => {
-        if (!user) return;
+        if (!ownerId) return;
         const updatedDunning = { ...data.dunningLevels, [levelKey]: { ...data.dunningLevels[levelKey], ...newData } };
         const updated = { ...data, dunningLevels: updatedDunning };
         mutate({ ...allSettings, invoiceSettings: updated }, false);
@@ -68,7 +69,7 @@ export function useInvoiceSettings() {
             await fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, type: 'invoice', data: updated })
+                body: JSON.stringify({ userId: ownerId, type: 'invoice', data: updated })
             });
         } catch (e) {
             console.error('Failed to update dunning levels', e);

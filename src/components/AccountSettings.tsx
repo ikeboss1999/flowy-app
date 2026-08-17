@@ -16,6 +16,10 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useNotification } from "@/context/NotificationContext";
 
+interface AccountSettingsProps {
+    nameOnly?: boolean;
+}
+
 interface AccordionSectionProps {
     title: string;
     icon: React.ElementType;
@@ -56,9 +60,9 @@ function AccordionSection({ title, icon: Icon, isOpen, onToggle, children }: Acc
     );
 }
 
-export function AccountSettings() {
+export function AccountSettings({ nameOnly = false }: AccountSettingsProps) {
     const [openSection, setOpenSection] = useState<string | null>("benutzerkonto");
-    const { user } = useAuth();
+    const { user, profile, currentEmployee, refreshProfile } = useAuth();
     const { showToast } = useNotification();
     const { data: settings, updateSettings, isLoading } = useAccountSettings();
     const [name, setName] = useState("");
@@ -80,12 +84,15 @@ export function AccountSettings() {
     // Update local state when settings load
     React.useEffect(() => {
         if (!isLoading) {
-            setName(settings.name);
+            const employeeName = currentEmployee?.personalData
+                ? `${currentEmployee.personalData.firstName || ""} ${currentEmployee.personalData.lastName || ""}`.trim()
+                : "";
+            setName(nameOnly ? (profile?.name || user?.user_metadata?.full_name || employeeName || settings.name) : settings.name);
             if (user?.email) {
                 setEmail(user.email);
             }
         }
-    }, [isLoading, settings.name, user?.email]);
+    }, [currentEmployee?.personalData, isLoading, nameOnly, profile?.name, settings.name, user?.email, user?.user_metadata?.full_name]);
 
     const toggleSection = (section: string) => {
         setOpenSection(openSection === section ? null : section);
@@ -101,10 +108,21 @@ export function AccountSettings() {
         }
     };
 
-    const handleSave = () => {
-        updateSettings({ name });
-        setShowNameSuccess(true);
-        setTimeout(() => setShowNameSuccess(false), 3000);
+    const handleSave = async () => {
+        try {
+            if (nameOnly && user) {
+                const { error } = await supabase.auth.updateUser({ data: { full_name: name } });
+                if (error) throw error;
+                await refreshProfile();
+            } else {
+                await updateSettings({ name });
+            }
+            setShowNameSuccess(true);
+            setTimeout(() => setShowNameSuccess(false), 3000);
+        } catch (error) {
+            console.error('Failed to update name', error);
+            showToast("Fehler beim Aktualisieren des Namens.", "error");
+        }
     };
 
     const handleEmailSave = async () => {
@@ -248,7 +266,7 @@ export function AccountSettings() {
                         </div>
                     </div>
 
-                    <div>
+                    {!nameOnly && <div>
                         <label className={labelClasses}>Ihre E-Mail-Adresse</label>
                         <div className="flex gap-4">
                             <input
@@ -272,11 +290,12 @@ export function AccountSettings() {
                                 {showEmailSuccess ? "Gespeichert!" : "Speichern"}
                             </button>
                         </div>
-                    </div>
+                    </div>}
                 </div>
             </AccordionSection>
 
             {/* Sicherheit (PIN) */}
+            {!nameOnly && (
             <AccordionSection
                 title="Sicherheit (PIN)"
                 icon={Lock}
@@ -326,8 +345,10 @@ export function AccountSettings() {
                     </div>
                 </div>
             </AccordionSection>
+            )}
 
             {/* Daten löschen */}
+            {!nameOnly && (
             <AccordionSection
                 title="Datenzone"
                 icon={Trash2}
@@ -354,9 +375,10 @@ export function AccountSettings() {
                     </div>
                 </div>
             </AccordionSection>
+            )}
 
             {/* DELETE MODAL */}
-            {isDeleteModalOpen && (
+            {!nameOnly && isDeleteModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-white/30" onClick={() => !isDeleting && setIsDeleteModalOpen(false)} />
                     <div className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-200 p-10 space-y-8 animate-in zoom-in-95 duration-200">

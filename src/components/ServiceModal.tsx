@@ -315,24 +315,6 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService, folders,
                                         </div>
                                     </div>
 
-                                    <div className="hidden">
-                                        <label className={labelClasses}>Ordner</label>
-                                        <div className="relative">
-                                            <Folder className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                                            <select
-                                                disabled
-                                                required
-                                                value={formData.folder || ""}
-                                                onChange={(event) => setFormData({ ...formData, folder: event.target.value || null })}
-                                                className={cn(inputClasses, "pl-12")}
-                                            >
-                                                <option value="" disabled>Ordner waehlen</option>
-                                                {folders?.map(folderName => (
-                                                    <option key={folderName} value={folderName}>{folderName}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
                                 </div>
                             )}
                         </section>

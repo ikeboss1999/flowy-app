@@ -51,9 +51,10 @@ export function AppInfo() {
     };
 
     // Determine displayed username
-    const displayName = currentEmployee 
-        ? `${currentEmployee.personalData.firstName} ${currentEmployee.personalData.lastName}`
-        : (user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Unbekannter Benutzer");
+    const employeeName = currentEmployee
+        ? `${currentEmployee.personalData.firstName} ${currentEmployee.personalData.lastName}`.trim()
+        : "";
+    const displayName = profile?.name || user?.user_metadata?.full_name || employeeName || user?.email?.split('@')[0] || "Unbekannter Benutzer";
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">

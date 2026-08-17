@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getUserSession } from '@/lib/auth-server';
+import { getUserSession, hasPermission } from '@/lib/auth-server';
 import { safeUpsert } from '@/lib/supabase-helper';
 import { logApiPerformance } from '@/lib/api-performance';
 import { encrypt } from '@/lib/encryption';
@@ -74,9 +74,16 @@ export async function GET(request: Request) {
         if (error && error.code !== 'PGRST116') throw error;
 
         if (data) {
-            // Employees only get companyData (needed for document headers), no account/financial settings
+            // Employees get readonly numbering/document settings from the company owner.
             if (session?.role === 'employee') {
-                const payload = { companyData: data.companyData || {} };
+                const payload = {
+                    companyData: data.companyData || {},
+                    invoiceSettings: data.invoiceSettings || null,
+                    offerSettings: data.offerSettings || null,
+                    orderSettings: data.orderSettings || null,
+                    projectSettings: data.projectSettings || null,
+                    customerSettings: data.customerSettings || null,
+                };
                 logApiPerformance('/api/settings', startedAt, { payload, note: 'employee' });
                 return NextResponse.json(payload);
             }
@@ -110,13 +117,23 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Einstellungen sind für Mitarbeiter grundsätzlich unsichtbar/gesperrt
-    if (session?.role === 'employee') {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
     try {
         const payload = await request.json();
+        const employeeWritableTypes: Record<string, string> = {
+            customer: 'customers_write',
+            invoice: 'invoices_write',
+            offer: 'offers_write',
+            order: 'orders_write',
+            project: 'projects_write',
+        };
+
+        if (session?.role === 'employee') {
+            const requiredPermission = payload?.type ? employeeWritableTypes[payload.type] : null;
+            if (!requiredPermission || !hasPermission(session, requiredPermission)) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
+        }
+
         const now = new Date().toISOString();
 
         const client = supabaseAdmin || supabase;
@@ -171,4 +188,5 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
     }
 }
+
 

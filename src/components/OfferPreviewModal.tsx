@@ -114,8 +114,8 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     const { profile } = useAuth();
     const { delivery, refresh: refreshEmailSettings } = useEmailSettings();
 
-    const canConfirmOrder = !profile || profile.role === 'admin' || profile.role === 'developer' || !!profile.permissions?.orders_write;
-    const canCreateInvoice = !profile || profile.role === 'admin' || profile.role === 'developer' || !!profile.permissions?.invoices_write;
+    const canConfirmOrder = !profile || profile.role === 'admin' || profile.role === 'developer' || profile.permissions?.["*"] === true || !!profile.permissions?.orders_write;
+    const canCreateInvoice = !profile || profile.role === 'admin' || profile.role === 'developer' || profile.permissions?.["*"] === true || !!profile.permissions?.invoices_write;
 
     const alreadyInvoiced = React.useMemo(() => {
         if (!offer || !invoices) return false;
@@ -237,7 +237,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     };
 
     const handleCreateOrder = async () => {
-        if (!offer || isConverting) return;
+        if (!offer || isConverting || !canConfirmOrder) return;
         if (offer.status !== 'sent') {
             showToast("Nur gesendete Angebote können als Auftrag bestätigt werden.", "error");
             return;
@@ -301,7 +301,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     };
 
     const handleCreateInvoice = async () => {
-        if (!offer || isConvertingInvoice) return;
+        if (!offer || isConvertingInvoice || !canCreateInvoice) return;
         setIsConvertingInvoice(true);
         try {
             const invoiceNum = `${new Date().getFullYear()}/${String(invoiceSettings.nextInvoiceNumber || 1).padStart(2, "0")}`;

@@ -7,12 +7,15 @@ import { DunningModal } from '@/components/DunningModal';
 import { AlertTriangle, Clock, ArrowRight, CalendarClock, Euro, FileWarning } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Invoice } from '@/types/invoice';
+import { useAuth } from '@/context/AuthContext';
 
 export function DunningList() {
     const { invoices, updateInvoice } = useInvoices();
     const { customers } = useCustomers();
     const { data: companySettings } = useCompanySettings();
     const { data: invoiceSettings } = useInvoiceSettings();
+    const { profile } = useAuth();
+    const canCreateDunning = profile?.role === 'admin' || profile?.role === 'developer' || profile?.permissions?.["*"] === true || !!profile?.permissions?.dunning_write;
 
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
@@ -45,7 +48,7 @@ export function DunningList() {
     });
 
     const handleDunningConfirm = async (level: number, date: string, pdfPath: string) => {
-        if (!selectedInvoice) return;
+        if (!selectedInvoice || !canCreateDunning) return;
 
         const historyEntry = {
             level,
@@ -129,18 +132,20 @@ export function DunningList() {
                                         </p>
                                         <p className="text-2xl font-black text-slate-950">€ {invoice.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
                                     </div>
-                                    <button
-                                        onClick={() => setSelectedInvoice(invoice)}
-                                        disabled={dunningLevel >= 4}
-                                        className={cn(
-                                            "inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-black transition-all",
-                                            dunningLevel >= 4
-                                                ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                                : "bg-primary-gradient text-white shadow-lg shadow-indigo-900/20 hover:shadow-xl active:scale-95"
-                                        )}
-                                    >
-                                        {dunningLevel >= 4 ? 'Max. Mahnstufe' : 'Mahnung erstellen'} <ArrowRight className="h-4 w-4" />
-                                    </button>
+                                    {canCreateDunning && (
+                                        <button
+                                            onClick={() => setSelectedInvoice(invoice)}
+                                            disabled={dunningLevel >= 4}
+                                            className={cn(
+                                                "inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-black transition-all",
+                                                dunningLevel >= 4
+                                                    ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                                    : "bg-primary-gradient text-white shadow-lg shadow-indigo-900/20 hover:shadow-xl active:scale-95"
+                                            )}
+                                        >
+                                            {dunningLevel >= 4 ? 'Max. Mahnstufe' : 'Mahnung erstellen'} <ArrowRight className="h-4 w-4" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -148,7 +153,7 @@ export function DunningList() {
                 })}
             </div>
 
-            {selectedInvoice && (() => {
+            {canCreateDunning && selectedInvoice && (() => {
                 const customer = customers.find(c => c.id === selectedInvoice.customerId);
                 if (!customer) return null; // Should not happen ideally
 

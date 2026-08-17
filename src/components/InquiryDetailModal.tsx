@@ -28,6 +28,7 @@ interface InquiryDetailModalProps {
     inquiry: Inquiry;
     onStartEdit: (inquiry: Inquiry) => void;
     onDelete: () => void;
+    canWrite?: boolean;
 }
 
 const STATUS_CONFIG: Record<InquiryStatus, { label: string; color: string; bg: string; border: string; dot: string }> = {
@@ -74,7 +75,7 @@ const initialsFor = (name: string) =>
         .slice(0, 2)
         .toUpperCase() || "?";
 
-export function InquiryDetailModal({ isOpen, onClose, inquiry, onStartEdit, onDelete }: InquiryDetailModalProps) {
+export function InquiryDetailModal({ isOpen, onClose, inquiry, onStartEdit, onDelete, canWrite = true }: InquiryDetailModalProps) {
     if (!isOpen || !inquiry) return null;
 
     const statusDef = STATUS_CONFIG[inquiry.status];
@@ -120,22 +121,24 @@ export function InquiryDetailModal({ isOpen, onClose, inquiry, onStartEdit, onDe
                                 </div>
                             </div>
                         </div>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                            <button
-                                onClick={() => onStartEdit(inquiry)}
-                                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-lg transition hover:bg-indigo-50"
-                            >
-                                <Edit2 className="h-4 w-4" />
-                                Bearbeiten
-                            </button>
-                            <button
-                                onClick={onDelete}
-                                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200/20 bg-white/10 px-5 py-3 text-sm font-black text-rose-100 transition hover:bg-rose-400/20"
-                            >
-                                <Trash2 className="h-4 w-4" />
-                                Löschen
-                            </button>
-                        </div>
+                        {canWrite && (
+                            <div className="grid gap-2 sm:grid-cols-2">
+                                <button
+                                    onClick={() => onStartEdit(inquiry)}
+                                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-lg transition hover:bg-indigo-50"
+                                >
+                                    <Edit2 className="h-4 w-4" />
+                                    Bearbeiten
+                                </button>
+                                <button
+                                    onClick={onDelete}
+                                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200/20 bg-white/10 px-5 py-3 text-sm font-black text-rose-100 transition hover:bg-rose-400/20"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    Löschen
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </aside>
 
@@ -223,7 +226,7 @@ export function InquiryDetailModal({ isOpen, onClose, inquiry, onStartEdit, onDe
                         </div>
 
                         <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                            <InquiryNotesTimeline inquiryId={inquiry.id} />
+                            <InquiryNotesTimeline inquiryId={inquiry.id} canWrite={canWrite} />
                         </div>
                     </div>
                 </section>
@@ -244,7 +247,7 @@ function InfoRow({ label, value, icon: Icon }: { label: string; value: string; i
     );
 }
 
-function InquiryNotesTimeline({ inquiryId }: { inquiryId: string }) {
+function InquiryNotesTimeline({ inquiryId, canWrite = true }: { inquiryId: string; canWrite?: boolean }) {
     const { notes, addNote, deleteNote, isLoading } = useInquiryNotes(inquiryId);
     const { user } = useAuth();
     const [newNoteText, setNewNoteText] = useState("");
@@ -252,7 +255,7 @@ function InquiryNotesTimeline({ inquiryId }: { inquiryId: string }) {
 
     const handleAddNote = async (event: React.FormEvent) => {
         event.preventDefault();
-        if (!newNoteText.trim() || isSavingNote) return;
+        if (!canWrite || !newNoteText.trim() || isSavingNote) return;
         setIsSavingNote(true);
         try {
             const userName = user?.email?.split("@")[0] || "Admin";
@@ -277,24 +280,26 @@ function InquiryNotesTimeline({ inquiryId }: { inquiryId: string }) {
                 </div>
             </div>
 
-            <form onSubmit={handleAddNote} className="mb-5 grid gap-3 sm:grid-cols-[1fr_auto]">
-                <input
-                    type="text"
-                    value={newNoteText}
-                    onChange={(event) => setNewNoteText(event.target.value)}
-                    disabled={isSavingNote}
-                    placeholder="Neue Notiz hinzufügen..."
-                    className="h-14 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100 disabled:opacity-60"
-                />
-                <button
-                    type="submit"
-                    disabled={!newNoteText.trim() || isSavingNote}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-fuchsia-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                    {isSavingNote ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    Hinzufügen
-                </button>
-            </form>
+            {canWrite && (
+                <form onSubmit={handleAddNote} className="mb-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+                    <input
+                        type="text"
+                        value={newNoteText}
+                        onChange={(event) => setNewNoteText(event.target.value)}
+                        disabled={isSavingNote}
+                        placeholder="Neue Notiz hinzufügen..."
+                        className="h-14 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100 disabled:opacity-60"
+                    />
+                    <button
+                        type="submit"
+                        disabled={!newNoteText.trim() || isSavingNote}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-fuchsia-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {isSavingNote ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                        Hinzufügen
+                    </button>
+                </form>
+            )}
 
             {isLoading ? (
                 <div className="rounded-2xl bg-slate-50 p-6 text-center text-sm font-bold text-slate-400">Notizen werden geladen...</div>
@@ -302,7 +307,7 @@ function InquiryNotesTimeline({ inquiryId }: { inquiryId: string }) {
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
                     <MessageSquare className="mx-auto mb-3 h-8 w-8 text-slate-300" />
                     <p className="font-black text-slate-800">Noch keine Notizen</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">Schreibe die erste Notiz, um den Verlauf zu dokumentieren.</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">Noch kein Verlauf dokumentiert.</p>
                 </div>
             ) : (
                 <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
@@ -317,13 +322,15 @@ function InquiryNotesTimeline({ inquiryId }: { inquiryId: string }) {
                                     <span>{formatDateTime(dateValue)}</span>
                                 </div>
                                 <p className="whitespace-pre-wrap break-words text-sm font-semibold leading-6 text-slate-700">{note.content}</p>
-                                <button
-                                    onClick={() => deleteNote(note.id)}
-                                    className="absolute right-3 top-3 rounded-xl bg-white p-1.5 text-slate-300 opacity-0 shadow-sm transition hover:text-rose-500 group-hover:opacity-100"
-                                    title="Notiz löschen"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </button>
+                                {canWrite && (
+                                    <button
+                                        onClick={() => deleteNote(note.id)}
+                                        className="absolute right-3 top-3 rounded-xl bg-white p-1.5 text-slate-300 opacity-0 shadow-sm transition hover:text-rose-500 group-hover:opacity-100"
+                                        title="Notiz löschen"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                )}
                             </div>
                         );
                     })}

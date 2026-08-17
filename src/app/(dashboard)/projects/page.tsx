@@ -13,10 +13,12 @@ import { ProjectModal } from "@/components/projects/ProjectModal";
 import { ProjectDetails } from "@/components/projects/ProjectDetails";
 import { useRouter } from "next/navigation";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ProjectsPage() {
     usePermissionGuard("projects_read");
     const router = useRouter();
+    const { profile } = useAuth();
     const { projects, addProject, updateProject, deleteProject } = useProjects();
     const { customers, addCustomer } = useCustomers();
     const { invoices } = useInvoices();
@@ -30,8 +32,13 @@ export default function ProjectsPage() {
     const [viewProjectId, setViewProjectId] = useState<string | null>(null);
 
     const activeProject = projects.find(p => p.id === viewProjectId);
+    const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
+    const hasWildcard = profile?.permissions?.["*"] === true;
+    const canWriteProjects = isAdminOrDev || hasWildcard || !!profile?.permissions?.projects_write;
+    const canReadProjectFiles = isAdminOrDev || hasWildcard || !!profile?.permissions?.projects_files_read;
 
     const handleCreateProject = (project: Project) => {
+        if (!canWriteProjects) return;
         if (selectedProject) {
             updateProject(selectedProject.id, project);
         } else {
@@ -41,6 +48,7 @@ export default function ProjectsPage() {
     };
 
     const handleEditProject = (project: Project) => {
+        if (!canWriteProjects) return;
         setSelectedProject(project);
         setIsModalOpen(true);
     };
@@ -57,7 +65,7 @@ export default function ProjectsPage() {
 
     // Redirect to invoice creation with project context
     const handleCreateInvoice = (type: 'partial' | 'final') => {
-        if (!activeProject) return;
+        if (!activeProject || !canWriteProjects) return;
 
         // Find next partial number if needed
         const projectInvoices = invoices.filter(inv => inv.projectId === activeProject.id);
@@ -92,15 +100,17 @@ export default function ProjectsPage() {
                                 Verwalten Sie Ihre Baustellen und behalten Sie den Überblick über Fortschritt und Abrechnungen.
                                 </p>
                             </div>
-                            <button
-                                onClick={() => {
-                                    setSelectedProject(null);
-                                    setIsModalOpen(true);
-                                }}
-                                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-xl shadow-indigo-950/20 transition hover:scale-[1.02] active:scale-95"
-                            >
-                                <Plus className="h-5 w-5" /> Neues Projekt
-                            </button>
+                            {canWriteProjects && (
+                                <button
+                                    onClick={() => {
+                                        setSelectedProject(null);
+                                        setIsModalOpen(true);
+                                    }}
+                                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-xl shadow-indigo-950/20 transition hover:scale-[1.02] active:scale-95"
+                                >
+                                    <Plus className="h-5 w-5" /> Neues Projekt
+                                </button>
+                            )}
                         </div>
                     </section>
 
@@ -108,8 +118,11 @@ export default function ProjectsPage() {
                         projects={projects}
                         customers={customers}
                         onEdit={handleEditProject}
-                        onDelete={deleteProject}
+                        onDelete={(id) => {
+                            if (canWriteProjects) deleteProject(id);
+                        }}
                         onView={handleViewProject}
+                        canWrite={canWriteProjects}
                     />
                 </div>
             )}
@@ -124,17 +137,21 @@ export default function ProjectsPage() {
                     onBack={handleBackToList}
                     onEdit={() => handleEditProject(activeProject)}
                     onCreateInvoice={handleCreateInvoice}
+                    canWrite={canWriteProjects}
+                    canReadFiles={canReadProjectFiles}
                 />
             )}
 
-            <ProjectModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onSave={handleCreateProject}
-                onAddCustomer={addCustomer}
-                customers={customers}
-                initialProject={selectedProject || undefined}
-            />
+            {canWriteProjects && (
+                <ProjectModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onSave={handleCreateProject}
+                    onAddCustomer={addCustomer}
+                    customers={customers}
+                    initialProject={selectedProject || undefined}
+                />
+            )}
         </div>
     );
 }

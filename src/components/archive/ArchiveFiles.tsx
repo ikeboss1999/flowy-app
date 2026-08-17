@@ -23,6 +23,7 @@ import { useArchiveFiles, ArchiveFile } from "@/hooks/useArchiveFiles";
 import { useArchiveFolders } from "@/hooks/useArchiveFolders";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DocumentPreviewModal } from "../DocumentPreviewModal";
+import { useAuth } from "@/context/AuthContext";
 
 const ACCEPT_ALL = '.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,image/jpeg,image/png,image/gif,image/webp';
 
@@ -45,6 +46,7 @@ interface ArchiveFilesProps {
 }
 
 export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps) {
+    const { profile } = useAuth();
     const { files, isLoading: isLoadingFiles, uploadFile, deleteFile, getSignedUrl, updateFile, mutate: mutateFiles } = useArchiveFiles();
     const { folders, isLoading: isLoadingFolders, addFolder, renameFolder, deleteFolder, mutate: mutateFolders } = useArchiveFolders();
 
@@ -78,6 +80,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
     // Signed URL cache
     const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
     const [previewDoc, setPreviewDoc] = useState<any | null>(null);
+    const canManageArchive = profile?.role === "admin" || profile?.role === "developer" || profile?.permissions?.["*"] === true;
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -149,6 +152,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
     // ─── Actions ─────────────────────────────────────────────────────────────
     
     const handleCreateFolder = async () => {
+        if (!canManageArchive) return;
         const trimmed = newFolderName.trim();
         if (!trimmed) return;
         const newFolderFullPath = selectedFolder ? `${selectedFolder}/${trimmed}` : trimmed;
@@ -168,6 +172,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
     };
 
     const submitRenameFolder = async () => {
+        if (!canManageArchive) return;
         if (!renamingFolderOldPath || !renamingFolderNewName.trim()) return;
         const trimmedNewName = renamingFolderNewName.trim();
         
@@ -222,6 +227,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
     };
 
     const handleDeleteFolderUI = (folderName: string) => {
+        if (!canManageArchive) return;
         const prefix = folderName + '/';
         const affectedFiles = files.filter(f => f.folder === folderName || f.folder?.startsWith(prefix));
         
@@ -262,6 +268,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
     };
 
     const handleMoveFile = async (file: ArchiveFile, targetFolder: string) => {
+        if (!canManageArchive) return;
         try {
             await updateFile(file.id, { folder: targetFolder });
             setMovingFile(null);
@@ -303,6 +310,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
     };
 
     const handleFiles = useCallback(async (fileList: FileList) => {
+        if (!canManageArchive) return;
         if (!selectedFolder) return;
         setUploadError(null);
         setUploading(true);
@@ -315,9 +323,10 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
         }
         setUploading(false);
         await triggerMutate();
-    }, [selectedFolder, uploadFile]);
+    }, [canManageArchive, selectedFolder, uploadFile]);
 
     const handleRenameFile = async (fileId: string) => {
+        if (!canManageArchive) return;
         if (!newFileName.trim()) {
             setRenamingFileId(null);
             return;
@@ -332,6 +341,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
     };
 
     const handleDelete = (file: ArchiveFile) => {
+        if (!canManageArchive) return;
         setConfirmDialog({
             isOpen: true,
             title: 'Datei löschen',
@@ -390,14 +400,14 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                                             {count === 0 ? 'Keine Dateien' : `${count} Datei${count !== 1 ? 'en' : ''}`}
                                         </td>
                                         <td className="py-4 px-6 text-right">
-                                            <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {canManageArchive && <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => { setRenamingFolderOldPath(folderName); setRenamingFolderNewName(displayName); }} title="Umbenennen" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
                                                     <Edit2 className="h-4 w-4" />
                                                 </button>
                                                 <button onClick={() => handleDeleteFolderUI(folderName)} title="Löschen" className="p-2 bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-600 rounded-xl border border-slate-100 transition-colors">
                                                     <Trash2 className="h-4 w-4" />
                                                 </button>
-                                            </div>
+                                            </div>}
                                         </td>
                                     </tr>
                                 );
@@ -428,12 +438,14 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                         <FolderOpen className="h-5 w-5 text-indigo-500" />
                         {title}
                     </h3>
-                    <button
-                        onClick={() => setIsCreateFolderModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100"
-                    >
-                        <Plus className="h-4 w-4" /> Neuer Ordner
-                    </button>
+                    {canManageArchive && (
+                        <button
+                            onClick={() => setIsCreateFolderModalOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100"
+                        >
+                            <Plus className="h-4 w-4" /> Neuer Ordner
+                        </button>
+                    )}
                 </div>
 
                 {visibleFolders.length === 0 ? (
@@ -445,18 +457,20 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                             <h4 className="font-black text-slate-800 text-base font-outfit">Keine Ordner</h4>
                             <p className="text-slate-400 font-medium text-xs mt-1 font-outfit leading-relaxed">Erstellen Sie Ihren ersten Ordner, um Dokumente zu organisieren.</p>
                         </div>
-                        <button
-                            onClick={() => setIsCreateFolderModalOpen(true)}
-                            className="mt-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-100 flex items-center gap-2 font-outfit"
-                        >
-                            <Plus className="h-4 w-4" /> Ordner erstellen
-                        </button>
+                        {canManageArchive && (
+                            <button
+                                onClick={() => setIsCreateFolderModalOpen(true)}
+                                className="mt-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-100 flex items-center gap-2 font-outfit"
+                            >
+                                <Plus className="h-4 w-4" /> Ordner erstellen
+                            </button>
+                        )}
                     </div>
                 ) : (
                     renderFolderTable(visibleFolders)
                 )}
 
-                {isCreateFolderModalOpen && (
+                {canManageArchive && isCreateFolderModalOpen && (
                     <div className="fixed inset-0 z-[300] bg-white/30 flex items-center justify-center p-4">
                         <div className="bg-white rounded-[24px] p-8 w-full max-w-md shadow-2xl">
                             <h3 className="text-xl font-black text-slate-900 mb-2 font-outfit">Neuer Ordner</h3>
@@ -488,9 +502,9 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
     return (
         <div 
             className="space-y-5"
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragOver={(e) => { e.preventDefault(); if (canManageArchive) setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
-            onDrop={async (e) => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) await handleFiles(e.dataTransfer.files); }}
+            onDrop={async (e) => { e.preventDefault(); setIsDragging(false); if (canManageArchive && e.dataTransfer.files.length) await handleFiles(e.dataTransfer.files); }}
         >
             <div className="flex items-center gap-4 flex-wrap border-b border-slate-50 pb-4">
                 <div className="flex items-center gap-2 flex-wrap font-outfit text-sm">
@@ -511,7 +525,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                     ))}
                 </div>
                 
-                <div className="ml-auto flex items-center gap-2">
+                {canManageArchive && <div className="ml-auto flex items-center gap-2">
                     <button 
                         onClick={() => setIsCreateFolderModalOpen(true)}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm font-outfit"
@@ -540,7 +554,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                         {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Datei hochladen
                     </button>
                     <input ref={fileInputRef} type="file" multiple accept={ACCEPT_ALL} onChange={(e) => e.target.files && handleFiles(e.target.files)} className="hidden" />
-                </div>
+                </div>}
             </div>
 
             {uploadError && (
@@ -560,7 +574,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                         <h4 className="font-black text-slate-800 text-base font-outfit">Dieser Ordner ist leer</h4>
                         <p className="text-slate-400 font-medium text-xs mt-1 leading-relaxed font-outfit">Ziehen Sie Dateien hierher, um sie hochzuladen, oder erstellen Sie einen Unterordner.</p>
                     </div>
-                    <div className="flex gap-2 mt-2">
+                    {canManageArchive && <div className="flex gap-2 mt-2">
                         <button
                             onClick={() => setIsCreateFolderModalOpen(true)}
                             className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm font-outfit"
@@ -573,7 +587,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                         >
                             Datei hochladen
                         </button>
-                    </div>
+                    </div>}
                 </div>
             ) : (
                 <div className="space-y-6">
@@ -623,7 +637,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                                                                     )}
                                                                 </div>
                                                                 <div className="min-w-0 flex-1">
-                                                                    {renamingFileId === file.id ? (
+                                                                    {canManageArchive && renamingFileId === file.id ? (
                                                                         <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                                                                             <input
                                                                                 autoFocus
@@ -652,18 +666,24 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                                                         </td>
                                                         <td className="py-4 px-6 text-right">
                                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                {canManageArchive && (
                                                                 <button onClick={(e) => { e.stopPropagation(); setMovingFile(file); }} title="Verschieben" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
                                                                     <ArrowRightLeft className="h-4 w-4" />
                                                                 </button>
+                                                                )}
                                                                 <button onClick={(e) => { e.stopPropagation(); resolveAndOpen(file); }} title="Download" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
                                                                     <Download className="h-4 w-4" />
                                                                 </button>
+                                                                {canManageArchive && (
+                                                                <>
                                                                 <button onClick={(e) => { e.stopPropagation(); setRenamingFileId(file.id); setNewFileName(file.name); }} title="Umbenennen" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
                                                                     <Edit2 className="h-4 w-4" />
                                                                 </button>
                                                                 <button onClick={(e) => { e.stopPropagation(); handleDelete(file); }} title="Löschen" className="p-2 bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-600 rounded-xl border border-slate-100 transition-colors">
                                                                     {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                                                 </button>
+                                                                </>
+                                                                )}
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -678,7 +698,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                 </div>
             )}
 
-            {isDragging && (
+            {canManageArchive && isDragging && (
                 <div className="fixed inset-0 z-[250] bg-white/30 flex items-center justify-center p-4 pointer-events-none">
                     <div className="bg-white p-8 rounded-[32px] shadow-2xl flex flex-col items-center gap-4 text-center max-w-sm border border-slate-100/50 animate-in zoom-in-95 duration-200">
                         <div className="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 animate-bounce">
@@ -692,7 +712,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                 </div>
             )}
 
-            {isCreateFolderModalOpen && (
+            {canManageArchive && isCreateFolderModalOpen && (
                 <div className="fixed inset-0 z-[300] bg-white/30 flex items-center justify-center p-4">
                     <div className="bg-white rounded-[24px] p-8 w-full max-w-md shadow-2xl">
                         <h3 className="text-xl font-black text-slate-900 mb-2 font-outfit">Neuer Unterordner</h3>
@@ -705,7 +725,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                 </div>
             )}
 
-            {renamingFolderOldPath && (
+            {canManageArchive && renamingFolderOldPath && (
                 <div className="fixed inset-0 z-[300] bg-white/30 flex items-center justify-center p-4">
                     <div className="bg-white rounded-[24px] p-8 w-full max-w-md shadow-2xl">
                         <h3 className="text-xl font-black text-slate-900 mb-2 font-outfit">Ordner umbenennen</h3>
@@ -718,7 +738,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                 </div>
             )}
 
-            {movingFile && (
+            {canManageArchive && movingFile && (
                 <div className="fixed inset-0 z-[300] bg-white/30 flex items-center justify-center p-4">
                     <div className="bg-white rounded-[24px] p-8 w-full max-w-md shadow-2xl">
                         <h3 className="text-xl font-black text-slate-900 mb-2 font-outfit">Verschieben</h3>

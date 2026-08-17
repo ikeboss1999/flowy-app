@@ -33,6 +33,7 @@ import { OrderConfirmation, OrderStatus } from "@/types/order";
 import { useNotification } from "@/context/NotificationContext";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { orderPdfFileName } from "@/lib/document-filenames";
+import { useAuth } from "@/context/AuthContext";
 
 export const dynamic = 'force-dynamic';
 
@@ -47,6 +48,7 @@ async function fetchSignedOrderPdfUrl(orderId: string) {
 
 export default function OrdersPage() {
     usePermissionGuard("orders_read");
+    const { profile } = useAuth();
     const { orders, updateOrder, isLoading } = useOrders();
     const { customers } = useCustomers();
     const { data: companySettings } = useCompanySettings();
@@ -61,6 +63,8 @@ export default function OrdersPage() {
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
     const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+    const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
+    const canWriteOrders = isAdminOrDev || profile?.permissions?.["*"] === true || !!profile?.permissions?.orders_write;
 
     const handleDownload = async (order: OrderConfirmation, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -341,7 +345,7 @@ export default function OrdersPage() {
                                             >
                                                 {downloadingIds.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                                             </button>
-                                            {order.status !== 'cancelled' && (
+                                            {canWriteOrders && order.status !== 'cancelled' && (
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();

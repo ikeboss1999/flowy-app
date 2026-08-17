@@ -32,11 +32,13 @@ import { useNotification } from "@/context/NotificationContext";
 import { useRouter } from "next/navigation";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { invoicePdfFileName } from "@/lib/document-filenames";
+import { useAuth } from "@/context/AuthContext";
 
 export const dynamic = 'force-dynamic';
 
 export default function InvoicesPage() {
     usePermissionGuard("invoices_read");
+    const { profile } = useAuth();
     const router = useRouter();
     const { invoices, updateInvoice, deleteInvoice, isLoading } = useInvoices();
     const { customers } = useCustomers();
@@ -52,6 +54,8 @@ export default function InvoicesPage() {
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
     const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+    const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
+    const canWriteInvoices = isAdminOrDev || profile?.permissions?.["*"] === true || !!profile?.permissions?.invoices_write;
 
     const handleDownload = async (invoice: Invoice, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -187,12 +191,14 @@ export default function InvoicesPage() {
                     </div>
 
                     {/* Neue Rechnung Button */}
-                    <button
-                        onClick={() => router.push("/invoices/new")}
-                        className="bg-white text-indigo-700 px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-950/20 hover:scale-[1.02] active:scale-95 transition-all shrink-0"
-                    >
-                        <Plus className="h-5 w-5" /> Rechnung erstellen
-                    </button>
+                    {canWriteInvoices && (
+                        <button
+                            onClick={() => router.push("/invoices/new")}
+                            className="bg-white text-indigo-700 px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-950/20 hover:scale-[1.02] active:scale-95 transition-all shrink-0"
+                        >
+                            <Plus className="h-5 w-5" /> Rechnung erstellen
+                        </button>
+                    )}
                     </div>
                 </div>
             </div>
@@ -399,7 +405,7 @@ export default function InvoicesPage() {
                                                     <Download className="h-4 w-4" />
                                                 )}
                                             </button>
-                                            {invoice.status === 'draft' && (
+                                            {canWriteInvoices && invoice.status === 'draft' && (
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -411,7 +417,7 @@ export default function InvoicesPage() {
                                                     <Edit2 className="h-4 w-4" />
                                                 </button>
                                             )}
-                                            {invoice.status === 'draft' && (
+                                            {canWriteInvoices && invoice.status === 'draft' && (
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();

@@ -15,8 +15,8 @@ const DEFAULT: ProjectSettings = {
 };
 
 export function useProjectSettings() {
-    const { user, currentEmployee } = useAuth();
-    const activeUserId = user?.id || currentEmployee?.userId;
+    const { user, currentEmployee, profile } = useAuth();
+    const activeUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
     const key = activeUserId ? `/api/settings?userId=${activeUserId}` : null;
 
     const { data: allSettings, isLoading, mutate } = useSWR(key, fetcher);

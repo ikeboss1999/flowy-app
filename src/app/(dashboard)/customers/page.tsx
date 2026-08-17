@@ -26,6 +26,7 @@ import { useCustomers } from "@/hooks/useCustomers";
 import { useNotification } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
+import { useAuth } from "@/context/AuthContext";
 
 const filterOptions: Array<{ id: CustomerType | "all"; label: string; icon: React.ElementType }> = [
     { id: "all", label: "Alle", icon: Filter },
@@ -35,6 +36,7 @@ const filterOptions: Array<{ id: CustomerType | "all"; label: string; icon: Reac
 
 export default function CustomersPage() {
     usePermissionGuard("customers_read");
+    const { profile } = useAuth();
     const { customers, addCustomer, updateCustomer, deleteCustomer, isLoading } = useCustomers();
     const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
@@ -42,6 +44,8 @@ export default function CustomersPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | undefined>(undefined);
     const [selectedDetailCustomer, setSelectedDetailCustomer] = useState<Customer | undefined>(undefined);
+    const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
+    const canWriteCustomers = isAdminOrDev || profile?.permissions?.["*"] === true || !!profile?.permissions?.customers_write;
 
     const stats = useMemo(() => ({
         total: customers.length,
@@ -78,11 +82,16 @@ export default function CustomersPage() {
     }, [customers, searchQuery, filterType]);
 
     const openCreateModal = () => {
+        if (!canWriteCustomers) return;
         setEditingCustomer(undefined);
         setIsModalOpen(true);
     };
 
     const handleSaveCustomer = async (customer: Customer) => {
+        if (!canWriteCustomers) {
+            showToast("Sie haben keine Berechtigung, Kunden zu bearbeiten.", "error");
+            return;
+        }
         try {
             if (editingCustomer) {
                 await updateCustomer(customer.id, customer);
@@ -101,11 +110,13 @@ export default function CustomersPage() {
     };
 
     const handleEditCustomer = (customer: Customer) => {
+        if (!canWriteCustomers) return;
         setEditingCustomer(customer);
         setIsModalOpen(true);
     };
 
     const handleDeleteCustomer = (id: string) => {
+        if (!canWriteCustomers) return;
         showConfirm({
             title: "Kunden löschen?",
             message: "Möchten Sie diesen Kunden wirklich unwiderruflich löschen?",
@@ -157,12 +168,14 @@ export default function CustomersPage() {
                             </p>
                         </div>
 
-                        <button
-                            onClick={openCreateModal}
-                            className="flex w-fit items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 shadow-xl shadow-black/10 transition-all hover:-translate-y-0.5"
-                        >
-                            <Plus className="h-5 w-5" /> Neuer Kunde
-                        </button>
+                        {canWriteCustomers && (
+                            <button
+                                onClick={openCreateModal}
+                                className="flex w-fit items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 shadow-xl shadow-black/10 transition-all hover:-translate-y-0.5"
+                            >
+                                <Plus className="h-5 w-5" /> Neuer Kunde
+                            </button>
+                        )}
                     </div>
 
                     <div className="relative mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -288,6 +301,8 @@ export default function CustomersPage() {
                                             )}>
                                                 {customer.status === "active" ? "Aktiv" : customer.status === "inactive" ? "Inaktiv" : customer.status === "draft" ? "Entwurf" : "Gesperrt"}
                                             </span>
+                                            {canWriteCustomers && (
+                                            <>
                                             <button
                                                 onClick={(event) => {
                                                     event.stopPropagation();
@@ -308,6 +323,8 @@ export default function CustomersPage() {
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
+                                            </>
+                                            )}
                                         </div>
                                     </div>
 

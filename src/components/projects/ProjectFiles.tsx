@@ -44,9 +44,10 @@ function getFileIcon(mimeType?: string): React.ElementType {
 interface ProjectFilesProps {
     projectId: string;
     title?: string;
+    canWrite?: boolean;
 }
 
-export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFilesProps) {
+export function ProjectFiles({ projectId, title = "Projekt-Dateien", canWrite = true }: ProjectFilesProps) {
     const { files, isLoading: isLoadingFiles, uploadFile, deleteFile, getSignedUrl, updateFile, mutate: mutateFiles } = useProjectFiles(projectId);
     const { folders, isLoading: isLoadingFolders, addFolder, renameFolder, deleteFolder, mutate: mutateFolders } = useProjectFolders(projectId);
 
@@ -151,6 +152,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
     // ─── Actions ─────────────────────────────────────────────────────────────
     
     const handleCreateFolder = async () => {
+        if (!canWrite) return;
         const trimmed = newFolderName.trim();
         if (!trimmed) return;
         const newFolderFullPath = selectedFolder ? `${selectedFolder}/${trimmed}` : trimmed;
@@ -170,6 +172,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
     };
 
     const submitRenameFolder = async () => {
+        if (!canWrite) return;
         if (!renamingFolderOldPath || !renamingFolderNewName.trim()) return;
         const trimmedNewName = renamingFolderNewName.trim();
         
@@ -224,6 +227,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
     };
 
     const handleDeleteFolderUI = (folderName: string) => {
+        if (!canWrite) return;
         const prefix = folderName + '/';
         const affectedFiles = files.filter(f => f.folder === folderName || f.folder?.startsWith(prefix));
         
@@ -264,6 +268,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
     };
 
     const handleMoveFile = async (file: ProjectFile, targetFolder: string) => {
+        if (!canWrite) return;
         try {
             await updateFile(file.id, { folder: targetFolder });
             setMovingFile(null);
@@ -305,6 +310,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
     };
 
     const handleFiles = useCallback(async (fileList: FileList) => {
+        if (!canWrite) return;
         if (!selectedFolder) return;
         setUploadError(null);
         setUploading(true);
@@ -317,9 +323,10 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
         }
         setUploading(false);
         await triggerMutate();
-    }, [selectedFolder, uploadFile]);
+    }, [canWrite, selectedFolder, uploadFile]);
 
     const handleRenameFile = async (fileId: string) => {
+        if (!canWrite) return;
         if (!newFileName.trim()) {
             setRenamingFileId(null);
             return;
@@ -334,6 +341,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
     };
 
     const handleDelete = (file: ProjectFile) => {
+        if (!canWrite) return;
         setConfirmDialog({
             isOpen: true,
             title: 'Datei löschen',
@@ -396,9 +404,11 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                                                 <button onClick={() => { setRenamingFolderOldPath(folderName); setRenamingFolderNewName(displayName); }} title="Umbenennen" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
                                                     <Edit2 className="h-4 w-4" />
                                                 </button>
-                                                <button onClick={() => handleDeleteFolderUI(folderName)} title="Löschen" className="p-2 bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-600 rounded-xl border border-slate-100 transition-colors">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
+                                                {canWrite && (
+                                                    <button onClick={() => handleDeleteFolderUI(folderName)} title="Löschen" className="p-2 bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-600 rounded-xl border border-slate-100 transition-colors">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -435,12 +445,14 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                             <p className="text-sm font-medium text-slate-500">Ordner und Projektdateien zentral verwalten.</p>
                         </div>
                     </div>
-                    <button
-                        onClick={() => setIsCreateFolderModalOpen(true)}
-                        className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5 hover:bg-indigo-700"
-                    >
-                        <Plus className="h-4 w-4" /> Neuer Ordner
-                    </button>
+                    {canWrite && (
+                        <button
+                            onClick={() => setIsCreateFolderModalOpen(true)}
+                            className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5 hover:bg-indigo-700"
+                        >
+                            <Plus className="h-4 w-4" /> Neuer Ordner
+                        </button>
+                    )}
                 </div>
 
                 {visibleFolders.length === 0 ? (
@@ -452,18 +464,20 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                             <h4 className="font-black text-slate-800 text-base font-outfit">Keine Ordner</h4>
                             <p className="text-slate-400 font-medium text-xs mt-1 font-outfit leading-relaxed">Erstellen Sie Ihren ersten Ordner, um Dokumente zu organisieren.</p>
                         </div>
-                        <button
-                            onClick={() => setIsCreateFolderModalOpen(true)}
-                            className="font-outfit mt-2 flex items-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 text-xs font-black text-white shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700"
-                        >
-                            <Plus className="h-4 w-4" /> Ordner erstellen
-                        </button>
+                        {canWrite && (
+                            <button
+                                onClick={() => setIsCreateFolderModalOpen(true)}
+                                className="font-outfit mt-2 flex items-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 text-xs font-black text-white shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700"
+                            >
+                                <Plus className="h-4 w-4" /> Ordner erstellen
+                            </button>
+                        )}
                     </div>
                 ) : (
                     renderFolderTable(visibleFolders)
                 )}
 
-                {isCreateFolderModalOpen && (
+                {canWrite && isCreateFolderModalOpen && (
                     <div className="fixed inset-0 z-[300] bg-white/30 flex items-center justify-center p-4">
                         <div className="bg-white rounded-[24px] p-8 w-full max-w-md shadow-2xl">
                             <h3 className="text-xl font-black text-slate-900 mb-2 font-outfit">Neuer Ordner</h3>
@@ -495,9 +509,9 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
     return (
         <div 
             className="space-y-6"
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragOver={(e) => { e.preventDefault(); if (canWrite) setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
-            onDrop={async (e) => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) await handleFiles(e.dataTransfer.files); }}
+            onDrop={async (e) => { e.preventDefault(); setIsDragging(false); if (canWrite && e.dataTransfer.files.length) await handleFiles(e.dataTransfer.files); }}
         >
             <div className="flex flex-col gap-4 rounded-[32px] border border-slate-100 bg-white p-5 shadow-sm xl:flex-row xl:items-center">
                 <div className="font-outfit flex flex-wrap items-center gap-2 text-sm">
@@ -518,6 +532,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                     ))}
                 </div>
                 
+                {canWrite && (
                 <div className="flex flex-wrap items-center gap-2 xl:ml-auto">
                     <button 
                         onClick={() => setIsCreateFolderModalOpen(true)}
@@ -548,6 +563,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                     </button>
                     <input ref={fileInputRef} type="file" multiple accept={ACCEPT_ALL} onChange={(e) => e.target.files && handleFiles(e.target.files)} className="hidden" />
                 </div>
+                )}
             </div>
 
             {uploadError && (
@@ -567,20 +583,22 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                         <h4 className="font-black text-slate-800 text-base font-outfit">Dieser Ordner ist leer</h4>
                         <p className="text-slate-400 font-medium text-xs mt-1 leading-relaxed font-outfit">Ziehen Sie Dateien hierher, um sie hochzuladen, oder erstellen Sie einen Unterordner.</p>
                     </div>
-                    <div className="flex gap-2 mt-2">
-                        <button
-                            onClick={() => setIsCreateFolderModalOpen(true)}
-                            className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm font-outfit"
-                        >
-                            Unterordner erstellen
-                        </button>
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-100 font-outfit"
-                        >
-                            Datei hochladen
-                        </button>
-                    </div>
+                    {canWrite && (
+                        <div className="flex gap-2 mt-2">
+                            <button
+                                onClick={() => setIsCreateFolderModalOpen(true)}
+                                className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm font-outfit"
+                            >
+                                Unterordner erstellen
+                            </button>
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-100 font-outfit"
+                            >
+                                Datei hochladen
+                            </button>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <div className="space-y-6">
@@ -659,18 +677,24 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                                                         </td>
                                                         <td className="py-4 px-6 text-right">
                                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                {canWrite && (
                                                                 <button onClick={(e) => { e.stopPropagation(); setMovingFile(file); }} title="Verschieben" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
                                                                     <ArrowRightLeft className="h-4 w-4" />
                                                                 </button>
+                                                                )}
                                                                 <button onClick={(e) => { e.stopPropagation(); resolveAndOpen(file); }} title="Download" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
                                                                     <Download className="h-4 w-4" />
                                                                 </button>
+                                                                {canWrite && (
                                                                 <button onClick={(e) => { e.stopPropagation(); setRenamingFileId(file.id); setNewFileName(file.name); }} title="Umbenennen" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
                                                                     <Edit2 className="h-4 w-4" />
                                                                 </button>
-                                                                <button onClick={(e) => { e.stopPropagation(); handleDelete(file); }} title="Löschen" className="p-2 bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-600 rounded-xl border border-slate-100 transition-colors">
-                                                                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                                                </button>
+                                                                )}
+                                                                {canWrite && (
+                                                                    <button onClick={(e) => { e.stopPropagation(); handleDelete(file); }} title="Loeschen" className="p-2 bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-600 rounded-xl border border-slate-100 transition-colors">
+                                                                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -685,7 +709,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                 </div>
             )}
 
-            {isDragging && (
+            {canWrite && isDragging && (
                 <div className="fixed inset-0 z-[250] bg-white/30 flex items-center justify-center p-4 pointer-events-none">
                     <div className="bg-white p-8 rounded-[32px] shadow-2xl flex flex-col items-center gap-4 text-center max-w-sm border border-slate-100/50 animate-in zoom-in-95 duration-200">
                         <div className="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 animate-bounce">
@@ -699,7 +723,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                 </div>
             )}
 
-            {isCreateFolderModalOpen && (
+            {canWrite && isCreateFolderModalOpen && (
                 <div className="fixed inset-0 z-[300] bg-white/30 flex items-center justify-center p-4">
                     <div className="bg-white rounded-[24px] p-8 w-full max-w-md shadow-2xl">
                         <h3 className="text-xl font-black text-slate-900 mb-2 font-outfit">Neuer Unterordner</h3>
@@ -712,7 +736,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                 </div>
             )}
 
-            {renamingFolderOldPath && (
+            {canWrite && renamingFolderOldPath && (
                 <div className="fixed inset-0 z-[300] bg-white/30 flex items-center justify-center p-4">
                     <div className="bg-white rounded-[24px] p-8 w-full max-w-md shadow-2xl">
                         <h3 className="text-xl font-black text-slate-900 mb-2 font-outfit">Ordner umbenennen</h3>
@@ -725,7 +749,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
                 </div>
             )}
 
-            {movingFile && (
+            {canWrite && movingFile && (
                 <div className="fixed inset-0 z-[300] bg-white/30 flex items-center justify-center p-4">
                     <div className="bg-white rounded-[24px] p-8 w-full max-w-md shadow-2xl">
                         <h3 className="text-xl font-black text-slate-900 mb-2 font-outfit">Verschieben</h3>
@@ -760,3 +784,4 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien" }: ProjectFi
         </div>
     );
 }
+

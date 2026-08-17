@@ -81,6 +81,7 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
 
     const isStoredInvoice = invoice.status !== 'draft' && (!!invoice.pdfPath || !!invoice.pdfUrl);
     const canReopenInvoice = profile?.role === 'admin' || profile?.role === 'developer';
+    const canCreateDunning = profile?.role === 'admin' || profile?.role === 'developer' || profile?.permissions?.["*"] === true || !!profile?.permissions?.dunning_write;
     const isSmtpConfigured = !!delivery.smtpHost && !!delivery.smtpPort && !!delivery.smtpUser && !!delivery.fromEmail && !!delivery.hasSmtpPassword;
 
     const handleSendEmail = () => {
@@ -233,7 +234,7 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
                     <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-end">
                         {/* Dunning Button */}
                         {/* Dunning Button */}
-                        {invoice.status !== 'draft' && invoice.status !== 'paid' && (
+                        {canCreateDunning && invoice.status !== 'draft' && invoice.status !== 'paid' && (
                             <button
                                 onClick={() => setIsDunningModalOpen(true)}
                                 className="whitespace-nowrap px-4 py-3 bg-orange-500/15 text-orange-100 border border-orange-300/20 rounded-xl font-bold hover:bg-orange-500/25 transition-all flex items-center gap-2"
