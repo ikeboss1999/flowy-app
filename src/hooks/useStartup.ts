@@ -23,13 +23,8 @@ export function useStartup() {
     const resolvedData: StartupData = data || initialFallback.data;
     const isReady = !key || initialFallback.hasCache || (!isLoading && !error && !!data);
 
-    // Overwrite name from profile if available in AuthContext for immediate match
-    const displayData = profile?.name && resolvedData.account.name === "Benutzer"
-        ? { ...resolvedData, account: { ...resolvedData.account, name: profile.name } }
-        : resolvedData;
-
     return {
-        data: displayData,
+        data: resolvedData,
         isReady,
         isLoading,
         error,

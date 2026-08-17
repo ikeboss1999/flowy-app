@@ -6,7 +6,7 @@ import { Laptop, Shield, User, Info, Cpu, Code2 } from "lucide-react";
 import { APP_VERSION } from "@/lib/app-version";
 
 export function AppInfo() {
-    const { user, profile, currentEmployee } = useAuth();
+    const { profile } = useAuth();
     const [deviceInfo, setDeviceInfo] = useState({ os: "Lade...", browser: "Lade...", screen: "Lade..." });
 
     useEffect(() => {
@@ -49,12 +49,6 @@ export function AppInfo() {
         if (role === "employee") return "Mitarbeiter";
         return role;
     };
-
-    // Determine displayed username
-    const employeeName = currentEmployee
-        ? `${currentEmployee.personalData.firstName} ${currentEmployee.personalData.lastName}`.trim()
-        : "";
-    const displayName = profile?.name || user?.user_metadata?.full_name || employeeName || user?.email?.split('@')[0] || "Unbekannter Benutzer";
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -120,10 +114,6 @@ export function AppInfo() {
                         </div>
 
                         <div className="space-y-4 pt-2">
-                            <div className="flex justify-between border-b border-slate-100 pb-2">
-                                <span className="text-slate-400 font-semibold text-sm">Aktueller Benutzer</span>
-                                <span className="font-bold text-slate-800 text-sm">{displayName}</span>
-                            </div>
                             <div className="flex justify-between border-b border-slate-100 pb-2">
                                 <span className="text-slate-400 font-semibold text-sm">Aktive Rolle</span>
                                 <span className="font-bold text-indigo-600 text-sm flex items-center gap-1.5">

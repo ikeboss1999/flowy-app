@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertCircle, Bold, CheckCircle2, ImagePlus, Italic, Link, List, Mail, Send, ShieldCheck, Trash2, Underline } from 'lucide-react';
+import { AlertCircle, Bold, CheckCircle2, ChevronDown, ImagePlus, Italic, Link, List, Mail, Send, ShieldCheck, Trash2, Underline } from 'lucide-react';
 import { useEmailSettings } from '@/hooks/useEmailSettings';
 import { cn } from '@/lib/utils';
 import { htmlToPlainText, plainTextToHtml, sanitizeEmailHtml } from '@/lib/email-html';
@@ -87,6 +87,53 @@ function RichSignatureEditor({ value, fallbackText, onChange }: { value?: string
     );
 }
 
+function SettingsSection({
+    title,
+    description,
+    icon: Icon,
+    isOpen,
+    onToggle,
+    badge,
+    children,
+}: {
+    title: string;
+    description: string;
+    icon: React.ElementType;
+    isOpen: boolean;
+    onToggle: () => void;
+    badge?: React.ReactNode;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <button
+                type="button"
+                onClick={onToggle}
+                className="flex w-full items-center justify-between gap-4 p-6 text-left transition-colors hover:bg-slate-50/70"
+            >
+                <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                        <Icon className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-slate-900">{title}</h3>
+                        <p className="mt-1 text-sm font-semibold text-slate-500">{description}</p>
+                    </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                    {badge}
+                    <ChevronDown className={cn("h-5 w-5 text-slate-400 transition-transform", isOpen && "rotate-180")} />
+                </div>
+            </button>
+            {isOpen && (
+                <div className="border-t border-slate-100 p-6">
+                    {children}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function EmailDeliverySettings() {
     const { delivery, logs, updateDelivery, deleteConnection, isLoading, refresh } = useEmailSettings();
     const [smtpPassword, setSmtpPassword] = useState('');
@@ -95,6 +142,7 @@ export function EmailDeliverySettings() {
     const [isTestingConnection, setIsTestingConnection] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [openSection, setOpenSection] = useState<string | null>(null);
 
     if (isLoading) return <div className="p-8 text-slate-400 font-bold">Laden...</div>;
 
@@ -200,20 +248,22 @@ export function EmailDeliverySettings() {
                 </div>
             )}
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="mb-6 flex items-center justify-between gap-4">
-                    <div>
-                        <h3 className="text-xl font-black text-slate-900">SMTP Einstellungen</h3>
-                        <p className="mt-1 text-sm font-semibold text-slate-500">World4You SMTP-Daten für den Versand aus FlowY.</p>
-                    </div>
+            <SettingsSection
+                title="SMTP Einstellungen"
+                description="World4You SMTP-Daten fuer den Versand aus FlowY."
+                icon={ShieldCheck}
+                isOpen={openSection === 'smtp'}
+                onToggle={() => setOpenSection(openSection === 'smtp' ? null : 'smtp')}
+                badge={(
                     <span className={cn(
                         "inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider",
                         configured ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
                     )}>
                         <ShieldCheck className="h-3.5 w-3.5" />
-                        {configured ? 'Eingerichtet' : 'Unvollständig'}
+                        {configured ? 'Eingerichtet' : 'Unvollstaendig'}
                     </span>
-                </div>
+                )}
+            >
 
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     <div>
@@ -260,25 +310,6 @@ export function EmailDeliverySettings() {
                         <label className={labelClasses}>Antwort-an E-Mail</label>
                         <input type="email" value={delivery.replyToEmail || ''} onChange={(e) => updateDelivery({ replyToEmail: e.target.value })} className={inputClasses} placeholder="Optional" />
                     </div>
-                    <div className="md:col-span-2">
-                        <label className={labelClasses}>E-Mail Signatur</label>
-                        <textarea
-                            rows={4}
-                            value={delivery.signature}
-                            onChange={(e) => updateDelivery({ signature: e.target.value, signatureHtml: plainTextToHtml(e.target.value) })}
-                            className={cn(inputClasses, "resize-y whitespace-pre-wrap")}
-                            placeholder={"Mit freundlichen Grüßen\nFirma GmbH"}
-                        />
-                    </div>
-                    <div className="md:col-span-2">
-                        <label className={labelClasses}>Signatur Editor</label>
-                        <RichSignatureEditor
-                            value={delivery.signatureHtml}
-                            fallbackText={delivery.signature}
-                            onChange={(html) => updateDelivery({ signatureHtml: html, signature: htmlToPlainText(html) })}
-                        />
-                        <p className="mt-2 text-xs font-semibold text-slate-400">Formatierungen, kopierte Signaturen, Links und Bilder werden als HTML-Mail uebernommen.</p>
-                    </div>
                 </div>
 
                 <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
@@ -299,10 +330,52 @@ export function EmailDeliverySettings() {
                         {isSaving ? 'Speichert...' : 'Speichern'}
                     </button>
                 </div>
-            </div>
+            </SettingsSection>
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-xl font-black text-slate-900">Versandprotokoll</h3>
+            <SettingsSection
+                title="E-Mail Signatur"
+                description="Signatur getrennt pflegen, inkl. Formatierung, Links und Bildern."
+                icon={Mail}
+                isOpen={openSection === 'signature'}
+                onToggle={() => setOpenSection(openSection === 'signature' ? null : 'signature')}
+            >
+                <div className="space-y-5">
+                    <div>
+                        <label className={labelClasses}>E-Mail Signatur</label>
+                        <textarea
+                            rows={4}
+                            value={delivery.signature}
+                            onChange={(e) => updateDelivery({ signature: e.target.value, signatureHtml: plainTextToHtml(e.target.value) })}
+                            className={cn(inputClasses, "resize-y whitespace-pre-wrap")}
+                            placeholder={"Mit freundlichen Gruessen\nFirma GmbH"}
+                        />
+                    </div>
+                    <div>
+                        <label className={labelClasses}>Signatur Editor</label>
+                        <RichSignatureEditor
+                            value={delivery.signatureHtml}
+                            fallbackText={delivery.signature}
+                            onChange={(html) => updateDelivery({ signatureHtml: html, signature: htmlToPlainText(html) })}
+                        />
+                        <p className="mt-2 text-xs font-semibold text-slate-400">Formatierungen, kopierte Signaturen, Links und Bilder werden als HTML-Mail uebernommen.</p>
+                    </div>
+                    <div className="flex justify-end border-t border-slate-100 pt-5">
+                        <button onClick={handleSave} disabled={isSaving} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-7 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-700 disabled:opacity-50">
+                            <CheckCircle2 className="h-4 w-4" />
+                            {isSaving ? 'Speichert...' : 'Signatur speichern'}
+                        </button>
+                    </div>
+                </div>
+            </SettingsSection>
+
+            <SettingsSection
+                title="Versandprotokoll"
+                description="Gesendete Dokumente und Testmails nachvollziehen."
+                icon={Send}
+                isOpen={openSection === 'logs'}
+                onToggle={() => setOpenSection(openSection === 'logs' ? null : 'logs')}
+                badge={<span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-500">{logs.length} Eintraege</span>}
+            >
                 <div className="mt-5 overflow-hidden rounded-2xl border border-slate-100">
                     {logs.length === 0 ? (
                         <div className="p-8 text-center text-sm font-semibold text-slate-400">Noch keine E-Mails versendet.</div>
@@ -324,7 +397,7 @@ export function EmailDeliverySettings() {
                         </div>
                     )}
                 </div>
-            </div>
+            </SettingsSection>
         </div>
     );
 }

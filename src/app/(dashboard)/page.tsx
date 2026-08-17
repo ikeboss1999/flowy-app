@@ -62,9 +62,11 @@ export default function Home() {
   const employeeName = currentEmployee
     ? `${currentEmployee.personalData.firstName} ${currentEmployee.personalData.lastName}`.trim()
     : "";
-  const userName = user
-    ? (profile?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Benutzer")
-    : employeeName || startup.account.name || "Benutzer";
+  const accountName = startup.account.name?.trim();
+  const authName = profile?.name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Benutzer";
+  const userName = (accountName && accountName !== "Benutzer")
+    ? accountName
+    : (profile?.role === "employee" ? (employeeName || authName) : authName);
 
   const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
   const permissions = profile?.permissions || {};

@@ -41,6 +41,14 @@ export async function GET() {
             .eq('userId', companyOwnerId)
             .maybeSingle();
 
+        const accountSettingsPromise = session.role === 'employee'
+            ? client
+                .from('settings')
+                .select('accountSettings')
+                .eq('userId', session.userId)
+                .maybeSingle()
+            : Promise.resolve(null);
+
         const invoiceDraftsPromise = hasPermission(session, 'invoices_read')
             ? safeCount(client
                 .from('invoices')
@@ -89,6 +97,7 @@ export async function GET() {
 
         const [
             settingsResult,
+            accountSettingsResult,
             invoiceDrafts,
             overdueInvoices,
             openOffers,
@@ -96,6 +105,7 @@ export async function GET() {
             activeProjects,
         ] = await Promise.all([
             settingsPromise,
+            accountSettingsPromise,
             invoiceDraftsPromise,
             overdueInvoicesPromise,
             openOffersPromise,
@@ -109,7 +119,14 @@ export async function GET() {
 
         const settingsData = settingsResult.data as any;
         const companyData = settingsData?.companyData || settingsData?.companydata || {};
-        const accountSettings = settingsData?.accountSettings || settingsData?.accountsettings || {};
+        const personalAccountSettings = (accountSettingsResult as any)?.data?.accountSettings || (accountSettingsResult as any)?.data?.accountsettings || {};
+        const ownerAccountSettings = settingsData?.accountSettings || settingsData?.accountsettings || {};
+        const accountSettings = session.role === 'employee'
+            ? {
+                ...personalAccountSettings,
+                name: personalAccountSettings.name || session.name || session.email?.split('@')[0] || 'Benutzer',
+            }
+            : ownerAccountSettings;
 
         const payload = {
             company: {

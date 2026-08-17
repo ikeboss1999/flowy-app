@@ -151,6 +151,23 @@ export async function POST(request: Request) {
 
         if (dbError) throw dbError;
 
+        const invitedName = String(name || email.split('@')[0] || 'Mitarbeiter').trim();
+        const now = new Date().toISOString();
+        const { error: settingsError } = await supabaseAdmin
+            .from('settings')
+            .upsert({
+                userId: newUser.id,
+                accountSettings: {
+                    name: invitedName,
+                    onboardingCompleted: true,
+                },
+                created_by: session.userId,
+                updated_by: session.userId,
+                updatedAt: now,
+            }, { onConflict: 'userId' });
+
+        if (settingsError) throw settingsError;
+
         return NextResponse.json({ success: true, user: newUser });
     } catch (e: any) {
         console.error('[UsersAPI] POST failed:', e);

@@ -61,8 +61,8 @@ function AccordionSection({ title, icon: Icon, isOpen, onToggle, children }: Acc
 }
 
 export function AccountSettings({ nameOnly = false }: AccountSettingsProps) {
-    const [openSection, setOpenSection] = useState<string | null>("benutzerkonto");
-    const { user, profile, currentEmployee, refreshProfile } = useAuth();
+    const [openSection, setOpenSection] = useState<string | null>(null);
+    const { user, currentEmployee, refreshProfile } = useAuth();
     const { showToast } = useNotification();
     const { data: settings, updateSettings, isLoading } = useAccountSettings();
     const [name, setName] = useState("");
@@ -87,12 +87,12 @@ export function AccountSettings({ nameOnly = false }: AccountSettingsProps) {
             const employeeName = currentEmployee?.personalData
                 ? `${currentEmployee.personalData.firstName || ""} ${currentEmployee.personalData.lastName || ""}`.trim()
                 : "";
-            setName(nameOnly ? (profile?.name || user?.user_metadata?.full_name || employeeName || settings.name) : settings.name);
+            setName(settings.name !== "Benutzer" ? settings.name : (employeeName || user?.user_metadata?.full_name || user?.email?.split("@")[0] || settings.name));
             if (user?.email) {
                 setEmail(user.email);
             }
         }
-    }, [currentEmployee?.personalData, isLoading, nameOnly, profile?.name, settings.name, user?.email, user?.user_metadata?.full_name]);
+    }, [currentEmployee?.personalData, isLoading, settings.name, user?.email, user?.user_metadata?.full_name]);
 
     const toggleSection = (section: string) => {
         setOpenSection(openSection === section ? null : section);
@@ -110,13 +110,8 @@ export function AccountSettings({ nameOnly = false }: AccountSettingsProps) {
 
     const handleSave = async () => {
         try {
-            if (nameOnly && user) {
-                const { error } = await supabase.auth.updateUser({ data: { full_name: name } });
-                if (error) throw error;
-                await refreshProfile();
-            } else {
-                await updateSettings({ name });
-            }
+            await updateSettings({ name });
+            await refreshProfile();
             setShowNameSuccess(true);
             setTimeout(() => setShowNameSuccess(false), 3000);
         } catch (error) {

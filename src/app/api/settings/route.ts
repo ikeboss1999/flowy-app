@@ -65,15 +65,28 @@ export async function GET(request: Request) {
 
     try {
         const client = supabaseAdmin || supabase;
+        const { searchParams } = new URL(request.url);
+        const accountUserId = searchParams.get('accountUserId');
+        const settingsUserId = accountUserId && accountUserId === session?.userId
+            ? session.userId
+            : companyOwnerId;
         const { data, error } = await client
             .from('settings')
             .select('*')
-            .eq('userId', companyOwnerId)
+            .eq('userId', settingsUserId)
             .single();
 
         if (error && error.code !== 'PGRST116') throw error;
 
         if (data) {
+            if (accountUserId && accountUserId === session?.userId) {
+                const payload = {
+                    accountSettings: data.accountSettings ? sanitizeAccountSettingsForClient(data.accountSettings) : null,
+                };
+                logApiPerformance('/api/settings', startedAt, { payload, note: 'account' });
+                return NextResponse.json(payload);
+            }
+
             // Employees get readonly numbering/document settings from the company owner.
             if (session?.role === 'employee') {
                 const payload = {
@@ -120,6 +133,7 @@ export async function POST(request: Request) {
     try {
         const payload = await request.json();
         const employeeWritableTypes: Record<string, string> = {
+            account: 'self',
             customer: 'customers_write',
             invoice: 'invoices_write',
             offer: 'offers_write',
@@ -129,7 +143,7 @@ export async function POST(request: Request) {
 
         if (session?.role === 'employee') {
             const requiredPermission = payload?.type ? employeeWritableTypes[payload.type] : null;
-            if (!requiredPermission || !hasPermission(session, requiredPermission)) {
+            if (!requiredPermission || (requiredPermission !== 'self' && !hasPermission(session, requiredPermission))) {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
         }
@@ -137,12 +151,15 @@ export async function POST(request: Request) {
         const now = new Date().toISOString();
 
         const client = supabaseAdmin || supabase;
+        const settingsUserId = session?.role === 'employee' && payload?.type === 'account'
+            ? session.userId
+            : companyOwnerId;
 
         // 1. Fetch Existing Settings
         const { data } = await client
             .from('settings')
             .select('*')
-            .eq('userId', companyOwnerId)
+            .eq('userId', settingsUserId)
             .single();
         const currentSettings: any = data || {};
 
@@ -150,7 +167,7 @@ export async function POST(request: Request) {
         let updatedSettings = {
             ...currentSettings,
             updatedAt: now,
-            userId: companyOwnerId,
+            userId: settingsUserId,
             updated_by: session.userId
         };
 
