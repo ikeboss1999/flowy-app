@@ -7,10 +7,8 @@ import { getUserSession, hasPermission } from '@/lib/auth-server';
 import { encryptEmployee, decryptEmployee } from '@/lib/encryption';
 import { safeGetCreatedBy, safeUpsert } from '@/lib/supabase-helper';
 import {
-    ALLOWED_EMPLOYEE_AVATAR_MIME_TYPES,
-    buildEmployeeAvatarStoragePath,
     getEmployeeAvatarStoragePath,
-    toEmployeeAvatarReference,
+    persistEmployeeInlineAvatar,
     withResolvedEmployeeAvatar,
 } from '@/lib/employee-avatar';
 import { logApiPerformance } from '@/lib/api-performance';
@@ -86,46 +84,6 @@ function toEmployeeSummary(employee: any) {
         created_by: decrypted.created_by,
         updated_by: decrypted.updated_by,
     };
-}
-
-async function persistInlineAvatar(params: {
-    avatar?: string | null;
-    companyOwnerId: string;
-    employeeId: string;
-}) {
-    if (!params.avatar || !params.avatar.startsWith('data:image/')) {
-        return params.avatar ?? null;
-    }
-
-    if (!supabaseAdmin) {
-        return params.avatar;
-    }
-
-    const match = params.avatar.match(/^data:([^;]+);base64,(.+)$/);
-    if (!match) return params.avatar;
-
-    const [, mimeType, base64] = match;
-    if (!ALLOWED_EMPLOYEE_AVATAR_MIME_TYPES.has(mimeType)) {
-        return params.avatar;
-    }
-
-    const extension = mimeType.split('/')[1] || 'jpg';
-    const storagePath = buildEmployeeAvatarStoragePath({
-        companyOwnerId: params.companyOwnerId,
-        employeeId: params.employeeId,
-        fileName: `avatar.${extension}`,
-    });
-
-    const { error } = await supabaseAdmin.storage
-        .from('employee-avatars')
-        .upload(storagePath, Buffer.from(base64, 'base64'), {
-            contentType: mimeType,
-            upsert: true,
-        });
-
-    if (error) throw error;
-
-    return toEmployeeAvatarReference(storagePath);
 }
 
 export async function GET(request: Request) {
@@ -208,7 +166,7 @@ export async function POST(request: Request) {
         const normalizedEmployee = {
             ...employee,
             id: empId,
-            avatar: await persistInlineAvatar({
+            avatar: await persistEmployeeInlineAvatar({
                 avatar: employee.avatar,
                 companyOwnerId,
                 employeeId: empId,

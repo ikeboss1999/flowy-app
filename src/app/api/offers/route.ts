@@ -45,6 +45,21 @@ function isStoredOfferPdfReference(offer: any, companyOwnerId: string) {
     }
 }
 
+async function findDuplicateOfferNumber(client: any, offerNumber: string, companyOwnerId: string, currentOfferId?: string) {
+    const normalizedNumber = String(offerNumber || '').trim();
+    if (!normalizedNumber) return null;
+
+    const { data, error } = await client
+        .from('offers')
+        .select('id,offerNumber')
+        .eq('userId', companyOwnerId)
+        .eq('offerNumber', normalizedNumber)
+        .limit(2);
+
+    if (error) throw error;
+    return (data || []).find((offer: any) => offer.id !== currentOfferId) || null;
+}
+
 export async function GET(request: Request) {
     const startedAt = performance.now();
     const session = await getUserSession();
@@ -94,6 +109,11 @@ export async function POST(request: Request) {
         const now = new Date().toISOString();
 
         const client = supabaseAdmin || supabase;
+
+        const duplicateOffer = await findDuplicateOfferNumber(client, offer.offerNumber, companyOwnerId, offer.id);
+        if (duplicateOffer) {
+            return NextResponse.json({ error: `Angebotsnummer ${offer.offerNumber} ist bereits vergeben.` }, { status: 409 });
+        }
 
         if (offer.customerId) {
             const { data: customer, error: customerError } = await client

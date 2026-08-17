@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     Briefcase,
     Calendar,
+    Camera,
     Copy,
+    Crop,
     CreditCard,
     Download,
     Edit2,
@@ -18,6 +20,7 @@ import {
     MapPin,
     Phone,
     Plus,
+    RotateCw,
     Shield,
     Smartphone,
     Trash2,
@@ -28,6 +31,7 @@ import {
 } from "lucide-react";
 import { Employee, EmployeeDocument } from "@/types/employee";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 interface EmployeeDetailModalProps {
     isOpen: boolean;
@@ -41,6 +45,7 @@ interface EmployeeDetailModalProps {
     onDeleteDocument?: (employeeId: string, docId: string) => void;
     onAddDocument?: (employeeId: string, doc: EmployeeDocument) => void;
     onUpdateEmployee?: (employee: Employee) => void;
+    onAvatarChange?: (employeeId: string, avatar: string | null, avatarUrl?: string | null) => void;
     onMobileAccessAction?: (
         employeeId: string,
         action:
@@ -63,14 +68,33 @@ interface EmployeeDetailModalProps {
 
 const formatDate = (date?: string) => {
     if (!date) return "-";
+    if (looksEncrypted(date)) return "-";
     const parsed = new Date(date);
     if (Number.isNaN(parsed.getTime())) return "-";
     return parsed.toLocaleDateString("de-AT");
 };
 
+const looksEncrypted = (value?: string | number) => {
+    if (typeof value !== "string") return false;
+    return (
+        /^gcm:v1:[0-9a-fA-F]+:[0-9a-fA-F]+:[0-9a-fA-F]+$/.test(value) ||
+        /^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/.test(value)
+    );
+};
+
 const empty = (value?: string | number) => {
     if (value === 0) return "0";
+    if (looksEncrypted(value)) return "-";
     return value ? String(value) : "-";
+};
+
+const safeText = (value?: string | number) => empty(value);
+
+const joinVisible = (...parts: Array<string | number | undefined>) => {
+    const visible = parts
+        .map((part) => safeText(part))
+        .filter((part) => part !== "-");
+    return visible.length > 0 ? visible.join(", ") : "-";
 };
 
 const InfoCard = ({
@@ -124,6 +148,115 @@ const sanitizeFileName = (name: string) =>
 const pickStringId = (...values: unknown[]) =>
     values.find((value): value is string => typeof value === "string" && value.trim().length > 0)?.trim() || "";
 
+const AVATAR_CANVAS_SIZE = 512;
+const AVATAR_THUMB_SIZE = 128;
+const AVATAR_PREVIEW_SIZE = 1000;
+
+type AvatarCropState = {
+    x: number;
+    y: number;
+    size: number;
+};
+
+type AvatarCropDrag = {
+    mode: "move" | "nw" | "ne" | "sw" | "se";
+    startX: number;
+    startY: number;
+    startCrop: AvatarCropState;
+};
+
+const presetAvatar = (label: string, from: string, to: string, accent: string) => `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="128" height="128" rx="30" fill="url(#g)"/><circle cx="64" cy="48" r="22" fill="white" fill-opacity=".92"/><path d="M28 112c5-24 19-38 36-38s31 14 36 38" fill="white" fill-opacity=".92"/><circle cx="98" cy="30" r="10" fill="${accent}" fill-opacity=".9"/><text x="64" y="121" text-anchor="middle" font-size="13" font-family="Arial" font-weight="700" fill="white" fill-opacity=".76">${label}</text></svg>`
+)}`;
+
+const PRESET_AVATARS = [
+    presetAvatar("A", "#4f46e5", "#06b6d4", "#f59e0b"),
+    presetAvatar("B", "#059669", "#84cc16", "#6366f1"),
+    presetAvatar("C", "#e11d48", "#f97316", "#22d3ee"),
+    presetAvatar("D", "#7c3aed", "#ec4899", "#10b981"),
+];
+
+const defaultAvatarCrop = (): AvatarCropState => ({ x: 12, y: 12, size: 76 });
+
+const clampAvatarCrop = (crop: AvatarCropState): AvatarCropState => {
+    const size = Math.min(100, Math.max(24, crop.size));
+    return {
+        size,
+        x: Math.min(100 - size, Math.max(0, crop.x)),
+        y: Math.min(100 - size, Math.max(0, crop.y)),
+    };
+};
+
+async function createAvatarBlobFromUrl(url: string, size: number, rotation: number, crop: AvatarCropState) {
+    const imageBlob = await fetch(url).then((response) => {
+        if (!response.ok) throw new Error("Avatar image could not be loaded.");
+        return response.blob();
+    });
+    const objectUrl = URL.createObjectURL(imageBlob);
+
+    try {
+        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error("Avatar image could not be decoded."));
+            img.src = objectUrl;
+        });
+
+        const previewCanvas = document.createElement("canvas");
+        previewCanvas.width = AVATAR_PREVIEW_SIZE;
+        previewCanvas.height = AVATAR_PREVIEW_SIZE;
+        const previewCtx = previewCanvas.getContext("2d");
+        if (!previewCtx) throw new Error("Canvas is not supported.");
+
+        const coverScale = Math.max(
+            AVATAR_PREVIEW_SIZE / image.naturalWidth,
+            AVATAR_PREVIEW_SIZE / image.naturalHeight
+        );
+
+        previewCtx.translate(AVATAR_PREVIEW_SIZE / 2, AVATAR_PREVIEW_SIZE / 2);
+        previewCtx.rotate((rotation * Math.PI) / 180);
+        previewCtx.drawImage(
+            image,
+            -image.naturalWidth * coverScale / 2,
+            -image.naturalHeight * coverScale / 2,
+            image.naturalWidth * coverScale,
+            image.naturalHeight * coverScale
+        );
+
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas is not supported.");
+
+        const safeCrop = clampAvatarCrop(crop);
+        const sourceX = (safeCrop.x / 100) * AVATAR_PREVIEW_SIZE;
+        const sourceY = (safeCrop.y / 100) * AVATAR_PREVIEW_SIZE;
+        const sourceSize = (safeCrop.size / 100) * AVATAR_PREVIEW_SIZE;
+
+        ctx.drawImage(
+            previewCanvas,
+            sourceX,
+            sourceY,
+            sourceSize,
+            sourceSize,
+            0,
+            0,
+            size,
+            size
+        );
+
+        return await new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob((blob) => {
+                if (blob) resolve(blob);
+                else reject(new Error("Avatar could not be exported."));
+            }, "image/webp", size <= AVATAR_THUMB_SIZE ? 0.78 : 0.88);
+        });
+    } finally {
+        URL.revokeObjectURL(objectUrl);
+    }
+}
+
 interface MobileDocumentFolder {
     id: string;
     name: string;
@@ -176,6 +309,7 @@ export function EmployeeDetailModal({
     onDeleteDocument,
     onAddDocument,
     onUpdateEmployee,
+    onAvatarChange,
     onMobileAccessAction,
     onPreviewDocument,
     isDownloadingPDF,
@@ -204,6 +338,15 @@ export function EmployeeDetailModal({
     const [selectedMobileProjectId, setSelectedMobileProjectId] = useState("");
     const [mobileProjectTask, setMobileProjectTask] = useState("");
     const [maxMobileProjectAssignments, setMaxMobileProjectAssignments] = useState(2);
+    const [isAvatarEditorOpen, setIsAvatarEditorOpen] = useState(false);
+    const [avatarEditUrl, setAvatarEditUrl] = useState("");
+    const [avatarCrop, setAvatarCrop] = useState<AvatarCropState>(() => defaultAvatarCrop());
+    const [avatarRotation, setAvatarRotation] = useState(0);
+    const [isAvatarSaving, setIsAvatarSaving] = useState(false);
+    const [avatarError, setAvatarError] = useState("");
+    const avatarFileInputRef = useRef<HTMLInputElement>(null);
+    const avatarCropAreaRef = useRef<HTMLDivElement>(null);
+    const avatarCropDragRef = useRef<AvatarCropDrag | null>(null);
 
     const [fullEmployee, setFullEmployee] = useState<Employee>(employee);
 
@@ -221,9 +364,80 @@ export function EmployeeDetailModal({
         }
     }, [isOpen, employee]);
 
+    useEffect(() => {
+        if (!isAvatarEditorOpen) return;
+
+        const handlePointerMove = (event: PointerEvent) => {
+            const drag = avatarCropDragRef.current;
+            const area = avatarCropAreaRef.current;
+            if (!drag || !area) return;
+
+            const rect = area.getBoundingClientRect();
+            const deltaX = ((event.clientX - drag.startX) / rect.width) * 100;
+            const deltaY = ((event.clientY - drag.startY) / rect.height) * 100;
+            const start = drag.startCrop;
+
+            if (drag.mode === "move") {
+                setAvatarCrop(clampAvatarCrop({ ...start, x: start.x + deltaX, y: start.y + deltaY }));
+                return;
+            }
+
+            let nextX = start.x;
+            let nextY = start.y;
+            let nextSize = start.size;
+            const minSize = 24;
+
+            if (drag.mode === "nw") {
+                const delta = Math.max(deltaX, deltaY);
+                nextSize = Math.max(minSize, start.size - delta);
+                nextX = start.x + (start.size - nextSize);
+                nextY = start.y + (start.size - nextSize);
+            } else if (drag.mode === "ne") {
+                const delta = Math.max(-deltaX, deltaY);
+                nextSize = Math.max(minSize, start.size - delta);
+                nextY = start.y + (start.size - nextSize);
+            } else if (drag.mode === "sw") {
+                const delta = Math.max(deltaX, -deltaY);
+                nextSize = Math.max(minSize, start.size - delta);
+                nextX = start.x + (start.size - nextSize);
+            } else if (drag.mode === "se") {
+                const delta = Math.max(deltaX, deltaY);
+                nextSize = Math.max(minSize, start.size + delta);
+            }
+
+            setAvatarCrop(clampAvatarCrop({ x: nextX, y: nextY, size: nextSize }));
+        };
+
+        const stopDrag = () => {
+            avatarCropDragRef.current = null;
+        };
+
+        window.addEventListener("pointermove", handlePointerMove);
+        window.addEventListener("pointerup", stopDrag);
+        window.addEventListener("pointercancel", stopDrag);
+
+        return () => {
+            window.removeEventListener("pointermove", handlePointerMove);
+            window.removeEventListener("pointerup", stopDrag);
+            window.removeEventListener("pointercancel", stopDrag);
+        };
+    }, [isAvatarEditorOpen]);
+
+    const startAvatarCropDrag = (mode: AvatarCropDrag["mode"], event: React.PointerEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        avatarCropDragRef.current = {
+            mode,
+            startX: event.clientX,
+            startY: event.clientY,
+            startCrop: avatarCrop,
+        };
+    };
+
     if (!isOpen || !employee) return null;
 
     const currentEmp = fullEmployee || employee;
+    const currentAvatarUrl = currentEmp.avatarUrl || currentEmp.avatar || "";
     const name = `${currentEmp.personalData.firstName} ${currentEmp.personalData.lastName}`.trim() || "Unbenannter Mitarbeiter";
     const initials =
         name
@@ -244,8 +458,8 @@ export function EmployeeDetailModal({
     ];
     const assignedMobileProjectIds = new Set(mobileProjectAssignments.map((assignment) => assignment.projectId));
     const assignableMobileProjects = mobileProjects.filter((project) => !assignedMobileProjectIds.has(project.id));
-    const weeklyHours = employee.weeklySchedule
-        ? Object.values(employee.weeklySchedule).reduce((sum, day) => sum + (day.enabled ? Number(day.hours || 0) : 0), 0)
+    const weeklyHours = currentEmp.weeklySchedule
+        ? Object.values(currentEmp.weeklySchedule).reduce((sum, day) => sum + (day.enabled ? Number(day.hours || 0) : 0), 0)
         : 0;
 
     const selectedTypeLabel =
@@ -510,7 +724,7 @@ export function EmployeeDetailModal({
         if (!file) return;
         const extension = file.name.includes(".") ? file.name.split(".").pop() : "";
         setSelectedFile(file);
-        setFileName(`${sanitizeFileName(selectedTypeLabel)}_${employee.personalData.lastName || "Mitarbeiter"}${extension ? `.${extension}` : ""}`);
+        setFileName(`${sanitizeFileName(selectedTypeLabel)}_${currentEmp.personalData.lastName || "Mitarbeiter"}${extension ? `.${extension}` : ""}`);
     };
 
     const resetUpload = () => {
@@ -547,6 +761,129 @@ export function EmployeeDetailModal({
         reader.readAsDataURL(selectedFile);
     };
 
+    const openAvatarEditor = () => {
+        setAvatarEditUrl(currentAvatarUrl);
+        setAvatarCrop(defaultAvatarCrop());
+        setAvatarRotation(0);
+        setAvatarError("");
+        setIsAvatarEditorOpen(true);
+    };
+
+    const updateLocalAvatar = (avatar: string | null, avatarUrl?: string | null) => {
+        setFullEmployee((prev) => ({
+            ...prev,
+            avatar: avatar || undefined,
+            avatarUrl: avatarUrl || null,
+        }));
+        onAvatarChange?.(employee.id, avatar, avatarUrl);
+    };
+
+    const saveAvatarReference = async (avatar: string) => {
+        const response = await fetch(`/api/employees/${employee.id}/avatar`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ avatar }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data?.error || "Profilbild konnte nicht gespeichert werden.");
+        updateLocalAvatar(data.avatar, data.avatarUrl || avatar);
+        return data;
+    };
+
+    const handleAvatarFile = (file?: File | null) => {
+        if (!file) return;
+        const localUrl = URL.createObjectURL(file);
+        setAvatarEditUrl(localUrl);
+        setAvatarCrop(defaultAvatarCrop());
+        setAvatarRotation(0);
+        setAvatarError("");
+    };
+
+    const saveEditedAvatar = async () => {
+        if (!avatarEditUrl) return;
+        setIsAvatarSaving(true);
+        setAvatarError("");
+
+        try {
+            const editedAvatar = await createAvatarBlobFromUrl(avatarEditUrl, AVATAR_CANVAS_SIZE, avatarRotation, avatarCrop);
+            const thumbnail = await createAvatarBlobFromUrl(avatarEditUrl, AVATAR_THUMB_SIZE, avatarRotation, avatarCrop);
+
+            const uploadResponse = await fetch(`/api/employees/${employee.id}/avatar-upload-url`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    fileName: "profilbild.webp",
+                    mimeType: "image/webp",
+                    fileSize: editedAvatar.size,
+                }),
+            });
+            const uploadInfo = await uploadResponse.json().catch(() => ({}));
+            if (!uploadResponse.ok) throw new Error(uploadInfo?.error || "Upload konnte nicht vorbereitet werden.");
+
+            const bucket = uploadInfo.bucket || "employee-avatars";
+            const { error } = await supabase.storage
+                .from(bucket)
+                .uploadToSignedUrl(uploadInfo.storagePath, uploadInfo.token, editedAvatar, {
+                    contentType: "image/webp",
+                    upsert: true,
+                });
+            if (error) throw error;
+
+            if (uploadInfo.thumbStoragePath && uploadInfo.thumbToken) {
+                const { error: thumbError } = await supabase.storage
+                    .from(bucket)
+                    .uploadToSignedUrl(uploadInfo.thumbStoragePath, uploadInfo.thumbToken, thumbnail, {
+                        contentType: "image/webp",
+                        upsert: true,
+                    });
+                if (thumbError) throw thumbError;
+            }
+
+            const avatarReference = `storage:employee-avatars:${uploadInfo.storagePath}`;
+            await saveAvatarReference(avatarReference);
+            updateLocalAvatar(avatarReference, URL.createObjectURL(editedAvatar));
+            setIsAvatarEditorOpen(false);
+        } catch (error: any) {
+            console.error("Avatar save failed:", error);
+            setAvatarError(error?.message || "Profilbild konnte nicht gespeichert werden.");
+        } finally {
+            setIsAvatarSaving(false);
+        }
+    };
+
+    const selectPresetAvatar = async (avatar: string) => {
+        setIsAvatarSaving(true);
+        setAvatarError("");
+        try {
+            await saveAvatarReference(avatar);
+            setAvatarEditUrl(avatar);
+            setIsAvatarEditorOpen(false);
+        } catch (error: any) {
+            console.error("Preset avatar save failed:", error);
+            setAvatarError(error?.message || "Avatar konnte nicht gespeichert werden.");
+        } finally {
+            setIsAvatarSaving(false);
+        }
+    };
+
+    const deleteAvatar = async () => {
+        setIsAvatarSaving(true);
+        setAvatarError("");
+        try {
+            const response = await fetch(`/api/employees/${employee.id}/avatar`, { method: "DELETE" });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data?.error || "Profilbild konnte nicht gelöscht werden.");
+            updateLocalAvatar(null, null);
+            setAvatarEditUrl("");
+            setIsAvatarEditorOpen(false);
+        } catch (error: any) {
+            console.error("Avatar delete failed:", error);
+            setAvatarError(error?.message || "Profilbild konnte nicht gelöscht werden.");
+        } finally {
+            setIsAvatarSaving(false);
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-white/30 p-4">
             <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-[36px] border border-white/20 bg-white shadow-2xl">
@@ -565,20 +902,28 @@ export function EmployeeDetailModal({
 
                     <div className="relative flex flex-col gap-6 pr-14 lg:flex-row lg:items-end lg:justify-between">
                         <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
-                            {(currentEmp.avatarUrl || currentEmp.avatar) ? (
-                                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[28px] border border-white/20 bg-white shadow-xl">
-                                    <img src={currentEmp.avatarUrl || currentEmp.avatar} alt={name} className="h-full w-full object-cover" />
-                                </div>
-                            ) : (
-                                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[28px] bg-white text-3xl font-black text-indigo-700 shadow-xl">
-                                    {initials}
-                                </div>
-                            )}
+                            <button
+                                type="button"
+                                onClick={openAvatarEditor}
+                                className="group/avatar relative h-20 w-20 shrink-0 overflow-hidden rounded-[28px] border border-white/20 bg-white shadow-xl transition hover:scale-[1.03] focus:outline-none focus:ring-4 focus:ring-white/25"
+                                title="Profilbild öffnen"
+                            >
+                                {currentAvatarUrl ? (
+                                    <img src={currentAvatarUrl} alt={name} className="h-full w-full object-cover" />
+                                ) : (
+                                    <span className="flex h-full w-full items-center justify-center text-3xl font-black text-indigo-700">
+                                        {initials}
+                                    </span>
+                                )}
+                                <span className="absolute inset-0 flex items-center justify-center bg-slate-950/0 text-white opacity-0 transition group-hover/avatar:bg-slate-950/35 group-hover/avatar:opacity-100">
+                                    <Camera className="h-6 w-6" />
+                                </span>
+                            </button>
 
                             <div className="min-w-0">
                                 <div className="mb-3 flex flex-wrap gap-2">
                                     <span className="rounded-full bg-white/12 px-3 py-1 text-[10px] font-black uppercase tracking-widest ring-1 ring-white/15">
-                                        #{employee.employeeNumber || "---"}
+                                        #{currentEmp.employeeNumber || "---"}
                                     </span>
                                     <span className={cn(
                                         "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ring-1",
@@ -590,18 +935,18 @@ export function EmployeeDetailModal({
                                 <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/45">Personalakte</p>
                                 <h3 className="mt-2 max-w-3xl break-words text-4xl font-black leading-tight tracking-tight">{name}</h3>
                                 <p className="mt-2 text-sm font-semibold text-white/70">
-                                    {employee.employment.position || "Keine Position"} · {employee.employment.status}
+                                    {currentEmp.employment.position || "Keine Position"} · {currentEmp.employment.status}
                                 </p>
                                 <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm font-bold text-white/70">
-                                    <span className="flex min-w-0 items-center gap-2"><Mail className="h-4 w-4 text-cyan-100" />{employee.personalData.email || "Keine E-Mail"}</span>
-                                    <span className="flex min-w-0 items-center gap-2"><Phone className="h-4 w-4 text-cyan-100" />{employee.personalData.phone || "Keine Telefonnummer"}</span>
-                                    <span className="flex min-w-0 items-center gap-2"><MapPin className="h-4 w-4 text-cyan-100" />{employee.personalData.street || "-"}, {employee.personalData.zip || ""} {employee.personalData.city || ""}</span>
+                                    <span className="flex min-w-0 items-center gap-2"><Mail className="h-4 w-4 text-cyan-100" />{currentEmp.personalData.email || "Keine E-Mail"}</span>
+                                    <span className="flex min-w-0 items-center gap-2"><Phone className="h-4 w-4 text-cyan-100" />{currentEmp.personalData.phone || "Keine Telefonnummer"}</span>
+                                    <span className="flex min-w-0 items-center gap-2"><MapPin className="h-4 w-4 text-cyan-100" />{currentEmp.personalData.street || "-"}, {currentEmp.personalData.zip || ""} {currentEmp.personalData.city || ""}</span>
                                 </div>
                             </div>
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">
                             <button
-                                onClick={() => onDownloadPDF(employee)}
+                                onClick={() => onDownloadPDF(currentEmp)}
                                 disabled={isDownloadingPDF}
                                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-lg transition hover:bg-indigo-50 disabled:opacity-50"
                             >
@@ -610,7 +955,7 @@ export function EmployeeDetailModal({
                             </button>
                             {onStartEdit && (
                                 <button
-                                    onClick={() => onStartEdit(employee)}
+                                    onClick={() => onStartEdit(currentEmp)}
                                     className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow-lg transition hover:bg-indigo-50"
                                 >
                                     <Edit2 className="h-4 w-4" />
@@ -620,7 +965,7 @@ export function EmployeeDetailModal({
                             {isActive ? (
                                 onDeactivate && (
                                     <button
-                                        onClick={() => onDeactivate(employee)}
+                                        onClick={() => onDeactivate(currentEmp)}
                                         className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200/20 bg-white/10 px-5 py-3 text-sm font-black text-rose-100 transition hover:bg-rose-400/20"
                                     >
                                         <UserX className="h-4 w-4" />
@@ -631,7 +976,7 @@ export function EmployeeDetailModal({
                                 <>
                                     {onReactivate && (
                                         <button
-                                            onClick={() => onReactivate(employee)}
+                                            onClick={() => onReactivate(currentEmp)}
                                             className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200/20 bg-white/10 px-5 py-3 text-sm font-black text-emerald-100 transition hover:bg-emerald-400/20"
                                         >
                                             <UserCheck className="h-4 w-4" />
@@ -658,12 +1003,12 @@ export function EmployeeDetailModal({
                         <div className="min-w-0">
                             <p className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-500">Personalakte</p>
                             <h3 className="mt-1 truncate text-2xl font-black text-slate-950">{name}</h3>
-                            <p className="mt-1 text-sm font-bold text-slate-500 lg:hidden">#{employee.employeeNumber || "---"} · {employee.employment.position || "Keine Position"}</p>
+                            <p className="mt-1 text-sm font-bold text-slate-500 lg:hidden">#{currentEmp.employeeNumber || "---"} · {currentEmp.employment.position || "Keine Position"}</p>
                         </div>
 
                         <div className="flex items-center gap-2">
                             <button
-                                onClick={() => onDownloadPDF(employee)}
+                                onClick={() => onDownloadPDF(currentEmp)}
                                 disabled={isDownloadingPDF}
                                 className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 disabled:opacity-50"
                                 title="Personaldatenblatt herunterladen"
@@ -672,7 +1017,7 @@ export function EmployeeDetailModal({
                             </button>
                             {onStartEdit && (
                                 <button
-                                    onClick={() => onStartEdit(employee)}
+                                    onClick={() => onStartEdit(currentEmp)}
                                     className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 transition hover:bg-indigo-100"
                                     title="Bearbeiten"
                                 >
@@ -682,7 +1027,7 @@ export function EmployeeDetailModal({
                             {isActive ? (
                                 onDeactivate && (
                                     <button
-                                        onClick={() => onDeactivate(employee)}
+                                        onClick={() => onDeactivate(currentEmp)}
                                         className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 transition hover:bg-rose-100"
                                         title="Abmelden"
                                     >
@@ -693,7 +1038,7 @@ export function EmployeeDetailModal({
                                 <>
                                     {onReactivate && (
                                         <button
-                                            onClick={() => onReactivate(employee)}
+                                            onClick={() => onReactivate(currentEmp)}
                                             className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100"
                                             title="Reaktivieren"
                                         >
@@ -757,40 +1102,40 @@ export function EmployeeDetailModal({
                         {activeTab === "info" ? (
                             <div className="grid gap-4 xl:grid-cols-2">
                                 <InfoCard icon={Shield} title="Stammdaten & Sozialversicherung">
-                                    <InfoRow label="SV-Nummer" value={employee.personalData.socialSecurityNumber} />
-                                    <InfoRow label="Geburtsdatum" value={formatDate(employee.personalData.birthday)} />
-                                    <InfoRow label="Geburtsort" value={`${employee.personalData.birthPlace || "-"}${employee.personalData.birthCountry ? `, ${employee.personalData.birthCountry}` : ""}`} />
-                                    <InfoRow label="Staatsbürgerschaft" value={employee.personalData.nationality} />
+                                    <InfoRow label="SV-Nummer" value={currentEmp.personalData.socialSecurityNumber} />
+                                    <InfoRow label="Geburtsdatum" value={formatDate(currentEmp.personalData.birthday)} />
+                                    <InfoRow label="Geburtsort" value={joinVisible(currentEmp.personalData.birthPlace, currentEmp.personalData.birthCountry)} />
+                                    <InfoRow label="Staatsbürgerschaft" value={currentEmp.personalData.nationality} />
                                 </InfoCard>
 
                                 <InfoCard icon={Briefcase} title="Anstellung & Konditionen">
-                                    <InfoRow label="Gehalt / Lohn" value={employee.employment.salary} />
-                                    <InfoRow label="Einstufung" value={employee.employment.classification} />
-                                    <InfoRow label="Verwendung" value={employee.employment.verwendung} />
-                                    <InfoRow label="Urlaub" value={`${employee.employment.annualLeave ?? 25} Tage / Jahr`} />
+                                    <InfoRow label="Gehalt / Lohn" value={currentEmp.employment.salary} />
+                                    <InfoRow label="Einstufung" value={currentEmp.employment.classification} />
+                                    <InfoRow label="Verwendung" value={currentEmp.employment.verwendung} />
+                                    <InfoRow label="Urlaub" value={`${currentEmp.employment.annualLeave ?? 25} Tage / Jahr`} />
                                 </InfoCard>
 
                                 <InfoCard icon={Calendar} title="Zeiteinteilung">
                                     <InfoRow label="Wochenstunden" value={weeklyHours ? `${weeklyHours} Stunden` : "Nicht hinterlegt"} />
-                                    <InfoRow label="Zeiterfassung" value={employee.additionalInfo?.noTimeTrackingRequired ? "Nicht nötig" : "Aktiv"} />
-                                    <InfoRow label="Arbeitsverhältnis" value={employee.employment.workerType} />
+                                    <InfoRow label="Zeiterfassung" value={currentEmp.additionalInfo?.noTimeTrackingRequired ? "Nicht nötig" : "Aktiv"} />
+                                    <InfoRow label="Arbeitsverhältnis" value={currentEmp.employment.workerType} />
                                     <InfoRow label="Status" value={isActive ? "Aktiv" : "Archiviert"} />
                                 </InfoCard>
 
                                 <InfoCard icon={CreditCard} title="Bankverbindung">
-                                    <InfoRow label="Bankinstitut" value={employee.bankDetails.bankName} />
-                                    <InfoRow label="IBAN" value={employee.bankDetails.iban} mono />
-                                    <InfoRow label="BIC" value={employee.bankDetails.bic} mono />
+                                    <InfoRow label="Bankinstitut" value={currentEmp.bankDetails.bankName} />
+                                    <InfoRow label="IBAN" value={currentEmp.bankDetails.iban} mono />
+                                    <InfoRow label="BIC" value={currentEmp.bankDetails.bic} mono />
                                 </InfoCard>
 
                                 <div className="xl:col-span-2">
                                     <InfoCard icon={Heart} title="Notfallkontakt & Notizen">
-                                        <InfoRow label="Notfallkontakt" value={employee.additionalInfo?.emergencyContactName} />
-                                        <InfoRow label="Telefon" value={employee.additionalInfo?.emergencyContactPhone} />
+                                        <InfoRow label="Notfallkontakt" value={currentEmp.additionalInfo?.emergencyContactName} />
+                                        <InfoRow label="Telefon" value={currentEmp.additionalInfo?.emergencyContactPhone} />
                                         <div className="border-t border-slate-100 pt-3">
                                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notizen</p>
                                             <p className="mt-2 rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-600">
-                                                {employee.additionalInfo?.notes || "Keine Notizen hinterlegt."}
+                                                {looksEncrypted(currentEmp.additionalInfo?.notes) ? "Keine Notizen hinterlegt." : currentEmp.additionalInfo?.notes || "Keine Notizen hinterlegt."}
                                             </p>
                                         </div>
                                     </InfoCard>
@@ -1411,6 +1756,190 @@ export function EmployeeDetailModal({
                                 <Plus className="h-4 w-4" />
                                 Hochladen
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isAvatarEditorOpen && (
+                <div className="fixed inset-0 z-[180] flex items-center justify-center bg-white/35 p-4">
+                    <div className="w-full max-w-3xl overflow-hidden rounded-[32px] border border-white bg-white shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Profilbild</p>
+                                <h3 className="text-2xl font-black text-slate-950">{name}</h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsAvatarEditorOpen(false)}
+                                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="grid gap-6 p-6 lg:grid-cols-[1fr_18rem]">
+                            <div className="space-y-4">
+                                <div className="flex min-h-[22rem] items-center justify-center rounded-[28px] bg-slate-100 p-5">
+                                    {avatarEditUrl ? (
+                                        <div
+                                            ref={avatarCropAreaRef}
+                                            className="relative h-72 w-72 touch-none overflow-hidden rounded-[36px] border-4 border-white bg-white shadow-xl"
+                                        >
+                                            <img
+                                                src={avatarEditUrl}
+                                                alt={name}
+                                                draggable={false}
+                                                className="h-full w-full select-none object-cover transition-transform duration-200"
+                                                style={{
+                                                    transform: `rotate(${avatarRotation}deg)`,
+                                                }}
+                                            />
+                                            <div
+                                                className="absolute cursor-move border-2 border-white shadow-[0_0_0_999px_rgba(15,23,42,0.35)]"
+                                                style={{
+                                                    left: `${avatarCrop.x}%`,
+                                                    top: `${avatarCrop.y}%`,
+                                                    width: `${avatarCrop.size}%`,
+                                                    height: `${avatarCrop.size}%`,
+                                                }}
+                                                onPointerDown={(event) => startAvatarCropDrag("move", event)}
+                                            >
+                                                <div className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3">
+                                                    {Array.from({ length: 9 }).map((_, index) => (
+                                                        <span key={index} className="border border-white/30" />
+                                                    ))}
+                                                </div>
+                                                {(["nw", "ne", "sw", "se"] as const).map((corner) => (
+                                                    <button
+                                                        key={corner}
+                                                        type="button"
+                                                        aria-label={`Ausschnitt ${corner}`}
+                                                        onPointerDown={(event) => startAvatarCropDrag(corner, event)}
+                                                        className={cn(
+                                                            "absolute h-7 w-7 rounded-full border-2 border-white bg-indigo-600 shadow-lg",
+                                                            corner === "nw" && "-left-3.5 -top-3.5 cursor-nwse-resize",
+                                                            corner === "ne" && "-right-3.5 -top-3.5 cursor-nesw-resize",
+                                                            corner === "sw" && "-bottom-3.5 -left-3.5 cursor-nesw-resize",
+                                                            corner === "se" && "-bottom-3.5 -right-3.5 cursor-nwse-resize"
+                                                        )}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-slate-950/10" />
+                                        </div>
+                                    ) : (
+                                        <div className="flex h-72 w-72 items-center justify-center rounded-[36px] bg-white text-6xl font-black text-indigo-700 shadow-xl">
+                                            {initials}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {avatarError && (
+                                    <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+                                        {avatarError}
+                                    </div>
+                                )}
+
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                        <span className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500">
+                                            <Crop className="h-4 w-4" /> Zuschneiden
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAvatarCrop(defaultAvatarCrop())}
+                                            className="mt-3 rounded-xl bg-white px-3 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-100"
+                                        >
+                                            Zurücksetzen
+                                        </button>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                        <span className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500">
+                                            <RotateCw className="h-4 w-4" /> Drehen
+                                        </span>
+                                        <div className="mt-3 grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setAvatarRotation((value) => value - 90)}
+                                                className="rounded-xl bg-white px-3 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-100"
+                                            >
+                                                Links
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAvatarRotation((value) => value + 90)}
+                                                className="rounded-xl bg-white px-3 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-100"
+                                            >
+                                                Rechts
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <input
+                                    ref={avatarFileInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    className="hidden"
+                                    onChange={(event) => {
+                                        handleAvatarFile(event.target.files?.[0]);
+                                        event.target.value = "";
+                                    }}
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={() => avatarFileInputRef.current?.click()}
+                                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-700"
+                                >
+                                    <Upload className="h-4 w-4" />
+                                    Bild hochladen
+                                </button>
+
+                                <div>
+                                    <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Avatar wählen</p>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {PRESET_AVATARS.map((avatar, index) => (
+                                            <button
+                                                key={avatar}
+                                                type="button"
+                                                onClick={() => selectPresetAvatar(avatar)}
+                                                disabled={isAvatarSaving}
+                                                className="aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 transition hover:scale-105 hover:border-indigo-300 disabled:opacity-50"
+                                                title={`Avatar ${index + 1}`}
+                                            >
+                                                <img src={avatar} alt={`Avatar ${index + 1}`} className="h-full w-full rounded-xl object-cover" />
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={saveEditedAvatar}
+                                        disabled={!avatarEditUrl || isAvatarSaving}
+                                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-700 disabled:opacity-50"
+                                    >
+                                        {isAvatarSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                                        Speichern
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={deleteAvatar}
+                                        disabled={isAvatarSaving || !currentAvatarUrl}
+                                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-black text-rose-600 transition hover:bg-rose-100 disabled:opacity-50"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                        Löschen
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

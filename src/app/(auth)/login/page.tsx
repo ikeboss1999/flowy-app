@@ -8,6 +8,7 @@ import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, Lock, Mail, User, Eye, E
 import Link from "next/link"
 import { useAuth } from "@/context/AuthContext"
 import { useDevice } from "@/hooks/useDevice"
+import { preloadStartup } from "@/lib/startup-preload"
 
 export default function LoginPage() {
     const searchParams = useSearchParams()
@@ -71,7 +72,8 @@ export default function LoginPage() {
                         body: JSON.stringify({ access_token: session.access_token })
                     })
                 }
-                window.location.href = "/api/auth/start"
+                await preloadStartup()
+                window.location.href = "/"
             } else {
                 const redirectUrl = `${window.location.origin}/auth/callback`;
 

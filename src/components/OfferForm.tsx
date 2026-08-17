@@ -483,6 +483,14 @@ export function OfferForm({ initialData }: OfferFormProps) {
       return;
     }
 
+    const duplicateOfferNumber = offers.some(
+      (offer) => offer.id !== initialData?.id && offer.offerNumber?.trim() === offerNumber.trim()
+    );
+    if (duplicateOfferNumber) {
+      setError(`Angebotsnummer ${offerNumber} ist bereits vergeben.`);
+      return;
+    }
+
     setIsSaving(true);
     try {
       const customer = customers.find((c) => c.id === customerId);
@@ -581,7 +589,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
       }
     } catch (e) {
       console.error("Failed to save offer", e);
-      setError("Speichern fehlgeschlagen. Die PDF konnte nicht gespeichert werden. Bitte erneut versuchen.");
+      setError(e instanceof Error ? e.message : "Speichern fehlgeschlagen. Bitte erneut versuchen.");
     } finally {
       setIsSaving(false);
     }

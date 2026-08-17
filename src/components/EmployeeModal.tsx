@@ -53,7 +53,6 @@ const TABS = [
     { id: "employment", label: "Anstellung", icon: Briefcase },
     { id: "schedule", label: "Zeiteinteilung", icon: Clock },
     { id: "bank", label: "Bankdaten", icon: CreditCard },
-    { id: "documents", label: "Archiv", icon: FileText },
 ];
 
 const EU_EWR_COUNTRIES = [
@@ -75,6 +74,60 @@ const EUROPEAN_COUNTRIES = [
 ];
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
+const AVATAR_THUMB_SIZE = 128;
+
+function createAvatarThumbnail(file: File): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        const objectUrl = URL.createObjectURL(file);
+
+        image.onload = () => {
+            try {
+                const canvas = document.createElement("canvas");
+                canvas.width = AVATAR_THUMB_SIZE;
+                canvas.height = AVATAR_THUMB_SIZE;
+
+                const ctx = canvas.getContext("2d");
+                if (!ctx) throw new Error("Canvas is not supported.");
+
+                const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+                const sourceX = (image.naturalWidth - sourceSize) / 2;
+                const sourceY = (image.naturalHeight - sourceSize) / 2;
+
+                ctx.drawImage(
+                    image,
+                    sourceX,
+                    sourceY,
+                    sourceSize,
+                    sourceSize,
+                    0,
+                    0,
+                    AVATAR_THUMB_SIZE,
+                    AVATAR_THUMB_SIZE
+                );
+
+                canvas.toBlob((blob) => {
+                    URL.revokeObjectURL(objectUrl);
+                    if (blob) {
+                        resolve(blob);
+                    } else {
+                        reject(new Error("Thumbnail could not be created."));
+                    }
+                }, "image/webp", 0.78);
+            } catch (error) {
+                URL.revokeObjectURL(objectUrl);
+                reject(error);
+            }
+        };
+
+        image.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error("Image could not be loaded."));
+        };
+
+        image.src = objectUrl;
+    });
+}
 
 export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, initialEmployee, getNextNumber }: EmployeeModalProps) {
     const { user, currentEmployee, profile } = useAuth();
@@ -249,6 +302,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     })
                     .catch((err) => {
                         console.error("Error fetching full employee details in modal:", err);
+                        setIsHydratingEmployee(false);
                         showToast("Mitarbeiterdaten konnten nicht vollständig geladen werden.", "error");
                     });
             }
@@ -418,6 +472,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
         }
 
         try {
+            const thumbnail = await createAvatarThumbnail(file);
             const response = await fetch(`/api/employees/${employeeId}/avatar-upload-url`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -433,8 +488,9 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                 throw new Error(uploadInfo?.error || "Upload-URL konnte nicht erstellt werden.");
             }
 
+            const bucket = uploadInfo.bucket || "employee-avatars";
             const { error } = await supabase.storage
-                .from(uploadInfo.bucket || "employee-avatars")
+                .from(bucket)
                 .uploadToSignedUrl(uploadInfo.storagePath, uploadInfo.token, file, {
                     contentType: file.type,
                     upsert: true,
@@ -442,8 +498,19 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
 
             if (error) throw error;
 
+            if (uploadInfo.thumbStoragePath && uploadInfo.thumbToken) {
+                const { error: thumbError } = await supabase.storage
+                    .from(bucket)
+                    .uploadToSignedUrl(uploadInfo.thumbStoragePath, uploadInfo.thumbToken, thumbnail, {
+                        contentType: "image/webp",
+                        upsert: true,
+                    });
+
+                if (thumbError) throw thumbError;
+            }
+
             const avatarReference = `storage:employee-avatars:${uploadInfo.storagePath}`;
-            const localPreview = URL.createObjectURL(file);
+            const localPreview = URL.createObjectURL(thumbnail);
             setFormData(prev => ({ ...prev, avatar: avatarReference, avatarUrl: localPreview }));
             setShowAvatarMenu(false);
             showToast("Profilbild wurde hochgeladen.", "success");
@@ -504,6 +571,8 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
 
     if (!isOpen) return null;
 
+    const hasAvatar = !!(formData.avatarUrl || formData.avatar);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -535,7 +604,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
 
         // 2. Validation for Non-EU Passport
         const isEUEWR = EU_EWR_COUNTRIES.includes(formData.personalData.nationality);
-        if (!isEUEWR) {
+        if (false && !isEUEWR) {
             const hasPassport = formData.documents.some(d => d.subType === 'passport');
             if (!hasPassport) {
                 showConfirm({
@@ -673,16 +742,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     <div className="absolute -bottom-20 left-1/3 h-40 w-40 rounded-full bg-cyan-300/10 blur-3xl" />
                     <div className="relative flex justify-between items-center gap-4">
                     <div className="flex min-w-0 items-center gap-4 relative">
-                        <div 
-                            className="relative cursor-pointer group"
-                            onClick={() => {
-                                if (formData.avatar) {
-                                    setShowAvatarMenu(!showAvatarMenu);
-                                } else {
-                                    avatarInputRef.current?.click();
-                                }
-                            }}
-                        >
+                        <div className="relative shrink-0">
                             {(formData.avatarUrl || formData.avatar) ? (
                                 <div className="h-14 w-14 rounded-2xl overflow-hidden shadow-md ring-4 ring-white/20 border-2 border-white/40 group-hover:opacity-90 transition-opacity sm:h-16 sm:w-16">
                                     <img src={formData.avatarUrl || formData.avatar} alt="Profile" className="h-full w-full object-cover" />
@@ -693,7 +753,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                 </div>
                             )}
 
-                            {showAvatarMenu && formData.avatar && (
+                            {false && showAvatarMenu && hasAvatar && (
                                 <div className="absolute top-16 left-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-[200] animate-in fade-in slide-in-from-top-2">
                                     <button
                                         type="button"
@@ -719,13 +779,13 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                 </div>
                             )}
                         </div>
-                        <input
+                        {false && <input
                             type="file"
                             ref={avatarInputRef}
                             className="hidden"
                             accept="image/*"
                             onChange={handleAvatarUpload}
-                        />
+                        />}
                         <div className="min-w-0">
                             <p className="text-[11px] font-black uppercase tracking-[0.3em] text-cyan-100">Personalakte</p>
                             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -745,7 +805,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                             <div className="mt-2 flex flex-wrap items-center gap-3">
                                 <p className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-white/75">#{formData.employeeNumber || "---"}</p>
                                 <p className="text-xs font-semibold text-white/50">Personalakte</p>
-                                {formData.avatar && (
+                                {false && hasAvatar && (
                                     <button
                                         type="button"
                                         onClick={handleAvatarDelete}
@@ -813,7 +873,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-[2.5rem] bg-slate-50/30 border border-slate-100">
                                             {/* Profile Picture Uploader & Deletion UI */}
-                                            <div className="col-span-1 md:col-span-2 flex flex-col md:flex-row items-center gap-6 p-5 bg-white rounded-3xl border border-slate-100 shadow-sm mb-2">
+                                            <div className="hidden">
                                                 <div 
                                                     className="relative cursor-pointer group shrink-0" 
                                                     onClick={() => avatarInputRef.current?.click()}
@@ -843,7 +903,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                         >
                                                             Bild hochladen
                                                         </button>
-                                                        {formData.avatar && (
+                                                        {hasAvatar && (
                                                             <button
                                                                 type="button"
                                                                 onClick={handleAvatarDelete}
@@ -1399,7 +1459,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                     </div>
                                 </div>
                             )}
-                            {activeTab === "documents" && (
+                            {false && activeTab === "documents" && (
                                 <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300 pb-10 space-y-10">
                                     <section className="bg-indigo-50/50 p-8 rounded-[2.5rem] border border-indigo-100 font-medium">
                                         <div className="flex items-center gap-4 mb-4">
@@ -1569,7 +1629,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                         onPreview={handlePreview}
                                                     />
                                                 ))}
-                                                {(!formData.sharedFolders || formData.sharedFolders.length === 0) && (
+                                                {((formData.sharedFolders?.length ?? 0) === 0) && (
                                                     <div className="p-8 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
                                                         <Folder className="h-10 w-10 text-slate-300 mb-3" />
                                                         <p className="text-sm font-bold text-slate-600 mb-1">Keine Ordner vorhanden</p>

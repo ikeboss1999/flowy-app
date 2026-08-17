@@ -32,6 +32,21 @@ function isStoredOrderPdfReference(order: any, companyOwnerId: string) {
     }
 }
 
+async function findDuplicateOrderNumber(client: any, orderNumber: string, companyOwnerId: string, currentOrderId?: string) {
+    const normalizedNumber = String(orderNumber || '').trim();
+    if (!normalizedNumber) return null;
+
+    const { data, error } = await client
+        .from('order_confirmations')
+        .select('id,orderNumber')
+        .eq('userId', companyOwnerId)
+        .eq('orderNumber', normalizedNumber)
+        .limit(2);
+
+    if (error) throw error;
+    return (data || []).find((order: any) => order.id !== currentOrderId) || null;
+}
+
 export async function GET(request: Request) {
     const session = await getUserSession();
     const companyOwnerId = session?.companyOwnerId;
@@ -78,6 +93,11 @@ export async function POST(request: Request) {
         const now = new Date().toISOString();
 
         const client = supabaseAdmin || supabase;
+
+        const duplicateOrder = await findDuplicateOrderNumber(client, payload.orderNumber, companyOwnerId, payload.id);
+        if (duplicateOrder) {
+            return NextResponse.json({ error: `Auftragsnummer ${payload.orderNumber} ist bereits vergeben.` }, { status: 409 });
+        }
 
         if (payload.customerId) {
             const { data: customer, error: customerError } = await client

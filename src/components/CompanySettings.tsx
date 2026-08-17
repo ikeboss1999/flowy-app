@@ -60,7 +60,7 @@ function AccordionSection({ title, icon: Icon, isOpen, onToggle, children }: Acc
 
 export function CompanySettings() {
     const { data, updateData, isLoading } = useCompanySettings();
-    const [openSection, setOpenSection] = useState<string | null>("firmendaten");
+    const [openSection, setOpenSection] = useState<string | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
     const [logoEditor, setLogoEditor] = useState<{
         src: string;

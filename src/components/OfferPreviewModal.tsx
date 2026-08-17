@@ -106,7 +106,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
 
     const { data: offerSettings } = useOfferSettings();
     const { data: orderSettings, updateData: updateOrderSettings } = useOrderSettings();
-    const { addOrder } = useOrders();
+    const { orders, addOrder } = useOrders();
     const { updateOffer } = useOffers();
     const { invoices, addInvoice } = useInvoices();
     const { data: invoiceSettings, updateData: updateInvoiceSettings } = useInvoiceSettings();
@@ -245,6 +245,10 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
         setIsConverting(true);
         try {
             const orderNum = `${orderSettings.prefix}${String(orderSettings.nextOrderNumber).padStart(3, '0')}`;
+            if (orders.some((order) => order.orderNumber?.trim() === orderNum.trim())) {
+                showToast(`Auftragsnummer ${orderNum} ist bereits vergeben. Bitte passen Sie den Nummernkreis in den Einstellungen an.`, "error");
+                return;
+            }
 
             const newOrder = {
                 id: nanoid(),
@@ -290,7 +294,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
             }, 2000);
         } catch (e) {
             console.error('[Order Creation]', e);
-            showToast("Auftrag konnte nicht erstellt werden, weil die PDF nicht gespeichert wurde.", "error");
+            showToast(e instanceof Error ? e.message : "Auftrag konnte nicht erstellt werden.", "error");
         } finally {
             setIsConverting(false);
         }
@@ -301,6 +305,10 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
         setIsConvertingInvoice(true);
         try {
             const invoiceNum = `${new Date().getFullYear()}/${String(invoiceSettings.nextInvoiceNumber || 1).padStart(2, "0")}`;
+            if (invoices.some((invoice) => invoice.invoiceNumber?.trim() === invoiceNum.trim())) {
+                showToast(`Rechnungsnummer ${invoiceNum} ist bereits vergeben. Bitte passen Sie den Nummernkreis in den Einstellungen an.`, "error");
+                return;
+            }
             const defaultPaymentTerm = invoiceSettings.paymentTerms.find((pt: any) => pt.id === invoiceSettings.defaultPaymentTermId) || invoiceSettings.paymentTerms[0];
             const paymentTermsText = defaultPaymentTerm ? defaultPaymentTerm.text : "sofort nach Rechnungserhalt";
 
@@ -351,7 +359,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
             }, 1500);
         } catch (e) {
             console.error('[Invoice Creation]', e);
-            showToast("Fehler beim Erstellen der Rechnung.", "error");
+            showToast(e instanceof Error ? e.message : "Fehler beim Erstellen der Rechnung.", "error");
         } finally {
             setIsConvertingInvoice(false);
         }

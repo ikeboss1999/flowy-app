@@ -116,11 +116,12 @@ export async function DELETE(request: Request) {
     try {
         const client = supabaseAdmin || supabase;
         
-        // Let's get the folder name before deleting, so we can unassign services
+        // Get the folder name before deleting so the contained presets can be removed too.
         const { data: oldFolder } = await client
             .from('service_folders')
             .select('name')
             .eq('id', id)
+            .eq('userId', userId)
             .single();
 
         const { error } = await client
@@ -131,13 +132,14 @@ export async function DELETE(request: Request) {
 
         if (error) throw error;
         
-        // Remove the folder assignment from services that were inside this folder
         if (oldFolder) {
-             await client
+            const { error: servicesError } = await client
                 .from('services')
-                .update({ folder: null })
+                .delete()
                 .eq('folder', oldFolder.name)
-                .eq('userId', userId);
+                .eq('userId', userId)
+                .eq('category', 'Position');
+            if (servicesError) throw servicesError;
         }
 
         return NextResponse.json({ success: true });

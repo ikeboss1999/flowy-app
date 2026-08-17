@@ -6,12 +6,20 @@ import { useSWRConfig } from "swr";
 import { useAuth } from "@/context/AuthContext";
 import { fetcher } from "@/lib/fetcher";
 
+function getPreviousMonthValue() {
+    const date = new Date();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - 1);
+    return date.toISOString().slice(0, 7);
+}
+
 export function DashboardPrefetch() {
     const pathname = usePathname();
     const { user, currentEmployee, profile } = useAuth();
     const { cache, mutate } = useSWRConfig();
     const ownerUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
     const actorUserId = user?.id || currentEmployee?.userId;
+    const previousMonth = getPreviousMonthValue();
 
     useEffect(() => {
         if (!ownerUserId) return;
@@ -50,7 +58,7 @@ export function DashboardPrefetch() {
         } else if (pathname.startsWith("/employees") && canUse("employees_read")) {
             activeKey = `/api/employees?summary=1&userId=${ownerUserId}`;
         } else if (pathname.startsWith("/time-tracking") && canUse("time_tracking_use")) {
-            activeKey = `/api/time-entries?userId=${ownerUserId}`;
+            activeKey = `/api/time-entries?userId=${ownerUserId}&month=${previousMonth}&summary=1`;
         }
 
         if (activeKey) {
@@ -72,8 +80,8 @@ export function DashboardPrefetch() {
 
         const timeKeys = canUse("time_tracking_use")
             ? [
-                `/api/time-entries?userId=${ownerUserId}`,
-                `/api/timesheets?userId=${ownerUserId}`,
+                `/api/time-entries?userId=${ownerUserId}&month=${previousMonth}&summary=1`,
+                `/api/timesheets?userId=${ownerUserId}&month=${previousMonth}`,
             ].filter((k) => k !== activeKey)
             : [];
 
@@ -105,7 +113,7 @@ export function DashboardPrefetch() {
         return () => {
             timers.forEach((t) => clearTimeout(t));
         };
-    }, [ownerUserId, actorUserId, user, profile, cache, mutate, pathname]);
+    }, [ownerUserId, actorUserId, user, profile, cache, mutate, pathname, previousMonth]);
 
     return null;
 }

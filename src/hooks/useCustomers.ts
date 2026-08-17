@@ -15,6 +15,18 @@ function getCachedCustomers(): Customer[] {
     return [];
 }
 
+async function readErrorMessage(response: Response) {
+    const text = await response.text();
+    if (!text) return `HTTP ${response.status}`;
+
+    try {
+        const parsed = JSON.parse(text);
+        return parsed.error || parsed.message || text;
+    } catch {
+        return text;
+    }
+}
+
 export function useCustomers() {
     const { user, currentEmployee, profile } = useAuth();
 
@@ -43,14 +55,16 @@ export function useCustomers() {
             try { localStorage.setItem("flowy_customers_cache", JSON.stringify(updatedList)); } catch { }
         }
         try {
-            await fetch('/api/customers', {
+            const response = await fetch('/api/customers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newCustomer)
             });
+            if (!response.ok) throw new Error(await readErrorMessage(response));
         } catch (e) {
             console.error("Failed to add customer", e);
             mutate();
+            throw e;
         }
     };
 
@@ -63,14 +77,16 @@ export function useCustomers() {
             try { localStorage.setItem("flowy_customers_cache", JSON.stringify(updatedList)); } catch { }
         }
         try {
-            await fetch('/api/customers', {
+            const response = await fetch('/api/customers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updated)
             });
+            if (!response.ok) throw new Error(await readErrorMessage(response));
         } catch (e) {
             console.error("Failed to update customer", e);
             mutate();
+            throw e;
         }
     };
 

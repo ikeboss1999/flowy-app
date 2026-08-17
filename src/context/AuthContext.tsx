@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react"
 import { User, Session } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import { Employee } from "@/types/employee"
+import { preloadStartup } from "@/lib/startup-preload"
 
 type AuthProfile = {
     role: string
@@ -255,6 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 setCurrentEmployee(data.employee);
                 await refreshProfile();
+                await preloadStartup();
                 return { success: true };
             } else {
                 return { success: false, error: data.message || 'Login fehlgeschlagen' };

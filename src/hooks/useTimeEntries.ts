@@ -6,13 +6,36 @@ import { TimeEntry, TimesheetMeta } from '@/types/time-tracking';
 import { useAuth } from '@/context/AuthContext';
 import { fetcher } from '@/lib/fetcher';
 
-export function useTimeEntries() {
+type UseTimeEntriesOptions = {
+    month?: string;
+    months?: string[];
+    summary?: boolean;
+    includeTimesheets?: boolean;
+};
+
+function buildMonthQuery(options?: UseTimeEntriesOptions, includeSummary = false) {
+    const months = options?.months?.filter(Boolean) || (options?.month ? [options.month] : []);
+    const params = new URLSearchParams();
+    if (months.length === 1) params.set('month', months[0]);
+    if (months.length > 1) params.set('months', Array.from(new Set(months)).join(','));
+    if (includeSummary && options?.summary) params.set('summary', '1');
+    return params.toString();
+}
+
+export function useTimeEntries(options?: UseTimeEntriesOptions) {
     const { user, currentEmployee } = useAuth();
 
     const activeUserId = user?.id || currentEmployee?.userId;
+    const entriesQuery = buildMonthQuery(options, true);
+    const sheetsQuery = buildMonthQuery(options);
+    const includeTimesheets = options?.includeTimesheets !== false;
 
-    const entriesKey = activeUserId ? `/api/time-entries?userId=${activeUserId}` : null;
-    const sheetsKey = activeUserId ? `/api/timesheets?userId=${activeUserId}` : null;
+    const entriesKey = activeUserId
+        ? `/api/time-entries?userId=${activeUserId}${entriesQuery ? `&${entriesQuery}` : ''}`
+        : null;
+    const sheetsKey = activeUserId && includeTimesheets
+        ? `/api/timesheets?userId=${activeUserId}${sheetsQuery ? `&${sheetsQuery}` : ''}`
+        : null;
 
     const { data: rawEntries = [], isLoading: entriesLoading, mutate: mutateEntries } =
         useSWR<TimeEntry[]>(entriesKey, fetcher);

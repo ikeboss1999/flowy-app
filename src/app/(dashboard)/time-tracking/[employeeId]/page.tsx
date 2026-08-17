@@ -240,8 +240,11 @@ export default function EmployeeTimeTrackingPage() {
 
     // Hooks
     const { user, currentEmployee, profile } = useAuth();
+    const [selectedMonth, setSelectedMonth] = useState<string>(getPreviousMonthValue());
     const { employees, isLoading: employeesLoading } = useEmployees();
-    const { entries, deleteEntry, isLoading: entriesLoading, timesheets, finalizeMonth, reopenMonth, refreshEntries } = useTimeEntries();
+    const { entries, deleteEntry, isLoading: entriesLoading, timesheets, finalizeMonth, reopenMonth, refreshEntries } = useTimeEntries({
+        months: [selectedMonth, getPreviousMonth(selectedMonth)],
+    });
     const { data: companySettings } = useCompanySettings();
     const { showToast, showConfirm } = useNotification();
 
@@ -249,7 +252,6 @@ export default function EmployeeTimeTrackingPage() {
     const canReopenFinalizedMonth = profile?.role === 'admin' || profile?.role === 'developer';
 
     // State
-    const [selectedMonth, setSelectedMonth] = useState<string>(getPreviousMonthValue());
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
     // Buffered edits: state drives UI, ref drives save (no stale-closure risk)

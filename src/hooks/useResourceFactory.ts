@@ -10,6 +10,18 @@ interface ResourceItem {
     updatedAt?: string;
 }
 
+async function readErrorMessage(res: Response) {
+    const text = await res.text();
+    if (!text) return `HTTP ${res.status}`;
+
+    try {
+        const parsed = JSON.parse(text);
+        return parsed.error || parsed.message || text;
+    } catch {
+        return text;
+    }
+}
+
 export function createResourceHook<T extends ResourceItem>(endpoint: string) {
     return function () {
         const { user } = useAuth();
@@ -26,7 +38,7 @@ export function createResourceHook<T extends ResourceItem>(endpoint: string) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(newItem),
                 });
-                if (!res.ok) throw new Error(await res.text());
+                if (!res.ok) throw new Error(await readErrorMessage(res));
             } catch (e) {
                 console.error(`Failed to save to ${endpoint}`, e);
                 mutate();
@@ -46,7 +58,7 @@ export function createResourceHook<T extends ResourceItem>(endpoint: string) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updated),
                 });
-                if (!res.ok) throw new Error(await res.text());
+                if (!res.ok) throw new Error(await readErrorMessage(res));
             } catch (e) {
                 console.error(`Failed to update in ${endpoint}`, e);
                 mutate();

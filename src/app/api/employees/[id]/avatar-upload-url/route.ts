@@ -5,6 +5,7 @@ import { getUserSession, hasPermission } from '@/lib/auth-server';
 import {
     ALLOWED_EMPLOYEE_AVATAR_MIME_TYPES,
     buildEmployeeAvatarStoragePath,
+    getEmployeeAvatarThumbStoragePath,
     MAX_EMPLOYEE_AVATAR_SIZE,
 } from '@/lib/employee-avatar';
 import { supabaseAdmin } from '@/lib/supabase-admin';
@@ -47,15 +48,28 @@ export async function POST(request: Request, { params }: { params: { id: string 
             fileName: parsed.data.fileName,
         });
 
+        const thumbStoragePath = getEmployeeAvatarThumbStoragePath(storagePath);
+        if (!thumbStoragePath) {
+            return NextResponse.json({ error: 'Failed to build thumbnail path' }, { status: 500 });
+        }
+
         const { data, error } = await supabaseAdmin.storage
             .from('employee-avatars')
             .createSignedUploadUrl(storagePath);
 
         if (error) throw error;
 
+        const { data: thumbData, error: thumbError } = await supabaseAdmin.storage
+            .from('employee-avatars')
+            .createSignedUploadUrl(thumbStoragePath);
+
+        if (thumbError) throw thumbError;
+
         return NextResponse.json({
             storagePath,
+            thumbStoragePath,
             token: data.token,
+            thumbToken: thumbData.token,
             bucket: 'employee-avatars',
             expiresIn: 2 * 60 * 60,
         });

@@ -13,6 +13,7 @@ import {
     Users
 } from "lucide-react";
 import { useEmployees } from "@/hooks/useEmployees";
+import { useEmployeeAvatars } from "@/hooks/useEmployeeAvatars";
 import { useTimeEntries } from "@/hooks/useTimeEntries";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { cn } from "@/lib/utils";
@@ -31,11 +32,12 @@ export default function TimeTrackingPage() {
     usePermissionGuard("time_tracking_use");
     const router = useRouter();
     const { employees, isLoading } = useEmployees();
-    const { entries, timesheets, isLoading: timeLoading } = useTimeEntries();
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<TimeTrackingFilter>("all");
 
     const statusMonth = getPreviousMonthValue();
+    const { entries, timesheets, isLoading: timeLoading } = useTimeEntries({ month: statusMonth, summary: true });
+    const { avatarByEmployeeId } = useEmployeeAvatars(employees.length > 0);
     const monthLabel = new Date(`${statusMonth}-01`).toLocaleDateString("de-DE", {
         month: "long",
         year: "numeric"
@@ -180,6 +182,10 @@ export default function TimeTrackingPage() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {filteredEmployees.map((emp) => {
+                                const displayEmployee = {
+                                    ...emp,
+                                    ...(avatarByEmployeeId[emp.id] || {}),
+                                };
                                 const name = `${emp.personalData.firstName} ${emp.personalData.lastName}`;
                                 const position = emp.employment.position || "Mitarbeiter";
                                 const state = getMonthState(emp.id);
@@ -209,8 +215,8 @@ export default function TimeTrackingPage() {
                                 className="group flex items-center gap-3 p-4 2xl:gap-4 2xl:p-5 bg-white hover:bg-indigo-50 border border-slate-100 hover:border-indigo-100 rounded-2xl text-left transition-all duration-200 hover:shadow-md hover:scale-[1.01]"
                             >
                                 <div className="h-12 w-12 2xl:h-14 2xl:w-14 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm shrink-0">
-                                            {(emp.avatarUrl || emp.avatar) ? (
-                                                <img src={emp.avatarUrl || emp.avatar} alt={name} className="h-full w-full object-cover" />
+                                            {(displayEmployee.avatarUrl || displayEmployee.avatar) ? (
+                                                <img src={displayEmployee.avatarUrl || displayEmployee.avatar} alt={name} className="h-full w-full object-cover" />
                                             ) : (
                                                 <UserCircle className="h-8 w-8 text-slate-300" />
                                             )}

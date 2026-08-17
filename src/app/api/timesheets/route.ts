@@ -21,11 +21,27 @@ export async function GET(request: Request) {
     }
 
     try {
+        const { searchParams } = new URL(request.url);
+        const requestedMonths = [
+            searchParams.get('month'),
+            ...(searchParams.get('months') || '').split(','),
+        ]
+            .map((month) => month?.trim())
+            .filter((month): month is string => !!month && /^\d{4}-\d{2}$/.test(month));
+
         const client = supabaseAdmin || supabase;
-        const { data: timesheets, error } = await client
+        let query = client
             .from('timesheets')
             .select('*')
             .eq('userId', userId);
+
+        if (requestedMonths.length === 1) {
+            query = query.eq('month', requestedMonths[0]);
+        } else if (requestedMonths.length > 1) {
+            query = query.in('month', requestedMonths);
+        }
+
+        const { data: timesheets, error } = await query;
         if (error) throw error;
         logApiPerformance('/api/timesheets', startedAt, { payload: timesheets });
         return NextResponse.json(timesheets);

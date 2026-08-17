@@ -20,8 +20,6 @@ import {
 import { RealtimeClock } from "@/components/RealtimeClock";
 import { useAuth } from "@/context/AuthContext";
 import { useStartup } from "@/hooks/useStartup";
-import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { useAccountSettings } from "@/hooks/useAccountSettings";
 import { cn } from "@/lib/utils";
 
 const formatDate = (date: Date) =>
@@ -36,13 +34,6 @@ export default function Home() {
   const router = useRouter();
   const { profile, currentEmployee } = useAuth();
   const { data: startup } = useStartup();
-  const { data: companySettings } = useCompanySettings();
-  const { data: accountSettings } = useAccountSettings();
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
 
   React.useEffect(() => {
     if (profile?.role === "developer") {
@@ -51,11 +42,11 @@ export default function Home() {
   }, [profile, router]);
 
   const today = new Date();
-  const companyName = companySettings?.companyName || startup.company.companyName || "FlowY";
-  const companyLogo = companySettings?.logo || startup.company.logo;
+  const companyName = startup.company.companyName || "FlowY";
+  const companyLogo = startup.company.logo;
   const companyLocation = [
-    companySettings?.zipCode || startup.company.zipCode,
-    companySettings?.city || startup.company.city
+    startup.company.zipCode,
+    startup.company.city
   ].filter(Boolean).join(" ");
   const companyInitials = companyName
     .split(" ")
@@ -64,7 +55,9 @@ export default function Home() {
     .map((part) => part[0]?.toUpperCase())
     .join("") || "FY";
 
-  const userName = accountSettings?.name || startup.account.name || "Benutzer";
+  const userName = currentEmployee
+    ? `${currentEmployee.personalData.firstName} ${currentEmployee.personalData.lastName}`.trim()
+    : startup.account.name || "Benutzer";
 
   const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
   const canWriteInvoices = isAdminOrDev || !!profile?.permissions?.invoices_write;
@@ -170,14 +163,6 @@ export default function Home() {
     tone: "indigo" | "emerald" | "amber" | "rose" | "slate";
   }>;
 
-  if (!mounted) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8 2xl:p-12 space-y-8 lg:space-y-10">
-        <section className="rounded-[2.25rem] border border-indigo-100/60 bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-700 p-5 sm:p-8 shadow-2xl min-h-[320px] animate-pulse" />
-      </div>
-    );
-  }
-
   return (
     <div className="p-4 sm:p-6 lg:p-8 2xl:p-12 space-y-8 lg:space-y-10 animate-in fade-in duration-500">
       <section suppressHydrationWarning className="rounded-[2.25rem] border border-indigo-100/60 bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-700 p-5 sm:p-8 shadow-2xl shadow-indigo-950/10 overflow-hidden relative text-white">
@@ -196,7 +181,7 @@ export default function Home() {
 
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
               <div suppressHydrationWarning className="flex h-36 w-36 shrink-0 items-center justify-center rounded-[2.4rem] border border-white/20 bg-white p-5 text-4xl font-black text-indigo-700 shadow-2xl shadow-indigo-950/25 sm:h-40 sm:w-40 2xl:h-44 2xl:w-44">
-                {mounted && companyLogo ? (
+                {companyLogo ? (
                   <img src={companyLogo} alt={`${companyName} Logo`} className="h-full w-full object-contain" />
                 ) : (
                   companyInitials
@@ -204,7 +189,7 @@ export default function Home() {
               </div>
               <div suppressHydrationWarning className="min-w-0">
                 <p suppressHydrationWarning className="text-sm font-black uppercase tracking-[0.2em] text-cyan-200/90">{companyName}</p>
-                {mounted && companyLocation ? (
+                {companyLocation ? (
                   <p suppressHydrationWarning className="mt-1 text-sm font-bold text-white/50">{companyLocation}</p>
                 ) : null}
               </div>

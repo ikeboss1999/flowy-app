@@ -45,6 +45,13 @@ interface MenuItem {
     adminOnly?: boolean;
 }
 
+function getPreviousMonthValue() {
+    const date = new Date();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - 1);
+    return date.toISOString().slice(0, 7);
+}
+
 interface MenuGroup {
     title: string;
     items: MenuItem[];
@@ -206,6 +213,7 @@ export function Sidebar() {
         const activeUserId = getActiveUserId();
         if (!href || !activeUserId) return;
 
+        const previousMonth = getPreviousMonthValue();
         const sharedSettings = [`/api/settings?userId=${activeUserId}`];
         const byHref: Record<string, string[]> = {
             "/dashboard": ["/api/dashboard/summary"],
@@ -223,8 +231,8 @@ export function Sidebar() {
             "/vehicles": [`/api/vehicles?userId=${activeUserId}`],
             "/time-tracking": [
                 `/api/employees?summary=1&userId=${activeUserId}`,
-                `/api/time-entries?userId=${activeUserId}`,
-                `/api/timesheets?userId=${activeUserId}`,
+                `/api/time-entries?userId=${activeUserId}&month=${previousMonth}&summary=1`,
+                `/api/timesheets?userId=${activeUserId}&month=${previousMonth}`,
             ],
             "/time-tracking/archive": [
                 `/api/employees?summary=1&userId=${activeUserId}`,

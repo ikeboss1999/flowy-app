@@ -82,16 +82,21 @@ export default function CustomersPage() {
         setIsModalOpen(true);
     };
 
-    const handleSaveCustomer = (customer: Customer) => {
-        if (editingCustomer) {
-            updateCustomer(customer.id, customer);
-            if (selectedDetailCustomer?.id === customer.id) {
-                setSelectedDetailCustomer(customer);
+    const handleSaveCustomer = async (customer: Customer) => {
+        try {
+            if (editingCustomer) {
+                await updateCustomer(customer.id, customer);
+                if (selectedDetailCustomer?.id === customer.id) {
+                    setSelectedDetailCustomer(customer);
+                }
+                showToast("Kunde erfolgreich aktualisiert.", "success");
+            } else {
+                await addCustomer(customer);
+                showToast("Kunde erfolgreich angelegt.", "success");
             }
-            showToast("Kunde erfolgreich aktualisiert.", "success");
-        } else {
-            addCustomer(customer);
-            showToast("Kunde erfolgreich angelegt.", "success");
+        } catch (error) {
+            showToast(error instanceof Error ? error.message : "Kunde konnte nicht gespeichert werden.", "error");
+            throw error;
         }
     };
 

@@ -52,6 +52,21 @@ function toInvoiceListItem(invoice: any) {
     };
 }
 
+async function findDuplicateInvoiceNumber(client: any, invoiceNumber: string, companyOwnerId: string, currentInvoiceId?: string) {
+    const normalizedNumber = String(invoiceNumber || '').trim();
+    if (!normalizedNumber) return null;
+
+    const { data, error } = await client
+        .from('invoices')
+        .select('id,invoiceNumber')
+        .eq('userId', companyOwnerId)
+        .eq('invoiceNumber', normalizedNumber)
+        .limit(2);
+
+    if (error) throw error;
+    return (data || []).find((invoice: any) => invoice.id !== currentInvoiceId) || null;
+}
+
 export async function GET(request: Request) {
     const startedAt = performance.now();
     const session = await getUserSession();
@@ -102,6 +117,11 @@ export async function POST(request: Request) {
         const now = new Date().toISOString();
 
         const client = supabaseAdmin || supabase;
+
+        const duplicateInvoice = await findDuplicateInvoiceNumber(client, invoice.invoiceNumber, companyOwnerId, invoice.id);
+        if (duplicateInvoice) {
+            return NextResponse.json({ error: `Rechnungsnummer ${invoice.invoiceNumber} ist bereits vergeben.` }, { status: 409 });
+        }
 
         if (invoice.customerId) {
             const { data: customer, error: customerError } = await client

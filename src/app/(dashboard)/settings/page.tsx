@@ -94,6 +94,7 @@ const DOC_SUBTABS = [
 
 export default function SettingsPage() {
     const { profile, currentEmployee, isLoading } = useAuth();
+    const [hasMounted, setHasMounted] = useState(false);
     const [activeTab, setActiveTab] = useState("Stammdaten");
     const [docSubTab, setDocSubTab] = useState("customer");
     const isEmployee = profile?.role === "employee" || (!profile && !!currentEmployee);
@@ -102,12 +103,16 @@ export default function SettingsPage() {
     const ActiveIcon = activeTabMeta.icon;
 
     useEffect(() => {
+        setHasMounted(true);
+    }, []);
+
+    useEffect(() => {
         if (isEmployee && activeTab !== "E-Mail Versand") {
             setActiveTab("E-Mail Versand");
         }
     }, [activeTab, isEmployee]);
 
-    if (isLoading && !profile && !currentEmployee) {
+    if (!hasMounted || (isLoading && !profile && !currentEmployee)) {
         return <div className="p-8 text-slate-400 font-bold">Laden...</div>;
     }
 

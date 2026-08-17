@@ -1,25 +1,20 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+    AlertTriangle,
     Edit2,
     FileText,
     Folder,
-    FolderMinus,
     FolderOpen,
     FolderPlus,
+    GripVertical,
     Layout,
     Layers,
     Plus,
     Search,
     Trash2,
 } from "lucide-react";
-import { Service } from "@/types/service";
-import { ServiceModal } from "@/components/ServiceModal";
-import { useServices } from "@/hooks/useServices";
-import { ServiceFolder, useServiceFolders } from "@/hooks/useServiceFolders";
-import { useNotification } from "@/context/NotificationContext";
-import { cn } from "@/lib/utils";
 import {
     DndContext,
     DragEndEvent,
@@ -31,8 +26,20 @@ import {
     useSensor,
     useSensors,
 } from "@dnd-kit/core";
+import { Service } from "@/types/service";
+import { ServiceModal } from "@/components/ServiceModal";
+import { useServices } from "@/hooks/useServices";
+import { ServiceFolder, useServiceFolders } from "@/hooks/useServiceFolders";
+import { useNotification } from "@/context/NotificationContext";
+import { cn } from "@/lib/utils";
 
-function DroppableFolder({
+type TypeFilter = "all" | "standard" | "detailed";
+
+function formatCurrency(value?: number) {
+    return (value || 0).toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+}
+
+function FolderItem({
     folder,
     count,
     isSelected,
@@ -40,85 +47,85 @@ function DroppableFolder({
     onRename,
     onDelete,
 }: {
-    folder: ServiceFolder | null;
+    folder: ServiceFolder;
     count: number;
     isSelected: boolean;
     onClick: () => void;
     onRename: () => void;
     onDelete: () => void;
 }) {
-    const folderId = folder ? folder.name : "root";
     const { isOver, setNodeRef } = useDroppable({
-        id: folderId,
-        data: { type: "folder", folderName: folder ? folder.name : null }
+        id: folder.name,
+        data: { type: "folder", folderName: folder.name },
     });
-
-    const isRoot = !folder;
 
     return (
         <div
             ref={setNodeRef}
             onClick={onClick}
             className={cn(
-                "group flex cursor-pointer items-center justify-between gap-3 rounded-2xl border p-3 transition-all",
+                "group flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-3 transition-all",
                 isSelected
-                    ? "border-indigo-200 bg-indigo-50 text-indigo-700 shadow-sm"
+                    ? "border-slate-900 bg-slate-900 text-white shadow-sm"
                     : isOver
-                        ? "border-dashed border-indigo-300 bg-indigo-50/80 text-indigo-700"
-                        : "border-transparent bg-white text-slate-600 hover:border-slate-100 hover:bg-slate-50"
+                        ? "border-dashed border-indigo-400 bg-indigo-50 text-indigo-700"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
             )}
         >
             <div className="flex min-w-0 items-center gap-3">
                 <div className={cn(
-                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                    isSelected || isOver ? "bg-white text-indigo-600" : "bg-slate-50 text-slate-400"
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                    isSelected ? "bg-white/12 text-white" : "bg-slate-100 text-slate-500"
                 )}>
-                    {isRoot ? <Layers className="h-5 w-5" /> : isSelected || isOver ? <FolderOpen className="h-5 w-5" /> : <Folder className="h-5 w-5" />}
+                    {isSelected || isOver ? <FolderOpen className="h-5 w-5" /> : <Folder className="h-5 w-5" />}
                 </div>
                 <div className="min-w-0">
-                    <p className="truncate text-sm font-black">{isRoot ? "Alle Vorlagen" : folder.name}</p>
-                    <p className="text-xs font-semibold opacity-60">{count} Einträge</p>
+                    <p className="truncate text-sm font-black">{folder.name}</p>
+                    <p className={cn("text-xs font-semibold", isSelected ? "text-white/60" : "text-slate-400")}>
+                        {count} Position{count === 1 ? "" : "en"}
+                    </p>
                 </div>
             </div>
 
-            {!isRoot && (
-                <div className="flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                    <button
-                        onClick={(event) => { event.stopPropagation(); onRename(); }}
-                        className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white hover:text-indigo-600"
-                        title="Umbenennen"
-                    >
-                        <Edit2 className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                        onClick={(event) => { event.stopPropagation(); onDelete(); }}
-                        className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white hover:text-rose-600"
-                        title="Löschen"
-                    >
-                        <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                </div>
-            )}
+            <div className="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                <button
+                    onClick={(event) => { event.stopPropagation(); onRename(); }}
+                    className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-md transition-colors",
+                        isSelected ? "text-white/60 hover:bg-white/10 hover:text-white" : "text-slate-400 hover:bg-white hover:text-indigo-600"
+                    )}
+                    title="Ordner umbenennen"
+                >
+                    <Edit2 className="h-4 w-4" />
+                </button>
+                <button
+                    onClick={(event) => { event.stopPropagation(); onDelete(); }}
+                    className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-md transition-colors",
+                        isSelected ? "text-white/60 hover:bg-white/10 hover:text-white" : "text-slate-400 hover:bg-white hover:text-rose-600"
+                    )}
+                    title="Ordner loeschen"
+                >
+                    <Trash2 className="h-4 w-4" />
+                </button>
+            </div>
         </div>
     );
 }
 
-function PresetCard({
+function PresetRow({
     preset,
     onEdit,
     onDelete,
-    onRemoveFromFolder,
 }: {
     preset: Service;
     onEdit: () => void;
     onDelete: () => void;
-    onRemoveFromFolder?: () => void;
 }) {
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: preset.id,
-        data: { type: "preset", preset }
+        data: { type: "preset", preset },
     });
-
     const isDetailed = (preset.itemType || "standard") === "detailed";
 
     return (
@@ -127,212 +134,226 @@ function PresetCard({
             {...listeners}
             {...attributes}
             className={cn(
-                "group cursor-grab overflow-hidden rounded-[26px] border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg active:cursor-grabbing 2xl:rounded-[32px]",
+                "group grid cursor-grab gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm transition-all hover:border-indigo-200 hover:shadow-md active:cursor-grabbing lg:grid-cols-[28px_1fr_120px_130px_92px]",
                 isDragging && "opacity-30 ring-2 ring-indigo-300"
             )}
         >
-            <div className="flex h-full flex-col p-4 2xl:p-6">
-                <div className="mb-4 flex items-start justify-between gap-3 2xl:mb-5 2xl:gap-4">
-                    <div className={cn(
-                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl 2xl:h-14 2xl:w-14",
-                        isDetailed ? "bg-emerald-50 text-emerald-600" : "bg-indigo-50 text-indigo-600"
+            <div className="hidden items-center justify-center text-slate-300 lg:flex">
+                <GripVertical className="h-5 w-5" />
+            </div>
+
+            <div className="min-w-0">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <span className={cn(
+                        "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-black uppercase tracking-wider",
+                        isDetailed ? "bg-emerald-50 text-emerald-700" : "bg-indigo-50 text-indigo-700"
                     )}>
-                        {isDetailed ? <Layout className="h-5 w-5 2xl:h-7 2xl:w-7" /> : <Layers className="h-5 w-5 2xl:h-7 2xl:w-7" />}
-                    </div>
-
-                    <div className="flex gap-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                        {preset.folder && onRemoveFromFolder && (
-                            <button
-                                onPointerDown={(event) => event.stopPropagation()}
-                                onClick={(event) => { event.stopPropagation(); onRemoveFromFolder(); }}
-                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100"
-                                title="Aus Ordner entfernen"
-                            >
-                                <FolderMinus className="h-4 w-4" />
-                            </button>
-                        )}
-                        <button
-                            onPointerDown={(event) => event.stopPropagation()}
-                            onClick={(event) => { event.stopPropagation(); onEdit(); }}
-                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
-                            title="Bearbeiten"
-                        >
-                            <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                            onPointerDown={(event) => event.stopPropagation()}
-                            onClick={(event) => { event.stopPropagation(); onDelete(); }}
-                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                            title="Löschen"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </button>
-                    </div>
+                        {isDetailed ? <Layout className="h-3 w-3" /> : <Layers className="h-3 w-3" />}
+                        {isDetailed ? "Detailliert" : "Standard"}
+                    </span>
+                    <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                        {preset.unit}
+                    </span>
                 </div>
+                <h3 className="truncate text-base font-black text-slate-950">{preset.title}</h3>
+                <p className="mt-1 line-clamp-2 text-sm font-semibold leading-relaxed text-slate-500">
+                    {preset.description || "Keine Beschreibung hinterlegt."}
+                </p>
+            </div>
 
-                <div className="min-h-[90px] flex-1 2xl:min-h-[128px]">
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <span className={cn(
-                            "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ring-1",
-                            isDetailed ? "bg-emerald-50 text-emerald-700 ring-emerald-100" : "bg-indigo-50 text-indigo-700 ring-indigo-100"
-                        )}>
-                            {isDetailed ? "Detailliert" : "Standard"}
-                        </span>
-                        {preset.folder && (
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                                {preset.folder}
-                            </span>
-                        )}
-                    </div>
-                    <h3 className="line-clamp-2 text-xl font-black leading-tight text-slate-900 transition-colors group-hover:text-indigo-600 2xl:text-2xl">
-                        {preset.title}
-                    </h3>
-                    <p className="mt-2 line-clamp-2 text-sm font-medium leading-relaxed text-slate-500 2xl:mt-3 2xl:line-clamp-3">
-                        {preset.description || "Keine Beschreibung hinterlegt."}
-                    </p>
-                </div>
+            <div className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2 lg:block lg:bg-transparent lg:px-0 lg:py-0">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Preis</p>
+                <p className="mt-0.5 font-mono text-base font-black text-slate-900">{formatCurrency(preset.price)}</p>
+            </div>
 
-                <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-3 2xl:mt-6 2xl:rounded-3xl 2xl:p-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vorlagenpreis</p>
-                    <div className="mt-1 flex items-end justify-between gap-3">
-                        <span className="text-2xl font-black text-slate-900 2xl:text-3xl">
-                            € {(preset.price || 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}
-                        </span>
-                        <span className="pb-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                            pro {preset.unit}
-                        </span>
-                    </div>
-                </div>
+            <div className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2 lg:block lg:bg-transparent lg:px-0 lg:py-0">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Einheit</p>
+                <p className="mt-0.5 text-sm font-black uppercase text-slate-700">pro {preset.unit}</p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+                <button
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => { event.stopPropagation(); onEdit(); }}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+                    title="Bearbeiten"
+                >
+                    <Edit2 className="h-4 w-4" />
+                </button>
+                <button
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => { event.stopPropagation(); onDelete(); }}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                    title="Loeschen"
+                >
+                    <Trash2 className="h-4 w-4" />
+                </button>
             </div>
         </div>
     );
 }
 
 export default function PositionPresetsPage() {
-    const { services, addService, updateService, deleteService, isLoading: isServicesLoading } = useServices();
+    const { services, addService, updateService, deleteService, refreshServices, isLoading: isServicesLoading } = useServices();
     const { folders, addFolder, renameFolder, deleteFolder, isLoading: isFoldersLoading } = useServiceFolders();
     const { showToast, showConfirm, showPrompt } = useNotification();
 
     const [searchQuery, setSearchQuery] = useState("");
+    const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingService, setEditingService] = useState<Service | undefined>(undefined);
     const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
-    const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+    const folderNames = useMemo(() => new Set(folders.map(folder => folder.name)), [folders]);
+    const folderOptions = useMemo(() => folders.map(folder => folder.name), [folders]);
+    const allPositionPresets = useMemo(() => services.filter(service => service.category === "Position"), [services]);
+    const assignedPresets = useMemo(
+        () => allPositionPresets.filter(preset => Boolean(preset.folder) && folderNames.has(preset.folder as string)),
+        [allPositionPresets, folderNames]
+    );
+    const orphanPresets = useMemo(
+        () => allPositionPresets.filter(preset => !preset.folder || !folderNames.has(preset.folder)),
+        [allPositionPresets, folderNames]
     );
 
-    const allPositionPresets = useMemo(
-        () => services.filter(service => service.category === "Position"),
-        [services]
-    );
-
-    const positionPresets = useMemo(() => {
-        const query = searchQuery.trim().toLowerCase();
-        return allPositionPresets
-            .filter(service => {
-                const matchesSearch =
-                    !query ||
-                    service.title.toLowerCase().includes(query) ||
-                    (service.description || "").toLowerCase().includes(query) ||
-                    (service.folder || "").toLowerCase().includes(query);
-
-                const matchesFolder = selectedFolder === null || service.folder === selectedFolder;
-                return matchesSearch && matchesFolder;
-            })
-            .sort((a, b) => a.title.localeCompare(b.title, "de", { sensitivity: "base" }));
-    }, [allPositionPresets, searchQuery, selectedFolder]);
+    useEffect(() => {
+        if (folders.length === 0) {
+            setSelectedFolder(null);
+            return;
+        }
+        if (!selectedFolder || !folders.some(folder => folder.name === selectedFolder)) {
+            setSelectedFolder(folders[0].name);
+        }
+    }, [folders, selectedFolder]);
 
     const folderCounts = useMemo(() => {
         const counts = new Map<string, number>();
-        allPositionPresets.forEach(preset => {
+        assignedPresets.forEach(preset => {
             if (preset.folder) counts.set(preset.folder, (counts.get(preset.folder) || 0) + 1);
         });
         return counts;
-    }, [allPositionPresets]);
+    }, [assignedPresets]);
 
+    const visiblePresets = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!selectedFolder) return [];
+
+        return assignedPresets
+            .filter(preset => {
+                const matchesFolder = preset.folder === selectedFolder;
+                const matchesType = typeFilter === "all" || (preset.itemType || "standard") === typeFilter;
+                const matchesSearch =
+                    !query ||
+                    preset.title.toLowerCase().includes(query) ||
+                    (preset.description || "").toLowerCase().includes(query) ||
+                    (preset.unit || "").toLowerCase().includes(query);
+                return matchesFolder && matchesType && matchesSearch;
+            })
+            .sort((a, b) => a.title.localeCompare(b.title, "de", { sensitivity: "base" }));
+    }, [assignedPresets, searchQuery, selectedFolder, typeFilter]);
+
+    const selectedFolderCount = selectedFolder ? folderCounts.get(selectedFolder) || 0 : 0;
     const stats = useMemo(() => ({
-        total: allPositionPresets.length,
-        standard: allPositionPresets.filter(preset => (preset.itemType || "standard") === "standard").length,
-        detailed: allPositionPresets.filter(preset => preset.itemType === "detailed").length,
+        total: assignedPresets.length,
+        standard: assignedPresets.filter(preset => (preset.itemType || "standard") === "standard").length,
+        detailed: assignedPresets.filter(preset => preset.itemType === "detailed").length,
         folders: folders.length,
-    }), [allPositionPresets, folders]);
+    }), [assignedPresets, folders]);
 
     const handleSavePreset = (service: Service) => {
-        const preset = { ...service, category: "Position" as const, folder: service.folder || selectedFolder || undefined };
+        const targetFolder = service.folder || selectedFolder;
+        if (!targetFolder) {
+            showToast("Bitte zuerst einen Ordner erstellen.", "error");
+            return;
+        }
+
+        const preset = { ...service, category: "Position" as const, folder: targetFolder };
         if (editingService) {
             updateService(preset.id, preset);
-            showToast("Vorlage erfolgreich aktualisiert.", "success");
+            showToast("Vorlage aktualisiert.", "success");
         } else {
             addService(preset);
-            showToast("Vorlage erfolgreich erstellt.", "success");
+            showToast("Vorlage erstellt.", "success");
         }
     };
 
     const handleDeletePreset = (id: string) => {
         showConfirm({
-            title: "Vorlage löschen?",
-            message: "Möchten Sie diese Positions-Vorlage wirklich entfernen?",
+            title: "Vorlage loeschen?",
+            message: "Diese Positions-Vorlage wird dauerhaft aus dem Katalog entfernt.",
             variant: "danger",
-            confirmLabel: "Jetzt löschen",
+            confirmLabel: "Vorlage loeschen",
             onConfirm: () => {
                 deleteService(id);
-                showToast("Vorlage erfolgreich entfernt.", "success");
-            }
+                showToast("Vorlage entfernt.", "success");
+            },
         });
     };
 
     const handleCreateFolder = () => {
         showPrompt({
             title: "Neuer Ordner",
-            message: "Geben Sie einen Namen für den neuen Ordner ein:",
-            placeholder: "Ordnername...",
-            confirmLabel: "Erstellen",
+            message: "Wie soll der Ordner heissen?",
+            placeholder: "z.B. Erdarbeiten, Rohbau, Sanierung...",
+            confirmLabel: "Ordner erstellen",
             onConfirm: (name) => {
-                if (name?.trim()) {
-                    addFolder(name.trim())
-                        .then(() => showToast("Ordner erstellt.", "success"))
-                        .catch(() => showToast("Fehler beim Erstellen.", "error"));
-                }
-            }
+                const trimmedName = name?.trim();
+                if (!trimmedName) return;
+                addFolder(trimmedName)
+                    .then((folder) => {
+                        setSelectedFolder(folder.name);
+                        showToast("Ordner erstellt.", "success");
+                    })
+                    .catch(() => showToast("Fehler beim Erstellen.", "error"));
+            },
         });
     };
 
     const handleRenameFolder = (folder: ServiceFolder) => {
         showPrompt({
             title: "Ordner umbenennen",
-            message: "Geben Sie einen neuen Namen für den Ordner ein:",
+            message: "Geben Sie einen neuen Ordnernamen ein:",
             initialValue: folder.name,
             confirmLabel: "Speichern",
             onConfirm: (name) => {
-                if (name?.trim() && name.trim() !== folder.name) {
-                    renameFolder(folder.id, name.trim())
-                        .then(() => {
-                            showToast("Ordner umbenannt.", "success");
-                            if (selectedFolder === folder.name) setSelectedFolder(name.trim());
-                        })
-                        .catch(() => showToast("Fehler beim Umbenennen.", "error"));
-                }
-            }
+                const trimmedName = name?.trim();
+                if (!trimmedName || trimmedName === folder.name) return;
+                renameFolder(folder.id, trimmedName)
+                    .then(() => {
+                        if (selectedFolder === folder.name) setSelectedFolder(trimmedName);
+                        showToast("Ordner umbenannt.", "success");
+                    })
+                    .catch(() => showToast("Fehler beim Umbenennen.", "error"));
+            },
         });
     };
 
     const handleDeleteFolder = (folder: ServiceFolder) => {
+        const count = folderCounts.get(folder.name) || 0;
         showConfirm({
-            title: "Ordner löschen?",
-            message: `Möchten Sie den Ordner "${folder.name}" wirklich löschen? Enthaltene Vorlagen werden in das Hauptverzeichnis verschoben.`,
+            title: "Ordner und Positionen loeschen?",
+            message: `Im Ordner "${folder.name}" befinden sich ${count} Position${count === 1 ? "" : "en"}. Wenn Sie den Ordner loeschen, werden diese Positionen ebenfalls dauerhaft geloescht.`,
             variant: "danger",
-            confirmLabel: "Ordner löschen",
-            onConfirm: () => {
-                deleteFolder(folder.id)
-                    .then(() => {
-                        showToast("Ordner gelöscht.", "success");
-                        if (selectedFolder === folder.name) setSelectedFolder(null);
-                    })
-                    .catch(() => showToast("Fehler beim Löschen.", "error"));
-            }
+            confirmLabel: "Alles loeschen",
+            onConfirm: async () => {
+                try {
+                    await deleteFolder(folder.id);
+                    await refreshServices();
+                    showToast("Ordner und enthaltene Positionen geloescht.", "success");
+                } catch {
+                    showToast("Fehler beim Loeschen.", "error");
+                }
+            },
         });
+    };
+
+    const handleMoveOrphansToSelectedFolder = () => {
+        if (!selectedFolder) return;
+        orphanPresets.forEach(preset => updateService(preset.id, { ...preset, folder: selectedFolder }));
+        showToast(`${orphanPresets.length} Position${orphanPresets.length === 1 ? "" : "en"} zugeordnet.`, "success");
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
@@ -341,15 +362,18 @@ export default function PositionPresetsPage() {
         if (!over) return;
 
         const preset = services.find(service => service.id === active.id);
-        const targetFolderName = over.data.current?.folderName as string | null;
-        if (!preset) return;
-        if (preset.folder === targetFolderName || (!preset.folder && targetFolderName === null)) return;
+        const targetFolderName = over.data.current?.folderName as string | undefined;
+        if (!preset || !targetFolderName || preset.folder === targetFolderName) return;
 
-        updateService(preset.id, { ...preset, folder: targetFolderName || undefined });
-        showToast(targetFolderName ? `In ${targetFolderName} verschoben.` : "Aus Ordner entfernt.", "success");
+        updateService(preset.id, { ...preset, folder: targetFolderName });
+        showToast(`Nach ${targetFolderName} verschoben.`, "success");
     };
 
     const openCreateModal = () => {
+        if (!selectedFolder) {
+            showToast("Bitte zuerst einen Ordner erstellen.", "error");
+            return;
+        }
         setEditingService(undefined);
         setIsModalOpen(true);
     };
@@ -357,7 +381,7 @@ export default function PositionPresetsPage() {
     if (isServicesLoading || isFoldersLoading) {
         return (
             <div className="dashboard-page flex items-center justify-center">
-                <div className="rounded-3xl border border-slate-100 bg-white px-6 py-4 font-black text-slate-400 shadow-sm">
+                <div className="rounded-lg border border-slate-200 bg-white px-6 py-4 font-black text-slate-500 shadow-sm">
                     Vorlagen werden geladen...
                 </div>
             </div>
@@ -376,6 +400,7 @@ export default function PositionPresetsPage() {
                     <div className="relative bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white sm:p-8">
                         <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-fuchsia-500/20 blur-3xl" />
                         <div className="absolute bottom-0 left-1/3 h-44 w-44 rounded-full bg-cyan-400/20 blur-3xl" />
+
                         <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
                             <div>
                                 <div className="mb-4 flex items-center gap-3">
@@ -386,7 +411,7 @@ export default function PositionPresetsPage() {
                                 </div>
                                 <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Positions-Vorlagen</h1>
                                 <p className="mt-3 max-w-2xl text-base font-medium text-white/65">
-                                    Wiederverwendbare Positionen organisieren, verschieben und direkt in Dokumente übernehmen.
+                                    Wiederverwendbare Positionen organisieren, verschieben und direkt in Dokumente uebernehmen.
                                 </p>
                             </div>
 
@@ -399,7 +424,8 @@ export default function PositionPresetsPage() {
                                 </button>
                                 <button
                                     onClick={openCreateModal}
-                                    className="flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 shadow-xl shadow-black/10 transition-all hover:-translate-y-0.5"
+                                    disabled={!selectedFolder}
+                                    className="flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 shadow-xl shadow-black/10 transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-white/40 disabled:text-white/60 disabled:hover:translate-y-0"
                                 >
                                     <Plus className="h-5 w-5" /> Neue Vorlage
                                 </button>
@@ -440,59 +466,110 @@ export default function PositionPresetsPage() {
                     </div>
                 </div>
 
-                <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
+                <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
                     <aside className="space-y-4">
-                        <div className="rounded-[32px] border border-slate-100 bg-white p-4 shadow-sm">
-                            <div className="mb-3 px-2">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Verzeichnis</p>
-                                <p className="mt-1 text-sm font-semibold text-slate-500">Drag & Drop in einen Ordner.</p>
+                        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ordner</p>
+                                    <h2 className="mt-1 text-lg font-black text-slate-950">{folders.length} Bereiche</h2>
+                                </div>
+                                <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-500">
+                                    {assignedPresets.length} Positionen
+                                </span>
                             </div>
-                            <div className="space-y-2">
-                                <DroppableFolder
-                                    folder={null}
-                                    count={allPositionPresets.length}
-                                    isSelected={selectedFolder === null}
-                                    onClick={() => setSelectedFolder(null)}
-                                    onRename={() => {}}
-                                    onDelete={() => {}}
-                                />
-                                {folders.map(folder => (
-                                    <DroppableFolder
-                                        key={folder.id}
-                                        folder={folder}
-                                        count={folderCounts.get(folder.name) || 0}
-                                        isSelected={selectedFolder === folder.name}
-                                        onClick={() => setSelectedFolder(folder.name)}
-                                        onRename={() => handleRenameFolder(folder)}
-                                        onDelete={() => handleDeleteFolder(folder)}
-                                    />
-                                ))}
-                            </div>
-                        </div>
+
+                            {folders.length > 0 ? (
+                                <div className="space-y-2">
+                                    {folders.map(folder => (
+                                        <FolderItem
+                                            key={folder.id}
+                                            folder={folder}
+                                            count={folderCounts.get(folder.name) || 0}
+                                            isSelected={selectedFolder === folder.name}
+                                            onClick={() => setSelectedFolder(folder.name)}
+                                            onRename={() => handleRenameFolder(folder)}
+                                            onDelete={() => handleDeleteFolder(folder)}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
+                                    <FolderPlus className="mx-auto h-8 w-8 text-slate-400" />
+                                    <p className="mt-3 font-black text-slate-900">Erst Ordner anlegen</p>
+                                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                                        Jede Vorlage braucht einen eigenen Ordner, damit der Katalog sauber bleibt.
+                                    </p>
+                                    <button
+                                        onClick={handleCreateFolder}
+                                        className="mt-4 rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-black text-white"
+                                    >
+                                        Ordner erstellen
+                                    </button>
+                                </div>
+                            )}
+                        </section>
+
+                        {orphanPresets.length > 0 && folders.length > 0 && (
+                            <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                                <div className="flex gap-3">
+                                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                                    <div>
+                                        <p className="font-black text-amber-950">{orphanPresets.length} Positionen ohne Ordner</p>
+                                        <p className="mt-1 text-sm font-semibold text-amber-800">
+                                            Alte Eintraege koennen in den aktuell markierten Ordner verschoben werden.
+                                        </p>
+                                        <button
+                                            onClick={handleMoveOrphansToSelectedFolder}
+                                            className="mt-3 rounded-lg bg-amber-600 px-3 py-2 text-sm font-black text-white"
+                                        >
+                                            In diesen Ordner verschieben
+                                        </button>
+                                    </div>
+                                </div>
+                            </section>
+                        )}
                     </aside>
 
-                    <main className="space-y-5">
-                        <div className="flex flex-col gap-3 rounded-[32px] border border-slate-100 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
-                                    {selectedFolder || "Alle Vorlagen"}
-                                </p>
-                                <h2 className="mt-1 text-2xl font-black text-slate-900">{positionPresets.length} Einträge</h2>
-                            </div>
-                            {selectedFolder && (
-                                <button
-                                    onClick={() => setSelectedFolder(null)}
-                                    className="w-fit rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-600"
-                                >
-                                    Alle anzeigen
-                                </button>
-                            )}
-                        </div>
+                    <main className="space-y-4">
+                        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                            <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                                        {selectedFolder || "Kein Ordner ausgewaehlt"}
+                                    </p>
+                                    <h2 className="mt-1 text-2xl font-black text-slate-950">
+                                        {selectedFolder ? `${selectedFolderCount} Position${selectedFolderCount === 1 ? "" : "en"}` : "Ordner erstellen"}
+                                    </h2>
+                                </div>
 
-                        {positionPresets.length > 0 ? (
-                            <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2 2xl:gap-5">
-                                {positionPresets.map(preset => (
-                                    <PresetCard
+                                <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+                                    <div className="grid grid-cols-3 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+                                        {[
+                                            { id: "all", label: "Alle" },
+                                            { id: "standard", label: "Standard" },
+                                            { id: "detailed", label: "Detail" },
+                                        ].map(item => (
+                                            <button
+                                                key={item.id}
+                                                onClick={() => setTypeFilter(item.id as TypeFilter)}
+                                                className={cn(
+                                                    "rounded-md px-3 py-2 text-xs font-black transition-colors",
+                                                    typeFilter === item.id ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-900"
+                                                )}
+                                            >
+                                                {item.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {visiblePresets.length > 0 ? (
+                            <div className="space-y-2">
+                                {visiblePresets.map(preset => (
+                                    <PresetRow
                                         key={preset.id}
                                         preset={preset}
                                         onEdit={() => {
@@ -500,27 +577,25 @@ export default function PositionPresetsPage() {
                                             setIsModalOpen(true);
                                         }}
                                         onDelete={() => handleDeletePreset(preset.id)}
-                                        onRemoveFromFolder={() => {
-                                            updateService(preset.id, { ...preset, folder: undefined });
-                                            showToast("Aus Ordner entfernt.", "success");
-                                        }}
                                     />
                                 ))}
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center rounded-[36px] border border-dashed border-indigo-200 bg-indigo-50/40 px-6 py-24 text-center">
-                                <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-white text-indigo-500 shadow-sm">
-                                    <FileText className="h-10 w-10" />
-                                </div>
-                                <h4 className="text-xl font-black text-slate-900">Keine Vorlagen gefunden</h4>
-                                <p className="mt-2 max-w-md font-medium text-slate-500">
-                                    Erstellen Sie eine Vorlage oder wählen Sie einen anderen Ordner.
+                            <div className="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-16 text-center shadow-sm">
+                                <FileText className="mx-auto h-10 w-10 text-slate-300" />
+                                <h3 className="mt-4 text-xl font-black text-slate-950">
+                                    {selectedFolder ? "Noch keine Position in diesem Ordner" : "Noch kein Ordner vorhanden"}
+                                </h3>
+                                <p className="mx-auto mt-2 max-w-md text-sm font-semibold text-slate-500">
+                                    {selectedFolder
+                                        ? "Legen Sie hier die Positionen ab, die Sie beim Schreiben eines Angebots schnell wiederverwenden wollen."
+                                        : "Erstellen Sie zuerst einen Ordner, danach koennen Sie Positions-Vorlagen anlegen."}
                                 </p>
                                 <button
-                                    onClick={openCreateModal}
-                                    className="mt-5 rounded-2xl bg-white px-5 py-3 font-black text-indigo-600 shadow-sm ring-1 ring-indigo-100"
+                                    onClick={selectedFolder ? openCreateModal : handleCreateFolder}
+                                    className="mt-5 rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white"
                                 >
-                                    Vorlage erstellen
+                                    {selectedFolder ? "Erste Vorlage erstellen" : "Ordner erstellen"}
                                 </button>
                             </div>
                         )}
@@ -532,7 +607,8 @@ export default function PositionPresetsPage() {
                     onClose={() => setIsModalOpen(false)}
                     onSave={handleSavePreset}
                     initialService={editingService}
-                    folders={folders.map(folder => folder.name)}
+                    folders={folderOptions}
+                    defaultFolder={selectedFolder}
                     mode="position"
                 />
             </div>
@@ -542,12 +618,10 @@ export default function PositionPresetsPage() {
                     const preset = services.find(service => service.id === activeDragId);
                     if (!preset) return null;
                     return (
-                        <div className="w-80 rotate-1 rounded-[32px] border-2 border-indigo-300 bg-white p-6 shadow-2xl">
-                            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                                {(preset.itemType || "standard") === "detailed" ? <Layout className="h-7 w-7" /> : <Layers className="h-7 w-7" />}
-                            </div>
-                            <h3 className="line-clamp-1 text-xl font-black text-slate-900">{preset.title}</h3>
-                            <p className="mt-2 line-clamp-2 text-sm font-medium text-slate-500">{preset.description || "Keine Beschreibung"}</p>
+                        <div className="w-96 rounded-lg border border-indigo-300 bg-white p-4 shadow-2xl">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Verschieben</p>
+                            <h3 className="mt-1 truncate text-lg font-black text-slate-950">{preset.title}</h3>
+                            <p className="mt-1 text-sm font-semibold text-slate-500">{formatCurrency(preset.price)} pro {preset.unit}</p>
                         </div>
                     );
                 })()}

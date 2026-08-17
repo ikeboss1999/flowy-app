@@ -54,5 +54,7 @@ export function useServices() {
         }
     };
 
-    return { services: data, addService, updateService, deleteService, isLoading };
+    const refreshServices = () => mutate();
+
+    return { services: data, addService, updateService, deleteService, refreshServices, isLoading };
 }

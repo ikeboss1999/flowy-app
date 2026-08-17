@@ -700,6 +700,14 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
       return;
     }
 
+    const duplicateInvoiceNumber = invoices.some(
+      (invoice) => invoice.id !== initialData?.id && invoice.invoiceNumber?.trim() === invoiceNumber.trim()
+    );
+    if (duplicateInvoiceNumber) {
+      setError(`Rechnungsnummer ${invoiceNumber} ist bereits vergeben.`);
+      return;
+    }
+
     const invoiceData: Invoice = {
       id: initialData?.id || Math.random().toString(36).substr(2, 9),
       invoiceNumber,
@@ -789,12 +797,13 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
       } catch (e) {
         console.error("PDF Upload Failed", e);
         setIsGeneratingPDF(false);
-        setError("Die Rechnung konnte nicht finalisiert werden, weil die PDF nicht gespeichert wurde. Bitte versuche es erneut.");
+        setError(e instanceof Error ? e.message : "Die Rechnung konnte nicht finalisiert werden. Bitte versuche es erneut.");
       }
       return;
     }
 
     // For Drafts
+    try {
     if (initialData?.id) {
       await updateInvoice(initialData.id, invoiceData);
     } else {
@@ -812,6 +821,10 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
       variant: "primary",
       onConfirm: () => router.push("/invoices"),
     });
+    } catch (e) {
+      console.error("Failed to save invoice", e);
+      setError(e instanceof Error ? e.message : "Speichern fehlgeschlagen. Bitte erneut versuchen.");
+    }
   };
 
   const handleSaveNewCustomer = (newCustomer: Customer) => {

@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     AlertTriangle,
     Briefcase,
-    CheckCircle2,
     Clock,
     FileText,
     Hash,
@@ -21,14 +20,11 @@ import { Customer, CustomerStatus, CustomerType } from "@/types/customer";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { useCustomerSettings } from "@/hooks/useCustomerSettings";
 import { cn, generateUUID } from "@/lib/utils";
-import { useAutoSave } from "@/hooks/useAutoSave";
-import { useAuth } from "@/context/AuthContext";
-import { mutate } from "swr";
 
 interface CustomerModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (customer: Customer) => void;
+    onSave: (customer: Customer) => void | Promise<void>;
     initialCustomer?: Customer;
     existingCustomers?: Customer[];
 }
@@ -37,10 +33,7 @@ const inputClasses = "w-full rounded-2xl border border-slate-200 bg-slate-50 px-
 const labelClasses = "px-1 text-[10px] font-black uppercase tracking-widest text-slate-400";
 
 export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existingCustomers = [] }: CustomerModalProps) {
-    const { user } = useAuth();
     const [customerId, setCustomerId] = useState("");
-    const [isInitialized, setIsInitialized] = useState(false);
-    const initialValuesRef = useRef<any>(null);
 
     const [type, setType] = useState<CustomerType>("private");
     const [status, setStatus] = useState<CustomerStatus>("active");
@@ -73,8 +66,6 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
         
         const nextId = initialCustomer?.id || generateUUID();
         setCustomerId(nextId);
-        setIsInitialized(false);
-        initialValuesRef.current = null;
 
         if (initialCustomer) {
             setType(initialCustomer.type);
@@ -135,79 +126,6 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
         }
     }, [isBusiness, formData.salutation]);
 
-    useEffect(() => {
-        if (isOpen && !isInitialized && formData.customer_number) {
-            initialValuesRef.current = {
-                type,
-                status: initialCustomer ? status : "draft",
-                ...formData
-            };
-            setIsInitialized(true);
-        }
-    }, [isOpen, isInitialized, type, status, formData, initialCustomer]);
-
-    const isDirty = useMemo(() => {
-        if (!initialValuesRef.current) return false;
-        return (
-            type !== initialValuesRef.current.type ||
-            status !== initialValuesRef.current.status ||
-            formData.name !== initialValuesRef.current.name ||
-            formData.contactPerson !== initialValuesRef.current.contactPerson ||
-            formData.salutation !== initialValuesRef.current.salutation ||
-            formData.email !== initialValuesRef.current.email ||
-            formData.phone !== initialValuesRef.current.phone ||
-            formData.street !== initialValuesRef.current.street ||
-            formData.city !== initialValuesRef.current.city ||
-            formData.zip !== initialValuesRef.current.zip ||
-            formData.taxId !== initialValuesRef.current.taxId ||
-            formData.commercialRegisterNumber !== initialValuesRef.current.commercialRegisterNumber ||
-            formData.reverseChargeEnabled !== initialValuesRef.current.reverseChargeEnabled ||
-            formData.defaultPaymentTermId !== initialValuesRef.current.defaultPaymentTermId ||
-            formData.notes !== initialValuesRef.current.notes ||
-            formData.customer_number !== initialValuesRef.current.customer_number
-        );
-    }, [type, status, formData]);
-
-    const autoSavePayload = useMemo(() => {
-        return {
-            type,
-            status: initialCustomer ? status : "draft",
-            salutation: formData.salutation,
-            name: formData.name.trim(),
-            contactPerson: isBusiness ? formData.contactPerson.trim() || undefined : undefined,
-            email: formData.email.trim(),
-            phone: formData.phone.trim(),
-            address: {
-                street: formData.street.trim(),
-                city: formData.city.trim(),
-                zip: formData.zip.trim()
-            },
-            taxId: isBusiness ? formData.taxId.trim() : undefined,
-            commercialRegisterNumber: isBusiness ? formData.commercialRegisterNumber.trim() : undefined,
-            reverseChargeEnabled: isBusiness ? formData.reverseChargeEnabled : false,
-            defaultPaymentTermId: formData.defaultPaymentTermId || undefined,
-            customer_number: formData.customer_number.trim(),
-            notes: formData.notes
-        };
-    }, [type, status, formData, isBusiness, initialCustomer]);
-
-    const { isSaving, lastSaved } = useAutoSave({
-        id: customerId,
-        endpoint: "/api/customers",
-        data: autoSavePayload,
-        isDirty,
-        onSaveSuccess: () => {
-            initialValuesRef.current = {
-                type,
-                status: initialCustomer ? status : "draft",
-                ...formData
-            };
-            if (user) {
-                mutate(`/api/customers?userId=${user.id}`);
-            }
-        }
-    });
-
     const previewAddress = useMemo(() => {
         const line = [formData.zip, formData.city].filter(Boolean).join(" ");
         return [formData.street, line].filter(Boolean).join(", ");
@@ -265,7 +183,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
         }
     };
 
-    const handleSubmit = (event: React.FormEvent) => {
+    const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         setError(null);
 
@@ -337,8 +255,12 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
             lastActivity: initialCustomer?.lastActivity || new Date().toISOString()
         };
 
-        onSave(customer);
-        onClose();
+        try {
+            await onSave(customer);
+            onClose();
+        } catch (saveError) {
+            setError(saveError instanceof Error ? saveError.message : "Kunde konnte nicht gespeichert werden.");
+        }
     };
 
     return (
@@ -363,18 +285,6 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
-                        {isSaving && (
-                            <div className="flex items-center gap-2 text-xs font-semibold text-white/60 animate-pulse">
-                                <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-100" />
-                                <span>Speichert...</span>
-                            </div>
-                        )}
-                        {!isSaving && lastSaved && (
-                            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-200">
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                <span>Entwurf gespeichert ({lastSaved})</span>
-                            </div>
-                        )}
                         <button onClick={onClose} className="rounded-2xl border border-white/15 bg-white/10 p-2 text-white/70 shadow-sm transition-colors hover:bg-white hover:text-indigo-700">
                             <X className="h-5 w-5" />
                         </button>

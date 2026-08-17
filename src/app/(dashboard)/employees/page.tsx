@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     Briefcase,
     ChevronDown,
@@ -38,6 +38,8 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useNotification } from "@/context/NotificationContext";
 import { useAuth } from "@/context/AuthContext";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
+import { useEmployeeAvatars } from "@/hooks/useEmployeeAvatars";
+import { fetcher } from "@/lib/fetcher";
 
 const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -65,7 +67,7 @@ export default function EmployeesPage() {
     const canCreate = profile?.role === "admin" || profile?.role === "developer" || !!profile?.permissions?.employees_create;
     const canWrite = profile?.role === "admin" || profile?.role === "developer" || !!profile?.permissions?.employees_write;
     const { showToast, showConfirm } = useNotification();
-    const { mutate: mutateAll } = useSWRConfig();
+    const { cache, mutate: mutateAll } = useSWRConfig();
 
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState<EmploymentStatus | "all">("all");
@@ -84,6 +86,7 @@ export default function EmployeesPage() {
     const [previewDoc, setPreviewDoc] = useState<EmployeeDocument | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const { avatarByEmployeeId, setAvatarByEmployeeId } = useEmployeeAvatars(employees.length > 0);
 
     const pdfContainerRef = useRef<HTMLDivElement>(null);
     const contractContainerRef = useRef<HTMLDivElement>(null);
@@ -151,10 +154,66 @@ export default function EmployeesPage() {
             });
     }, [employees, searchQuery]);
 
-    const activeSelectedEmployee = useMemo(() => {
-        if (!selectedEmployee) return null;
-        return employees.find((employee) => employee.id === selectedEmployee.id) || null;
-    }, [employees, selectedEmployee]);
+    const employeeDetailKey = (id: string) => `/api/employees/${id}`;
+
+    const getCachedEmployeeDetail = (id: string): Employee | null => {
+        const cached = cache.get(employeeDetailKey(id)) as any;
+        if (!cached) return null;
+        if (cached.data?.id) return cached.data as Employee;
+        if (cached.id) return cached as Employee;
+        return null;
+    };
+
+    const preloadEmployeeDetail = async (employee: Employee) => {
+        const key = employeeDetailKey(employee.id);
+        const cached = getCachedEmployeeDetail(employee.id);
+        if (cached) return cached;
+
+        const detail = await fetcher(key) as Employee;
+        await mutateAll(key, detail, {
+            populateCache: true,
+            revalidate: false,
+        });
+        return detail;
+    };
+
+    const withAvatar = (employee: Employee) => ({
+        ...employee,
+        ...(avatarByEmployeeId[employee.id] || {}),
+    });
+
+    const openEmployeeDetail = async (employee: Employee) => {
+        const cached = getCachedEmployeeDetail(employee.id);
+        if (cached) {
+            setSelectedEmployee(cached);
+            return;
+        }
+
+        try {
+            const fullEmployee = await preloadEmployeeDetail(employee);
+            setSelectedEmployee(fullEmployee || withAvatar(employee));
+        } catch (error) {
+            console.error("Employee detail preload failed:", error);
+            setSelectedEmployee(withAvatar(employee));
+        }
+    };
+
+    const activeSelectedEmployee = selectedEmployee;
+
+    useEffect(() => {
+        if (filteredEmployees.length === 0) return;
+
+        const visibleEmployees = filteredEmployees.slice(0, 30);
+        const timers = visibleEmployees.map((employee, index) => window.setTimeout(() => {
+            preloadEmployeeDetail(employee).catch((error) => {
+                console.warn("[EmployeesPage] detail preload failed:", employee.id, error);
+            });
+        }, 500 + index * 180));
+
+        return () => {
+            timers.forEach((timer) => window.clearTimeout(timer));
+        };
+    }, [filteredEmployees, cache, mutateAll]);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -644,66 +703,69 @@ export default function EmployeesPage() {
                     {filteredEmployees.length > 0 ? (
                         <section className="grid gap-4">
                             {filteredEmployees.map((employee) => {
-                                const isActive = employee.employment.isActive !== false;
-                                const name = employeeName(employee);
+                                const displayEmployee = withAvatar(employee);
+                                const isActive = displayEmployee.employment.isActive !== false;
+                                const name = employeeName(displayEmployee);
 
                                 return (
                                     <article
-                                        key={employee.id}
-                                        onClick={() => setSelectedEmployee(employee)}
+                                        key={displayEmployee.id}
+                                        onClick={() => openEmployeeDetail(displayEmployee)}
+                                        onMouseEnter={() => preloadEmployeeDetail(displayEmployee).catch(() => undefined)}
+                                        onFocus={() => preloadEmployeeDetail(displayEmployee).catch(() => undefined)}
                                         className="group cursor-pointer rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-100/70"
                                     >
                                         <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr_1.2fr_auto] xl:items-center">
                                             <div className="flex min-w-0 items-center gap-4">
-                                                {(employee.avatarUrl || employee.avatar) ? (
+                                                {(displayEmployee.avatarUrl || displayEmployee.avatar) ? (
                                                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                                                        <img src={employee.avatarUrl || employee.avatar} alt={name} className="h-full w-full object-cover" />
+                                                        <img src={displayEmployee.avatarUrl || displayEmployee.avatar} alt={name} className="h-full w-full object-cover" />
                                                     </div>
                                                 ) : (
                                                     <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-xl font-black text-indigo-600 ring-1 ring-indigo-100">
-                                                        {initialsFor(employee)}
+                                                        {initialsFor(displayEmployee)}
                                                     </div>
                                                 )}
                                                 <div className="min-w-0">
                                                     <div className="mb-2 flex flex-wrap items-center gap-2">
                                                         <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                                            #{employee.employeeNumber || "---"}
+                                                            #{displayEmployee.employeeNumber || "---"}
                                                         </span>
                                                         <span className={cn(
                                                             "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
-                                                            employee.additionalInfo?.isDraft ? "bg-slate-100 text-slate-600" :
+                                                            displayEmployee.additionalInfo?.isDraft ? "bg-slate-100 text-slate-600" :
                                                             isActive ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
                                                         )}>
-                                                            {employee.additionalInfo?.isDraft ? "Entwurf" : isActive ? "Aktiv" : "Archiviert"}
+                                                            {displayEmployee.additionalInfo?.isDraft ? "Entwurf" : isActive ? "Aktiv" : "Archiviert"}
                                                         </span>
                                                     </div>
                                                     <h3 className="truncate text-xl font-black text-slate-950 group-hover:text-indigo-700">{name}</h3>
-                                                    <p className="mt-1 text-sm font-bold text-slate-500">{employee.employment.workerType}</p>
+                                                    <p className="mt-1 text-sm font-bold text-slate-500">{displayEmployee.employment.workerType}</p>
                                                 </div>
                                             </div>
 
                                             <div>
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Position</p>
-                                                <p className="mt-1 font-black text-slate-900">{employee.employment.position || "Keine Position"}</p>
-                                                <p className="mt-1 text-sm font-bold text-slate-500">{employee.employment.status} seit {formatDate(employee.employment.startDate)}</p>
+                                                <p className="mt-1 font-black text-slate-900">{displayEmployee.employment.position || "Keine Position"}</p>
+                                                <p className="mt-1 text-sm font-bold text-slate-500">{displayEmployee.employment.status} seit {formatDate(displayEmployee.employment.startDate)}</p>
                                             </div>
 
                                             <div className="grid gap-2 text-sm font-bold text-slate-500 sm:grid-cols-2 xl:grid-cols-1">
                                                 <span className="flex min-w-0 items-center gap-2">
                                                     <Mail className="h-4 w-4 shrink-0 text-slate-300" />
-                                                    <span className="truncate">{employee.personalData.email || "Keine E-Mail"}</span>
+                                                    <span className="truncate">{displayEmployee.personalData.email || "Keine E-Mail"}</span>
                                                 </span>
                                                 <span className="flex min-w-0 items-center gap-2">
                                                     <Phone className="h-4 w-4 shrink-0 text-slate-300" />
-                                                    <span className="truncate">{employee.personalData.phone || "Keine Telefonnummer"}</span>
+                                                    <span className="truncate">{displayEmployee.personalData.phone || "Keine Telefonnummer"}</span>
                                                 </span>
                                             </div>
 
                                             <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
                                                 {canWrite && (
                                                     <button
-                                                        onClick={() => {
-                                                            setEditingEmployee(employee);
+                                                        onClick={async () => {
+                                                            setEditingEmployee(await preloadEmployeeDetail(displayEmployee).catch(() => displayEmployee));
                                                             setIsModalOpen(true);
                                                         }}
                                                         className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 transition hover:bg-indigo-100"
@@ -713,16 +775,16 @@ export default function EmployeesPage() {
                                                     </button>
                                                 )}
                                                 <button
-                                                    onClick={() => handleDownloadPDF(employee)}
-                                                    disabled={downloadingId === employee.id}
+                                                    onClick={async () => handleDownloadPDF(await preloadEmployeeDetail(displayEmployee).catch(() => displayEmployee))}
+                                                    disabled={downloadingId === displayEmployee.id}
                                                     className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 disabled:opacity-50"
                                                     title="Personaldatenblatt PDF"
                                                 >
-                                                    {downloadingId === employee.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                                                    {downloadingId === displayEmployee.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
                                                 </button>
-                                                {canWrite && employee.additionalInfo?.isDraft ? (
+                                                {canWrite && displayEmployee.additionalInfo?.isDraft ? (
                                                     <button
-                                                        onClick={() => handleDeleteDraftEmployee(employee)}
+                                                        onClick={() => handleDeleteDraftEmployee(displayEmployee)}
                                                         className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 transition hover:bg-rose-100"
                                                         title="Entwurf löschen"
                                                     >
@@ -730,7 +792,7 @@ export default function EmployeesPage() {
                                                     </button>
                                                 ) : canWrite && (isActive ? (
                                                     <button
-                                                        onClick={() => setDeactivatingEmployee(employee)}
+                                                        onClick={() => setDeactivatingEmployee(displayEmployee)}
                                                         className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 transition hover:bg-rose-100"
                                                         title="Abmelden"
                                                     >
@@ -739,14 +801,14 @@ export default function EmployeesPage() {
                                                 ) : (
                                                     <>
                                                         <button
-                                                            onClick={() => handleReactivateEmployee(employee)}
+                                                            onClick={() => handleReactivateEmployee(displayEmployee)}
                                                             className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100"
                                                             title="Reaktivieren"
                                                         >
                                                             <UserCheck className="h-4 w-4" />
                                                         </button>
                                                         <button
-                                                            onClick={() => handleDeleteEmployee(employee.id)}
+                                                            onClick={() => handleDeleteEmployee(displayEmployee.id)}
                                                             className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 transition hover:bg-rose-100"
                                                             title="Endgültig löschen"
                                                         >
@@ -948,6 +1010,15 @@ export default function EmployeesPage() {
                     onDeleteDocument={canWrite ? (employeeId, docId) => handleDeleteDocument(employeeId, docId) : undefined}
                     onAddDocument={canWrite ? (employeeId, doc) => handleAddDocument(employeeId, doc) : undefined}
                     onUpdateEmployee={canWrite ? (employee) => updateEmployee(employee.id, employee) : undefined}
+                    onAvatarChange={(employeeId, avatar, avatarUrl) => {
+                        setAvatarByEmployeeId((prev) => ({
+                            ...prev,
+                            [employeeId]: {
+                                avatar: avatar || undefined,
+                                avatarUrl: avatarUrl || undefined,
+                            },
+                        }));
+                    }}
                     onMobileAccessAction={canWrite ? handleMobileAccessAction : undefined}
                     onPreviewDocument={(doc) => handlePreview(doc)}
                     isDownloadingPDF={downloadingId === activeSelectedEmployee.id}

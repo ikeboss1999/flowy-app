@@ -8,6 +8,21 @@ import { logApiPerformance } from '@/lib/api-performance';
 
 export const dynamic = 'force-dynamic';
 
+async function findDuplicateCustomerNumber(client: any, customerNumber: string, companyOwnerId: string, currentCustomerId?: string) {
+    const normalizedNumber = String(customerNumber || '').trim();
+    if (!normalizedNumber) return null;
+
+    const { data, error } = await client
+        .from('customers')
+        .select('id,customer_number')
+        .eq('userId', companyOwnerId)
+        .eq('customer_number', normalizedNumber)
+        .limit(2);
+
+    if (error) throw error;
+    return (data || []).find((customer: any) => customer.id !== currentCustomerId) || null;
+}
+
 export async function GET(request: Request) {
     const startedAt = performance.now();
     const session = await getUserSession();
@@ -57,6 +72,11 @@ export async function POST(request: Request) {
         const now = new Date().toISOString();
 
         const client = supabaseAdmin || supabase;
+
+        const duplicateCustomer = await findDuplicateCustomerNumber(client, customer.customer_number, companyOwnerId, customer.id);
+        if (duplicateCustomer) {
+            return NextResponse.json({ error: `Kundennummer ${customer.customer_number} ist bereits vergeben.` }, { status: 409 });
+        }
 
         // Check if record exists for created_by
         const createdBy = customer.id ? await safeGetCreatedBy(client, 'customers', customer.id) : null;

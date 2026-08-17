@@ -7,6 +7,13 @@ import { logApiPerformance } from '@/lib/api-performance';
 
 export const dynamic = 'force-dynamic';
 
+function nextMonth(month: string) {
+    const [year, monthIndex] = month.split('-').map(Number);
+    if (!year || !monthIndex) return null;
+    const date = new Date(Date.UTC(year, monthIndex, 1));
+    return date.toISOString().slice(0, 7);
+}
+
 export async function GET(request: Request) {
     const startedAt = performance.now();
     const session = await getUserSession();
@@ -21,13 +28,33 @@ export async function GET(request: Request) {
     }
 
     try {
+        const { searchParams } = new URL(request.url);
+        const requestedMonths = [
+            searchParams.get('month'),
+            ...(searchParams.get('months') || '').split(','),
+        ]
+            .map((month) => month?.trim())
+            .filter((month): month is string => !!month && /^\d{4}-\d{2}$/.test(month))
+            .sort();
+        const summary = searchParams.get('summary') === '1';
+
         const client = supabaseAdmin || supabase;
-        const { data: entries, error } = await client
+        let query = client
             .from('time_entries')
-            .select('*')
+            .select(summary ? 'id,employeeId,date' : '*')
             .eq('userId', userId)
-            .order('date', { ascending: false })
-            .limit(1000);
+            .order('date', { ascending: false });
+
+        if (requestedMonths.length > 0) {
+            const minMonth = requestedMonths[0];
+            const maxMonth = requestedMonths[requestedMonths.length - 1];
+            const upperMonth = nextMonth(maxMonth);
+            if (upperMonth) {
+                query = query.gte('date', `${minMonth}-01`).lt('date', `${upperMonth}-01`);
+            }
+        }
+
+        const { data: entries, error } = await query.limit(summary ? 5000 : 1000);
         if (error) throw error;
         logApiPerformance('/api/time-entries', startedAt, { payload: entries });
         return NextResponse.json(entries);
