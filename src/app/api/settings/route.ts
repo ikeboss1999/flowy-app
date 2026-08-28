@@ -54,6 +54,38 @@ function prepareAccountSettingsForSave(nextAccountSettings: any = {}, currentAcc
     };
 }
 
+function readSettingsBlock(settings: any = {}, key: string) {
+    return settings?.[key] || settings?.accountSettings?.[key] || null;
+}
+
+function isMissingSettingsColumnError(error: any, key: string) {
+    return !!error && (
+        error.code === 'PGRST204' ||
+        error.code === '42703' ||
+        String(error.message || '').includes(`'${key}' column`) ||
+        String(error.message || '').includes(`"${key}" column`) ||
+        String(error.message || '').includes(key)
+    );
+}
+
+async function saveSettingsWithJsonFallback(client: any, updatedSettings: any, fallbackKey?: string) {
+    const result = await safeUpsert(client, 'settings', updatedSettings);
+    if (!result.error || !fallbackKey || !isMissingSettingsColumnError(result.error, fallbackKey)) {
+        return result;
+    }
+
+    const { [fallbackKey]: fallbackValue, ...settingsWithoutMissingColumn } = updatedSettings;
+    const fallbackSettings = {
+        ...settingsWithoutMissingColumn,
+        accountSettings: {
+            ...(updatedSettings.accountSettings || {}),
+            [fallbackKey]: fallbackValue,
+        },
+    };
+
+    return safeUpsert(client, 'settings', fallbackSettings);
+}
+
 export async function GET(request: Request) {
     const startedAt = performance.now();
     const session = await getUserSession();
@@ -91,11 +123,11 @@ export async function GET(request: Request) {
             if (session?.role === 'employee') {
                 const payload = {
                     companyData: data.companyData || {},
-                    invoiceSettings: data.invoiceSettings || null,
-                    offerSettings: data.offerSettings || null,
-                    orderSettings: data.orderSettings || null,
-                    projectSettings: data.projectSettings || null,
-                    customerSettings: data.customerSettings || null,
+                    invoiceSettings: readSettingsBlock(data, 'invoiceSettings'),
+                    offerSettings: readSettingsBlock(data, 'offerSettings'),
+                    orderSettings: readSettingsBlock(data, 'orderSettings'),
+                    projectSettings: readSettingsBlock(data, 'projectSettings'),
+                    customerSettings: readSettingsBlock(data, 'customerSettings'),
                 };
                 logApiPerformance('/api/settings', startedAt, { payload, note: 'employee' });
                 return NextResponse.json(payload);
@@ -105,6 +137,11 @@ export async function GET(request: Request) {
             if (processed.companyData && Object.keys(processed.companyData).length === 0) processed.companyData = null;
             if (processed.accountSettings && Object.keys(processed.accountSettings).length === 0) processed.accountSettings = null;
             if (processed.accountSettings) processed.accountSettings = sanitizeAccountSettingsForClient(processed.accountSettings);
+            processed.invoiceSettings = readSettingsBlock(processed, 'invoiceSettings');
+            processed.offerSettings = readSettingsBlock(processed, 'offerSettings');
+            processed.orderSettings = readSettingsBlock(processed, 'orderSettings');
+            processed.projectSettings = readSettingsBlock(processed, 'projectSettings');
+            processed.customerSettings = readSettingsBlock(processed, 'customerSettings');
             if (processed.invoiceSettings && Object.keys(processed.invoiceSettings).length === 0) processed.invoiceSettings = null;
             if (processed.offerSettings && Object.keys(processed.offerSettings).length === 0) processed.offerSettings = null;
             if (processed.orderSettings && Object.keys(processed.orderSettings).length === 0) processed.orderSettings = null;
@@ -175,6 +212,8 @@ export async function POST(request: Request) {
             updatedSettings.created_by = session.userId;
         }
 
+        let fallbackKey: string | undefined;
+
         if (payload.type && payload.data) {
             if (payload.type === 'company') updatedSettings.companyData = payload.data;
             if (payload.type === 'account') {
@@ -182,7 +221,10 @@ export async function POST(request: Request) {
             }
             if (payload.type === 'invoice') updatedSettings.invoiceSettings = payload.data;
             if (payload.type === 'offer') updatedSettings.offerSettings = payload.data;
-            if (payload.type === 'order') updatedSettings.orderSettings = payload.data;
+            if (payload.type === 'order') {
+                updatedSettings.orderSettings = payload.data;
+                fallbackKey = 'orderSettings';
+            }
             if (payload.type === 'project') updatedSettings.projectSettings = payload.data;
             if (payload.type === 'customer') updatedSettings.customerSettings = payload.data;
         } else {
@@ -196,7 +238,7 @@ export async function POST(request: Request) {
         }
 
         // 3. Save
-        const { error } = await safeUpsert(client, 'settings', updatedSettings);
+        const { error } = await saveSettingsWithJsonFallback(client, updatedSettings, fallbackKey);
         if (error) throw error;
 
         return NextResponse.json({ success: true });

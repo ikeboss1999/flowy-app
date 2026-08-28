@@ -4,6 +4,7 @@ export interface Service {
     id: string;
     userId: string;
     title: string;
+    nickname?: string;
     description?: string;
     unit: InvoiceUnit;
     price: number;

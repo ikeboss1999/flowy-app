@@ -45,6 +45,7 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService, folders,
     const isPositionMode = resolvedMode === "position";
     const [formData, setFormData] = useState({
         title: "",
+        nickname: "",
         description: "",
         unit: "h" as InvoiceUnit,
         price: 0,
@@ -57,6 +58,7 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService, folders,
         if (initialService) {
             setFormData({
                 title: initialService.title,
+                nickname: initialService.nickname || "",
                 description: initialService.description || "",
                 unit: initialService.unit,
                 price: initialService.price,
@@ -67,6 +69,7 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService, folders,
         } else {
             setFormData({
                 title: "",
+                nickname: "",
                 description: "",
                 unit: isPositionMode ? "PA" : "h",
                 price: 0,
@@ -151,6 +154,11 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService, folders,
                                 <h3 className="mt-3 line-clamp-6 break-words text-2xl font-black leading-tight">
                                     {formData.title || (isPositionMode ? "Positionsname" : "Leistungsname")}
                                 </h3>
+                                {isPositionMode && formData.nickname && (
+                                    <p className="mt-3 inline-flex rounded-xl bg-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-cyan-100">
+                                        {formData.nickname}
+                                    </p>
+                                )}
                                 <p className="mt-4 text-sm font-semibold leading-relaxed text-white/60">{previewMeta.subtitle}</p>
                             </div>
 
@@ -192,6 +200,17 @@ export function ServiceModal({ isOpen, onClose, onSave, initialService, folders,
                                         placeholder={isPositionMode ? "z.B. Malerarbeiten Innenbereich" : "z.B. Regiestunde Facharbeiter"}
                                     />
                                 </div>
+                                {isPositionMode && (
+                                    <div className="space-y-2">
+                                        <label className={labelClasses}>Spitzname / Suchname</label>
+                                        <input
+                                            value={formData.nickname}
+                                            onChange={(event) => setFormData({ ...formData, nickname: event.target.value })}
+                                            className={inputClasses}
+                                            placeholder="z.B. Lichtschacht, Maler m2, Sockelputz..."
+                                        />
+                                    </div>
+                                )}
                                 <div className="space-y-2">
                                     <label className={labelClasses}>Beschreibung</label>
                                     <textarea

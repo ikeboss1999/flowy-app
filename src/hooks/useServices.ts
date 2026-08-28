@@ -4,12 +4,14 @@ import useSWR from 'swr';
 import { Service } from '@/types/service';
 import { useAuth } from '@/context/AuthContext';
 import { fetcher } from '@/lib/fetcher';
+import { serviceFromStorage } from '@/lib/service-nickname';
 
 export function useServices() {
     const { user } = useAuth();
 
     const key = user ? `/api/services?userId=${user.id}` : null;
-    const { data = [], isLoading, mutate } = useSWR<Service[]>(key, fetcher);
+    const { data: rawData = [], isLoading, mutate } = useSWR<Service[]>(key, fetcher);
+    const data = rawData.map(serviceFromStorage);
 
     const addService = async (service: Service) => {
         if (!user) return;

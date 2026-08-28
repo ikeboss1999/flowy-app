@@ -103,6 +103,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     const [emailSubject, setEmailSubject] = React.useState('');
     const [emailMessage, setEmailMessage] = React.useState('');
     const [isSendingEmail, setIsSendingEmail] = React.useState(false);
+    const [orderActionMessage, setOrderActionMessage] = React.useState<string | null>(null);
 
     const { data: offerSettings } = useOfferSettings();
     const { data: orderSettings, updateData: updateOrderSettings } = useOrderSettings();
@@ -121,6 +122,14 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
         if (!offer || !invoices) return false;
         return invoices.some(inv => inv.notes?.includes(`Bezug auf Angebot: ${offer.offerNumber}`));
     }, [offer, invoices]);
+
+    const alreadyConfirmedAsOrder = React.useMemo(() => {
+        if (!offer || !orders) return false;
+        return orders.some((order) =>
+            order.offerId === offer.id ||
+            (!!offer.offerNumber && order.offerNumber === offer.offerNumber)
+        );
+    }, [offer, orders]);
 
     if (!isOpen || !offer) return null;
 
@@ -237,15 +246,29 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     };
 
     const handleCreateOrder = async () => {
-        if (!offer || isConverting || !canConfirmOrder) return;
-        if (offer.status !== 'sent') {
-            showToast("Nur gesendete Angebote können als Auftrag bestätigt werden.", "error");
+        if (!offer || isConverting) return;
+        setOrderActionMessage(null);
+        if (!canConfirmOrder) {
+            setOrderActionMessage("Keine Berechtigung zum Erstellen von Aufträgen.");
+            showToast("Sie haben keine Berechtigung, Aufträge zu erstellen.", "error");
+            return;
+        }
+        if (alreadyConfirmedAsOrder) {
+            setOrderActionMessage("Für dieses Angebot wurde bereits ein Auftrag erstellt.");
+            showToast("Für dieses Angebot wurde bereits ein Auftrag erstellt.", "info");
+            return;
+        }
+        if (offer.status === 'rejected' || offer.status === 'expired') {
+            setOrderActionMessage("Dieses Angebot kann nicht als Auftrag bestätigt werden.");
+            showToast("Abgelehnte oder abgelaufene Angebote können nicht als Auftrag bestätigt werden.", "error");
             return;
         }
         setIsConverting(true);
+        setOrderActionMessage("Auftrag wird vorbereitet ...");
         try {
             const orderNum = `${orderSettings.prefix}${String(orderSettings.nextOrderNumber).padStart(3, '0')}`;
             if (orders.some((order) => order.orderNumber?.trim() === orderNum.trim())) {
+                setOrderActionMessage(`Auftragsnummer ${orderNum} ist bereits vergeben.`);
                 showToast(`Auftragsnummer ${orderNum} ist bereits vergeben. Bitte passen Sie den Nummernkreis in den Einstellungen an.`, "error");
                 return;
             }
@@ -280,20 +303,25 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                 pdfUrl: undefined as string | undefined,
             };
 
+            setOrderActionMessage("PDF für die Auftragsbestätigung wird erstellt ...");
             const uploadData = await uploadOrderPdf(newOrder, customer, companySettings, orderSettings);
             newOrder.pdfUrl = uploadData.pdfPath;
 
+            setOrderActionMessage("Auftrag wird gespeichert ...");
             await addOrder(newOrder);
             await updateOffer(offer.id, { status: 'accepted' });
             await updateOrderSettings({ nextOrderNumber: orderSettings.nextOrderNumber + 1 });
 
+            setOrderActionMessage("Auftrag wurde erstellt.");
             setShowSuccess(true);
             setTimeout(() => {
                 setShowSuccess(false);
+                setOrderActionMessage(null);
                 onClose();
             }, 2000);
         } catch (e) {
             console.error('[Order Creation]', e);
+            setOrderActionMessage(e instanceof Error ? e.message : "Auftrag konnte nicht erstellt werden.");
             showToast(e instanceof Error ? e.message : "Auftrag konnte nicht erstellt werden.", "error");
         } finally {
             setIsConverting(false);
@@ -389,17 +417,29 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                             </div>
                         ) : (
                             <button
-                                onClick={handleCreateOrder}
-                                disabled={isConverting || offer.status !== 'sent'}
+                                type="button"
+                                onPointerUp={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    void handleCreateOrder();
+                                }}
+                                disabled={isConverting}
                                 className={cn(
                                     "whitespace-nowrap px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all flex items-center gap-2 disabled:opacity-50",
-                                    offer.status !== 'sent'
+                                    alreadyConfirmedAsOrder
                                         ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
                                         : "bg-indigo-600 text-white shadow-indigo-200 hover:scale-[1.02] active:scale-95"
                                 )}
+                                title={
+                                    alreadyConfirmedAsOrder
+                                        ? "Für dieses Angebot wurde bereits ein Auftrag erstellt."
+                                        : offer.status === 'rejected' || offer.status === 'expired'
+                                            ? "Dieses Angebot kann nicht als Auftrag bestätigt werden."
+                                            : "Auftrag aus diesem Angebot erstellen"
+                                }
                             >
                                 {isConverting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSignature className="h-4 w-4" />}
-                                {offer.status === 'accepted' ? 'Bereits bestätigt' : 'Auftrag bestätigen'}
+                                {alreadyConfirmedAsOrder ? 'Bereits bestätigt' : 'Auftrag bestätigen'}
                             </button>
                         ))}
 
@@ -454,6 +494,11 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                             <X className="h-4 w-4" />
                         </button>
                     </div>
+                    {orderActionMessage && (
+                        <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-bold text-white shadow-sm">
+                            {orderActionMessage}
+                        </div>
+                    )}
                 </div>
 
                 {/* ── Document Preview (echtes PDF-Rendering) ── */}

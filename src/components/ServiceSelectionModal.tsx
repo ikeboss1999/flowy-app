@@ -88,6 +88,11 @@ function SelectionRow({
                 <h4 className="truncate text-lg font-black text-slate-950 group-hover:text-indigo-700">
                     {service.title}
                 </h4>
+                {service.nickname && (
+                    <p className="mt-1 inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
+                        {service.nickname}
+                    </p>
+                )}
                 <p className="mt-1 line-clamp-2 text-sm font-semibold leading-6 text-slate-500">
                     {service.description || 'Keine Beschreibung hinterlegt.'}
                 </p>
@@ -120,6 +125,7 @@ export function ServiceSelectionModal({ isOpen, onClose, onSelect, onSelectMany,
                 const matchesSearch =
                     !query ||
                     service.title.toLowerCase().includes(query) ||
+                    service.nickname?.toLowerCase().includes(query) ||
                     service.description?.toLowerCase().includes(query) ||
                     service.folder?.toLowerCase().includes(query) ||
                     service.unit?.toLowerCase().includes(query);

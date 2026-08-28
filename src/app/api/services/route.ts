@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { nanoid } from 'nanoid';
 import { requireApiSession } from '@/lib/api-auth';
+import { serviceForStorage } from '@/lib/service-nickname';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,12 +38,13 @@ export async function POST(request: Request) {
         const service = payload.service || payload;
         const serviceId = service.id || nanoid();
         const now = new Date().toISOString();
+        const storageService = serviceForStorage(service);
 
         const client = supabaseAdmin || supabase;
         const { error } = await client
             .from('services')
             .upsert({
-                ...service,
+                ...storageService,
                 id: serviceId,
                 userId,
                 updatedAt: now

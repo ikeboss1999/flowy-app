@@ -19,12 +19,12 @@ export function useServiceFolders() {
     const key = activeUserId ? `/api/service-folders` : null;
     const { data: folders = [], isLoading, mutate } = useSWR<ServiceFolder[]>(key, fetcher);
 
-    const addFolder = async (name: string): Promise<ServiceFolder> => {
+    const addFolder = async (name: string, parentName?: string | null): Promise<ServiceFolder> => {
         if (!activeUserId) throw new Error('Not authenticated');
         const res = await fetch('/api/service-folders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name })
+            body: JSON.stringify({ name, parentName })
         });
         if (!res.ok) throw new Error('Failed to create folder');
         const newFolder = await res.json();

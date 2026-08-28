@@ -64,15 +64,16 @@ const STATUS_CONFIG: Record<OfferStatus, { label: string; color: string; bg: str
 export default function OffersPage() {
     usePermissionGuard("offers_read");
     const router = useRouter();
-    const { offers, updateOffer, deleteOffer, isLoading } = useOffers();
+    const { offers, updateOffer, deleteOffer, isLoading: offersLoading } = useOffers();
     const { customers } = useCustomers();
     const { projects } = useProjects();
     const { data: companySettings } = useCompanySettings();
     const { showToast, showConfirm } = useNotification();
-    const { profile } = useAuth();
-    const isAdminOrDev = profile?.role === 'admin' || profile?.role === 'developer';
+    const { profile, isLoading: authLoading } = useAuth();
+    const authReady = !authLoading;
+    const isAdminOrDev = authReady && (profile?.role === 'admin' || profile?.role === 'developer');
     const canReopenOffer = isAdminOrDev;
-    const canWriteOffers = isAdminOrDev || profile?.permissions?.["*"] === true || !!profile?.permissions?.offers_write;
+    const canWriteOffers = authReady && (isAdminOrDev || profile?.permissions?.["*"] === true || !!profile?.permissions?.offers_write);
 
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState<OfferStatus | "all">("all");
@@ -213,7 +214,7 @@ export default function OffersPage() {
         return Array.from(years).sort((a, b) => b - a);
     }, [offers]);
 
-    if (isLoading) {
+    if (offersLoading) {
         return <div className="dashboard-page text-slate-400 font-bold">Laden...</div>;
     }
 
