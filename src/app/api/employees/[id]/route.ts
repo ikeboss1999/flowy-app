@@ -8,7 +8,8 @@ import { logApiPerformance } from '@/lib/api-performance';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const startedAt = performance.now();
     const session = await getUserSession();
     const companyOwnerId = session?.companyOwnerId;
@@ -48,7 +49,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
     }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const session = await getUserSession();
     const companyOwnerId = session?.companyOwnerId;
     const { id } = params;

@@ -6,7 +6,6 @@ import {
     Upload,
     Trash2,
     Download,
-    ArrowLeft,
     FileText,
     Image as ImageIcon,
     File,
@@ -86,9 +85,9 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Sync helper
-    const triggerMutate = async () => {
+    const triggerMutate = useCallback(async () => {
         await Promise.all([mutateFiles(), mutateFolders()]);
-    };
+    }, [mutateFiles, mutateFolders]);
 
     // Combine folders from DB + files (to handle legacy folders or folder-less files)
     const allFolders = useMemo(() => {
@@ -323,7 +322,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
         }
         setUploading(false);
         await triggerMutate();
-    }, [canManageArchive, selectedFolder, uploadFile]);
+    }, [canManageArchive, selectedFolder, triggerMutate, uploadFile]);
 
     const handleRenameFile = async (fileId: string) => {
         if (!canManageArchive) return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { Upload, Trash2, Loader2, Image as ImageIcon } from "lucide-react";
 import { useNotification } from "@/context/NotificationContext";
 
@@ -18,11 +18,7 @@ export default function PartnersPage() {
     const [newPartnerName, setNewPartnerName] = useState("");
     const { showToast, showConfirm } = useNotification();
 
-    useEffect(() => {
-        fetchPartners();
-    }, []);
-
-    const fetchPartners = async () => {
+    const fetchPartners = useCallback(async () => {
         try {
             const res = await fetch('/api/partners');
             if (res.ok) {
@@ -35,7 +31,11 @@ export default function PartnersPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => {
+        fetchPartners();
+    }, [fetchPartners]);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

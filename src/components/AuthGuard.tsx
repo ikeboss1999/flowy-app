@@ -11,21 +11,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { user, currentEmployee, isLoading } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
-    const [forceShow, setForceShow] = useState(false)
     const [isRedirecting, setIsRedirecting] = useState(false)
-
-    // Failsafe timer: If Auth takes > 1.5s, force show content to avoid permanent white screen
-    useEffect(() => {
-        if (isLoading) {
-            const timer = setTimeout(() => setForceShow(true), 1500)
-            return () => clearTimeout(timer)
-        }
-    }, [isLoading])
 
     // Routing Logic using Effects (Safe for Rendering)
     useEffect(() => {
-        // Wait until loading is done OR failsafe triggers
-        if (isLoading && !forceShow) return
+        if (isLoading) return
 
         const handleRouting = async () => {
             const isPublic = PUBLIC_ROUTES.includes(pathname)
@@ -52,16 +42,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
                 sessionStorage.removeItem('__auth_attempts')
 
                 if (!hasUser) {
-                    if (isLoading && forceShow) {
-                        setIsRedirecting(false)
-                        return
-                    }
-
                     setIsRedirecting(true)
 
                     try {
                         await fetch('/api/auth/logout', { method: 'POST' });
-                    } catch (e) { }
+                    } catch { }
 
                     if (pathname === "/" || pathname === "/welcome") {
                         router.push("/welcome")
@@ -75,15 +60,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         };
 
         handleRouting();
-    }, [user, isLoading, forceShow, pathname, router]);
+    }, [user, currentEmployee, isLoading, pathname, router]);
 
     // Render Logic helper
-    const showLoader = (isLoading || isRedirecting) && !forceShow;
+    const showLoader = isLoading || isRedirecting;
 
-    // Blocking Render State: Only show loader blocking if:
-    // 1. In production (prevents dev frustration)
-    // 2. We are still loading or redirecting
-    if (process.env.NODE_ENV === 'production' && showLoader) {
+    if (showLoader) {
         return (
             <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#020205] overflow-hidden">
                 {/* Modern Background Accents */}

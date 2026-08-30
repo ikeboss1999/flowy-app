@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     AlertCircle,
@@ -51,7 +51,7 @@ export default function TimeTrackingPage() {
         return activeEmployees.filter(emp => emp.additionalInfo?.noTimeTrackingRequired !== true);
     }, [activeEmployees]);
 
-    const getMonthState = (employeeId: string): MonthState => {
+    const getMonthState = useCallback((employeeId: string): MonthState => {
         const monthSheet = timesheets.find(t =>
             t.employeeId === employeeId &&
             t.month === statusMonth
@@ -64,7 +64,7 @@ export default function TimeTrackingPage() {
             e.date.startsWith(statusMonth)
         );
         return hasEntries ? "open" : "empty";
-    };
+    }, [entries, statusMonth, timesheets]);
 
     const monthStats = useMemo(() => {
         return trackableEmployees.reduce((acc, emp) => {
@@ -79,7 +79,7 @@ export default function TimeTrackingPage() {
             empty: 0,
             excluded: activeEmployees.length - trackableEmployees.length
         });
-    }, [trackableEmployees, activeEmployees.length, entries, timesheets, statusMonth]);
+    }, [trackableEmployees, activeEmployees.length, getMonthState]);
 
     const filteredEmployees = trackableEmployees.filter(emp => {
         const fullName = `${emp.personalData.firstName} ${emp.personalData.lastName}`.toLowerCase();

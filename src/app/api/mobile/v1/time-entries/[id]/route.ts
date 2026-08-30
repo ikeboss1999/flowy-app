@@ -27,7 +27,8 @@ async function getExistingEntry(client: any, params: { id: string; companyOwnerI
     return data || null;
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const auth = await requireMobileSession(request, 'timeTracking');
         if (!auth.ok) return auth.response;
@@ -119,7 +120,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 }
 
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_request: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const auth = await requireMobileSession(_request, 'timeTracking');
         if (!auth.ok) return auth.response;

@@ -4,7 +4,8 @@ import { getTimesheetStatus, rejectLockedTimesheet } from '@/lib/mobile-time-tra
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request, { params }: { params: { month: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ month: string }> }) {
+    const params = await props.params;
     try {
         const auth = await requireMobileSession(request, 'timeTracking');
         if (!auth.ok) return auth.response;

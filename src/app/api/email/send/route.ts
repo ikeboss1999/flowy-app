@@ -262,12 +262,17 @@ export async function POST(request: Request) {
         const signatureHtml = sanitizeEmailHtml(delivery.signatureHtml || '');
         const signatureText = htmlToPlainText(signatureHtml || delivery.signature || '');
         const messageText = [message, signatureText].filter(Boolean).join('\n\n');
+        const recipientEmail = String(customer.email).trim();
+        const copyEmail = String(delivery.fromEmail || '').trim();
+        const sendCopyToSelf = delivery.sendCopyToSelf === true
+            && copyEmail.toLowerCase() !== recipientEmail.toLowerCase();
 
         logBase = {
             documentType,
             documentId,
             documentNumber: documentData.documentNumber,
-            recipient: customer.email,
+            recipient: recipientEmail,
+            bcc: sendCopyToSelf ? copyEmail : undefined,
             subject,
             sentBy: session.userId,
         };
@@ -281,7 +286,8 @@ export async function POST(request: Request) {
             fromName: delivery.fromName || companySettings?.companyData?.companyName || 'FlowY',
             fromEmail: delivery.fromEmail,
             replyToEmail: delivery.replyToEmail || delivery.fromEmail,
-            to: [customer.email],
+            to: [recipientEmail],
+            bcc: sendCopyToSelf ? [copyEmail] : undefined,
             subject,
             text: messageText,
             html: buildDocumentEmailHtml(message, signatureHtml || undefined),

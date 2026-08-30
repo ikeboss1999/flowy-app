@@ -3,15 +3,12 @@
 import React, { useState, useMemo } from "react";
 import {
     Search,
-    Filter,
-    FileText,
     Eye,
     Download,
     Calendar,
     User,
     Euro,
     Trash2,
-    ChevronDown,
     ArrowUpDown,
     Loader2,
     FileSignature,
@@ -55,7 +52,7 @@ export default function OrdersPage() {
     const { data: orderSettings } = useOrderSettings();
     const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
-    const [filterStatus, setFilterStatus] = useState<OrderStatus | "all">("all");
+    const [filterStatus] = useState<OrderStatus | "all">("all");
     const [previewOrder, setPreviewOrder] = useState<OrderConfirmation | null>(null);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 

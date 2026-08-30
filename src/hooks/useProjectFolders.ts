@@ -4,6 +4,11 @@ import useSWR from 'swr';
 import { useAuth } from '@/context/AuthContext';
 import { fetcher } from '@/lib/fetcher';
 
+async function readApiError(response: Response, fallback: string) {
+    const body = await response.json().catch(() => null);
+    return body?.error || body?.message || fallback;
+}
+
 export interface ProjectFolder {
     id: string;
     projectId: string;
@@ -27,27 +32,27 @@ export function useProjectFolders(projectId: string) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ projectId, name })
         });
-        if (!res.ok) throw new Error('Failed to create folder');
+        if (!res.ok) throw new Error(await readApiError(res, 'Ordner konnte nicht erstellt werden.'));
         const newFolder = await res.json();
         await mutate();
         return newFolder;
     };
 
     const renameFolder = async (id: string, newName: string): Promise<void> => {
-        const res = await fetch(`/api/project-folders?id=${id}`, {
+        const res = await fetch(`/api/project-folders?id=${encodeURIComponent(id)}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: newName })
         });
-        if (!res.ok) throw new Error('Failed to rename folder');
+        if (!res.ok) throw new Error(await readApiError(res, 'Ordner konnte nicht umbenannt werden.'));
         await mutate();
     };
 
     const deleteFolder = async (id: string): Promise<void> => {
-        const res = await fetch(`/api/project-folders?id=${id}`, {
+        const res = await fetch(`/api/project-folders?id=${encodeURIComponent(id)}`, {
             method: 'DELETE'
         });
-        if (!res.ok) throw new Error('Failed to delete folder');
+        if (!res.ok) throw new Error(await readApiError(res, 'Ordner konnte nicht gelöscht werden.'));
         await mutate();
     };
 

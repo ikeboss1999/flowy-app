@@ -12,6 +12,7 @@ export const DEFAULT_EMAIL_DELIVERY_SETTINGS: EmailDeliverySettings = {
     fromName: '',
     fromEmail: '',
     replyToEmail: '',
+    sendCopyToSelf: false,
     signature: '',
     signatureHtml: '',
     hasSmtpPassword: false,

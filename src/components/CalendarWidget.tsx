@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-    Calendar as CalendarIcon,
     ChevronLeft,
     ChevronRight,
     Plus,
@@ -11,16 +10,13 @@ import {
     LayoutGrid,
     CalendarDays,
     List,
-    AlertCircle,
-    MapPin,
-    CheckCircle2
+    AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { CalendarEvent } from '@/types/calendar';
 import { EventModal } from '@/components/EventModal';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { isAustrianHoliday } from '@/lib/holidays';
 
 type ViewType = 'month' | 'week' | 'day';

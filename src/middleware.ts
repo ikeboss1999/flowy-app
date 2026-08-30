@@ -1,9 +1,29 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
+import type { JWTPayload } from 'jose';
+
+const PUBLIC_AUTH_ROUTES = new Set([
+    '/api/auth/login',
+    '/api/auth/register',
+    '/api/auth/forgot-password',
+    '/api/auth/reset-password',
+    '/api/auth/verify',
+    '/api/auth/sync-session',
+    '/api/auth/logout',
+    '/api/auth/start',
+    '/api/auth/me',
+]);
+
+// Vercel Cron requests do not carry a user session cookie. These exact routes
+// authenticate themselves with the CRON_SECRET bearer token in their handlers.
+const CRON_ROUTES = new Set([
+    '/api/cron/account-backups',
+    '/api/cron/admin-usage',
+]);
 
 // Edge-compatible JWT verification (no bcryptjs dependency)
-async function verifySessionTokenEdge(token: string): Promise<any | null> {
+async function verifySessionTokenEdge(token: string): Promise<JWTPayload | null> {
     try {
         const rawSecret = process.env.JWT_SECRET;
         if (!rawSecret) return null;
@@ -28,7 +48,7 @@ async function verifySupabaseToken(token: string): Promise<boolean> {
                 for (let i = 0; i < binaryString.length; i++) {
                     secret[i] = binaryString.charCodeAt(i);
                 }
-            } catch (e) {
+            } catch {
                 secret = new TextEncoder().encode(rawSupabaseSecret);
             }
         } else {
@@ -37,7 +57,7 @@ async function verifySupabaseToken(token: string): Promise<boolean> {
 
         await jwtVerify(token, secret);
         return true;
-    } catch (e) {
+    } catch {
         return false;
     }
 }
@@ -52,7 +72,8 @@ export async function middleware(request: NextRequest) {
     const isWelcomePage = pathname === '/welcome';
     const isApiRoute = pathname.startsWith('/api');
     const isPublicApi =
-        pathname.startsWith('/api/auth') ||
+        PUBLIC_AUTH_ROUTES.has(pathname) ||
+        CRON_ROUTES.has(pathname) ||
         pathname.startsWith('/api/mobile/v1') ||
         (pathname.startsWith('/api/partners') && request.method === 'GET');
     const isStaticFile = pathname.includes('.') || pathname.startsWith('/_next');

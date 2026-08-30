@@ -5,6 +5,11 @@ import { useAuth } from '@/context/AuthContext';
 import { fetcher } from '@/lib/fetcher';
 import { ProjectFile, FileFolder } from '@/types/project_file';
 
+async function readApiError(response: Response, fallback: string) {
+    const body = await response.json().catch(() => null);
+    return body?.error || body?.message || fallback;
+}
+
 export function useProjectFiles(projectId: string) {
     const { user, currentEmployee } = useAuth();
 
@@ -21,8 +26,7 @@ export function useProjectFiles(projectId: string) {
 
         const res = await fetch('/api/project-files', { method: 'POST', body: formData });
         if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            throw new Error(body.error || 'Upload failed');
+            throw new Error(await readApiError(res, 'Datei konnte nicht hochgeladen werden.'));
         }
         await mutate();
     };
@@ -30,8 +34,8 @@ export function useProjectFiles(projectId: string) {
     const deleteFile = async (id: string): Promise<void> => {
         mutate(files.filter(f => f.id !== id), false);
         try {
-            const res = await fetch(`/api/project-files?id=${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Delete failed');
+            const res = await fetch(`/api/project-files?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error(await readApiError(res, 'Datei konnte nicht gelöscht werden.'));
         } catch (e) {
             mutate();
             throw e;
@@ -39,18 +43,18 @@ export function useProjectFiles(projectId: string) {
     };
 
     const updateFile = async (id: string, updates: Partial<ProjectFile>): Promise<void> => {
-        const res = await fetch(`/api/project-files?id=${id}`, {
+        const res = await fetch(`/api/project-files?id=${encodeURIComponent(id)}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updates)
         });
-        if (!res.ok) throw new Error('Update failed');
+        if (!res.ok) throw new Error(await readApiError(res, 'Datei konnte nicht aktualisiert werden.'));
         await mutate();
     };
 
     const getSignedUrl = async (storagePath: string): Promise<string> => {
         const res = await fetch(`/api/project-files/signed-url?path=${encodeURIComponent(storagePath)}`);
-        if (!res.ok) throw new Error('Failed to get signed URL');
+        if (!res.ok) throw new Error(await readApiError(res, 'Datei konnte nicht geöffnet werden.'));
         const { url } = await res.json();
         return url;
     };

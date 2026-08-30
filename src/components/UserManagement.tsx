@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
     Users,
     Shield,
     Mail,
-    Plus,
     Trash2,
     Check,
     AlertCircle,
@@ -152,7 +151,7 @@ export function UserManagement() {
         }
     }, [toast]);
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
@@ -160,22 +159,20 @@ export function UserManagement() {
             if (!res.ok) throw new Error('Benutzerliste konnte nicht geladen werden.');
             const data = await res.json();
             setUsers(data);
-            if (data.length > 0 && !selectedUser) {
-                setSelectedUser(data[0]);
-            } else if (selectedUser) {
-                const refreshed = data.find((u: UserRole) => u.user_id === selectedUser.user_id);
-                if (refreshed) setSelectedUser(refreshed);
-            }
+            setSelectedUser(current => {
+                if (!current) return data[0] || null;
+                return data.find((user: UserRole) => user.user_id === current.user_id) || current;
+            });
         } catch (e: any) {
             setError(e.message);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchUsers();
-    }, []);
+    }, [fetchUsers]);
 
     const handlePermissionToggle = (key: string) => {
         if (!selectedUser) return;

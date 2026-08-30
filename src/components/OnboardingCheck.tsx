@@ -49,7 +49,7 @@ export function OnboardingCheck() {
             // Local is empty but cloud says OK -> Wait for AutoRestore to do its job
             console.log("OnboardingCheck: Local data empty but Cloud says onboarded. Waiting for Sync/Restore.");
         }
-    }, [data, settingsLoading, authLoading, user, pathname, router]);
+    }, [data, settingsError, settingsLoading, authLoading, user, pathname, router]);
 
     return null;
 }

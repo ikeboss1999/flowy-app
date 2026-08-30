@@ -54,14 +54,15 @@ interface ProjectDetailsProps {
     orders: OrderConfirmation[];
     onBack: () => void;
     onEdit: () => void;
-    onCreateInvoice: (type: 'partial' | 'final') => void;
     canWrite?: boolean;
+    canCreateInvoices?: boolean;
     canReadFiles?: boolean;
 }
 
-export function ProjectDetails({ project, customer, invoices, offers, orders, onBack, onEdit, onCreateInvoice, canWrite = true, canReadFiles = true }: ProjectDetailsProps) {
+export function ProjectDetails({ project, customer, invoices, offers, orders, onBack, onEdit, canWrite = true, canCreateInvoices = true, canReadFiles = true }: ProjectDetailsProps) {
     const router = useRouter();
     const { updateProject } = useProjects();
+    const completionSyncedRef = React.useRef<string | null>(null);
     const { data: companySettings } = useCompanySettings();
     const [isPaymentPlanModalOpen, setIsPaymentPlanModalOpen] = useState(false);
     const [isPrintingDiary, setIsPrintingDiary] = useState(false);
@@ -114,9 +115,13 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
 
     React.useEffect(() => {
         if (canWrite && financials.hasActiveFinalInvoice && project.status !== 'completed') {
+            if (completionSyncedRef.current === project.id) return;
+            completionSyncedRef.current = project.id;
             updateProject(project.id, { status: 'completed' });
+        } else {
+            completionSyncedRef.current = null;
         }
-    }, [canWrite, financials.hasActiveFinalInvoice, project.id, project.status]);
+    }, [canWrite, financials.hasActiveFinalInvoice, project.id, project.status, updateProject]);
 
     React.useEffect(() => {
         if (activeTab === 'files' && !canReadFiles) {
@@ -146,13 +151,13 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
         );
     }, [projectOffers, financials.invoices, orders, project.id]);
 
-    const handleSavePaymentPlan = (plan: PaymentPlanItem[]) => {
-        if (!canWrite) return;
-        updateProject(project.id, { paymentPlan: plan });
+    const handleSavePaymentPlan = async (plan: PaymentPlanItem[]) => {
+        if (!canWrite) return false;
+        return updateProject(project.id, { paymentPlan: plan });
     };
 
     const handleCreateInvoiceFromPlan = (item: PaymentPlanItem) => {
-        if (!canWrite) return;
+        if (!canCreateInvoices) return;
         const index = project.paymentPlan?.findIndex(p => p.id === item.id) ?? -1;
         const partialNumber = index !== -1 ? index + 1 : undefined;
         const type = item.type || (item.name.toLowerCase().includes('schluss') ? 'final' : 'partial');
@@ -171,6 +176,21 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
     const handleUpdateDiary = (entries: DiaryEntry[]) => {
         if (!canWrite) return;
         updateProject(project.id, { diaryEntries: entries });
+    };
+
+    const getLinkedInvoice = (item: PaymentPlanItem, index: number) => {
+        const directlyLinked = invoices.filter(inv =>
+            inv.paymentPlanItemId && String(inv.paymentPlanItemId) === String(item.id)
+        );
+        if (directlyLinked.length > 0) {
+            return directlyLinked.find(inv => inv.status !== 'canceled') || directlyLinked[0];
+        }
+
+        return invoices.find(inv =>
+            inv.projectId && String(inv.projectId) === String(project.id) &&
+            inv.billingType === (item.type || 'partial') &&
+            (inv.billingType === 'final' || inv.partialPaymentNumber === (index + 1))
+        );
     };
 
     // ─── Status helpers ───────────────────────────────────────────────────────
@@ -684,13 +704,8 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
                                         {project.paymentPlan.map((item, index) => {
-                                            const linkedInvoice = invoices.find(inv =>
-                                                (inv.paymentPlanItemId && String(inv.paymentPlanItemId) === String(item.id)) ||
-                                                (inv.projectId && String(inv.projectId) === String(project.id) &&
-                                                    inv.billingType === (item.type || 'partial') &&
-                                                    (inv.billingType === 'final' || inv.partialPaymentNumber === (index + 1)))
-                                            );
-                                            const isLocked = linkedInvoice && !['draft', 'canceled'].includes(linkedInvoice.status);
+                                            const linkedInvoice = getLinkedInvoice(item, index);
+                                            const isLocked = !!linkedInvoice && linkedInvoice.status !== 'canceled';
 
                                             return (
                                                 <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
@@ -726,7 +741,7 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
-                                                        {canWrite && (!linkedInvoice || !isLocked) && (
+                                                        {canCreateInvoices && (!linkedInvoice || !isLocked) && (
                                                             <button
                                                                 onClick={() => handleCreateInvoiceFromPlan(item)}
                                                                 className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1 ml-auto"
@@ -787,6 +802,12 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                     onClose={() => setIsPaymentPlanModalOpen(false)}
                     project={project}
                     onSave={handleSavePaymentPlan}
+                    lockedItemIds={(project.paymentPlan || [])
+                        .filter((item, index) => {
+                            const invoice = getLinkedInvoice(item, index);
+                            return !!invoice && invoice.status !== 'canceled';
+                        })
+                        .map(item => item.id)}
                 />
             )}
 

@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom';
 import { 
     Search, 
     User, 
-    Building2, 
     Check, 
     ChevronDown, 
     Plus, 

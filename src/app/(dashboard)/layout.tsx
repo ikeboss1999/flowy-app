@@ -12,6 +12,7 @@ import { useDevice } from "@/hooks/useDevice";
 import { useStartup } from "@/hooks/useStartup";
 import { cn } from "@/lib/utils";
 import { preloadImage } from "@/lib/startup-preload";
+import { AdminSessionHeartbeat } from "@/components/AdminSessionHeartbeat";
 
 const Sidebar = dynamic(
     () => import("@/components/Sidebar").then((mod) => mod.Sidebar),
@@ -67,6 +68,7 @@ export default function DashboardLayout({
             <ReloadButton />
             <GlobalTodoWidget />
             <DashboardPrefetch />
+            <AdminSessionHeartbeat />
             <main className={cn(
                 "flex-1 min-h-screen text-lg transition-all duration-300",
                 isDrawerLayout ? "ml-0 pt-20" : "ml-[var(--flowy-sidebar-offset,5.5rem)] [.sidebar-collapsed_&]:ml-0"

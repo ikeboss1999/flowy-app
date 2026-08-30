@@ -1,6 +1,6 @@
 {
   "name": "flowy",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "private": true,
   "description": "FlowY Construction Management Web Application",
   "author": {
@@ -31,9 +31,9 @@
     "jspdf": "^4.2.1",
     "lucide-react": "^0.562.0",
     "nanoid": "^5.1.6",
-    "next": "14.2.16",
-    "react": "^18",
-    "react-dom": "^18",
+    "next": "^15.5.24",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
     "swr": "^2.4.1",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.3.6"
@@ -41,10 +41,10 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
     "eslint": "^8",
-    "eslint-config-next": "14.2.16",
+    "eslint-config-next": "^15.5.24",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"

@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Calendar as CalendarIcon, Clock, Type, AlignLeft, Trash2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { CalendarEvent, CalendarEventType } from '@/types/calendar';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Lock, Delete, ShieldAlert, KeyRound } from "lucide-react";
+import { Delete, ShieldAlert, KeyRound } from "lucide-react";
 import { useAccountSettings } from "@/hooks/useAccountSettings";
 import { cn } from "@/lib/utils";
 

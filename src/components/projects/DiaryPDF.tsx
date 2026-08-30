@@ -1,8 +1,7 @@
 import React, { forwardRef } from 'react';
-import { Project, DiaryEntry } from '@/types/project';
+import { Project } from '@/types/project';
 import { CompanyData } from '@/types/company';
 import { Customer } from '@/types/customer';
-import { cn } from '@/lib/utils';
 
 interface DiaryPDFProps {
     project: Project;
@@ -97,7 +96,7 @@ export const DiaryPDF = forwardRef<HTMLDivElement, DiaryPDFProps>(({ project, cu
                         Keine Bautagebucheinträge vorhanden.
                     </div>
                 ) : (
-                    sortedEntries.map((entry, index) => (
+                    sortedEntries.map((entry) => (
                         <div key={entry.id} style={{
                             marginBottom: '40px',
                             pageBreakInside: 'avoid',

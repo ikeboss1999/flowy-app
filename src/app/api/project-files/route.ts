@@ -18,6 +18,19 @@ const ALLOWED_MIME_TYPES = new Set([
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
+function isValidFolderPath(value: unknown): value is string {
+    if (typeof value !== 'string') return false;
+    const trimmed = value.trim();
+    return trimmed.length > 0 && trimmed.length <= 500 &&
+        !trimmed.startsWith('/') && !trimmed.endsWith('/') &&
+        !trimmed.includes('//') && !trimmed.split('/').includes('..');
+}
+
+function isValidFileName(value: unknown): value is string {
+    return typeof value === 'string' && value.trim().length > 0 &&
+        value.trim().length <= 255 && !/[\\/]/.test(value);
+}
+
 // ─── GET: list files for a project ───────────────────────────────────────────
 
 export async function GET(request: Request) {
@@ -78,6 +91,10 @@ export async function POST(request: Request) {
 
     if (!file || !projectId || !folder) {
         return NextResponse.json({ error: 'Missing file, projectId, or folder' }, { status: 400 });
+    }
+
+    if (!isValidFolderPath(folder)) {
+        return NextResponse.json({ error: 'Ungültiger Ordnerpfad.' }, { status: 400 });
     }
 
     const { data: project, error: projectError } = await supabaseAdmin
@@ -168,6 +185,16 @@ export async function PATCH(request: Request) {
     try {
         const body = await request.json();
         const { name, folder } = body;
+
+        if (name !== undefined && !isValidFileName(name)) {
+            return NextResponse.json({ error: 'Ungültiger Dateiname.' }, { status: 400 });
+        }
+        if (folder !== undefined && !isValidFolderPath(folder)) {
+            return NextResponse.json({ error: 'Ungültiger Ordnerpfad.' }, { status: 400 });
+        }
+        if (name === undefined && folder === undefined) {
+            return NextResponse.json({ error: 'Keine Änderung angegeben.' }, { status: 400 });
+        }
         
         const updates: Record<string, any> = {};
         if (name !== undefined) updates.name = name;
@@ -206,6 +233,9 @@ export async function DELETE(request: Request) {
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
     try {
+        if (!supabaseAdmin) {
+            return NextResponse.json({ error: 'Dateispeicher ist nicht konfiguriert.' }, { status: 503 });
+        }
         const client = supabaseAdmin || supabase;
 
         // Fetch the record first (verify ownership)
@@ -224,14 +254,14 @@ export async function DELETE(request: Request) {
         }
 
         // Delete from storage
-        if (supabaseAdmin) {
-            const { error: storageError } = await supabaseAdmin.storage
-                .from('project-files')
-                .remove([fileRecord.storagePath]);
-            if (storageError) {
-                console.error('[ProjectFiles] Storage delete failed:', storageError);
-                // Continue to delete the metadata even if storage delete fails
-            }
+        const { error: storageError } = await supabaseAdmin.storage
+            .from('project-files')
+            .remove([fileRecord.storagePath]);
+        if (storageError) {
+            console.error('[ProjectFiles] Storage delete failed:', storageError);
+            return NextResponse.json({
+                error: 'Datei konnte im Speicher nicht gelöscht werden. Der Datensatz wurde beibehalten.',
+            }, { status: 502 });
         }
 
         // Delete metadata record

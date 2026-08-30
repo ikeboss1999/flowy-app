@@ -6,11 +6,8 @@ import {
   Trash2,
   Save,
   CheckCircle2,
-  Calendar,
   User,
-  UserPlus,
   Calculator,
-  LayoutDashboard,
   ArrowLeft,
   Book,
   Loader2,
@@ -43,7 +40,6 @@ import { cn } from "@/lib/utils";
 import {
   Invoice,
   InvoiceItem,
-  InvoiceUnit,
   InvoiceStatus,
 } from "@/types/invoice";
 import { useCustomers } from "@/hooks/useCustomers";
@@ -56,10 +52,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { DatePicker } from "@/components/DatePicker";
 import { CustomerModal } from "@/components/CustomerModal";
 import { Customer } from "@/types/customer";
-import { InvoicePDF } from "@/components/InvoicePDF";
-import { InvoicePrintHandler } from "@/components/InvoicePrintHandler";
-import { createPortal } from "react-dom";
-import { useRef } from "react";
 import { ServiceSelectionModal } from "@/components/ServiceSelectionModal";
 import { ServiceModal } from "@/components/ServiceModal";
 import { Service } from "@/types/service";
@@ -79,8 +71,6 @@ function SortableItem({
   children: React.ReactNode;
 }) {
   const {
-    attributes,
-    listeners,
     setNodeRef,
     transform,
     transition,
@@ -172,12 +162,9 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
   const [activeServiceItemId, setActiveServiceItemId] = useState<string | null>(
     null,
   );
-  const [savingStatus, setSavingStatus] = useState<InvoiceStatus | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [savedPresetIds, setSavedPresetIds] = useState<string[]>([]);
   const { showToast, showConfirm } = useNotification();
-  const pdfRef = useRef<HTMLDivElement>(null);
 
   // Form State
   const [invoiceNumber, setInvoiceNumber] = useState(
@@ -264,6 +251,25 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     isSettingsLoading,
     initialData,
   ]);
+
+  const previousInvoices = useMemo(() => {
+    if (!projectId || billingType === "standard") return [];
+
+    return invoices
+      .filter(
+        (inv) =>
+          inv.projectId === projectId &&
+          inv.billingType === "partial" &&
+          inv.status !== "canceled" &&
+          inv.id !== initialData?.id,
+      )
+      .map((inv) => ({
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        date: inv.issueDate,
+        amount: inv.subtotal,
+      }));
+  }, [projectId, billingType, invoices, initialData]);
 
   // Initialize from settings and params
   useEffect(() => {
@@ -400,6 +406,8 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     isCustomersLoading,
     invoices,
     isInvoicesLoading,
+    billingType,
+    previousInvoices.length,
   ]);
 
   // Offer-to-invoice conversion via sessionStorage
@@ -467,25 +475,6 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     return Number((subtotal + taxAmount).toFixed(2));
   }, [subtotal, taxAmount]);
 
-  const previousInvoices = useMemo(() => {
-    if (!projectId || billingType === "standard") return [];
-
-    return invoices
-      .filter(
-        (inv) =>
-          inv.projectId === projectId &&
-          inv.billingType === "partial" &&
-          inv.status !== "canceled" &&
-          inv.id !== initialData?.id,
-      )
-      .map((inv) => ({
-        id: inv.id,
-        invoiceNumber: inv.invoiceNumber,
-        date: inv.issueDate,
-        amount: inv.subtotal, // Store Net for deduction logic
-      }));
-  }, [projectId, billingType, invoices, initialData]);
-
   // Handlers
   const newStandardItem = (): InvoiceItem => ({
     id: Math.random().toString(36).substring(2, 11),
@@ -542,18 +531,6 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     if (items.length > 1) {
       setItems(items.filter((item) => item.id !== id));
     }
-  };
-
-  const moveItem = (id: string, direction: "up" | "down") => {
-    setItems((prev) => {
-      const idx = prev.findIndex((i) => i.id === id);
-      if (direction === "up" && idx === 0) return prev;
-      if (direction === "down" && idx === prev.length - 1) return prev;
-      const next = [...prev];
-      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-      return next;
-    });
   };
 
   const updateItem = (id: string, field: keyof InvoiceItem, value: any) => {
@@ -749,7 +726,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
 
         setIsGeneratingPDF(false);
         showToast("Rechnung wurde finalisiert und als PDF gespeichert.", "success");
-        window.setTimeout(() => router.push("/invoices"), 1000);
+        window.location.assign("/invoices");
       } catch (e) {
         console.error("PDF Upload Failed", e);
         setIsGeneratingPDF(false);
@@ -791,34 +768,6 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     );
     setIsCustomerModalOpen(false);
   };
-
-  const handleSaveAsPreset = (item: InvoiceItem) => {
-    if (!item.title && !item.description) {
-      showToast("Bitte Titel oder Beschreibung eingeben.", "error");
-      return;
-    }
-
-    addService({
-      id: Math.random().toString(36).substr(2, 9),
-      userId: "", // Will be set by hook
-      title: item.title || item.description,
-      description: item.title ? item.description : "",
-      unit: item.unit as any,
-      price: item.pricePerUnit,
-      category: "Position",
-      itemType: item.itemType === "detailed" ? "detailed" : "standard",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-
-    showToast("Position als Vorlage gespeichert!", "success");
-    
-    setSavedPresetIds(prev => [...prev, item.id]);
-    setTimeout(() => {
-      setSavedPresetIds(prev => prev.filter(id => id !== item.id));
-    }, 2000);
-  };
-
 
   const handleServiceSelect = (service: Service) => {
     if (activeServiceItemId) {
@@ -1314,7 +1263,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
             >
                     {(() => {
                       let posCounter = 0;
-                      return items.map((item, idx) => {
+                      return items.map((item) => {
                         const type =
                           item.itemType ??
                           ((item as any).isTitleOnly ? "title" : "standard");

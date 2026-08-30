@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTimeEntries } from '@/hooks/useTimeEntries';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -29,7 +29,7 @@ export function TimesheetArchiveList() {
     const [showInactiveEmployees, setShowInactiveEmployees] = useState(false);
     const [hasMounted, setHasMounted] = useState(false);
 
-    const getEmployee = (id: string) => employees.find(e => e.id === id) ?? null;
+    const getEmployee = useCallback((id: string) => employees.find(e => e.id === id) ?? null, [employees]);
     const isActiveEmployee = (employee: Employee | null) => !!employee && employee.employment.isActive !== false;
 
     const employeesWithFinalizedTimesheets = useMemo(() => {
@@ -57,7 +57,7 @@ export function TimesheetArchiveList() {
         if (!isActiveEmployee(selected)) {
             setEmployeeFilter('all');
         }
-    }, [employeeFilter, employees, showInactiveEmployees]);
+    }, [employeeFilter, getEmployee, showInactiveEmployees]);
 
     const finalized = useMemo(() => {
         return timesheets
@@ -73,7 +73,7 @@ export function TimesheetArchiveList() {
                 return employeeName.includes(searchTerm.toLowerCase()) || monthLabel.includes(searchTerm.toLowerCase());
             })
             .sort((a, b) => new Date(b.month).getTime() - new Date(a.month).getTime());
-    }, [timesheets, employees, searchTerm, yearFilter, employeeFilter, showInactiveEmployees]);
+    }, [timesheets, getEmployee, searchTerm, yearFilter, employeeFilter, showInactiveEmployees]);
 
     const years = useMemo(() => {
         return Array.from(new Set(
@@ -88,11 +88,6 @@ export function TimesheetArchiveList() {
         acc[sheet.employeeId].push(sheet);
         return acc;
     }, {} as Record<string, typeof finalized>);
-
-    const getEmployeeName = (id: string) => {
-        const emp = getEmployee(id);
-        return emp ? `${emp.personalData.firstName} ${emp.personalData.lastName}` : 'Unbekannt';
-    };
 
     const toggleEmployee = (id: string) => {
         setExpandedEmployees(prev =>

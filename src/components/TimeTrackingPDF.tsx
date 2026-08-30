@@ -2,7 +2,6 @@ import React, { forwardRef } from 'react';
 import { TimeEntry, TimeEntryType } from '@/types/time-tracking';
 import { CompanyData } from '@/types/company';
 import { Employee } from '@/types/employee';
-import { cn } from '@/lib/utils';
 
 interface TimeTrackingPDFProps {
     entries: TimeEntry[];

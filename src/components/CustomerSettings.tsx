@@ -7,7 +7,6 @@ import {
     ChevronDown,
     ChevronUp,
     Hash,
-    Type,
     Eye
 } from "lucide-react";
 import { useCustomerSettings } from "@/hooks/useCustomerSettings";

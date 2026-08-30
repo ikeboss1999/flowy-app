@@ -50,7 +50,8 @@ function getQueryValueFromRawUrl(url: string, names: string[]) {
     return '';
 }
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const auth = await requireApiSession('employees_read');
     if (!auth.ok) return auth.response;
 
@@ -87,7 +88,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const auth = await requireApiSession('employees_write');
     if (!auth.ok) return auth.response;
 
@@ -159,7 +161,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const auth = await requireApiSession('employees_write');
     if (!auth.ok) return auth.response;
 

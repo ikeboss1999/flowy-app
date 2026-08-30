@@ -76,7 +76,7 @@ export const InvoicePrintHandler: React.FC<InvoicePrintHandlerProps> = ({ childr
         return () => {
             clearTimeout(printTimer);
         };
-    }, [onAfterPrint]);
+    }, [documentTitle, onAfterPrint]);
 
     return (
         <iframe

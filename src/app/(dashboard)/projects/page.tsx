@@ -11,13 +11,11 @@ import { Project } from "@/types/project";
 import { ProjectList } from "@/components/projects/ProjectList";
 import { ProjectModal } from "@/components/projects/ProjectModal";
 import { ProjectDetails } from "@/components/projects/ProjectDetails";
-import { useRouter } from "next/navigation";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { useAuth } from "@/context/AuthContext";
 
 export default function ProjectsPage() {
     usePermissionGuard("projects_read");
-    const router = useRouter();
     const { profile } = useAuth();
     const { projects, addProject, updateProject, deleteProject } = useProjects();
     const { customers, addCustomer } = useCustomers();
@@ -35,6 +33,7 @@ export default function ProjectsPage() {
     const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
     const hasWildcard = profile?.permissions?.["*"] === true;
     const canWriteProjects = isAdminOrDev || hasWildcard || !!profile?.permissions?.projects_write;
+    const canWriteInvoices = isAdminOrDev || hasWildcard || !!profile?.permissions?.invoices_write;
     const canReadProjectFiles = isAdminOrDev || hasWildcard || !!profile?.permissions?.projects_files_read;
 
     const handleCreateProject = (project: Project) => {
@@ -61,25 +60,6 @@ export default function ProjectsPage() {
     const handleBackToList = () => {
         setViewProjectId(null);
         setActiveView('list');
-    };
-
-    // Redirect to invoice creation with project context
-    const handleCreateInvoice = (type: 'partial' | 'final') => {
-        if (!activeProject || !canWriteProjects) return;
-
-        // Find next partial number if needed
-        const projectInvoices = invoices.filter(inv => inv.projectId === activeProject.id);
-        const nextPartial = type === 'partial' ? projectInvoices.filter(inv => inv.billingType === 'partial').length + 1 : undefined;
-
-        // Encode params
-        const params = new URLSearchParams({
-            projectId: activeProject.id,
-            customerId: activeProject.customerId,
-            billingType: type,
-            ...(nextPartial && { partialNumber: nextPartial.toString() })
-        });
-
-        router.push(`/invoices/new?${params.toString()}`);
     };
 
     return (
@@ -136,8 +116,8 @@ export default function ProjectsPage() {
                     orders={orders}
                     onBack={handleBackToList}
                     onEdit={() => handleEditProject(activeProject)}
-                    onCreateInvoice={handleCreateInvoice}
                     canWrite={canWriteProjects}
+                    canCreateInvoices={canWriteInvoices}
                     canReadFiles={canReadProjectFiles}
                 />
             )}

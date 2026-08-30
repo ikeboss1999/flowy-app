@@ -7,7 +7,6 @@ import {
     ChevronRight,
     FileText,
     Folder,
-    PackageSearch,
     Plus,
     Search,
     Sparkles,

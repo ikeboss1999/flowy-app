@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import {
     X,
-    Clock,
     Calendar,
     Briefcase,
     FileText,
@@ -12,7 +11,6 @@ import {
 } from "lucide-react";
 import { TimeEntry, TimeEntryType } from "@/types/time-tracking";
 import { Employee } from "@/types/employee";
-import { cn } from "@/lib/utils";
 
 interface TimeEntryModalProps {
     isOpen: boolean;
@@ -186,7 +184,7 @@ export function TimeEntryModal({ isOpen, onClose, onSave, employees, initialEntr
                                     value={formData.location || ""}
                                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                                     className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium text-slate-900 placeholder:text-slate-400"
-                                    placeholder="z.B. München"
+                                    placeholder="Wien"
                                 />
                             </div>
                         </div>

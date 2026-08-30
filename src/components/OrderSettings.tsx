@@ -8,7 +8,6 @@ import {
     ChevronUp,
     Hash,
     Type,
-    AlignLeft,
     Mail
 } from "lucide-react";
 import { useOrderSettings } from "@/hooks/useOrderSettings";

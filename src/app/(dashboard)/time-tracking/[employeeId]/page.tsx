@@ -8,8 +8,6 @@ import {
     Save,
     Printer,
     Zap,
-    MoreHorizontal,
-    Briefcase,
     Clock,
     MapPin,
     Trash2,
@@ -24,7 +22,7 @@ import { useTimeEntries } from "@/hooks/useTimeEntries";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useNotification } from "@/context/NotificationContext";
 import { useAuth } from "@/context/AuthContext";
-import { TimeEntry, TimeEntryType } from "@/types/time-tracking";
+import { TimeEntry } from "@/types/time-tracking";
 import { Employee } from "@/types/employee";
 import { TimeTrackingPreviewModal } from "@/components/TimeTrackingPreviewModal";
 import { isAustrianHoliday } from "@/lib/holidays";
@@ -635,7 +633,6 @@ export default function EmployeeTimeTrackingPage() {
                     1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday', 0: 'sunday'
                 };
 
-                const newEntries: TimeEntry[] = [];
                 const days = getDaysInMonth(year, month);
                 const updates: Record<string, TimeEntry> = {};
 

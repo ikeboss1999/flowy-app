@@ -4,7 +4,8 @@ import { getTimesheetStatus, monthRange } from '@/lib/mobile-time-tracking';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request, { params }: { params: { month: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ month: string }> }) {
+    const params = await props.params;
     try {
         const auth = await requireMobileSession(request, 'timeTracking');
         if (!auth.ok) return auth.response;

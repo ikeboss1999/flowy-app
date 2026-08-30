@@ -1,20 +1,22 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Plus, Trash2, Save, Calendar, CheckCircle, Flag } from "lucide-react";
+import { X, Plus, Trash2, Save, CheckCircle, Flag, Loader2 } from "lucide-react";
 import { PaymentPlanItem, Project } from "@/types/project";
-import { cn } from "@/lib/utils";
+import { cn, generateUUID } from "@/lib/utils";
 import { DatePicker } from "@/components/DatePicker";
 
 interface PaymentPlanModalProps {
     isOpen: boolean;
     onClose: () => void;
     project: Project;
-    onSave: (updatedPlan: PaymentPlanItem[]) => void;
+    onSave: (updatedPlan: PaymentPlanItem[]) => boolean | Promise<boolean>;
+    lockedItemIds?: string[];
 }
 
-export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPlanModalProps) {
+export function PaymentPlanModal({ isOpen, onClose, project, onSave, lockedItemIds = [] }: PaymentPlanModalProps) {
     const [items, setItems] = useState<PaymentPlanItem[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -24,7 +26,7 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
 
     const handleAddItem = () => {
         const newItem: PaymentPlanItem = {
-            id: Math.random().toString(36).substr(2, 9),
+            id: generateUUID(),
             name: `${items.length + 1}. Teilrechnung`,
             amount: 0,
             status: 'planned',
@@ -35,7 +37,7 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
 
     const handleAddFinalItem = () => {
         const newItem: PaymentPlanItem = {
-            id: Math.random().toString(36).substr(2, 9),
+            id: generateUUID(),
             name: 'Schlussrechnung',
             amount: remaining,
             status: 'planned',
@@ -46,21 +48,29 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
     };
 
     const handleUpdateItem = (id: string, field: keyof PaymentPlanItem, value: any) => {
+        if (lockedItemIds.includes(id)) return;
         setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
     };
 
     const handleRemoveItem = (id: string) => {
+        if (lockedItemIds.includes(id)) return;
         setItems(items.filter(item => item.id !== id));
     };
 
-    const handleSave = () => {
-        onSave(items);
-        onClose();
+    const handleSave = async () => {
+        if (isSaving) return;
+        setIsSaving(true);
+        try {
+            const saved = await onSave(items);
+            if (saved) onClose();
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const totalPlanned = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const budgetWrapper = project.budget || 0;
-    const remaining = Math.max(0, budgetWrapper - totalPlanned);
+    const remaining = budgetWrapper - totalPlanned;
 
     const hasFinalInvoice = items.some(item => item.type === 'final');
 
@@ -119,7 +129,9 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
                     </div>
 
                     <div className="space-y-3">
-                        {items.map((item, index) => (
+                        {items.map((item, index) => {
+                            const isLocked = lockedItemIds.includes(item.id);
+                            return (
                             <div
                                 key={item.id}
                                 className={cn(
@@ -142,6 +154,7 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
                                             <input
                                                 type="text"
                                                 value={item.name}
+                                                disabled={isLocked}
                                                 onChange={(e) => handleUpdateItem(item.id, 'name', e.target.value)}
                                                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                                                 placeholder="z.B. 1. Teilrechnung"
@@ -153,6 +166,7 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
                                                 value={item.dueDate || ''}
                                                 onChange={(val) => handleUpdateItem(item.id, 'dueDate', val)}
                                                 placeholder="Datum wählen"
+                                                disabled={isLocked}
                                             />
                                         </div>
                                     </div>
@@ -162,6 +176,7 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
                                         <input
                                             type="text"
                                             value={item.description || ''}
+                                            disabled={isLocked}
                                             onChange={(e) => handleUpdateItem(item.id, 'description', e.target.value)}
                                             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                                             placeholder="z.B. Erdarbeiten, Fundament, etc."
@@ -175,6 +190,7 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
                                                 <input
                                                     type="number"
                                                     value={item.amount || ''}
+                                                    disabled={isLocked}
                                                     onChange={(e) => {
                                                         const val = parseFloat(e.target.value);
                                                         handleUpdateItem(item.id, 'amount', isNaN(val) ? 0 : val);
@@ -185,7 +201,7 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
                                             </div>
                                         </div>
                                         <div className="flex items-end">
-                                            {item.invoiceId ? (
+                                            {isLocked || item.invoiceId ? (
                                                 <div className="px-3 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-sm font-bold flex items-center gap-2 border border-emerald-100 w-full justify-center h-[42px]">
                                                     <CheckCircle className="h-4 w-4" /> Rechnung erstellt
                                                 </div>
@@ -199,13 +215,14 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
                                 </div>
                                 <button
                                     onClick={() => handleRemoveItem(item.id)}
-                                    disabled={!!item.invoiceId}
+                                    disabled={isLocked || !!item.invoiceId}
                                     className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all mt-2 disabled:opacity-0"
                                 >
                                     <Trash2 className="h-5 w-5" />
                                 </button>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     <button
@@ -235,9 +252,11 @@ export function PaymentPlanModal({ isOpen, onClose, project, onSave }: PaymentPl
                     </button>
                     <button
                         onClick={handleSave}
-                        className="px-8 py-3 bg-primary-gradient text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                        disabled={isSaving}
+                        className="px-8 py-3 bg-primary-gradient text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 disabled:cursor-wait disabled:opacity-70"
                     >
-                        <Save className="h-4 w-4" /> Zahlungsplan speichern
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        {isSaving ? 'Wird gespeichert...' : 'Zahlungsplan speichern'}
                     </button>
                 </div>
             </div>

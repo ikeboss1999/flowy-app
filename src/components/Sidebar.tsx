@@ -11,7 +11,6 @@ import {
     Settings,
     LayoutDashboard,
     LogOut,
-    Plus,
     Briefcase,
     Wrench,
     Clock,
@@ -137,7 +136,7 @@ const menuGroups: MenuGroup[] = [
 
 export function Sidebar() {
     const path = usePathname();
-    const { signOut, currentEmployee, logoutEmployee, profile } = useAuth();
+    const { signOut, currentEmployee, profile } = useAuth();
     const { cache, mutate: mutateAll } = useSWRConfig();
     const [isRefreshing, setIsRefreshing] = useState(false);
     const { isDrawerLayout } = useDevice();
@@ -176,11 +175,7 @@ export function Sidebar() {
             console.error("Logout sync failed:", e);
         }
 
-        if (currentEmployee) {
-            await logoutEmployee();
-        } else {
-            await signOut();
-        }
+        await signOut();
     };
     const { data: companySettings } = useCompanySettings();
     const [expandedItems, setExpandedItems] = useState<string[]>([]);

@@ -77,9 +77,12 @@ export default function DashboardPage() {
     const employeeName = currentEmployee
         ? `${currentEmployee.personalData.firstName} ${currentEmployee.personalData.lastName}`.trim()
         : "";
-    const userName = user
-        ? (profile?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Benutzer")
-        : employeeName || accountSettings?.name || "Benutzer";
+    const userName = accountSettings?.name?.trim()
+        || employeeName
+        || profile?.name
+        || user?.user_metadata?.full_name
+        || user?.email?.split("@")[0]
+        || "Benutzer";
 
     React.useEffect(() => {
         if (profile?.role === "developer") {

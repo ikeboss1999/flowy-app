@@ -1,148 +1,126 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-    Users,
-    FileText,
-    TrendingUp,
-    ShieldCheck,
-    ArrowRight,
-    UserPlus,
-    Activity
-} from "lucide-react";
-import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Activity, AlertTriangle, ArchiveRestore, ArrowUpRight, Building2, CheckCircle2, CircleDollarSign, Clock3, Database, HardDrive, RefreshCw, ShieldCheck, Users } from 'lucide-react';
+import { AdminNav } from '@/components/admin/AdminNav';
+import { cn } from '@/lib/utils';
+
+interface AdminStats {
+    generatedAt: string;
+    responseTimeMs: number;
+    totals: { companies: number; authUsers: number; activeSessions: number; invoices: number; customers: number; projects: number; documentRevenue: number; monthlyRecurringRevenue: number };
+    billing: { configured: number; paid: number; overdue: number; trial: number; unknown: number };
+    backups: { ready: number; failed: number; expiringSoon: number; totalBytes: number };
+    recentUsers: Array<{ id: string; name: string; email: string; createdAt: string; lastSignInAt?: string; isNew: boolean }>;
+    health: { database: string; auth: string; backupConfiguration: string; activityTracking: string };
+}
+
+const money = (value: number) => new Intl.NumberFormat('de-AT', { style: 'currency', currency: 'EUR' }).format(value);
+const bytes = (value: number) => value ? `${(value / 1024 / 1024).toFixed(value > 1024 ** 3 ? 0 : 1)} MB` : '0 MB';
 
 export default function AdminDashboard() {
-    const [stats, setStats] = useState<any>(null);
+    const [stats, setStats] = useState<AdminStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const res = await fetch("/api/admin/stats");
-                if (res.ok) {
-                    const data = await res.json();
-                    setStats(data);
-                }
-            } catch (err) {
-                console.error("Failed to fetch admin stats", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchStats();
-    }, []);
+    const load = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const response = await fetch('/api/admin/stats', { cache: 'no-store' });
+            if (!response.ok) throw new Error('Dashboard-Daten konnten nicht geladen werden.');
+            setStats(await response.json());
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    if (loading) {
-        return (
-            <div className="p-12 animate-pulse space-y-8">
-                <div className="h-12 w-64 bg-slate-200 rounded-xl" />
-                <div className="grid grid-cols-4 gap-6">
-                    {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="h-32 bg-slate-100 rounded-3xl" />
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
-    const cards = [
-        { label: "Gesamtbenutzer", value: stats?.totalUsers || 0, icon: Users, color: "text-blue-500", bg: "bg-blue-50" },
-        { label: "Rechnungen", value: stats?.totalInvoices || 0, icon: FileText, color: "text-purple-500", bg: "bg-purple-50" },
-        { label: "Kunden", value: stats?.totalCustomers || 0, icon: UserPlus, color: "text-emerald-500", bg: "bg-emerald-50" },
-        { label: "Gesamtumsatz", value: new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(stats?.totalRevenue || 0), icon: TrendingUp, color: "text-orange-500", bg: "bg-orange-50" },
-    ];
+    useEffect(() => { load(); }, []);
 
     return (
-        <div className="p-12 space-y-12">
-            <header className="flex justify-between items-end">
-                <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-indigo-600 font-bold uppercase tracking-widest text-sm">
-                        <ShieldCheck className="h-5 w-5" /> Admin Bereich
+        <div className="mx-auto max-w-[1500px] space-y-7 p-6 lg:p-10">
+            <header className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                <div>
+                    <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-indigo-600">
+                        <ShieldCheck className="h-4 w-4" /> FlowY Control Center
                     </div>
-                    <h1 className="text-5xl font-black text-slate-900 tracking-tight font-outfit">
-                        Admin Dashboard
-                    </h1>
+                    <h1 className="text-4xl font-black tracking-tight text-slate-950 lg:text-5xl">Entwicklerübersicht</h1>
+                    <p className="mt-2 text-sm font-medium text-slate-500">Nutzer, Zahlungen, Backups und Systemzustand zentral überwachen.</p>
                 </div>
-                <div className="flex gap-4">
-                    <Link href="/admin/explorer" className="bg-primary-gradient text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:shadow-lg transition-all shadow-purple-900/40">
-                        <Activity className="h-4 w-4" /> Global Explorer
-                    </Link>
-                    <Link href="/admin/users" className="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-slate-50 transition-all">
-                        Nutzer verwalten <ArrowRight className="h-4 w-4" />
-                    </Link>
-                </div>
+                <button onClick={load} disabled={loading} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50">
+                    <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} /> Aktualisieren
+                </button>
             </header>
 
-            {/* Quick Stats */}
-            <section className="grid grid-cols-4 gap-8">
-                {cards.map((card, i) => (
-                    <div key={i} className="glass-card p-10 space-y-6 hover:-translate-y-1 transition-all">
-                        <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center", card.bg)}>
-                            <card.icon className={cn("h-7 w-7", card.color)} />
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">{card.label}</p>
-                            <h2 className="text-3xl font-black text-slate-900 tabular-nums">{card.value}</h2>
-                        </div>
-                    </div>
+            <AdminNav />
+
+            {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 font-bold text-rose-700">{error}</div>}
+
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                    { label: 'Firmenkonten', value: stats?.totals.companies ?? 0, detail: `${stats?.totals.authUsers ?? 0} Auth-Nutzer`, icon: Building2, tone: 'indigo' },
+                    { label: 'Gerade aktiv', value: stats?.totals.activeSessions ?? 0, detail: 'Aktivität in 5 Minuten', icon: Activity, tone: 'emerald' },
+                    { label: 'Monatlich wiederkehrend', value: money(stats?.totals.monthlyRecurringRevenue ?? 0), detail: `${stats?.billing.paid ?? 0} zahlende Konten`, icon: CircleDollarSign, tone: 'amber' },
+                    { label: 'Sicherungsbackups', value: stats?.backups.ready ?? 0, detail: `${bytes(stats?.backups.totalBytes ?? 0)} verschlüsselt`, icon: ArchiveRestore, tone: 'sky' },
+                ].map(card => (
+                    <article key={card.label} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <div className={cn('mb-5 flex h-11 w-11 items-center justify-center rounded-2xl', {
+                            'bg-indigo-50 text-indigo-600': card.tone === 'indigo', 'bg-emerald-50 text-emerald-600': card.tone === 'emerald',
+                            'bg-amber-50 text-amber-600': card.tone === 'amber', 'bg-sky-50 text-sky-600': card.tone === 'sky',
+                        })}><card.icon className="h-5 w-5" /></div>
+                        <p className="text-xs font-black uppercase tracking-widest text-slate-400">{card.label}</p>
+                        <p className="mt-2 text-3xl font-black tabular-nums text-slate-950">{loading ? '–' : card.value}</p>
+                        <p className="mt-2 text-sm font-medium text-slate-500">{card.detail}</p>
+                    </article>
                 ))}
             </section>
 
-            <div className="grid grid-cols-3 gap-12">
-                {/* Recent Activity / Users */}
-                <section className="col-span-2 glass-card p-10 space-y-8">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                            <Activity className="h-6 w-6 text-indigo-500" /> Neue Benutzer
-                        </h3>
+            <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+                <article className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
+                    <div className="mb-6 flex items-center justify-between">
+                        <div><h2 className="text-xl font-black text-slate-950">Neue Firmenkonten</h2><p className="mt-1 text-sm text-slate-500">Zuletzt registrierte Mandanten</p></div>
+                        <Link href="/admin/users" className="flex items-center gap-1 text-sm font-bold text-indigo-600">Alle ansehen <ArrowUpRight className="h-4 w-4" /></Link>
                     </div>
                     <div className="divide-y divide-slate-100">
-                        {stats?.recentUsers?.map((user: any, i: number) => (
-                            <div key={i} className="py-5 flex items-center justify-between group">
-                                <div className="flex items-center gap-4">
-                                    <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 uppercase">
-                                        {user.name?.charAt(0) || user.email.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-slate-900">{user.name || 'Unbekannt'}</p>
-                                        <p className="text-sm text-slate-500">{user.email}</p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-bold text-slate-400">Registriert am</p>
-                                    <p className="text-sm text-slate-600">{new Date(user.createdAt).toLocaleDateString('de-DE')}</p>
-                                </div>
+                        {(stats?.recentUsers || []).map(user => (
+                            <div key={user.id} className="flex items-center justify-between gap-4 py-4">
+                                <div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate font-bold text-slate-900">{user.name}</p>{user.isNew && <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-black uppercase text-indigo-600">Neu</span>}</div><p className="truncate text-sm text-slate-500">{user.email}</p></div>
+                                <div className="shrink-0 text-right text-xs text-slate-400"><p>Registriert</p><p className="mt-1 font-bold text-slate-600">{new Date(user.createdAt).toLocaleDateString('de-AT')}</p></div>
                             </div>
                         ))}
+                        {!loading && !stats?.recentUsers.length && <p className="py-10 text-center text-sm text-slate-400">Keine Firmenkonten gefunden.</p>}
                     </div>
-                </section>
+                </article>
 
-                <section className="glass-card p-10 space-y-8 bg-primary-gradient relative overflow-hidden">
-                    <div className="absolute inset-0 bg-black/10 pointer-events-none" />
-                    <div className="relative z-10 space-y-6 text-white">
-                        <h3 className="text-2xl font-black tracking-tight">System Info</h3>
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center py-3 border-b border-white/10">
-                                <span className="text-white/60 font-medium">Status</span>
-                                <span className="bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-emerald-500/30">Online</span>
-                            </div>
-                            <div className="flex justify-between items-center py-3 border-b border-white/10">
-                                <span className="text-white/60 font-medium">DB Connection</span>
-                                <span className="text-white font-bold">Aktiv (SQLite)</span>
-                            </div>
-                            <div className="flex justify-between items-center py-3">
-                                <span className="text-white/60 font-medium">Auto-Sync</span>
-                                <span className="text-white font-bold">Enabled</span>
-                            </div>
-                        </div>
-                        <button className="w-full bg-white/15 hover:bg-white/25 py-4 rounded-2xl font-bold transition-all mt-4 border border-white/10">
-                            Systemprotokolle ansehen
-                        </button>
+                <article className="rounded-3xl bg-slate-950 p-7 text-white shadow-xl shadow-slate-200">
+                    <h2 className="text-xl font-black">Systemzustand</h2>
+                    <p className="mt-1 text-sm text-slate-400">Echte Verbindungs- und Konfigurationsprüfungen</p>
+                    <div className="mt-6 space-y-3">
+                        {[
+                            { label: 'Datenbank', status: stats?.health.database, icon: Database },
+                            { label: 'Authentifizierung', status: stats?.health.auth, icon: ShieldCheck },
+                            { label: 'Backup-System', status: stats?.health.backupConfiguration, icon: HardDrive },
+                            { label: 'Aktivitätsmessung', status: stats?.health.activityTracking, icon: Activity },
+                        ].map(item => {
+                            const healthy = item.status === 'online';
+                            return <div key={item.label} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4"><div className="flex items-center gap-3"><item.icon className="h-4 w-4 text-slate-400" /><span className="text-sm font-bold">{item.label}</span></div><span className={cn('flex items-center gap-1.5 text-xs font-black uppercase', healthy ? 'text-emerald-400' : 'text-amber-300')}>{healthy ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}{healthy ? 'Bereit' : 'Einrichtung nötig'}</span></div>;
+                        })}
                     </div>
-                </section>
-            </div>
+                    <div className="mt-5 flex items-center justify-between text-xs text-slate-500"><span className="flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" /> API-Antwort</span><span className="font-mono">{stats?.responseTimeMs ?? '–'} ms</span></div>
+                </article>
+            </section>
+
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                    { href: '/admin/billing', label: 'Zahlungen prüfen', value: `${stats?.billing.overdue ?? 0} kritisch`, icon: CircleDollarSign },
+                    { href: '/admin/backups', label: 'Backups verwalten', value: `${stats?.backups.expiringSoon ?? 0} laufen bald ab`, icon: ArchiveRestore },
+                    { href: '/admin/sessions', label: 'Aktive Sitzungen', value: `${stats?.totals.activeSessions ?? 0} aktiv`, icon: Users },
+                    { href: '/admin/usage', label: 'Mandantennutzung', value: `${stats?.totals.projects ?? 0} Projekte`, icon: Activity },
+                ].map(item => <Link key={item.href} href={item.href} className="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200"><div><p className="text-sm font-black text-slate-900">{item.label}</p><p className="mt-1 text-xs font-medium text-slate-500">{item.value}</p></div><item.icon className="h-5 w-5 text-slate-300 transition group-hover:text-indigo-500" /></Link>)}
+            </section>
         </div>
     );
 }

@@ -69,8 +69,6 @@ function SortableItem({
   children: React.ReactNode;
 }) {
   const {
-    attributes,
-    listeners,
     setNodeRef,
     transform,
     transition,
@@ -315,32 +313,6 @@ export function OfferForm({ initialData }: OfferFormProps) {
 
   const removeItem = (id: string) => {
     if (items.length > 1) setItems(items.filter((item) => item.id !== id));
-  };
-
-  const duplicateItem = (item: OfferItem) => {
-    setItems((prev) => {
-      const idx = prev.findIndex((i) => i.id === item.id);
-      if (idx === -1) return prev;
-      const duplicated: OfferItem = {
-        ...item,
-        id: Math.random().toString(36).substring(2, 11),
-      };
-      const next = [...prev];
-      next.splice(idx + 1, 0, duplicated);
-      return next;
-    });
-  };
-
-  const moveItem = (id: string, direction: "up" | "down") => {
-    setItems((prev) => {
-      const idx = prev.findIndex((i) => i.id === id);
-      if (direction === "up" && idx === 0) return prev;
-      if (direction === "down" && idx === prev.length - 1) return prev;
-      const next = [...prev];
-      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-      return next;
-    });
   };
 
   const updateItem = (id: string, field: keyof OfferItem, value: any) => {
@@ -1115,7 +1087,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
             >
                     {(() => {
                       let posCounter = 0;
-                      return items.map((item, idx) => {
+                      return items.map((item) => {
                         const type =
                           item.itemType ??
                           ((item as any).isTitleOnly ? "title" : "standard");

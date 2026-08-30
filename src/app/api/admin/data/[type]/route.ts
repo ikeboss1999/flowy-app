@@ -33,10 +33,8 @@ function adminExplorerDisabled() {
     return process.env.NODE_ENV === 'production' && process.env.ENABLE_ADMIN_EXPLORER !== 'true';
 }
 
-export async function GET(
-    request: Request,
-    { params }: { params: { type: string } }
-) {
+export async function GET(request: Request, props: { params: Promise<{ type: string }> }) {
+    const params = await props.params;
     if (adminExplorerDisabled()) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
@@ -75,10 +73,8 @@ export async function GET(
     }
 }
 
-export async function POST(
-    request: Request,
-    { params }: { params: { type: string } }
-) {
+export async function POST(request: Request, props: { params: Promise<{ type: string }> }) {
+    const params = await props.params;
     if (adminExplorerDisabled()) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
@@ -113,10 +109,8 @@ export async function POST(
     }
 }
 
-export async function DELETE(
-    request: Request,
-    { params }: { params: { type: string } }
-) {
+export async function DELETE(request: Request, props: { params: Promise<{ type: string }> }) {
+    const params = await props.params;
     if (adminExplorerDisabled()) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }

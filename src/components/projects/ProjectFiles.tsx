@@ -6,7 +6,6 @@ import {
     Upload,
     Trash2,
     Download,
-    ArrowLeft,
     FileText,
     Image as ImageIcon,
     File,
@@ -26,6 +25,10 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DocumentPreviewModal } from "../DocumentPreviewModal";
 
 const ACCEPT_ALL = '.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,image/jpeg,image/png,image/gif,image/webp';
+
+function getErrorMessage(error: unknown, fallback: string) {
+    return error instanceof Error && error.message ? error.message : fallback;
+}
 
 function formatBytes(bytes?: number): string {
     if (!bytes) return '—';
@@ -86,9 +89,9 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien", canWrite = 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Sync helper
-    const triggerMutate = async () => {
+    const triggerMutate = useCallback(async () => {
         await Promise.all([mutateFiles(), mutateFolders()]);
-    };
+    }, [mutateFiles, mutateFolders]);
 
     // Combine folders from DB + files (to handle legacy folders or folder-less files)
     const allFolders = useMemo(() => {
@@ -167,7 +170,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien", canWrite = 
             setIsCreateFolderModalOpen(false);
             await triggerMutate();
         } catch (e) {
-            setUploadError('Ordner konnte nicht in der Datenbank erstellt werden.');
+            setUploadError(getErrorMessage(e, 'Ordner konnte nicht erstellt werden.'));
         }
     };
 
@@ -222,7 +225,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien", canWrite = 
             setRenamingFolderOldPath(null);
             await triggerMutate();
         } catch (e) {
-            setUploadError('Fehler beim Umbenennen des Ordners.');
+            setUploadError(getErrorMessage(e, 'Fehler beim Umbenennen des Ordners.'));
         }
     };
 
@@ -242,18 +245,22 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien", canWrite = 
             onConfirm: async () => {
                 setConfirmDialog(prev => ({ ...prev, isOpen: false }));
                 try {
-                    // 1. Delete subfolder records in DB
-                    const subfolderRecords = folders.filter(f => f.name.startsWith(prefix));
+                    // Delete files first. If storage deletion fails, folder metadata remains
+                    // intact and the operation can safely be retried.
+                    for (const file of affectedFiles) {
+                        await deleteFile(file.id);
+                    }
+
+                    // Delete deepest subfolders first, then the selected folder.
+                    const subfolderRecords = folders
+                        .filter(f => f.name.startsWith(prefix))
+                        .sort((a, b) => b.name.length - a.name.length);
                     for (const sub of subfolderRecords) {
                         await deleteFolder(sub.id);
                     }
-                    
-                    // 2. Delete main folder record in DB
+
                     const folderRecord = folders.find(f => f.name === folderName);
                     if (folderRecord) await deleteFolder(folderRecord.id);
-                    
-                    // 3. Delete files
-                    await Promise.all(affectedFiles.map(f => deleteFile(f.id)));
                     
                     // 4. Adjust selected folder state if we deleted it or its parent
                     if (selectedFolder === folderName || selectedFolder?.startsWith(prefix)) {
@@ -261,7 +268,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien", canWrite = 
                     }
                     await triggerMutate();
                 } catch (e) {
-                    setUploadError('Fehler beim Löschen des Ordners.');
+                    setUploadError(getErrorMessage(e, 'Fehler beim Löschen des Ordners.'));
                 }
             }
         });
@@ -274,7 +281,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien", canWrite = 
             setMovingFile(null);
             await triggerMutate();
         } catch (e) {
-            setUploadError('Datei konnte nicht verschoben werden.');
+            setUploadError(getErrorMessage(e, 'Datei konnte nicht verschoben werden.'));
         }
     };
 
@@ -289,6 +296,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien", canWrite = 
             else window.open(url, '_blank', 'noopener,noreferrer');
         } catch (e) {
             if (newWindow) newWindow.close();
+            setUploadError(getErrorMessage(e, 'Datei konnte nicht geöffnet werden.'));
         }
     };
 
@@ -306,6 +314,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien", canWrite = 
             setIsPreviewOpen(true);
         } catch (e) {
             console.error("Vorschau konnte nicht geladen werden:", e);
+            setUploadError(getErrorMessage(e, 'Vorschau konnte nicht geladen werden.'));
         }
     };
 
@@ -317,13 +326,14 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien", canWrite = 
         for (const file of Array.from(fileList)) {
             try {
                 await uploadFile(file, selectedFolder);
-            } catch (e: any) {
-                setUploadError(prev => (prev ? prev + '\n' : '') + `${file.name}: Fehler`);
+            } catch (e) {
+                const message = getErrorMessage(e, 'Upload fehlgeschlagen.');
+                setUploadError(prev => (prev ? prev + '\n' : '') + `${file.name}: ${message}`);
             }
         }
         setUploading(false);
         await triggerMutate();
-    }, [canWrite, selectedFolder, uploadFile]);
+    }, [canWrite, selectedFolder, triggerMutate, uploadFile]);
 
     const handleRenameFile = async (fileId: string) => {
         if (!canWrite) return;
@@ -336,7 +346,7 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien", canWrite = 
             setRenamingFileId(null);
             await triggerMutate();
         } catch (e) {
-            setUploadError('Fehler beim Umbenennen der Datei.');
+            setUploadError(getErrorMessage(e, 'Fehler beim Umbenennen der Datei.'));
         }
     };
 
@@ -352,6 +362,8 @@ export function ProjectFiles({ projectId, title = "Projekt-Dateien", canWrite = 
                 try {
                     await deleteFile(file.id);
                     await triggerMutate();
+                } catch (e) {
+                    setUploadError(getErrorMessage(e, 'Datei konnte nicht gelöscht werden.'));
                 } finally {
                     setDeletingId(null);
                 }

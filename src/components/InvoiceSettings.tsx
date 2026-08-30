@@ -4,14 +4,11 @@ import React, { useState } from 'react';
 import {
     FileText,
     Mail,
-    Calendar,
-    Percent,
     Coins,
     ChevronDown,
     ChevronUp,
     CheckCircle2,
     BellRing,
-    AlertCircle,
     History,
     Trash2
 } from "lucide-react";

@@ -8,6 +8,7 @@ import { decryptEmployee } from '@/lib/encryption';
 import { Employee } from '@/types/employee';
 import { resolveEmployeeAvatarUrl } from '@/lib/employee-avatar';
 import { APP_VERSION } from '@/lib/app-version';
+import { isTenantSuspended } from '@/lib/tenant-access';
 
 const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL_DAYS = 30;
@@ -263,6 +264,10 @@ export async function requireMobileSession(request: Request, module?: keyof Retu
             ok: false as const,
             response: NextResponse.json({ error: 'Forbidden', reason: 'Mobile access is disabled or employee is inactive' }, { status: 403 }),
         };
+    }
+
+    if (await isTenantSuspended(payload.companyOwnerId)) {
+        return { ok: false as const, response: NextResponse.json({ error: 'Forbidden', reason: 'Company account is suspended' }, { status: 403 }) };
     }
 
     const currentPermissions = getMobilePermissions(employee);

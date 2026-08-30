@@ -15,7 +15,6 @@ import {
     Plus,
     Share
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useDevice } from '@/hooks/useDevice';
 import { PartnerLogos } from '@/components/PartnerLogos';
 import { useAuth } from '@/context/AuthContext';

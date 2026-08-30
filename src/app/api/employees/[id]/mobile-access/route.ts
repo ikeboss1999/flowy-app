@@ -51,7 +51,7 @@ async function generateUniqueStaffId(client: any) {
 
 async function buildDefaultAppAccess(client: any, employee: Employee) {
     return {
-        staffId: employee.appAccess?.staffId || await generateUniqueStaffId(client),
+        staffId: employee.appAccess?.staffId || (await generateUniqueStaffId(client)),
         accessPIN: employee.appAccess?.accessPIN || '',
         isAccessEnabled: employee.appAccess?.isAccessEnabled ?? false,
         permissions: {
@@ -75,7 +75,8 @@ function sanitizeEmployee(employee: Employee): Employee {
     };
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const session = await getUserSession();
     const companyOwnerId = session?.companyOwnerId;
 

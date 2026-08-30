@@ -15,6 +15,7 @@ import {
 import { Project, ProjectStatus } from "@/types/project";
 import { Customer } from "@/types/customer";
 import { cn } from "@/lib/utils";
+import { useNotification } from "@/context/NotificationContext";
 
 interface ProjectListProps {
     projects: Project[];
@@ -34,6 +35,7 @@ const STATUS_OPTIONS: Array<{ id: ProjectStatus | "all"; label: string }> = [
 ];
 
 export function ProjectList({ projects, customers, onEdit, onDelete, onView, canWrite = true }: ProjectListProps) {
+    const { showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">("all");
 
@@ -74,7 +76,7 @@ export function ProjectList({ projects, customers, onEdit, onDelete, onView, can
         const query = searchQuery.trim().toLowerCase();
 
         return projects.filter(project => {
-            const customerName = getCustomerName(project.customerId);
+            const customerName = customers.find(customer => customer.id === project.customerId)?.name || "Unbekannter Kunde";
             const matchesStatus = statusFilter === "all" || project.status === statusFilter;
             const matchesSearch =
                 !query ||
@@ -240,7 +242,16 @@ export function ProjectList({ projects, customers, onEdit, onDelete, onView, can
                                                         <button
                                                             onClick={(event) => {
                                                                 event.stopPropagation();
-                                                                onDelete(project.id);
+                                                                const projectLabel = project.projectNumber
+                                                                    ? `${project.projectNumber} – ${project.name}`
+                                                                    : project.name;
+                                                                showConfirm({
+                                                                    title: "Baustelle löschen?",
+                                                                    message: `Möchten Sie „${projectLabel}“ wirklich unwiderruflich löschen?`,
+                                                                    confirmLabel: "Jetzt löschen",
+                                                                    variant: "danger",
+                                                                    onConfirm: () => onDelete(project.id),
+                                                                });
                                                             }}
                                                             className="rounded-xl border border-transparent p-2.5 text-slate-400 transition-all hover:border-rose-100 hover:bg-white hover:text-rose-600 hover:shadow-md"
                                                             title="Loeschen"

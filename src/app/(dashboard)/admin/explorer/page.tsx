@@ -1,20 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
     Search,
     ChevronLeft,
     Database,
-    Filter,
     Edit3,
     Trash2,
-    CheckCircle2,
     XCircle,
-    Copy,
-    ArrowRight
 } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 
 const TABLES = [
     { id: 'invoices', label: 'Rechnungen' },
@@ -31,7 +26,6 @@ export default function GlobalExplorer() {
     const [data, setData] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
     const [selectedUserId, setSelectedUserId] = useState("");
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [editingRecord, setEditingRecord] = useState<any>(null);
 
@@ -43,8 +37,7 @@ export default function GlobalExplorer() {
         fetchUsers();
     }, []);
 
-    const fetchData = async () => {
-        setLoading(true);
+    const fetchData = useCallback(async () => {
         try {
             const url = `/api/admin/data/${selectedTable}${selectedUserId ? `?userId=${selectedUserId}` : ''}`;
             const res = await fetch(url);
@@ -53,14 +46,12 @@ export default function GlobalExplorer() {
             }
         } catch (err) {
             console.error("Failed to fetch global data", err);
-        } finally {
-            setLoading(false);
         }
-    };
+    }, [selectedTable, selectedUserId]);
 
     useEffect(() => {
         fetchData();
-    }, [selectedTable, selectedUserId]);
+    }, [fetchData]);
 
     const handleSave = async (record: any) => {
         try {

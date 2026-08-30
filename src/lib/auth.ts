@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { SignJWT, jwtVerify } from 'jose';
+import { jwtVerify } from 'jose';
 
 const defaultWeakSecret = 'super-secret-default-key-change-this-in-production';
 
@@ -37,34 +37,6 @@ function getJWTSecret(): Uint8Array {
     return _jwtSecret;
 }
 
-let _supabaseJwtSecret: Uint8Array | null = null;
-
-function getSupabaseJWTSecret(): Uint8Array {
-    if (_supabaseJwtSecret) return _supabaseJwtSecret;
-
-    let rawSupabaseSecret = process.env.SUPABASE_JWT_SECRET;
-    if (!rawSupabaseSecret) {
-        const isProd = process.env.NODE_ENV === 'production';
-        if (isProd) {
-            throw new Error('FATAL: SUPABASE_JWT_SECRET environment variable is missing in production!');
-        }
-        console.warn('[AUTH] WARNING: SUPABASE_JWT_SECRET is missing! Falling back to JWT_SECRET.');
-        rawSupabaseSecret = process.env.JWT_SECRET || '';
-    }
-
-    if (rawSupabaseSecret && (rawSupabaseSecret.includes('/') || rawSupabaseSecret.includes('+') || rawSupabaseSecret.endsWith('='))) {
-        try {
-            _supabaseJwtSecret = new Uint8Array(Buffer.from(rawSupabaseSecret, 'base64'));
-        } catch (e) {
-            _supabaseJwtSecret = new TextEncoder().encode(rawSupabaseSecret);
-        }
-    } else {
-        _supabaseJwtSecret = new TextEncoder().encode(rawSupabaseSecret || '');
-    }
-
-    return _supabaseJwtSecret;
-}
-
 export const hashPassword = async (password: string): Promise<string> => {
     return await bcrypt.hash(password, 12);
 };
@@ -73,36 +45,13 @@ export const verifyPassword = async (password: string, hash: string): Promise<bo
     return await bcrypt.compare(password, hash);
 };
 
-export const createSessionToken = async (payload: { userId: string; email: string; role: string; employeeId?: string }) => {
-    return await new SignJWT(payload)
-        .setProtectedHeader({ alg: 'HS256' })
-        .setIssuedAt()
-        .setExpirationTime('24h') // Session lasts 24h
-        .sign(getJWTSecret());
-};
-
 export const verifySessionToken = async (token: string) => {
     try {
         const { payload } = await jwtVerify(token, getJWTSecret());
-        return payload as { userId: string; email: string; role: string; employeeId?: string };
+        return payload as { userId: string; email: string; role: string; employeeId?: string; sid?: string; iat?: number };
     } catch (error) {
         return null;
     }
-};
-
-export const createSupabaseToken = async (payload: { employeeId: string; ownerId: string; email: string }) => {
-    return await new SignJWT({
-        aud: 'authenticated',
-        role: 'authenticated',
-        sub: payload.ownerId, // Set sub to the company owner UUID (valid UUID)
-        email: payload.email,
-        app_metadata: { provider: 'email', providers: ['email'] },
-        user_metadata: { employee_id: payload.employeeId }
-    })
-        .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
-        .setIssuedAt()
-        .setExpirationTime('24h') // Must match normal session duration
-        .sign(getSupabaseJWTSecret());
 };
 
 export { generateVerificationCode, getAuthErrorMessage } from './auth-utils';

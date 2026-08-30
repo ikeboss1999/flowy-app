@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { InvoiceForm } from "@/components/InvoiceForm";
 import { useInvoices } from "@/hooks/useInvoices";
@@ -8,7 +8,7 @@ import { useInvoices } from "@/hooks/useInvoices";
 export const dynamic = 'force-dynamic';
 
 interface EditInvoicePageProps {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }
 
 function EditInvoiceContent({ id }: { id: string }) {
@@ -46,7 +46,8 @@ function EditInvoiceContent({ id }: { id: string }) {
     return <InvoiceForm initialData={invoice} />;
 }
 
-export default function EditInvoicePage({ params }: EditInvoicePageProps) {
+export default function EditInvoicePage(props: EditInvoicePageProps) {
+    const params = use(props.params);
     return (
         <div className="dashboard-page-centered pb-24">
             <Suspense fallback={<div className="dashboard-page text-slate-400">Lade Formular...</div>}>

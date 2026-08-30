@@ -4,25 +4,53 @@ import useSWR from 'swr';
 import { Project } from "@/types/project";
 import { useAuth } from "@/context/AuthContext";
 import { fetcher } from '@/lib/fetcher';
-import { useProjectSettings } from './useProjectSettings';
+import { useNotification } from '@/context/NotificationContext';
 
-function getCachedProjects(): Project[] {
+const LEGACY_CACHE_KEY = "flowy_projects_cache";
+
+function getProjectCacheKey(companyOwnerId: string) {
+    return `flowy_projects_cache:${companyOwnerId}`;
+}
+
+function getCachedProjects(companyOwnerId?: string): Project[] {
+    if (!companyOwnerId) return [];
     if (typeof window !== "undefined") {
         try {
-            const cached = localStorage.getItem("flowy_projects_cache");
+            const cached = localStorage.getItem(getProjectCacheKey(companyOwnerId));
             if (cached) return JSON.parse(cached);
         } catch { }
     }
     return [];
 }
 
+function cacheProjects(companyOwnerId: string, projects: Project[]) {
+    if (typeof window === "undefined") return;
+    try {
+        localStorage.setItem(getProjectCacheKey(companyOwnerId), JSON.stringify(projects));
+        localStorage.removeItem(LEGACY_CACHE_KEY);
+    } catch { }
+}
+
+async function readErrorMessage(response: Response) {
+    const text = await response.text();
+    if (!text) return `HTTP ${response.status}`;
+
+    try {
+        const parsed = JSON.parse(text);
+        return parsed.issues?.[0]?.message || parsed.message || parsed.error || text;
+    } catch {
+        return text;
+    }
+}
+
 export function useProjects() {
     const { user, currentEmployee, profile } = useAuth();
-    const { data: projectSettings, updateData: updateProjectSettings } = useProjectSettings();
+    const { showToast } = useNotification();
 
     const activeUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
-    const key = activeUserId ? `/api/projects?userId=${activeUserId}` : null;
-    const initialFallback = getCachedProjects();
+    // The scope only separates SWR caches. The API derives the actual company from the session.
+    const key = activeUserId ? `/api/projects?scope=${encodeURIComponent(activeUserId)}` : null;
+    const initialFallback = getCachedProjects(activeUserId);
 
     const { data = initialFallback, isLoading, mutate } = useSWR<Project[]>(key, fetcher, {
         fallbackData: initialFallback,
@@ -30,7 +58,7 @@ export function useProjects() {
         onSuccess: (freshData) => {
             if (typeof window !== "undefined" && freshData && Array.isArray(freshData)) {
                 try {
-                    localStorage.setItem("flowy_projects_cache", JSON.stringify(freshData));
+                    cacheProjects(activeUserId!, freshData);
                 } catch { }
             }
         }
@@ -38,45 +66,59 @@ export function useProjects() {
 
     const addProject = async (project: Project) => {
         if (!activeUserId) return;
-        const projectNumber = `${projectSettings.projectNumberPrefix}${projectSettings.nextProjectNumber}`;
-        const newProject = { ...project, userId: activeUserId, projectNumber };
+        const newProject = { ...project, userId: activeUserId, projectNumber: undefined };
         const updatedList = [newProject, ...data];
         mutate(updatedList, false);
-        if (typeof window !== "undefined") {
-            try { localStorage.setItem("flowy_projects_cache", JSON.stringify(updatedList)); } catch { }
-        }
+        cacheProjects(activeUserId, updatedList);
         try {
-            await fetch('/api/projects', {
+            const response = await fetch('/api/projects', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newProject)
             });
-            await updateProjectSettings({ nextProjectNumber: projectSettings.nextProjectNumber + 1 });
+            if (!response.ok) throw new Error(await readErrorMessage(response));
+
+            const result = await response.json();
+            const savedProject: Project = result.project || { ...newProject, projectNumber: result.projectNumber };
+            const confirmedList = updatedList.map(item => item.id === project.id ? savedProject : item);
+            mutate(confirmedList, false);
+            cacheProjects(activeUserId, confirmedList);
         } catch (e) {
             console.error("Failed to add project", e);
-            mutate();
+            mutate(data, false);
+            cacheProjects(activeUserId, data);
+            showToast(e instanceof Error ? e.message : 'Baustelle konnte nicht gespeichert werden.', 'error');
         }
     };
 
     const updateProject = async (id: string, updates: Partial<Project>) => {
-        if (!activeUserId) return;
+        if (!activeUserId) return false;
         const current = data.find(p => p.id === id);
-        if (!current) return;
+        if (!current) return false;
         const updated = { ...current, ...updates, updatedAt: new Date().toISOString() };
         const updatedList = data.map(p => p.id === id ? updated : p);
         mutate(updatedList, false);
-        if (typeof window !== "undefined") {
-            try { localStorage.setItem("flowy_projects_cache", JSON.stringify(updatedList)); } catch { }
-        }
+        cacheProjects(activeUserId, updatedList);
         try {
-            await fetch('/api/projects', {
+            const response = await fetch('/api/projects', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updated)
             });
+            if (!response.ok) throw new Error(await readErrorMessage(response));
+
+            const result = await response.json();
+            const savedProject: Project = result.project || updated;
+            const confirmedList = updatedList.map(item => item.id === id ? savedProject : item);
+            mutate(confirmedList, false);
+            cacheProjects(activeUserId, confirmedList);
+            return true;
         } catch (e) {
             console.error("Failed to update project", e);
-            mutate();
+            mutate(data, false);
+            cacheProjects(activeUserId, data);
+            showToast(e instanceof Error ? e.message : 'Änderungen an der Baustelle konnten nicht gespeichert werden.', 'error');
+            return false;
         }
     };
 
@@ -84,14 +126,15 @@ export function useProjects() {
         if (!activeUserId) return;
         const updatedList = data.filter(p => p.id !== id);
         mutate(updatedList, false);
-        if (typeof window !== "undefined") {
-            try { localStorage.setItem("flowy_projects_cache", JSON.stringify(updatedList)); } catch { }
-        }
+        cacheProjects(activeUserId, updatedList);
         try {
-            await fetch(`/api/projects?id=${id}`, { method: 'DELETE' });
+            const response = await fetch(`/api/projects?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error(await readErrorMessage(response));
         } catch (e) {
             console.error("Failed to delete project", e);
-            mutate();
+            mutate(data, false);
+            cacheProjects(activeUserId, data);
+            showToast('Baustelle konnte nicht gelöscht werden.', 'error');
         }
     };
 

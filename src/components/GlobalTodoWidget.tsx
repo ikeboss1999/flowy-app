@@ -8,7 +8,6 @@ import {
     Trash2, 
     CheckCircle2, 
     ClipboardList,
-    AlertCircle,
     ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';

@@ -18,7 +18,6 @@ import {
     RefreshCcw,
     Search,
     Trash2,
-    User,
     UserCheck,
     UserSquare2,
     UserX,
@@ -132,28 +131,6 @@ export default function EmployeesPage() {
             });
     }, [employees, filterStatus, listTab, searchQuery]);
 
-    const archiveEmployees = useMemo(() => {
-        const query = searchQuery.trim().toLowerCase();
-
-        return employees
-            .filter((employee) => {
-                const docs = employee.documents || [];
-                if (docs.length === 0) return false;
-                if (!query) return true;
-
-                return (
-                    employeeName(employee).toLowerCase().includes(query) ||
-                    employee.employeeNumber?.toLowerCase().includes(query) ||
-                    docs.some((doc) => doc.name.toLowerCase().includes(query))
-                );
-            })
-            .sort((a, b) => {
-                const numA = parseInt(a.employeeNumber.replace(/\D/g, "")) || 0;
-                const numB = parseInt(b.employeeNumber.replace(/\D/g, "")) || 0;
-                return numA - numB;
-            });
-    }, [employees, searchQuery]);
-
     const employeeDetailKey = (id: string) => `/api/employees/${id}`;
 
     const getCachedEmployeeDetail = (id: string): Employee | null => {
@@ -205,7 +182,14 @@ export default function EmployeesPage() {
 
         const visibleEmployees = filteredEmployees.slice(0, 30);
         const timers = visibleEmployees.map((employee, index) => window.setTimeout(() => {
-            preloadEmployeeDetail(employee).catch((error) => {
+            const key = employeeDetailKey(employee.id);
+            const cached = cache.get(key) as any;
+            if (cached?.data?.id || cached?.id) return;
+
+            fetcher(key).then((detail) => mutateAll(key, detail, {
+                populateCache: true,
+                revalidate: false,
+            })).catch((error) => {
                 console.warn("[EmployeesPage] detail preload failed:", employee.id, error);
             });
         }, 500 + index * 180));

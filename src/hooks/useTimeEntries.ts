@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from 'react';
 import useSWR from 'swr';
 import { TimeEntry, TimesheetMeta } from '@/types/time-tracking';
 import { useAuth } from '@/context/AuthContext';

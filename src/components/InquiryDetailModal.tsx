@@ -6,7 +6,6 @@ import {
     Calendar,
     Edit2,
     Euro,
-    ExternalLink,
     FileText,
     Loader2,
     Mail,
@@ -47,13 +46,6 @@ const CHANNELS: { id: InquiryChannel; label: string; color: string; bg: string }
     { id: "recommendation", label: "Empfehlung", color: "text-emerald-700", bg: "bg-emerald-50" },
     { id: "other", label: "Sonstiges", color: "text-slate-700", bg: "bg-slate-100" },
 ];
-
-const formatDate = (date?: string) => {
-    if (!date) return "-";
-    const parsed = new Date(date);
-    if (Number.isNaN(parsed.getTime())) return "-";
-    return parsed.toLocaleDateString("de-AT");
-};
 
 const formatDateTime = (date?: string) => {
     if (!date) return "-";

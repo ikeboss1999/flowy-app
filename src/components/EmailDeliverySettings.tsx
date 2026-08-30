@@ -250,7 +250,7 @@ export function EmailDeliverySettings() {
 
             <SettingsSection
                 title="SMTP Einstellungen"
-                description="World4You SMTP-Daten fuer den Versand aus FlowY."
+                description="SMTP-Daten für den Versand aus FlowY."
                 icon={ShieldCheck}
                 isOpen={openSection === 'smtp'}
                 onToggle={() => setOpenSection(openSection === 'smtp' ? null : 'smtp')}
@@ -268,7 +268,7 @@ export function EmailDeliverySettings() {
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     <div>
                         <label className={labelClasses}>SMTP Host</label>
-                        <input value={delivery.smtpHost} onChange={(e) => updateDelivery({ smtpHost: e.target.value })} className={inputClasses} placeholder="smtp.world4you.com" />
+                        <input value={delivery.smtpHost} onChange={(e) => updateDelivery({ smtpHost: e.target.value })} className={inputClasses} placeholder="smtp.mail.com" />
                     </div>
                     <div className="grid grid-cols-[1fr_160px] gap-3">
                         <div>
@@ -310,6 +310,20 @@ export function EmailDeliverySettings() {
                         <label className={labelClasses}>Antwort-an E-Mail</label>
                         <input type="email" value={delivery.replyToEmail || ''} onChange={(e) => updateDelivery({ replyToEmail: e.target.value })} className={inputClasses} placeholder="Optional" />
                     </div>
+                    <label className="md:col-span-2 flex cursor-pointer items-start gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-indigo-200 hover:bg-indigo-50/40">
+                        <input
+                            type="checkbox"
+                            checked={!!delivery.sendCopyToSelf}
+                            onChange={(e) => void updateDelivery({ sendCopyToSelf: e.target.checked })}
+                            className="mt-0.5 h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span>
+                            <span className="block text-sm font-black text-slate-800">Kopie an mich selbst senden</span>
+                            <span className="mt-1 block text-xs font-semibold text-slate-500">
+                                Bei jedem Dokumentenversand wird automatisch eine Blindkopie an {delivery.fromEmail || 'die Absenderadresse'} gesendet.
+                            </span>
+                        </span>
+                    </label>
                 </div>
 
                 <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">

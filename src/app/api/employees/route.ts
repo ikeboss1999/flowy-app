@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { nanoid } from 'nanoid';
 import { getUserSession, hasPermission } from '@/lib/auth-server';
 import { encryptEmployee, decryptEmployee } from '@/lib/encryption';
-import { safeGetCreatedBy, safeUpsert } from '@/lib/supabase-helper';
+import { safeUpsert } from '@/lib/supabase-helper';
 import {
     getEmployeeAvatarStoragePath,
     persistEmployeeInlineAvatar,
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
         };
 
         const encryptedEmployee = encryptEmployee(normalizedEmployee);
-        const { id, employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, pendingChanges, sharedFolders, createdAt } = encryptedEmployee;
+        const { employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, pendingChanges, sharedFolders, createdAt } = encryptedEmployee;
         let { appAccess } = encryptedEmployee;
 
         // Hash PIN if it's a new plain-text value (not already a bcrypt hash)

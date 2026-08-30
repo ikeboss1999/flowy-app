@@ -2,13 +2,14 @@ import { cookies } from 'next/headers';
 import { supabase } from './supabase';
 import { supabaseAdmin } from './supabase-admin';
 import { verifySessionToken } from './auth';
+import { isTenantSuspended, isWebSessionAllowed } from './tenant-access';
 
 const sessionCache = new Map<string, { session: any; expiresAt: number }>();
 
 export async function getUserSession() {
     let cookieStore;
     try {
-        cookieStore = cookies();
+        cookieStore = await cookies();
     } catch (e) {
         return null;
     }
@@ -24,8 +25,10 @@ export async function getUserSession() {
         }
 
         try {
-            const { data: { user }, error } = await supabase.auth.getUser(sbAccessToken);
+            const { data: { user } } = await supabase.auth.getUser(sbAccessToken);
             if (user) {
+                let supabaseIssuedAt: number | undefined;
+                try { supabaseIssuedAt = Number(JSON.parse(Buffer.from(sbAccessToken.split('.')[1], 'base64url').toString('utf8')).iat) || undefined; } catch { }
                 // Fetch role and permissions mapping from database
                 let roleData: any = null;
                 const { data, error: fetchError } = await client
@@ -74,6 +77,8 @@ export async function getUserSession() {
                     name: user.user_metadata?.full_name || user.email?.split('@')[0],
                     accessToken: sbAccessToken
                 };
+                if (resolvedSession.role !== 'developer' && (await isTenantSuspended(resolvedSession.companyOwnerId))) return null;
+                if (resolvedSession.role !== 'developer' && !(await isWebSessionAllowed(resolvedSession.companyOwnerId, undefined, supabaseIssuedAt))) return null;
                 sessionCache.set(sbAccessToken, { session: resolvedSession, expiresAt: Date.now() + 5000 });
                 return resolvedSession;
             }
@@ -135,7 +140,7 @@ export async function getUserSession() {
             const defaultRole = email === 'elsword.ie@gmail.com' ? 'developer' : (payload.role === 'employee' ? 'employee' : 'admin');
             const defaultPerms = payload.role === 'employee' ? { timeTracking: true } : { "*": true };
 
-            return {
+            const resolvedSession = {
                 userId: userId,
                 companyOwnerId: roleData?.company_owner_id || userId,
                 role: roleData?.role || defaultRole,
@@ -144,6 +149,9 @@ export async function getUserSession() {
                 name: (payload as any).name || email.split('@')[0],
                 employeeId: payload.employeeId
             };
+            if (resolvedSession.role !== 'developer' && (await isTenantSuspended(resolvedSession.companyOwnerId))) return null;
+            if (resolvedSession.role !== 'developer' && !(await isWebSessionAllowed(resolvedSession.companyOwnerId, typeof payload.sid === 'string' ? payload.sid : undefined, typeof payload.iat === 'number' ? payload.iat : undefined))) return null;
+            return resolvedSession;
         }
     }
 

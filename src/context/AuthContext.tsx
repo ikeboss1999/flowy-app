@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState } from "react"
 import { User, Session } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import { Employee } from "@/types/employee"
-import { preloadStartup } from "@/lib/startup-preload"
 
 type AuthProfile = {
     role: string
@@ -19,37 +18,27 @@ type AuthContextType = {
     currentEmployee: Employee | null
     profile: AuthProfile
     isLoading: boolean
-    signIn: (email: string) => Promise<{ error: any }>
     signOut: () => Promise<{ error: any }>
-    loginAsEmployee: (staffId: string, pin: string) => Promise<{ success: boolean, error?: string }>
-    logoutEmployee: () => void
     refreshEmployee: () => Promise<void>
     refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+function getBrowserSessionId() {
+    const key = 'flowy_admin_session_id';
+    let id = sessionStorage.getItem(key);
+    if (!id) { id = crypto.randomUUID(); sessionStorage.setItem(key, id); }
+    return id;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
     const [session, setSession] = useState<Session | null>(null)
-    const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(() => {
-        if (typeof window !== 'undefined') {
-            try {
-                const cached = localStorage.getItem('flowy_auth_employee');
-                if (cached) return JSON.parse(cached);
-            } catch { }
-        }
-        return null;
-    })
-    const [profile, setProfile] = useState<AuthProfile>(() => {
-        if (typeof window !== 'undefined') {
-            try {
-                const cached = localStorage.getItem('flowy_auth_profile');
-                if (cached) return JSON.parse(cached);
-            } catch { }
-        }
-        return null;
-    })
+    // Keep the server render and the browser's first render identical. Browser caches
+    // are restored in the effect below, after React has completed hydration.
+    const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null)
+    const [profile, setProfile] = useState<AuthProfile>(null)
     const [isLoading, setIsLoading] = useState(true);
 
     const refreshProfile = async () => {
@@ -107,6 +96,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         let mounted = true;
 
+        try {
+            const cachedProfile = localStorage.getItem('flowy_auth_profile');
+            const cachedEmployee = localStorage.getItem('flowy_auth_employee');
+            if (cachedProfile) setProfile(JSON.parse(cachedProfile));
+            if (cachedEmployee) setCurrentEmployee(JSON.parse(cachedEmployee));
+        } catch { }
+
         const initAuth = async () => {
             // 1. Cookie-backed session check, including PIN employees.
             await refreshProfile();
@@ -121,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         await fetch('/api/auth/sync-session', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ access_token: session.access_token })
+                            body: JSON.stringify({ access_token: session.access_token, session_id: getBrowserSessionId() })
                         });
                     } catch (e) {
                         console.error('[Auth] Session sync failed', e);
@@ -138,6 +134,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!mounted) return;
+
+            // The initial session is handled by initAuth above. Ignoring Supabase's
+            // matching INITIAL_SESSION event prevents two parallel sync requests.
+            if (event === 'INITIAL_SESSION') return;
 
             if (event === 'SIGNED_OUT') {
                 document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
@@ -157,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     const syncRes = await fetch('/api/auth/sync-session', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ access_token: session.access_token })
+                        body: JSON.stringify({ access_token: session.access_token, session_id: getBrowserSessionId() })
                     });
                     if (syncRes.ok) {
                         setCurrentEmployee(null);
@@ -201,10 +201,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
-    const signIn = async (email: string) => {
-        return { error: null }
-    }
-
     const signOut = async () => {
         try {
             await fetch('/api/auth/logout', { method: 'POST' });
@@ -217,72 +213,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setSession(null);
         setProfile(null);
+        try { sessionStorage.removeItem('flowy_admin_session_id'); } catch { }
         const res = await supabase.auth.signOut();
         window.location.href = '/login';
         return res;
     }
-
-    const loginAsEmployee = async (staffId: string, pin: string) => {
-        try {
-            const response = await fetch('/api/auth/employee-login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    staffId: staffId.trim(),
-                    pin: pin.trim()
-                })
-            });
-
-            if (!response.ok) {
-                const text = await response.text();
-                try {
-                    const errorData = JSON.parse(text);
-                    return { success: false, error: errorData.message || 'Login fehlgeschlagen' };
-                } catch {
-                    console.error('[EmployeeLogin] API Error (HTML?):', text.substring(0, 200));
-                    return { success: false, error: 'Serverfehler: API antwortet nicht mit JSON.' };
-                }
-            }
-
-            const data = await response.json();
-
-            if (data.success && data.employee) {
-                // Clear any active owner session and cookies first
-                document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-                await supabase.auth.signOut();
-                setUser(null);
-                setSession(null);
-                setProfile(null);
-
-                setCurrentEmployee(data.employee);
-                await refreshProfile();
-                await preloadStartup();
-                return { success: true };
-            } else {
-                return { success: false, error: data.message || 'Login fehlgeschlagen' };
-            }
-        } catch (error) {
-            console.error('Employee Login Error:', error);
-            return { success: false, error: 'Verbindungsfehler' };
-        }
-    };
-
-    const logoutEmployee = async () => {
-        try {
-            await fetch('/api/auth/logout', { method: 'POST' });
-        } catch (e) {
-            console.error("Logout failed", e);
-        } finally {
-            document.cookie = 'session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-            document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-            setCurrentEmployee(null);
-            setUser(null);
-            setSession(null);
-            setProfile(null);
-            await supabase.auth.signOut();
-            window.location.href = '/login';
-        }
-    };
 
     return (
         <AuthContext.Provider value={{
@@ -291,10 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             currentEmployee,
             profile,
             isLoading,
-            signIn,
             signOut,
-            loginAsEmployee,
-            logoutEmployee,
             refreshEmployee,
             refreshProfile
         }}>

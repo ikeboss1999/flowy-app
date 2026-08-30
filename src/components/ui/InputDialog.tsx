@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Info, X, Edit3 } from 'lucide-react';
+import { Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface InputDialogProps {

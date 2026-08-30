@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { LogOut, Delete, ShieldCheck } from "lucide-react";
 import { useAccountSettings } from "@/hooks/useAccountSettings";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
@@ -43,10 +43,10 @@ export function AppLock() {
 
     const dots = useMemo(() => Array.from({ length: pinLength }), [pinLength]);
 
-    const addDigit = (digit: string) => {
+    const addDigit = useCallback((digit: string) => {
         if (pin.length >= targetPin.length) return;
         setPin((current) => `${current}${digit}`);
-    };
+    }, [pin.length, targetPin.length]);
 
     const removeDigit = () => {
         setPin((current) => current.slice(0, -1));
@@ -164,7 +164,7 @@ export function AppLock() {
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isLocked, pin.length, targetPin.length]);
+    }, [addDigit, isLocked]);
 
     if (!isCheckingLock && !shouldShowLock) return null;
 

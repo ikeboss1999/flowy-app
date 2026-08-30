@@ -17,8 +17,7 @@ import {
     RefreshCw, 
     Sparkles, 
     Tags,
-    Tag,
-    AlertCircle
+    Tag
 } from "lucide-react";
 import { useCredentials } from "@/hooks/useCredentials";
 import { PinLockScreen } from "@/components/PinLockScreen";

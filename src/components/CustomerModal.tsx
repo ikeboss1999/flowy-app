@@ -5,7 +5,6 @@ import {
     AlertTriangle,
     Briefcase,
     Clock,
-    FileText,
     Hash,
     Loader2,
     Mail,

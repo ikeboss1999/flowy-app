@@ -13,7 +13,6 @@ import {
     Briefcase,
     Plus,
     Clock,
-    ExternalLink,
     Edit2,
     Calendar,
     Download,

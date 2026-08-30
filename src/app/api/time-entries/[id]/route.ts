@@ -5,7 +5,8 @@ import { getUserSession, hasPermission } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const session = await getUserSession();
     const userId = session?.companyOwnerId;
     const { id } = params;

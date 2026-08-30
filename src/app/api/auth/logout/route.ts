@@ -4,7 +4,8 @@ import { cookies } from 'next/headers';
 export const dynamic = 'force-dynamic';
 
 export async function POST() {
-    cookies().delete('session_token');
-    cookies().delete('sb-access-token');
+    const cookieStore = await cookies();
+    cookieStore.delete('session_token');
+    cookieStore.delete('sb-access-token');
     return NextResponse.json({ message: 'Ausgeloggt' }, { status: 200 });
 }

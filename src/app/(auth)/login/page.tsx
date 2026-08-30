@@ -6,8 +6,6 @@ import { getAuthErrorMessage } from "@/lib/auth-utils"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, Lock, Mail, User, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/context/AuthContext"
-import { useDevice } from "@/hooks/useDevice"
 import { preloadStartup } from "@/lib/startup-preload"
 
 export default function LoginPage() {
@@ -21,14 +19,11 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null)
     const [message, setMessage] = useState<string | null>(null)
     const [showPassword, setShowPassword] = useState(false)
-    const { isMobile, isDesktop, isIPhone } = useDevice()
-    const [isLocalhost, setIsLocalhost] = useState(false)
     const [isMounted, setIsMounted] = useState(false)
     const router = useRouter()
 
     useEffect(() => {
         setIsMounted(true)
-        setIsLocalhost(window.location.hostname === 'localhost')
     }, [])
 
     // Sync state with query param if it changes

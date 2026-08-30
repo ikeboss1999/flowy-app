@@ -5,7 +5,8 @@ import { requireApiSession } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const auth = await requireApiSession('calendar_use');
     if (!auth.ok) return auth.response;
     const userId = auth.companyOwnerId;

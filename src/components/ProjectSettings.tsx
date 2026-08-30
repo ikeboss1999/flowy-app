@@ -35,7 +35,7 @@ export function ProjectSettings({ readOnly = false }: ProjectSettingsProps) {
         setTimeout(() => setSaved(false), 2500);
     };
 
-    const preview = `${prefix}${String(parseInt(nextNum, 10) || 1).padStart(4, '0')}`;
+    const preview = `${prefix}${parseInt(nextNum, 10) || 1}`;
 
     return (
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8 space-y-6">

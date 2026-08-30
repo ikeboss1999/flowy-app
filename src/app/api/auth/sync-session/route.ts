@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SignJWT } from 'jose';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { isTenantSuspended } from '@/lib/tenant-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,6 +9,7 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         const accessToken = body.access_token;
+        const requestedSessionId = typeof body.session_id === 'string' && /^[0-9a-f-]{36}$/i.test(body.session_id) ? body.session_id : crypto.randomUUID();
 
         if (!accessToken) {
             return NextResponse.json({ error: 'No token provided' }, { status: 400 });
@@ -39,16 +42,36 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid user data' }, { status: 401 });
         }
 
+        if (supabaseAdmin) {
+            const { data: role } = await supabaseAdmin.from('user_roles').select('company_owner_id, role').eq('user_id', user.id).maybeSingle();
+            const companyOwnerId = role?.company_owner_id || user.id;
+            if (role?.role !== 'developer' && await isTenantSuspended(companyOwnerId)) {
+                return NextResponse.json({ error: 'Account suspended' }, { status: 403 });
+            }
+        }
+
         const rawSecret = process.env.JWT_SECRET;
         if (!rawSecret) {
             return NextResponse.json({ error: 'Server config error', detail: 'Missing JWT_SECRET' }, { status: 500 });
         }
 
         const secret = new TextEncoder().encode(rawSecret);
+        const companyOwnerId = supabaseAdmin
+            ? ((await supabaseAdmin.from('user_roles').select('company_owner_id').eq('user_id', user.id).maybeSingle()).data?.company_owner_id || user.id)
+            : user.id;
+        if (supabaseAdmin) {
+            const now = new Date().toISOString();
+            const { data: existingSession } = await supabaseAdmin.from('admin_user_sessions').select('revoked_at').eq('id', requestedSessionId).maybeSingle();
+            if (existingSession?.revoked_at) return NextResponse.json({ error: 'Session revoked' }, { status: 401 });
+            if (existingSession) await supabaseAdmin.from('admin_user_sessions').update({ user_id: user.id, company_owner_id: companyOwnerId, app_source: 'web', user_agent: request.headers.get('user-agent')?.slice(0, 500) || null, last_seen_at: now }).eq('id', requestedSessionId).is('revoked_at', null);
+            else await supabaseAdmin.from('admin_user_sessions').insert({ id: requestedSessionId, user_id: user.id, company_owner_id: companyOwnerId, app_source: 'web', user_agent: request.headers.get('user-agent')?.slice(0, 500) || null, last_seen_at: now, revoked_at: null });
+        }
+
         const sessionToken = await new SignJWT({
             userId: user.id,
             email: user.email || '',
-            role: 'owner'
+            role: 'owner',
+            sid: requestedSessionId,
         })
             .setProtectedHeader({ alg: 'HS256' })
             .setIssuedAt()

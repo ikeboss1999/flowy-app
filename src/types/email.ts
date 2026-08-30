@@ -9,6 +9,7 @@ export interface EmailDeliverySettings {
     fromName: string;
     fromEmail: string;
     replyToEmail?: string;
+    sendCopyToSelf?: boolean;
     signature: string;
     signatureHtml?: string;
 }

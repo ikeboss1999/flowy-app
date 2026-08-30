@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { OfferForm } from "@/components/OfferForm";
 import { useOffers } from "@/hooks/useOffers";
@@ -8,7 +8,7 @@ import { useOffers } from "@/hooks/useOffers";
 export const dynamic = 'force-dynamic';
 
 interface EditOfferPageProps {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }
 
 function EditOfferContent({ id }: { id: string }) {
@@ -45,7 +45,8 @@ function EditOfferContent({ id }: { id: string }) {
     return <OfferForm initialData={offer} />;
 }
 
-export default function EditOfferPage({ params }: EditOfferPageProps) {
+export default function EditOfferPage(props: EditOfferPageProps) {
+    const params = use(props.params);
     return (
         <div className="dashboard-page-centered pb-24">
             <Suspense fallback={<div className="dashboard-page text-slate-400">Lade Formular...</div>}>

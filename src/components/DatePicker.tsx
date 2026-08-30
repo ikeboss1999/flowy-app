@@ -16,9 +16,10 @@ interface DatePickerProps {
     label?: string;
     placeholder?: string;
     className?: string;
+    disabled?: boolean;
 }
 
-export function DatePicker({ value, onChange, label, placeholder, className }: DatePickerProps) {
+export function DatePicker({ value, onChange, label, placeholder, className, disabled = false }: DatePickerProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -124,10 +125,13 @@ export function DatePicker({ value, onChange, label, placeholder, className }: D
             {label && <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">{label}</label>}
 
             <div
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => {
+                    if (!disabled) setIsOpen(!isOpen);
+                }}
                 className={cn(
                     "w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl cursor-pointer flex items-center justify-between transition-all hover:border-indigo-400 group",
-                    isOpen && "ring-2 ring-indigo-500/20 border-indigo-500"
+                    isOpen && "ring-2 ring-indigo-500/20 border-indigo-500",
+                    disabled && "cursor-not-allowed bg-slate-100 opacity-70 hover:border-slate-200"
                 )}
             >
                 <div className="flex items-center gap-4">
@@ -136,7 +140,7 @@ export function DatePicker({ value, onChange, label, placeholder, className }: D
                         {value ? formatDateGerman(value) : (placeholder || "Datum wählen")}
                     </span>
                 </div>
-                {value && (
+                {value && !disabled && (
                     <button
                         onClick={(e) => {
                             e.stopPropagation();

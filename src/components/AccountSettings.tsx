@@ -141,62 +141,35 @@ export function AccountSettings({ nameOnly = false }: AccountSettingsProps) {
             const response = await fetch('/api/auth/delete-account', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id })
+                body: JSON.stringify({
+                    userId: user.id,
+                    confirmation: deleteConfirmationText,
+                    pin: deletePinInput,
+                })
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || 'Löschvorgang auf dem Server fehlgeschlagen.');
+                throw new Error(errorData.message || errorData.error || errorData.details || 'Löschvorgang auf dem Server fehlgeschlagen.');
             }
 
-            // 2. Targeted Cleanup of LocalStorage
-            const sharedKeys = [
-                'flowy_services',
-                'flowy_todos',
-                'flowy_employees',
-                'flowy_time_entries',
-                'flowy_timesheets',
-                'flowy_vehicles'
-            ];
-
-            sharedKeys.forEach(key => {
-                const savedData = localStorage.getItem(key);
-                if (savedData) {
-                    try {
-                        const items = JSON.parse(savedData);
-                        if (Array.isArray(items)) {
-                            // Filter out current user's items
-                            const remainingItems = items.filter((item: any) => item.userId !== user?.id);
-                            localStorage.setItem(key, JSON.stringify(remainingItems));
-                        }
-                    } catch (e) {
-                        console.error(`Failed to clean up ${key}`, e);
-                    }
-                }
-            });
-
-            // 3. Specifically remove user-suffixed keys
-            const specificKeys = [
-                'account_settings',
-                'flowy_company_data',
-                'flowy_invoice_settings',
-                `account_settings_${user.id}`,
-                `account_settings_${settings.name}`,
-                'current_user_id'
-            ].filter(Boolean);
-            specificKeys.forEach(key => localStorage.removeItem(key));
-
-            // 4. Final catch-all for any other user-specific items that might start with their ID
+            // Remove all FlowY browser caches, including tenant data not suffixed by user ID.
             const keysToRemove: string[] = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                if (key && (key.includes(user.id) || key.startsWith(`flowy_user_${user.id}`))) {
+                if (key && (key.startsWith('flowy_') || key.startsWith('account_settings') || key === 'current_user_id')) {
                     keysToRemove.push(key);
                 }
             }
             keysToRemove.forEach(key => localStorage.removeItem(key));
+            const sessionKeysToRemove: string[] = [];
+            for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                if (key && (key.startsWith('flowy_') || key === 'offerConversion')) sessionKeysToRemove.push(key);
+            }
+            sessionKeysToRemove.forEach(key => sessionStorage.removeItem(key));
 
-            // 5. Full Sign Out
+            // Full sign out after the server confirmed backup and deletion.
             await supabase.auth.signOut();
 
             showToast("Ihr Konto und alle Daten wurden erfolgreich gelöscht.", "success");
@@ -356,8 +329,9 @@ export function AccountSettings({ nameOnly = false }: AccountSettingsProps) {
                         <div>
                             <h4 className="text-lg font-bold text-red-900 mb-2">Gesamtes Konto löschen</h4>
                             <p className="text-red-700 leading-relaxed mb-6">
-                                Achtung: Diese Aktion löscht alle Ihre gespeicherten Daten (Rechnungen, Kunden, Einstellungen) unwiderruflich von diesem Gerät.
-                                <br />Dieser Vorgang kann nicht rückgängig gemacht werden.
+                                Diese Aktion löscht Ihr Konto sowie alle aktiven Daten, Dateien und Mitarbeiterzugänge.
+                                Vorher wird ein verschlüsseltes Sicherheitsbackup erstellt, das ausschließlich der Entwickler wiederherstellen kann.
+                                <br />Das Backup wird nach 30 Tagen automatisch und endgültig gelöscht.
                             </p>
                             <button
                                 onClick={handleDeleteData}
@@ -383,7 +357,7 @@ export function AccountSettings({ nameOnly = false }: AccountSettingsProps) {
                             </div>
                             <h3 className="text-3xl font-black text-slate-900 tracking-tight">Konto löschen?</h3>
                             <p className="text-slate-500 font-medium">
-                                Dieser Vorgang ist endgültig. Bitte bestätigen Sie Ihre Identität.
+                                Die aktiven Kontodaten werden gelöscht. Das verschlüsselte Sicherheitsbackup bleibt 30 Tage verfügbar. Bitte bestätigen Sie Ihre Identität.
                             </p>
                         </div>
 
@@ -414,11 +388,16 @@ export function AccountSettings({ nameOnly = false }: AccountSettingsProps) {
                         <div className="flex flex-col gap-3">
                             <button
                                 onClick={performDeletion}
-                                disabled={deleteConfirmationText !== "LÖSCHEN" || deletePinInput !== (settings.pinCode || "0000") || isDeleting}
+                                disabled={!settings.pinCode || deleteConfirmationText !== "LÖSCHEN" || deletePinInput !== settings.pinCode || isDeleting}
                                 className="w-full py-5 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-2xl transition-all shadow-xl shadow-red-200 active:scale-95 flex items-center justify-center gap-2"
                             >
                                 {isDeleting ? "Wird gelöscht..." : "KONTODATEN UNWIDERRUFLICH LÖSCHEN"}
                             </button>
+                            {!settings.pinCode && (
+                                <p className="text-center text-sm font-bold text-amber-600">
+                                    Bitte legen Sie zuerst im Bereich Sicherheit einen PIN fest.
+                                </p>
+                            )}
                             <button
                                 onClick={() => !isDeleting && setIsDeleteModalOpen(false)}
                                 disabled={isDeleting}

@@ -88,7 +88,8 @@ function serializeLegacyEntry(entry: any, projectId: string) {
     };
 }
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const auth = await requireApiSession('projects_read');
     if (!auth.ok) return auth.response;
 
@@ -148,7 +149,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const auth = await requireApiSession('projects_write');
     if (!auth.ok) return auth.response;
 
@@ -186,7 +188,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const auth = await requireApiSession('projects_write');
     if (!auth.ok) return auth.response;
 
