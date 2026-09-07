@@ -8,16 +8,30 @@ import { Employee } from '@/types/employee';
 
 export const dynamic = 'force-dynamic';
 
+const nullableDateTime = z.preprocess((input) => {
+    if (input === undefined || input === null || input === '') return null;
+    if (input instanceof Date) return input.toISOString();
+    if (typeof input === 'string') {
+        const parsed = new Date(input);
+        if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+    }
+    return input;
+}, z.string().datetime().nullable().optional());
+
 const billingSchema = z.object({
     companyOwnerId: z.string().uuid(),
-    planName: z.string().trim().min(1).max(80),
-    billingCycle: z.enum(['monthly', 'yearly', 'manual', 'free']),
-    priceAmount: z.number().min(0).max(1_000_000),
-    paymentStatus: z.enum(['unknown', 'trial', 'paid', 'open', 'overdue', 'failed', 'cancelled', 'free']),
-    trialEndsAt: z.string().datetime().nullable().optional(),
-    lastPaymentAt: z.string().datetime().nullable().optional(),
-    nextPaymentAt: z.string().datetime().nullable().optional(),
+    planId: z.preprocess((input) => input === '' || input === undefined ? null : input, z.string().uuid().nullable()),
+    planName: z.preprocess((input) => typeof input === 'string' && input.trim() ? input : 'Standard', z.string().trim().min(1).max(80)),
+    billingCycle: z.preprocess((input) => input === 'annual' || input === 'annually' ? 'yearly' : input == null ? 'monthly' : input, z.enum(['monthly', 'yearly', 'manual', 'free'])),
+    priceAmount: z.preprocess((input) => input == null || input === '' ? 0 : typeof input === 'string' ? Number(input) : input, z.number().finite().min(0).max(1_000_000)),
+    paymentStatus: z.preprocess((input) => input === 'active' ? 'paid' : input == null ? 'unknown' : input, z.enum(['unknown', 'trial', 'paid', 'open', 'overdue', 'failed', 'cancelled', 'free'])),
+    trialEndsAt: nullableDateTime,
+    trialStartedAt: nullableDateTime,
+    lastPaymentAt: nullableDateTime,
+    nextPaymentAt: nullableDateTime,
     internalNotes: z.string().max(2000).nullable().optional(),
+    suspendAccess: z.boolean().optional(),
+    restoreTrialAccess: z.boolean().optional(),
 });
 
 async function authUsers() {
@@ -211,22 +225,51 @@ export async function PATCH(request: Request) {
     if (!admin) return NextResponse.json({ message: 'Nicht autorisiert' }, { status: 403 });
     if (!supabaseAdmin) return NextResponse.json({ message: 'Admin-Client nicht konfiguriert' }, { status: 503 });
     const parsed = billingSchema.safeParse(await request.json().catch(() => null));
-    if (!parsed.success) return NextResponse.json({ message: 'Ungültige Abrechnungsdaten' }, { status: 400 });
+    if (!parsed.success) {
+        console.warn('[AdminControlCenter] Invalid billing payload:', parsed.error.flatten());
+        return NextResponse.json({ message: 'Ungültige Abrechnungsdaten', details: parsed.error.flatten() }, { status: 400 });
+    }
     const value = parsed.data;
+    let resolvedPlanName = value.planName;
+    if (value.planId) {
+        const { data: plan, error: planError } = await supabaseAdmin.from('admin_subscription_plans').select('id,name').eq('id', value.planId).maybeSingle();
+        if (planError || !plan) return NextResponse.json({ message: 'Das ausgewählte Paket wurde nicht gefunden.' }, { status: 400 });
+        resolvedPlanName = plan.name;
+    }
+    const { data: previousBilling } = await supabaseAdmin.from('admin_tenant_billing').select('payment_status,trial_ends_at').eq('company_owner_id', value.companyOwnerId).maybeSingle();
     const { error } = await supabaseAdmin.from('admin_tenant_billing').upsert({
         company_owner_id: value.companyOwnerId,
-        plan_name: value.planName,
+        plan_id: value.planId || null,
+        plan_name: resolvedPlanName,
         billing_cycle: value.billingCycle,
         price_amount: value.priceAmount,
         payment_status: value.paymentStatus,
         trial_ends_at: value.trialEndsAt || null,
+        trial_started_at: value.trialStartedAt || null,
         last_payment_at: value.lastPaymentAt || null,
         next_payment_at: value.nextPaymentAt || null,
         internal_notes: value.internalNotes || null,
         updated_at: new Date().toISOString(),
     }, { onConflict: 'company_owner_id' });
     if (error) return NextResponse.json({ message: error.message }, { status: 500 });
-    await supabaseAdmin.from('admin_audit_logs').insert({ developer_user_id: admin.userId, action: 'billing.updated', target_type: 'tenant', target_id: value.companyOwnerId, details: { planName: value.planName, paymentStatus: value.paymentStatus, priceAmount: value.priceAmount } });
+    if (value.suspendAccess || value.restoreTrialAccess) {
+        const { data: currentAccess } = await supabaseAdmin.from('admin_tenant_access').select('suspension_reason').eq('company_owner_id', value.companyOwnerId).maybeSingle();
+        const shouldRestore = value.restoreTrialAccess && (currentAccess?.suspension_reason || '').startsWith('Testphase beendet');
+        if (value.suspendAccess || shouldRestore) {
+            const now = new Date().toISOString();
+            const accessUpdate = value.suspendAccess
+                ? { company_owner_id: value.companyOwnerId, is_suspended: true, suspension_reason: 'Testphase beendet', suspended_at: now, suspended_by: admin.userId, force_logout_after: now, updated_at: now }
+                : { company_owner_id: value.companyOwnerId, is_suspended: false, suspension_reason: null, suspended_at: null, suspended_by: null, force_logout_after: null, updated_at: now };
+            const { error: accessError } = await supabaseAdmin.from('admin_tenant_access').upsert(accessUpdate, { onConflict: 'company_owner_id' });
+            if (accessError) return NextResponse.json({ message: accessError.message }, { status: 500 });
+            if (value.suspendAccess) await supabaseAdmin.from('admin_user_sessions').update({ revoked_at: now }).eq('company_owner_id', value.companyOwnerId).is('revoked_at', null);
+        }
+    }
+    let auditAction = 'billing.updated';
+    if (previousBilling?.payment_status === 'trial' && value.paymentStatus === 'paid') auditAction = 'trial.converted_paid';
+    else if (previousBilling?.payment_status === 'trial' && value.paymentStatus !== 'trial') auditAction = 'trial.ended';
+    else if (value.paymentStatus === 'trial' && previousBilling?.trial_ends_at && value.trialEndsAt && new Date(value.trialEndsAt).getTime() > new Date(previousBilling.trial_ends_at).getTime()) auditAction = 'trial.extended';
+    await supabaseAdmin.from('admin_audit_logs').insert({ developer_user_id: admin.userId, action: auditAction, target_type: 'tenant', target_id: value.companyOwnerId, details: { planId: value.planId, planName: resolvedPlanName, paymentStatus: value.paymentStatus, priceAmount: value.priceAmount, previousTrialEnd: previousBilling?.trial_ends_at || null, trialEnd: value.trialEndsAt || null } });
     return NextResponse.json({ success: true });
 }
 
@@ -237,6 +280,12 @@ const accessSchema = z.object({
 });
 
 export async function POST(request: Request) {
+    const requestBody = await request.clone().json().catch(() => null);
+    // Compatibility fallback for older dev/deployment route manifests where PATCH
+    // was not registered yet. The same validated billing logic is reused below.
+    if (requestBody?.action === 'billing_update') {
+        return PATCH(new Request(request.url, { method: 'PATCH', headers: request.headers, body: JSON.stringify(requestBody) }));
+    }
     const admin = await checkAdmin();
     if (!admin) return NextResponse.json({ message: 'Nicht autorisiert' }, { status: 403 });
     if (!supabaseAdmin) return NextResponse.json({ message: 'Admin-Client nicht konfiguriert' }, { status: 503 });
@@ -268,6 +317,17 @@ export async function POST(request: Request) {
     if (parsed.data.suspended) {
         await supabaseAdmin.from('employee_mobile_sessions').update({ revokedAt: now }).eq('userId', parsed.data.companyOwnerId).is('revokedAt', null);
         await supabaseAdmin.from('admin_user_sessions').update({ revoked_at: now }).eq('company_owner_id', parsed.data.companyOwnerId).is('revoked_at', null);
+        if (parsed.data.reason === 'Testphase beendet') {
+            await supabaseAdmin.from('admin_tenant_billing').update({ payment_status: 'open', trial_ends_at: now, updated_at: now }).eq('company_owner_id', parsed.data.companyOwnerId);
+        }
+    } else {
+        // Unlocking a user whose trial had already expired must also clear the
+        // expired-trial billing state; otherwise login protection would block
+        // the account again immediately after it was marked active.
+        const { data: billing } = await supabaseAdmin.from('admin_tenant_billing').select('payment_status,trial_ends_at').eq('company_owner_id', parsed.data.companyOwnerId).maybeSingle();
+        if (billing?.payment_status === 'trial' && billing.trial_ends_at && new Date(billing.trial_ends_at).getTime() <= Date.now()) {
+            await supabaseAdmin.from('admin_tenant_billing').update({ payment_status: 'open', updated_at: now }).eq('company_owner_id', parsed.data.companyOwnerId);
+        }
     }
     await supabaseAdmin.from('admin_audit_logs').insert({
         developer_user_id: admin.userId,

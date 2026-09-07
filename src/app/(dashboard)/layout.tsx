@@ -10,9 +10,12 @@ import { GlobalTodoWidget } from "@/components/GlobalTodoWidget";
 import { DashboardPrefetch } from "@/components/DashboardPrefetch";
 import { useDevice } from "@/hooks/useDevice";
 import { useStartup } from "@/hooks/useStartup";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { cn } from "@/lib/utils";
 import { preloadImage } from "@/lib/startup-preload";
 import { AdminSessionHeartbeat } from "@/components/AdminSessionHeartbeat";
+import { TrialNotice } from "@/components/TrialNotice";
+import { useAuth } from "@/context/AuthContext";
 
 const Sidebar = dynamic(
     () => import("@/components/Sidebar").then((mod) => mod.Sidebar),
@@ -26,6 +29,8 @@ export default function DashboardLayout({
 }>) {
     const { isDrawerLayout } = useDevice();
     const pathname = usePathname();
+    const { profile, user, isLoading: isAuthLoading } = useAuth();
+    const { data: companySettings, isLoading: isCompanySettingsLoading, error: companySettingsError } = useCompanySettings();
     const { data: startup, isReady: isStartupReady } = useStartup();
     const [isLogoReady, setIsLogoReady] = React.useState(false);
 
@@ -42,9 +47,22 @@ export default function DashboardLayout({
         };
     }, [startup.company.logo]);
 
+    React.useEffect(() => {
+        if (!isAuthLoading && profile?.role === "developer" && !pathname.startsWith("/admin")) {
+            window.location.replace("/admin");
+        }
+    }, [isAuthLoading, pathname, profile?.role]);
+
+    const isDeveloperRedirect = !isAuthLoading && profile?.role === "developer" && !pathname.startsWith("/admin");
+    const isOnboardingRoute = pathname === "/onboarding";
+    const needsOnboarding = !isOnboardingRoute && !!user && !isAuthLoading && !isCompanySettingsLoading && !companySettingsError && !companySettings.companyName.trim() && user.user_metadata?.onboarding_completed !== true;
+    React.useEffect(() => {
+        if (needsOnboarding) window.location.replace("/onboarding");
+    }, [needsOnboarding]);
+
     const isHomeLoading = pathname === "/" && (!isStartupReady || !isLogoReady);
 
-    if (isHomeLoading) {
+    if (isAuthLoading || isHomeLoading || isDeveloperRedirect || isCompanySettingsLoading || needsOnboarding) {
         return (
             <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden bg-[#020205]">
                 <div className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-600/10 blur-[120px] pointer-events-none" />
@@ -73,6 +91,7 @@ export default function DashboardLayout({
                 "flex-1 min-h-screen text-lg transition-all duration-300",
                 isDrawerLayout ? "ml-0 pt-20" : "ml-[var(--flowy-sidebar-offset,5.5rem)] [.sidebar-collapsed_&]:ml-0"
             )}>
+                <TrialNotice />
                 {children}
             </main>
         </div>

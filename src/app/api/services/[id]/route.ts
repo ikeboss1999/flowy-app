@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
-    const auth = await requireApiSession(['invoices_write', 'offers_write']);
+    const auth = await requireApiSession('catalog');
     if (!auth.ok) return auth.response;
     const userId = auth.companyOwnerId;
     const { id } = params;

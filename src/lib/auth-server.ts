@@ -2,11 +2,24 @@ import { cookies } from 'next/headers';
 import { supabase } from './supabase';
 import { supabaseAdmin } from './supabase-admin';
 import { verifySessionToken } from './auth';
-import { isTenantSuspended, isWebSessionAllowed } from './tenant-access';
+import { isTenantSuspended, isTrialAccessBlocked, isWebSessionAllowed } from './tenant-access';
 
 const sessionCache = new Map<string, { session: any; expiresAt: number }>();
 
-export async function getUserSession() {
+async function attachPlanFeatures(session: any) {
+    if (!supabaseAdmin || !session?.companyOwnerId || session.role === 'developer') return session;
+    try {
+        const { data: billing } = await supabaseAdmin.from('admin_tenant_billing').select('plan_id,plan_name').eq('company_owner_id', session.companyOwnerId).maybeSingle();
+        if (!billing) return session;
+        let planQuery = supabaseAdmin.from('admin_subscription_plans').select('features');
+        const { data: plan } = billing.plan_id
+            ? await planQuery.eq('id', billing.plan_id).maybeSingle()
+            : await planQuery.ilike('name', String(billing.plan_name || '')).maybeSingle();
+        return { ...session, planFeatures: Array.isArray(plan?.features) ? plan.features : [] };
+    } catch { return session; }
+}
+
+export async function getUserSession(options: { allowExpiredTrial?: boolean } = {}) {
     let cookieStore;
     try {
         cookieStore = await cookies();
@@ -77,10 +90,12 @@ export async function getUserSession() {
                     name: user.user_metadata?.full_name || user.email?.split('@')[0],
                     accessToken: sbAccessToken
                 };
-                if (resolvedSession.role !== 'developer' && (await isTenantSuspended(resolvedSession.companyOwnerId))) return null;
-                if (resolvedSession.role !== 'developer' && !(await isWebSessionAllowed(resolvedSession.companyOwnerId, undefined, supabaseIssuedAt))) return null;
-                sessionCache.set(sbAccessToken, { session: resolvedSession, expiresAt: Date.now() + 5000 });
-                return resolvedSession;
+                const enrichedSession = await attachPlanFeatures(resolvedSession);
+                if (enrichedSession.role !== 'developer' && (await isTenantSuspended(enrichedSession.companyOwnerId))) return null;
+                if (!options.allowExpiredTrial && enrichedSession.role !== 'developer' && (await isTrialAccessBlocked(enrichedSession.companyOwnerId))) return null;
+                if (enrichedSession.role !== 'developer' && !(await isWebSessionAllowed(enrichedSession.companyOwnerId, undefined, supabaseIssuedAt))) return null;
+                sessionCache.set(sbAccessToken, { session: enrichedSession, expiresAt: Date.now() + 5000 });
+                return enrichedSession;
             }
         } catch (e) {
             console.error('[AuthServer] Supabase session check failed:', e);
@@ -149,9 +164,11 @@ export async function getUserSession() {
                 name: (payload as any).name || email.split('@')[0],
                 employeeId: payload.employeeId
             };
-            if (resolvedSession.role !== 'developer' && (await isTenantSuspended(resolvedSession.companyOwnerId))) return null;
-            if (resolvedSession.role !== 'developer' && !(await isWebSessionAllowed(resolvedSession.companyOwnerId, typeof payload.sid === 'string' ? payload.sid : undefined, typeof payload.iat === 'number' ? payload.iat : undefined))) return null;
-            return resolvedSession;
+            const enrichedSession = await attachPlanFeatures(resolvedSession);
+            if (enrichedSession.role !== 'developer' && (await isTenantSuspended(enrichedSession.companyOwnerId))) return null;
+            if (!options.allowExpiredTrial && enrichedSession.role !== 'developer' && (await isTrialAccessBlocked(enrichedSession.companyOwnerId))) return null;
+            if (enrichedSession.role !== 'developer' && !(await isWebSessionAllowed(enrichedSession.companyOwnerId, typeof payload.sid === 'string' ? payload.sid : undefined, typeof payload.iat === 'number' ? payload.iat : undefined))) return null;
+            return enrichedSession;
         }
     }
 
@@ -169,8 +186,15 @@ export async function checkAdmin() {
 
 export function hasPermission(session: any, permissionKey: string): boolean {
     if (!session) return false;
-    // Developer und Admin haben immer Zugriff auf alles im eigenen Mandanten
-    if (session.role === 'developer' || session.role === 'admin') return true;
+    // Entwickler haben immer Vollzugriff. Firmen-Admins unterliegen dem Paket.
+    if (session.role === 'developer') return true;
+    if (Array.isArray(session.planFeatures)) {
+        const feature = permissionKey.split('_')[0];
+        const featureMap: Record<string, string> = { dashboard: 'dashboard', crm: 'crm', customers: 'customers', projects: 'projects', vehicles: 'vehicles', catalog: 'catalog', archive: 'archive', credentials: 'credentials', offers: 'offers', orders: 'orders', invoices: 'invoices', dunning: 'dunning', reports: 'reports', employees: 'employees', time: 'time_tracking', calendar: 'calendar' };
+        const requiredFeature = featureMap[feature];
+        if (requiredFeature && !session.planFeatures.includes(requiredFeature)) return false;
+    }
+    if (session.role === 'admin') return true;
     if (session.permissions?.['*'] === true) return true;
 
     // Spezifisches Recht prüfen

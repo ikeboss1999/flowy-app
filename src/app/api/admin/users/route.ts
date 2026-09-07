@@ -95,6 +95,11 @@ export async function DELETE(req: Request) {
             return NextResponse.json({ message: 'Admin-Client nicht konfiguriert' }, { status: 503 });
         }
 
+        const { data: access } = await supabaseAdmin.from('admin_tenant_access').select('is_suspended').eq('company_owner_id', userId).maybeSingle();
+        if (!access?.is_suspended) {
+            return NextResponse.json({ message: 'Ein Konto kann aus dem Adminbereich nur gelöscht werden, wenn es zuvor gesperrt wurde.' }, { status: 409 });
+        }
+
         const result = await wipeAccount(userId);
 
         if (!result.success) {

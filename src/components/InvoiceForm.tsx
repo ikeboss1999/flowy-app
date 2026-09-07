@@ -57,6 +57,7 @@ import { ServiceModal } from "@/components/ServiceModal";
 import { Service } from "@/types/service";
 import { CustomerSearchSelect } from "@/components/CustomerSearchSelect";
 import { InvoiceReactPDF } from "@/components/InvoiceReactPDF";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 interface InvoiceFormProps {
   initialData?: Partial<Invoice>;
@@ -1267,6 +1268,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                         const type =
                           item.itemType ??
                           ((item as any).isTitleOnly ? "title" : "standard");
+                        const isFlatRate = item.unit === "PA" || item.unit === "pauschal";
                         if (type !== "title" && type !== "info") posCounter++;
                         const pos = posCounter;
                         return (
@@ -1319,22 +1321,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                                   )}
                                   {type === "standard" && (
                                     <div className="flex items-start gap-2">
-                                      <input
-                                        type="text"
-                                        value={item.description}
-                                        onChange={(e) =>
-                                          updateItem(
-                                            item.id,
-                                            "description",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className={cn(
-                                          inputClasses,
-                                          "py-3 px-4 border-slate-100",
-                                        )}
-                                        placeholder="Positionsbeschreibung"
-                                      />
+                                      <RichTextEditor value={item.description} onChange={(value) => updateItem(item.id, "description", value)} className="flex-1" placeholder="Positionsbeschreibung" />
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -1362,21 +1349,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                                         placeholder="Titel der Position (z.B. Steckdose montieren)"
                                       />
                                       <div className="relative">
-                                        <textarea
-                                          value={item.description || ""}
-                                          onChange={(e) =>
-                                            updateItem(
-                                              item.id,
-                                              "description",
-                                              e.target.value,
-                                            )
-                                          }
-                                          className={cn(
-                                            inputClasses,
-                                            "py-3 px-4 pr-12 border-slate-100 text-sm min-h-[5rem] resize-y",
-                                          )}
-                                          placeholder="Detaillierte Beschreibung der auszuführenden Arbeiten..."
-                                        />
+                                        <RichTextEditor value={item.description || ""} onChange={(value) => updateItem(item.id, "description", value)} className="flex-1" placeholder="Detaillierte Beschreibung der auszuführenden Arbeiten..." />
                                         <button
                                           type="button"
                                           onClick={() => {
@@ -1402,7 +1375,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
 
                               {type !== "title" && type !== "info" && (
                                 <div className="flex items-center gap-3 px-3 pb-3 pl-14">
-                                  <input
+                                  {!isFlatRate && <input
                                     type="number"
                                     value={item.quantity}
                                     onChange={(e) =>
@@ -1417,7 +1390,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                                       "py-2.5 px-4 border-slate-100 text-center no-spinner w-24 shrink-0",
                                     )}
                                     placeholder="Menge"
-                                  />
+                                  />}
                                   <select
                                     value={item.unit}
                                     onChange={(e) =>
@@ -1425,7 +1398,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                                     }
                                     className={cn(
                                       inputClasses,
-                                      "py-2.5 px-4 border-slate-100 w-40 shrink-0",
+                                      "py-2.5 px-4 border-slate-100 w-48 shrink-0",
                                     )}
                                   >
                                     <option value="PA">PA (Pauschal)</option>

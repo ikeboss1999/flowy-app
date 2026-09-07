@@ -112,7 +112,8 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
 
     useEffect(() => {
         if (!initialCustomer && isOpen && customerSettings) {
-            const numStr = String(customerSettings.nextNumber || 10000);
+            const nextNumber = Math.max(1, Number(customerSettings.nextNumber) || 1);
+            const numStr = String(nextNumber);
             const padding = Math.max(0, (customerSettings.mindestLaenge || 5) - numStr.length);
             const generated = `${customerSettings.prefix || ""}${"0".repeat(padding)}${numStr}`;
             setFormData(prev => prev.customer_number ? prev : { ...prev, customer_number: generated });
@@ -221,11 +222,12 @@ export function CustomerModal({ isOpen, onClose, onSave, initialCustomer, existi
         }
 
         if (!initialCustomer && customerSettings) {
-            const numStr = String(customerSettings.nextNumber || 10000);
+            const nextNumber = Math.max(1, Number(customerSettings.nextNumber) || 1);
+            const numStr = String(nextNumber);
             const padding = Math.max(0, (customerSettings.mindestLaenge || 5) - numStr.length);
             const generated = `${customerSettings.prefix || ""}${"0".repeat(padding)}${numStr}`;
             if (formData.customer_number === generated) {
-                updateCustomerSettings({ nextNumber: customerSettings.nextNumber + 1 });
+                updateCustomerSettings({ nextNumber: nextNumber + 1 });
             }
         }
 

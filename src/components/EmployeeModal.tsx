@@ -70,6 +70,8 @@ const EUROPEAN_COUNTRIES = [
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 const AVATAR_THUMB_SIZE = 128;
 
+const isEncryptedEmployeeValue = (value?: string) => typeof value === "string" && value.startsWith("gcm:v1:");
+
 function createAvatarThumbnail(file: File): Promise<Blob> {
     return new Promise((resolve, reject) => {
         const image = new Image();
@@ -1092,7 +1094,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 </label>
                                                 <input
                                                     className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium shadow-sm"
-                                                    value={formData.personalData.socialSecurityNumber}
+                                                    value={isEncryptedEmployeeValue(formData.personalData.socialSecurityNumber) ? "" : formData.personalData.socialSecurityNumber}
                                                     onChange={e => {
                                                         const value = e.target.value.replace(/[^0-9]/g, '');
                                                         setFormData({ ...formData, personalData: { ...formData.personalData, socialSecurityNumber: value } });

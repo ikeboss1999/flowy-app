@@ -114,11 +114,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     setSession(session);
                     setUser(session.user ?? null);
                     try {
-                        await fetch('/api/auth/sync-session', {
+                        const syncResponse = await fetch('/api/auth/sync-session', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ access_token: session.access_token, session_id: getBrowserSessionId() })
                         });
+                        if (!syncResponse.ok) {
+                            await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
+                            await supabase.auth.signOut();
+                            if (mounted) { setSession(null); setUser(null); setProfile(null); }
+                        }
                     } catch (e) {
                         console.error('[Auth] Session sync failed', e);
                     }
@@ -164,6 +169,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         setSession(session);
                         setUser(session.user ?? null);
                         await refreshProfile();
+                    } else {
+                        const payload = await syncRes.json().catch(() => ({}));
+                        await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
+                        await supabase.auth.signOut();
+                        setSession(null);
+                        setUser(null);
+                        setProfile(null);
+                        if (payload.error === 'TRIAL_EXPIRED') window.location.href = `/login?reason=trial-expired`;
                     }
                 } catch (e) {
                     console.error('[Auth] Session sync failed', e);

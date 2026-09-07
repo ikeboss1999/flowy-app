@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
+    AlertTriangle,
     ArrowRight,
     Building2,
     Calculator,
@@ -50,8 +51,8 @@ const stepMeta: Record<Step, { label: string; title: string; description: string
         description: "Diese Daten erscheinen später automatisch auf Rechnungen und Angeboten.",
     },
     bank: {
-        label: "Zahlung",
-        title: "Zahlungsinformationen",
+        label: "Dokumente",
+        title: "Rechnungs- & Firmendaten",
         description: "Bankdaten und UID werden für professionelle PDF-Dokumente vorbereitet.",
     },
     logo: {
@@ -76,9 +77,13 @@ export default function OnboardingPage() {
     const [isInitialized, setIsInitialized] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isCancelling, setIsCancelling] = useState(false);
+    const [showCancelDialog, setShowCancelDialog] = useState(false);
+    const [cancelError, setCancelError] = useState<string | null>(null);
     const [pin, setPin] = useState("");
     const [confirmPin, setConfirmPin] = useState("");
     const [username, setUsername] = useState("");
+    const [usernameTouched, setUsernameTouched] = useState(false);
+    const [companyValidationAttempted, setCompanyValidationAttempted] = useState(false);
     const [logoEditor, setLogoEditor] = useState<{
         src: string;
         originalSrc: string;
@@ -154,14 +159,16 @@ export default function OnboardingPage() {
         }
     };
 
-    const handleCancelOnboarding = async () => {
+    const handleCancelOnboarding = () => {
+        if (isCancelling) return;
+        setCancelError(null);
+        setShowCancelDialog(true);
+    };
+
+    const confirmCancelOnboarding = async () => {
         if (isCancelling) return;
 
-        const confirmed = window.confirm(
-            "Onboarding abbrechen? Ihr gerade angelegtes Konto und alle bereits gespeicherten Daten werden gelöscht."
-        );
-        if (!confirmed) return;
-
+        setShowCancelDialog(false);
         setIsCancelling(true);
         try {
             const { data: sessionData } = await supabase.auth.getSession();
@@ -176,7 +183,7 @@ export default function OnboardingPage() {
             const response = await fetch("/api/auth/delete-account", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: user?.id }),
+                body: JSON.stringify({ userId: user?.id, confirmation: "ONBOARDING_CANCEL" }),
             });
 
             if (!response.ok) {
@@ -191,7 +198,7 @@ export default function OnboardingPage() {
             window.location.href = "/welcome";
         } catch (error) {
             console.error("Onboarding cancellation failed:", error);
-            alert("Das Onboarding konnte nicht sauber abgebrochen werden. Bitte versuche es erneut.");
+            setCancelError("Das Onboarding konnte nicht sauber abgebrochen werden. Bitte versuche es erneut.");
             setIsCancelling(false);
         }
     };
@@ -204,12 +211,14 @@ export default function OnboardingPage() {
     };
 
     const handleUsernameSubmit = () => {
+        setUsernameTouched(true);
         if (username.trim().length === 0) return;
         updateAccount({ name: username.trim() });
         setCurrentStep("company");
     };
 
     const handleCompanySubmit = () => {
+        setCompanyValidationAttempted(true);
         if (!canSubmitCompany) return;
         setCurrentStep("bank");
     };
@@ -436,13 +445,13 @@ export default function OnboardingPage() {
                             </button>
                         </div>
 
-                        <div className={cn(
-                            "grid gap-6",
-                            currentStep === "welcome" ? "xl:grid-cols-1" : "xl:grid-cols-[minmax(0,1fr)_320px]"
-                        )}>
+                        <div className="grid gap-6">
                             <div className="rounded-3xl border border-white/10 bg-black/20 p-5 sm:p-6">
                                 {currentStep === "welcome" && (
                                     <div className="space-y-6">
+                                        <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-sm font-semibold text-emerald-100">
+                                            Ihre kostenlose Testphase ist aktiv. Sie können FlowY unverbindlich testen – die Einrichtung dauert nur wenige Minuten.
+                                        </div>
                                         <div className="grid gap-4 lg:grid-cols-3">
                                             {[
                                                 { icon: Lock, title: "Sicher anmelden", text: "Zugang erfolgt klassisch mit E-Mail und Passwort." },
@@ -469,7 +478,7 @@ export default function OnboardingPage() {
                                 {currentStep === "pin" && (
                                     <div className="space-y-5">
                                         <div className="rounded-2xl border border-indigo-300/20 bg-indigo-400/10 p-4 text-sm font-semibold text-indigo-100">
-                                            Der PIN wird später für den Sperrbildschirm verwendet. Nutzen Sie 4 bis 8 Ziffern.
+                                            Der PIN wird später nur für den Sperrbildschirm verwendet. Er ersetzt nicht Ihr Login-Passwort und sollte nicht mit diesem identisch sein. Nutzen Sie 4 bis 8 Ziffern.
                                         </div>
                                         <div className="grid gap-4 sm:grid-cols-2">
                                             <div className="space-y-2">
@@ -507,27 +516,37 @@ export default function OnboardingPage() {
                                 )}
 
                                 {currentStep === "username" && (
-                                    <div className="space-y-5">
+                                    <div className="mx-auto w-full max-w-3xl space-y-6">
+                                        <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4">
+                                            <p className="text-sm font-black text-emerald-100">Ihr persönlicher Anzeigename</p>
+                                            <p className="mt-1 text-sm font-semibold leading-6 text-slate-300">Dieser Name wird in FlowY und auf Ihrer Startseite angezeigt. Sie können ihn später jederzeit ändern.</p>
+                                        </div>
                                         <div className="space-y-2">
                                             <label className={labelClass}>Ihr Name</label>
                                             <input
                                                 type="text"
                                                 value={username}
                                                 onChange={(e) => setUsername(e.target.value)}
+                                                onBlur={() => setUsernameTouched(true)}
+                                                aria-invalid={usernameTouched && username.trim().length === 0}
                                                 placeholder="z.B. Max Mustermann"
-                                                className={inputClass}
+                                                className={cn(inputClass, "rounded-2xl py-4 text-lg font-bold")}
                                             />
+                                            {usernameTouched && username.trim().length === 0 && <p className="text-sm font-bold text-rose-300">Bitte geben Sie Ihren Namen ein.</p>}
                                         </div>
                                         <StepActions
                                             onBack={handleBack}
                                             onNext={handleUsernameSubmit}
-                                            disabled={username.trim().length === 0}
                                         />
                                     </div>
                                 )}
 
                                 {currentStep === "company" && (
-                                    <div className="space-y-5">
+                                    <div className="mx-auto w-full max-w-3xl space-y-6">
+                                        <div className="rounded-2xl border border-blue-300/20 bg-blue-400/10 p-4">
+                                            <p className="text-sm font-black text-blue-100">Stammdaten für Ihre Dokumente</p>
+                                            <p className="mt-1 text-sm font-semibold leading-6 text-slate-300">Diese Angaben erscheinen später automatisch auf Rechnungen, Angeboten und Projektdokumenten.</p>
+                                        </div>
                                         <div className="grid gap-4 sm:grid-cols-2">
                                             <div className="space-y-2 sm:col-span-2">
                                                 <label className={labelClass}>Firmenname *</label>
@@ -535,8 +554,10 @@ export default function OnboardingPage() {
                                                     type="text"
                                                     value={companyData.companyName}
                                                     onChange={(e) => setCompanyData({ ...companyData, companyName: e.target.value })}
+                                                    aria-invalid={companyValidationAttempted && !companyData.companyName.trim()}
                                                     className={inputClass}
                                                 />
+                                                {companyValidationAttempted && !companyData.companyName.trim() && <p className="mt-1 text-sm font-bold text-rose-300">Bitte geben Sie den Firmennamen ein.</p>}
                                             </div>
                                             <div className="space-y-2">
                                                 <label className={labelClass}>Vorname Geschäftsführer</label>
@@ -562,8 +583,10 @@ export default function OnboardingPage() {
                                                     type="text"
                                                     value={companyData.street}
                                                     onChange={(e) => setCompanyData({ ...companyData, street: e.target.value })}
+                                                    aria-invalid={companyValidationAttempted && !companyData.street.trim()}
                                                     className={inputClass}
                                                 />
+                                                {companyValidationAttempted && !companyData.street.trim() && <p className="mt-1 text-sm font-bold text-rose-300">Bitte geben Sie die Straße ein.</p>}
                                             </div>
                                             <div className="space-y-2">
                                                 <label className={labelClass}>PLZ *</label>
@@ -571,8 +594,10 @@ export default function OnboardingPage() {
                                                     type="text"
                                                     value={companyData.zipCode}
                                                     onChange={(e) => setCompanyData({ ...companyData, zipCode: e.target.value })}
+                                                    aria-invalid={companyValidationAttempted && !companyData.zipCode.trim()}
                                                     className={inputClass}
                                                 />
+                                                {companyValidationAttempted && !companyData.zipCode.trim() && <p className="mt-1 text-sm font-bold text-rose-300">Bitte geben Sie die PLZ ein.</p>}
                                             </div>
                                             <div className="space-y-2">
                                                 <label className={labelClass}>Ort *</label>
@@ -580,16 +605,18 @@ export default function OnboardingPage() {
                                                     type="text"
                                                     value={companyData.city}
                                                     onChange={(e) => setCompanyData({ ...companyData, city: e.target.value })}
+                                                    aria-invalid={companyValidationAttempted && !companyData.city.trim()}
                                                     className={inputClass}
                                                 />
+                                                {companyValidationAttempted && !companyData.city.trim() && <p className="mt-1 text-sm font-bold text-rose-300">Bitte geben Sie den Ort ein.</p>}
                                             </div>
                                         </div>
-                                        <StepActions onBack={handleBack} onNext={handleCompanySubmit} disabled={!canSubmitCompany} />
+                                        <StepActions onBack={handleBack} onNext={handleCompanySubmit} />
                                     </div>
                                 )}
 
                                 {currentStep === "bank" && (
-                                    <div className="space-y-5">
+                                    <div className="mx-auto w-full max-w-3xl space-y-6">
                                         <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm font-semibold text-amber-50">
                                             Empfohlen für Rechnungen: Diese Daten werden später im PDF-Fußbereich verwendet.
                                         </div>
@@ -634,7 +661,10 @@ export default function OnboardingPage() {
                                                 />
                                             </div>
                                         </div>
-                                        <StepActions onBack={handleBack} onNext={() => setCurrentStep("logo")} />
+                                        <div className="space-y-3">
+                                            <p className="text-sm font-semibold text-slate-400">Bankdaten und UID sind optional und können jederzeit später in den Einstellungen ergänzt werden.</p>
+                                            <StepActions onBack={handleBack} onNext={() => setCurrentStep("logo")} nextLabel="Weiter" />
+                                        </div>
                                     </div>
                                 )}
 
@@ -725,6 +755,11 @@ export default function OnboardingPage() {
                                                 Ihre wichtigsten Daten sind vorbereitet. Sie können direkt ins Dashboard oder mit dem ersten Projekt starten.
                                             </p>
                                         </div>
+                                        <div className="grid gap-3 text-left sm:grid-cols-3">
+                                            <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4"><p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Benutzer</p><p className="mt-1 truncate font-black">{username || accountSettings.name || "Benutzer"}</p></div>
+                                            <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4"><p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Unternehmen</p><p className="mt-1 truncate font-black">{companyData.companyName || "Noch offen"}</p></div>
+                                            <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4"><p className="text-[10px] font-black uppercase tracking-wider text-emerald-200">Testphase</p><p className="mt-1 font-black">{Number(user?.user_metadata?.trial_days || 14)} Tage kostenlos</p></div>
+                                        </div>
                                         <div className="grid gap-3 sm:grid-cols-2">
                                             <button
                                                 type="button"
@@ -747,9 +782,6 @@ export default function OnboardingPage() {
                                 )}
                             </div>
 
-                            {currentStep !== "welcome" && (
-                                <LivePreview companyData={companyData} username={username} />
-                            )}
                         </div>
                     </section>
                 </div>
@@ -845,6 +877,28 @@ export default function OnboardingPage() {
                 </div>
             )}
 
+            {cancelError && (
+                <div className="fixed bottom-6 left-1/2 z-[10000] flex w-[min(92vw,34rem)] -translate-x-1/2 items-start gap-3 rounded-2xl border border-rose-300/30 bg-rose-950/95 p-4 text-rose-100 shadow-2xl backdrop-blur-xl">
+                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-300" />
+                    <p className="flex-1 text-sm font-semibold">{cancelError}</p>
+                    <button type="button" onClick={() => setCancelError(null)} className="rounded-lg p-1 text-rose-200 hover:bg-white/10" aria-label="Meldung schließen"><X className="h-4 w-4" /></button>
+                </div>
+            )}
+
+            {showCancelDialog && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/75 p-5 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="cancel-onboarding-title">
+                    <div className="w-full max-w-md rounded-[2rem] border border-white/15 bg-slate-900 p-7 text-white shadow-2xl">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-300"><AlertTriangle className="h-6 w-6" /></div>
+                        <h2 id="cancel-onboarding-title" className="mt-5 text-2xl font-black">Onboarding abbrechen?</h2>
+                        <p className="mt-3 text-sm font-medium leading-6 text-slate-300">Das gerade angelegte Konto und alle bisher gespeicherten Daten werden gelöscht. Dieser Vorgang kann über das Entwickler-Backup wiederhergestellt werden.</p>
+                        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <button type="button" onClick={() => setShowCancelDialog(false)} className="rounded-xl border border-white/15 px-5 py-3 text-sm font-black text-slate-200 transition hover:bg-white/10">Zurück</button>
+                            <button type="button" onClick={() => void confirmCancelOnboarding()} className="rounded-xl bg-rose-600 px-5 py-3 text-sm font-black text-white transition hover:bg-rose-500">Onboarding abbrechen</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {showDevWipe && (
                 <button
                     onClick={async () => {
@@ -866,7 +920,7 @@ export default function OnboardingPage() {
     );
 }
 
-function StepActions({ onBack, onNext, disabled }: { onBack: () => void; onNext: () => void; disabled?: boolean }) {
+function StepActions({ onBack, onNext, disabled, nextLabel = "Weiter" }: { onBack: () => void; onNext: () => void; disabled?: boolean; nextLabel?: string }) {
     return (
         <div className="grid gap-3 pt-2 sm:grid-cols-[160px_minmax(0,1fr)]">
             <button
@@ -882,7 +936,7 @@ function StepActions({ onBack, onNext, disabled }: { onBack: () => void; onNext:
                 disabled={disabled}
                 className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-pink-500 py-4 font-black text-white shadow-lg shadow-indigo-950/20 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
             >
-                Weiter <ArrowRight className="h-5 w-5" />
+                {nextLabel} <ArrowRight className="h-5 w-5" />
             </button>
         </div>
     );
@@ -909,20 +963,22 @@ function LivePreview({
 }) {
     const address = [companyData.street, [companyData.zipCode, companyData.city].filter(Boolean).join(" ")].filter(Boolean);
     const ceoName = [companyData.ceoFirstName, companyData.ceoLastName].filter(Boolean).join(" ");
+    const today = "06.09.2026";
+    const companyName = companyData.companyName || "Ihre Firma";
 
     return (
-        <aside className="rounded-3xl border border-white/10 bg-white/[0.05] p-5">
+        <aside className="rounded-3xl border border-white/10 bg-white/[0.05] p-5 xl:sticky xl:top-6 xl:self-start">
             <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10">
                     <FileText className="h-5 w-5 text-cyan-200" />
                 </div>
                 <div>
-                    <h3 className="font-black">Dokument-Vorschau</h3>
-                    <p className="text-xs font-semibold text-slate-400">So wirken Ihre Stammdaten später.</p>
+                    <h3 className="font-black">Musterrechnung</h3>
+                    <p className="text-xs font-semibold text-slate-400">So sieht Ihre Rechnung später wirklich aus.</p>
                 </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl bg-white p-5 text-slate-900 shadow-2xl shadow-black/20">
+            <div className="overflow-hidden rounded-2xl bg-white p-4 text-slate-900 shadow-2xl shadow-black/20 sm:p-5">
                 <div className="flex min-h-16 items-center justify-between gap-4 border-b border-slate-200 pb-4">
                     {companyData.logo ? (
                         <img src={companyData.logo} alt="Firmenlogo" className="max-h-14 max-w-36 object-contain" />
@@ -937,7 +993,40 @@ function LivePreview({
                     </div>
                 </div>
 
-                <div className="mt-5 space-y-4">
+                <div className="mt-5 space-y-4 text-[9px] leading-4">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <p className="truncate text-base font-black uppercase">{companyName}</p>
+                            <p className="text-[8px] font-bold text-rose-500">Ihr Partner für Bauprojekte</p>
+                        </div>
+                        <div className="shrink-0 border-t border-slate-300 pt-1 text-right text-[8px] text-slate-500">
+                            <p>{address[0] || "Firmenstraße 1"} | {address[1] || "8010 Graz"}</p>
+                            <p>office@firma.at | Tel.: -</p>
+                        </div>
+                    </div>
+                    <div className="flex justify-between gap-3 border-t border-slate-200 pt-3">
+                        <div><p>Musterkunde GmbH</p><p>Beispielstraße 10</p><p>1010 Wien</p></div><p className="font-bold">Seite 1</p>
+                    </div>
+                    <div>
+                        <div className="inline-block rounded bg-black px-3 py-1 text-[8px] font-black text-white">Zusatzinformationen</div>
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-[8px]">
+                            <div><p><b>Baustelle:</b> Musterprojekt</p><p><b>Leistungszeitraum:</b> 01.09.–06.09.2026</p></div>
+                            <div><p><b>Datum:</b> {today}</p><p><b>Bearbeiter:</b> {username || "-"}</p></div>
+                        </div>
+                    </div>
+                    <h4 className="text-sm font-black">Rechnungs-Nr: RE-2026-0001</h4>
+                    <div className="overflow-hidden border border-slate-200">
+                        <div className="grid grid-cols-[20px_1fr_28px_24px_45px_48px] bg-black px-1 py-1 text-[7px] font-bold text-white"><span>Pos.</span><span>Bezeichnung</span><span>Einheit</span><span>Menge</span><span className="text-right">Einzelpreis</span><span className="text-right">Gesamt</span></div>
+                        <div className="grid grid-cols-[20px_1fr_28px_24px_45px_48px] border-b border-slate-100 px-1 py-2 text-[7px]"><span>1</span><span>Projektleistung</span><span>PA</span><span>1</span><span className="text-right">1.000,00 €</span><span className="text-right font-bold">1.000,00 €</span></div>
+                        <div className="grid grid-cols-[20px_1fr_28px_24px_45px_48px] px-1 py-2 text-[7px]"><span>2</span><span>Dokumentation</span><span>PA</span><span>1</span><span className="text-right">250,00 €</span><span className="text-right font-bold">250,00 €</span></div>
+                    </div>
+                    <div className="ml-auto w-40 space-y-1 border-t-2 border-black pt-2 text-[8px]"><div className="flex justify-between"><span>Nettobetrag:</span><span>1.250,00 €</span></div><div className="flex justify-between"><span>20% USt.:</span><span>250,00 €</span></div><div className="flex justify-between text-[10px] font-black"><span>Bruttobetrag:</span><span>1.500,00 €</span></div></div>
+                    <div className="border-t border-slate-200 pt-3 text-center text-[8px]">Bitte überweisen Sie den Betrag an die folgende IBAN:<br /><b>IBAN:</b> {companyData.iban || "AT00 0000 0000 0000 0000"}<br /><b>Verwendungszweck:</b> Rechnungs-Nr: RE-2026-0001</div>
+                    <div className="pt-2 text-[8px]">Mit freundlichen Grüßen<br /><br /><b>{ceoName || username || "Ihr Name"}</b><br />Geschäftsführer</div>
+                    <div className="border-t border-black pt-2 text-[7px] text-slate-500"><p className="mb-1 text-center font-bold text-slate-700">Zahlungskondition: sofort nach Rechnungserhalt</p><div className="grid grid-cols-3 gap-2"><span><b>Firmenbuchgericht:</b> -<br /><b>Firmenbuch-Nr.:</b> -</span><span className="text-center"><b>Bank:</b> {companyData.bankName || "-"}<br /><b>IBAN:</b> {companyData.iban || "-"}</span><span className="text-right"><b>BIC:</b> {companyData.bic || "-"}<br /><b>UID:</b> {companyData.vatId || "-"}</span></div></div>
+                </div>
+
+                <div className="mt-5 hidden space-y-4">
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-wider text-indigo-500">Firma</p>
                         <h4 className="mt-1 text-xl font-black">{companyData.companyName || "Ihre Firma"}</h4>

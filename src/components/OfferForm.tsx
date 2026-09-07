@@ -55,6 +55,7 @@ import { ServiceModal } from "@/components/ServiceModal";
 import { Service } from "@/types/service";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { OfferReactPDF } from "@/components/OfferReactPDF";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 interface OfferFormProps {
   initialData?: Partial<Offer>;
@@ -1091,6 +1092,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
                         const type =
                           item.itemType ??
                           ((item as any).isTitleOnly ? "title" : "standard");
+                        const isFlatRate = item.unit === "PA" || item.unit === "pauschal";
                         if (type !== "title" && type !== "info") posCounter++;
                         const pos = posCounter;
                         return (
@@ -1143,22 +1145,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
                                   )}
                                   {type === "standard" && (
                                     <div className="flex items-start gap-2">
-                                      <input
-                                        type="text"
-                                        value={item.description}
-                                        onChange={(e) =>
-                                          updateItem(
-                                            item.id,
-                                            "description",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className={cn(
-                                          inputClasses,
-                                          "py-3 px-4 border-slate-100",
-                                        )}
-                                        placeholder="Positionsbeschreibung"
-                                      />
+                                      <RichTextEditor value={item.description} onChange={(value) => updateItem(item.id, "description", value)} className="flex-1" placeholder="Positionsbeschreibung" />
                                       <button
                                         type="button"
                                         onClick={() =>
@@ -1190,22 +1177,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
                                         placeholder="Titel der Position"
                                       />
                                       <div className="flex items-start gap-2 mt-2">
-                                        <textarea
-                                          rows={2}
-                                          value={item.description}
-                                          onChange={(e) =>
-                                            updateItem(
-                                              item.id,
-                                              "description",
-                                              e.target.value,
-                                            )
-                                          }
-                                          className={cn(
-                                            inputClasses,
-                                            "py-2.5 px-4 border-slate-100 text-sm resize-none flex-1",
-                                          )}
-                                          placeholder="Detaillierte Beschreibung (optional)"
-                                        />
+                                        <RichTextEditor value={item.description} onChange={(value) => updateItem(item.id, "description", value)} className="flex-1" placeholder="Detaillierte Beschreibung (optional)" />
                                         <button
                                           type="button"
                                           onClick={() =>
@@ -1244,7 +1216,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
 
                               {type !== "title" && type !== "info" && (
                                 <div className="flex items-center gap-3 px-3 pb-3 pl-14">
-                                  <input
+                                  {!isFlatRate && <input
                                     type="number"
                                     value={item.quantity}
                                     onChange={(e) =>
@@ -1259,7 +1231,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
                                       "py-2.5 px-4 border-slate-100 text-center no-spinner w-24 shrink-0",
                                     )}
                                     placeholder="Menge"
-                                  />
+                                  />}
                                   <select
                                     value={item.unit}
                                     onChange={(e) =>
@@ -1267,7 +1239,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
                                     }
                                     className={cn(
                                       inputClasses,
-                                      "py-2.5 px-4 border-slate-100 w-40 shrink-0",
+                                      "py-2.5 px-4 border-slate-100 w-48 shrink-0",
                                     )}
                                   >
                                     <option value="PA">PA (Pauschal)</option>

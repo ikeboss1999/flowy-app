@@ -128,6 +128,26 @@ async function readAllRows(table: string, column: string, value: string): Promis
     return rows;
 }
 
+async function readRowsByValues(table: string, column: string, values: string[]): Promise<Record<string, unknown>[]> {
+    if (!supabaseAdmin) throw new Error('Supabase Admin-Client ist nicht konfiguriert.');
+    const rows: Record<string, unknown>[] = [];
+    for (let index = 0; index < values.length; index += 200) {
+        const { data, error } = await supabaseAdmin.from(table).select('*').in(column, values.slice(index, index + 200));
+        if (error) {
+            if (isMissingRelation(error)) return [];
+            throw new Error(`Backup-Abfrage für ${table}.${column} fehlgeschlagen: ${error.message}`);
+        }
+        rows.push(...((data || []) as Record<string, unknown>[]));
+    }
+    return rows;
+}
+
+function mergeRowsById(...groups: Record<string, unknown>[][]): Record<string, unknown>[] {
+    const rows = new Map<string, Record<string, unknown>>();
+    for (const row of groups.flat()) rows.set(String(row.id), row);
+    return Array.from(rows.values());
+}
+
 async function listFilesRecursively(bucket: string, path: string): Promise<Array<{ path: string; size: number }>> {
     if (!supabaseAdmin) throw new Error('Supabase Admin-Client ist nicht konfiguriert.');
     const result: Array<{ path: string; size: number }> = [];
@@ -198,6 +218,13 @@ export async function createAccountBackup(companyOwnerId: string): Promise<Accou
             }
             database[table] = rows;
             tableCounts[table] = rows.length;
+        }
+        const employeeIds = (database.employees || []).map(row => String(row.id || '')).filter(Boolean);
+        if (employeeIds.length) {
+            for (const table of ['time_entries', 'timesheets'] as const) {
+                database[table] = mergeRowsById(database[table] || [], await readRowsByValues(table, 'employeeId', employeeIds));
+                tableCounts[table] = database[table].length;
+            }
         }
         const inquiryIds = database.crm_inquiries.map(row => String(row.id || '')).filter(Boolean);
         const inquiryNotes: Record<string, unknown>[] = [];

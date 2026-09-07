@@ -97,33 +97,18 @@ export function decrypt(text: string): string {
 }
 
 // Fields to encrypt in personalData
-const PERSONAL_DATA_KEYS: (keyof NonNullable<Employee['personalData']>)[] = [
-    'socialSecurityNumber',
-    'taxId',
-    'healthInsurance',
-    'birthday',
-    'birthPlace',
-    'birthCountry',
-    'nationality',
-    'maritalStatus'
-];
+// Employee fields are intentionally stored as regular values. The decrypt
+// path remains available for legacy records that were encrypted previously.
+const PERSONAL_DATA_KEYS: (keyof NonNullable<Employee['personalData']>)[] = [];
 
 // Fields to encrypt in bankDetails
-const BANK_DETAILS_KEYS: (keyof NonNullable<Employee['bankDetails']>)[] = [
-    'iban',
-    'bic'
-];
+const BANK_DETAILS_KEYS: (keyof NonNullable<Employee['bankDetails']>)[] = [];
 
 // Fields to encrypt in employment
-const EMPLOYMENT_KEYS: (keyof NonNullable<Employee['employment']>)[] = [
-    'salary'
-];
+const EMPLOYMENT_KEYS: (keyof NonNullable<Employee['employment']>)[] = [];
 
 // Fields to encrypt in additionalInfo
-const ADDITIONAL_INFO_KEYS: (keyof NonNullable<Employee['additionalInfo']>)[] = [
-    'emergencyContactName',
-    'emergencyContactPhone'
-];
+const ADDITIONAL_INFO_KEYS: (keyof NonNullable<Employee['additionalInfo']>)[] = [];
 
 export function encryptEmployee(employee: Partial<Employee>): Partial<Employee> {
     if (!employee) return employee;

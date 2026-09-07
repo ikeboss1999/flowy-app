@@ -1,0 +1,86 @@
+{
+  "editingNote": "MUSTERDATEN: Bitte alle Angaben vor dem öffentlichen Deployment durch echte Unternehmensdaten ersetzen und rechtlich prüfen lassen.",
+  "company": {
+    "legalName": "FlowY GmbH",
+    "ownerName": "Ilhan Etovic",
+    "street": "Musterstraße 1",
+    "postalCode": "1010",
+    "city": "Graz",
+    "country": "Österreich",
+    "email": "office@flowy.at",
+    "privacyEmail": "datenschutz@flowy.example",
+    "phone": "+43 677 61 43 29 89",
+    "vatId": "ATU12345678",
+    "companyRegisterNumber": "FN 123456 a",
+    "companyRegisterCourt": "Handelsgericht Graz",
+    "tradeAuthority": "Magistratisches Bezirksamt des 1. Bezirkes",
+    "chamber": "Wirtschaftskammer Wien",
+    "professionalGroup": "Fachgruppe Unternehmensberatung, Buchhaltung und Informationstechnologie",
+    "businessPurpose": "Entwicklung und Bereitstellung von Software für Bau- und Handwerksbetriebe",
+    "mediaOwner": "FlowY Musterunternehmen e.U.",
+    "mediaDirection": "Information über FlowY sowie über digitale Organisation und Verwaltung für Bau- und Handwerksbetriebe"
+  },
+  "trial": {
+    "days": 14,
+    "requiresPaymentMethod": false,
+    "headline": "14 Tage in Ruhe testen",
+    "description": "Lernen Sie FlowY mit Ihrem eigenen Betrieb kennen. Ohne Kreditkarte und ohne automatische Verlängerung während der Testphase."
+  },
+  "packages": [
+    {
+      "id": "start",
+      "name": "Start",
+      "description": "Für kleine Betriebe, die ihre wichtigsten Abläufe an einem Ort organisieren möchten.",
+      "monthlyPrice": 29.9,
+      "yearlyPrice": 299,
+      "featured": false,
+      "features": [
+        "Dashboard und Kalender",
+        "CRM und Kundenverwaltung",
+        "Projekte und Projektdateien",
+        "Angebote und Rechnungen",
+        "Leistungskatalog"
+      ]
+    },
+    {
+      "id": "business",
+      "name": "Business",
+      "description": "Für wachsende Teams mit Personal, Zeiterfassung und erweiterten Geschäftsabläufen.",
+      "monthlyPrice": 59.9,
+      "yearlyPrice": 599,
+      "featured": true,
+      "features": [
+        "Alle Funktionen aus Start",
+        "Mitarbeiterverwaltung",
+        "Zeiterfassung",
+        "Fahrzeugverwaltung",
+        "Aufträge und Dokumentenarchiv",
+        "Passwortmanager und Benutzerverwaltung"
+      ]
+    },
+    {
+      "id": "enterprise",
+      "name": "Enterprise",
+      "description": "Für Unternehmen mit individuellen Anforderungen, erweiterten Funktionen und persönlicher Abstimmung.",
+      "monthlyPrice": 99.9,
+      "yearlyPrice": 999,
+      "featured": false,
+      "features": [
+        "Alle Funktionen aus Business",
+        "Mahnwesen und Auswertungen",
+        "Mobile Mitarbeiter-App",
+        "Individuelle Funktionsfreigaben",
+        "Erweiterte Benutzer- und Nutzungslimits"
+      ]
+    }
+  ],
+  "privacy": {
+    "hostingProvider": "Vercel Inc.",
+    "hostingCountry": "USA / internationale Verarbeitung nach anwendbaren Datenschutzgarantien",
+    "backendProvider": "Supabase, Inc.",
+    "backendCountry": "Verarbeitung in der für das Projekt konfigurierten Supabase-Region",
+    "analyticsUsed": false,
+    "newsletterUsed": false,
+    "lastUpdated": "1. September 2026"
+  }
+}

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
 
 const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/welcome"]
+const ALWAYS_PUBLIC_ROUTES = ["/impressum", "/datenschutz"]
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { user, currentEmployee, isLoading } = useAuth()
@@ -18,11 +19,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         if (isLoading) return
 
         const handleRouting = async () => {
-            const isPublic = PUBLIC_ROUTES.includes(pathname)
+            const isPublic = PUBLIC_ROUTES.includes(pathname) || ALWAYS_PUBLIC_ROUTES.includes(pathname)
+            const staysPublicWhenAuthenticated = ALWAYS_PUBLIC_ROUTES.includes(pathname)
             const hasUser = !!user || !!currentEmployee
 
             if (isPublic) {
-                if (hasUser) {
+                if (hasUser && !staysPublicWhenAuthenticated) {
                     // Loop guard: if we've bounced back to a public page
                     // more than 3 times, sync-session is broken — stop looping.
                     const attempts = parseInt(sessionStorage.getItem('__auth_attempts') || '0')

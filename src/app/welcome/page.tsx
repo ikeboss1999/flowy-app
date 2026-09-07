@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
     ArrowRight,
@@ -13,15 +13,37 @@ import {
     Smartphone,
     Layout,
     Plus,
-    Share
+    Share,
+    CalendarDays,
+    ContactRound,
+    Car,
+    BookOpenCheck,
+    FolderArchive,
+    LockKeyhole,
+    BarChart3,
+    Mail
 } from 'lucide-react';
 import { useDevice } from '@/hooks/useDevice';
 import { PartnerLogos } from '@/components/PartnerLogos';
 import { useAuth } from '@/context/AuthContext';
+import siteContent from '../../../content/public-site.json';
+
+type PublicPlan = (typeof siteContent.packages)[number] & { trialDays: number; currency: string };
+const fallbackPlans: PublicPlan[] = siteContent.packages.map(plan => ({ ...plan, trialDays: siteContent.trial.days, currency: 'EUR' }));
 
 export default function WelcomePage() {
     const { isIPad, isMobile } = useDevice();
     const { user } = useAuth();
+    const [publicPlans, setPublicPlans] = useState<PublicPlan[]>([]);
+    const advertisedTrialDays = publicPlans.find(plan => plan.featured)?.trialDays ?? publicPlans[0]?.trialDays ?? siteContent.trial.days;
+    const content = { ...siteContent, trial: { ...siteContent.trial, days: advertisedTrialDays }, packages: publicPlans };
+
+    useEffect(() => {
+        fetch('/api/public/plans', { cache: 'no-store' })
+            .then(async response => { if (!response.ok) throw new Error('Pakete konnten nicht geladen werden'); return response.json(); })
+            .then(payload => { if (Array.isArray(payload.plans)) setPublicPlans(payload.plans); })
+            .catch(() => setPublicPlans(fallbackPlans));
+    }, []);
 
     return (
         <div className="min-h-screen bg-[#020205] text-white selection:bg-indigo-500/30 overflow-x-hidden">
@@ -41,6 +63,7 @@ export default function WelcomePage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
+                    <a href="#preise" className="hidden text-sm font-bold text-white/60 transition-colors hover:text-white md:block">Pakete & Preise</a>
                     {user ? (
                         <Link href="/" className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-xs md:text-sm font-black hover:bg-indigo-500 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-indigo-500/20">
                             Zum Dashboard
@@ -75,8 +98,8 @@ export default function WelcomePage() {
                         <span className="inline-block py-2 md:py-4 px-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">Baugewerbes</span>
                     </h1>
                     <p className="text-base md:text-2xl text-white/50 max-w-3xl mx-auto leading-relaxed mb-12 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-200 px-6">
-                        Verwalten Sie Rechnungen, Projekte und Mitarbeiter an einem zentralen Ort.
-                        Modern und für Profis entwickelt.
+                        Vom ersten Kundenkontakt bis zur fertigen Rechnung: FlowY verbindet Projekte,
+                        Personal, Dokumente und Finanzen in einem modernen Arbeitsbereich.
                     </p>
 
                     <div className="flex flex-col items-center gap-12 animate-in fade-in slide-in-from-bottom-16 duration-700 delay-300">
@@ -89,7 +112,7 @@ export default function WelcomePage() {
                             ) : (
                                 <>
                                     <Link href="/login?mode=register" className="group bg-gradient-to-r from-indigo-600 to-purple-600 px-8 md:px-10 py-4 md:py-5 rounded-[2rem] text-lg md:text-xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-indigo-500/20 transition-all hover:scale-105 active:scale-95 w-full md:w-auto">
-                                        Kostenlos Registrieren <ArrowRight className="h-5 w-5 md:h-6 md:w-6 group-hover:translate-x-1 transition-transform" />
+                                        {content.trial.days} Tage testen <ArrowRight className="h-5 w-5 md:h-6 md:w-6 group-hover:translate-x-1 transition-transform" />
                                     </Link>
                                     <Link href="/login" className="bg-white/5 backdrop-blur-xl border border-white/10 px-8 md:px-10 py-4 md:py-5 rounded-[2rem] text-lg md:text-xl font-black hover:bg-white/10 transition-all hover:scale-105 active:scale-95 w-full md:w-auto">
                                         Zum Login
@@ -128,22 +151,27 @@ export default function WelcomePage() {
             {/* Features Preview */}
             <section className="relative z-10 py-32 px-6 bg-white/[0.01]">
                 <div className="max-w-7xl mx-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="text-center mb-16">
+                        <p className="text-xs font-black uppercase tracking-[0.3em] text-indigo-400 mb-4">Ein System für Ihren Betrieb</p>
+                        <h2 className="text-3xl md:text-5xl font-black tracking-tight">Alles, was den Arbeitsalltag verbindet.</h2>
+                        <p className="mt-5 text-white/45 max-w-2xl mx-auto leading-relaxed">Weniger Einzellösungen, weniger doppelte Eingaben und jederzeit ein klarer Überblick über Büro und Baustelle.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {/* Feature 1 */}
                         <div className="group p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 transition-all hover:bg-white/[0.06] hover:-translate-y-2">
                             <div className="h-14 w-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                 <FileText className="h-7 w-7 text-indigo-400" />
                             </div>
-                            <h3 className="text-2xl font-bold mb-4">Rechnungen</h3>
+                            <h3 className="text-2xl font-bold mb-4">Finanzen & Dokumente</h3>
                             <p className="text-white/40 leading-relaxed mb-6">
-                                Erstellen Sie professionelle Rechnungen in Sekunden. GoBD-konform und automatisiert.
+                                Angebote, Aufträge und Rechnungen durchgängig erstellen, versenden und nachvollziehen.
                             </p>
                             <ul className="space-y-3">
                                 <li className="flex items-center gap-3 text-sm text-white/60">
-                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> PDF-Export
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> PDF & E-Mail-Versand
                                 </li>
                                 <li className="flex items-center gap-3 text-sm text-white/60">
-                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Mahnwesen
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Mahnwesen & Auswertungen
                                 </li>
                             </ul>
                         </div>
@@ -153,16 +181,16 @@ export default function WelcomePage() {
                             <div className="h-14 w-14 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                 <Users className="h-7 w-7 text-purple-400" />
                             </div>
-                            <h3 className="text-2xl font-bold mb-4">Personal</h3>
+                            <h3 className="text-2xl font-bold mb-4">Mitarbeiter & Zeit</h3>
                             <p className="text-white/40 leading-relaxed mb-6">
-                                Digitale Akten für alle Mitarbeiter. Dokumente, Termine und Stunden zentral im Griff.
+                                Mitarbeiterakten, Dokumente, Berechtigungen und Arbeitszeiten zentral organisieren.
                             </p>
                             <ul className="space-y-3">
                                 <li className="flex items-center gap-3 text-sm text-white/60">
-                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Digitale Akten
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Digitale Mitarbeiterakten
                                 </li>
                                 <li className="flex items-center gap-3 text-sm text-white/60">
-                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Urlaubsplaner
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Zeiterfassung & mobile Zugänge
                                 </li>
                             </ul>
                         </div>
@@ -174,18 +202,54 @@ export default function WelcomePage() {
                             </div>
                             <h3 className="text-2xl font-bold mb-4">Projekte</h3>
                             <p className="text-white/40 leading-relaxed mb-6">
-                                Kalkulation und Management Ihrer Baustellen. Fortschrittsanalyse in Echtzeit.
+                                Projekte, Zahlungspläne, Dateien und Bautagebuch in einer gemeinsamen Projektakte.
                             </p>
                             <ul className="space-y-3">
                                 <li className="flex items-center gap-3 text-sm text-white/60">
-                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Baustellen-Tagebuch
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Zahlungspläne & Projektdateien
                                 </li>
                                 <li className="flex items-center gap-3 text-sm text-white/60">
-                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Projekt-Archiv
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Bautagebuch
                                 </li>
                             </ul>
                         </div>
+
+                        <div className="group p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 transition-all hover:bg-white/[0.06] hover:-translate-y-2">
+                            <div className="h-14 w-14 rounded-2xl bg-pink-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><ContactRound className="h-7 w-7 text-pink-400" /></div>
+                            <h3 className="text-2xl font-bold mb-4">CRM & Kunden</h3>
+                            <p className="text-white/40 leading-relaxed mb-6">Anfragen erfassen, Kundeninformationen bündeln und den Weg zum Projekt übersichtlich begleiten.</p>
+                            <ul className="space-y-3"><li className="flex items-center gap-3 text-sm text-white/60"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Anfrageverwaltung</li><li className="flex items-center gap-3 text-sm text-white/60"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Zentrale Kundenakten</li></ul>
+                        </div>
+
+                        <div className="group p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 transition-all hover:bg-white/[0.06] hover:-translate-y-2">
+                            <div className="h-14 w-14 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><BookOpenCheck className="h-7 w-7 text-amber-400" /></div>
+                            <h3 className="text-2xl font-bold mb-4">Betrieb & Ressourcen</h3>
+                            <p className="text-white/40 leading-relaxed mb-6">Leistungen, Fahrzeuge und Termine dort verwalten, wo sie für die tägliche Arbeit gebraucht werden.</p>
+                            <ul className="space-y-3"><li className="flex items-center gap-3 text-sm text-white/60"><Car className="h-4 w-4 text-emerald-500" /> Fahrzeugverwaltung</li><li className="flex items-center gap-3 text-sm text-white/60"><CalendarDays className="h-4 w-4 text-emerald-500" /> Kalender & Leistungskatalog</li></ul>
+                        </div>
+
+                        <div className="group p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 transition-all hover:bg-white/[0.06] hover:-translate-y-2">
+                            <div className="h-14 w-14 rounded-2xl bg-cyan-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><FolderArchive className="h-7 w-7 text-cyan-400" /></div>
+                            <h3 className="text-2xl font-bold mb-4">Sicher organisiert</h3>
+                            <p className="text-white/40 leading-relaxed mb-6">Geschäftsdokumente und Zugangsdaten strukturiert aufbewahren und im Team kontrolliert nutzen.</p>
+                            <ul className="space-y-3"><li className="flex items-center gap-3 text-sm text-white/60"><FolderArchive className="h-4 w-4 text-emerald-500" /> Dokumentenarchiv</li><li className="flex items-center gap-3 text-sm text-white/60"><LockKeyhole className="h-4 w-4 text-emerald-500" /> Passwortmanager & Benutzerrechte</li></ul>
+                        </div>
                     </div>
+                </div>
+            </section>
+
+            <section id="preise" className="relative z-10 scroll-mt-24 border-t border-white/5 bg-white/[0.01] px-6 py-32">
+                <div className="mx-auto max-w-7xl">
+                    <div className="mx-auto mb-16 max-w-3xl text-center"><p className="mb-4 text-xs font-black uppercase tracking-[0.3em] text-indigo-400">Pakete & Preise</p><h2 className="text-3xl font-black tracking-tight md:text-5xl">Der passende Einstieg für Ihren Betrieb.</h2><p className="mt-5 leading-relaxed text-white/45">Alle Pakete können {content.trial.days} Tage getestet werden. {content.trial.requiresPaymentMethod ? 'Für den Start ist eine Zahlungsmethode erforderlich.' : 'Keine Kreditkarte und keine automatische Verlängerung während der Testphase.'}</p></div>
+                    <div className="grid gap-8 lg:grid-cols-3">{content.packages.map(plan => <article key={plan.id} className={`relative flex flex-col rounded-[2.5rem] border p-8 transition-all hover:-translate-y-2 ${plan.featured ? 'border-indigo-400/40 bg-gradient-to-b from-indigo-500/15 to-white/[0.04] shadow-2xl shadow-indigo-600/10 lg:scale-105' : 'border-white/5 bg-white/[0.03]'}`}>{plan.featured && <span className="absolute right-6 top-6 rounded-full bg-indigo-500 px-3 py-1 text-[10px] font-black uppercase tracking-widest">Empfohlen</span>}<h3 className="text-2xl font-black">{plan.name}</h3><p className="mt-4 min-h-20 text-sm leading-relaxed text-white/45">{plan.description}</p><div className="my-7"><span className="text-4xl font-black">{plan.monthlyPrice.toLocaleString('de-AT', { minimumFractionDigits: 2 })} €</span><span className="ml-2 text-sm font-bold text-white/35">/ Monat</span><p className="mt-2 text-xs text-white/30">oder {plan.yearlyPrice.toLocaleString('de-AT', { minimumFractionDigits: 2 })} € jährlich</p></div><ul className="mb-8 flex-1 space-y-3">{plan.features.map(feature => <li key={feature} className="flex items-start gap-3 text-sm text-white/65"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{feature}</li>)}</ul><Link href={`/login?mode=register&plan=${plan.id}`} className={`flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-sm font-black transition-all hover:scale-[1.02] active:scale-95 ${plan.featured ? 'bg-indigo-500 text-white hover:bg-indigo-400' : 'bg-white text-black hover:bg-white/90'}`}>{plan.name} testen <ArrowRight className="h-4 w-4" /></Link></article>)}</div>
+                    <div className="mx-auto mt-14 max-w-3xl rounded-3xl border border-white/10 bg-white/[0.03] p-7 text-center"><h3 className="text-xl font-black">{content.trial.headline}</h3><p className="mt-3 text-sm leading-relaxed text-white/45">{content.trial.description}</p></div>
+                </div>
+            </section>
+
+            <section className="relative z-10 py-24 px-6 border-t border-white/5">
+                <div className="max-w-7xl mx-auto grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+                    <div><p className="text-xs font-black uppercase tracking-[0.3em] text-purple-400 mb-4">Durchgängig arbeiten</p><h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">Vom Eingang der Anfrage bis zum Zahlungseingang.</h2><p className="mt-6 text-white/45 leading-relaxed">Informationen fließen durch den gesamten Prozess weiter. Kunden, Projekte, Leistungen und Dokumente müssen nicht für jeden Arbeitsschritt neu erfasst werden.</p></div>
+                    <div className="grid gap-4 sm:grid-cols-2"><div className="rounded-3xl border border-white/5 bg-white/[0.03] p-6"><Mail className="h-6 w-6 text-indigo-400" /><p className="mt-4 font-black">Anfrage & Kunde</p><p className="mt-2 text-sm text-white/40">Kontakte und Anforderungen strukturiert übernehmen.</p></div><div className="rounded-3xl border border-white/5 bg-white/[0.03] p-6"><Briefcase className="h-6 w-6 text-emerald-400" /><p className="mt-4 font-black">Projekt & Ausführung</p><p className="mt-2 text-sm text-white/40">Fortschritt, Dateien und Personal zusammenführen.</p></div><div className="rounded-3xl border border-white/5 bg-white/[0.03] p-6"><FileText className="h-6 w-6 text-amber-400" /><p className="mt-4 font-black">Angebot & Rechnung</p><p className="mt-2 text-sm text-white/40">Geschäftsdokumente aus vorhandenen Daten erstellen.</p></div><div className="rounded-3xl border border-white/5 bg-white/[0.03] p-6"><BarChart3 className="h-6 w-6 text-pink-400" /><p className="mt-4 font-black">Mahnwesen & Auswertung</p><p className="mt-2 text-sm text-white/40">Offene Beträge und Entwicklung im Blick behalten.</p></div></div>
                 </div>
             </section>
 
@@ -195,15 +259,15 @@ export default function WelcomePage() {
                     <div className="flex flex-wrap items-center justify-center gap-20 opacity-30 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-700">
                         <div className="flex items-center gap-3">
                             <ShieldCheck className="h-8 w-8" />
-                            <span className="text-xl font-bold">Safe & Secure</span>
+                            <span className="text-xl font-bold">Sicherer Zugang</span>
                         </div>
                         <div className="flex items-center gap-3">
                             <Clock className="h-8 w-8" />
-                            <span className="text-xl font-bold">24/7 Availability</span>
+                            <span className="text-xl font-bold">Browserbasiert</span>
                         </div>
                         <div className="flex items-center gap-3">
                             <Layout className="h-8 w-8" />
-                            <span className="text-xl font-bold">Professional Tools</span>
+                            <span className="text-xl font-bold">Für Bau & Handwerk</span>
                         </div>
                     </div>
 
@@ -218,10 +282,10 @@ export default function WelcomePage() {
                     <div className="relative z-10">
                         <h2 className="text-3xl md:text-5xl font-black mb-6">Bereit für den nächsten Schritt?</h2>
                         <p className="text-base md:text-xl text-white/80 mb-10 max-w-xl mx-auto font-medium">
-                            Schließen Sie sich hunderten zufriedenen Bauunternehmen an und digitalisieren Sie Ihren Workflow.
+                            Testen Sie FlowY {content.trial.days} Tage und bringen Sie Büro, Projekte, Mitarbeiter und Finanzen in einem gemeinsamen Arbeitsbereich zusammen.
                         </p>
                         <Link href="/login?mode=register" className="bg-white text-black px-8 md:px-12 py-4 md:py-5 rounded-2xl text-lg md:text-xl font-black hover:bg-white/90 transition-all hover:scale-105 active:scale-95 inline-block">
-                            Gratis Account erstellen
+                            Testphase starten
                         </Link>
                     </div>
                 </div>
@@ -232,9 +296,9 @@ export default function WelcomePage() {
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 opacity-40 text-xs font-bold uppercase tracking-widest text-center md:text-left">
                     <span>© 2026 FlowY Professional. Alle Rechte vorbehalten.</span>
                     <div className="flex gap-8">
-                        <a href="#" className="hover:text-white transition-colors">Impressum</a>
-                        <a href="#" className="hover:text-white transition-colors">Datenschutz</a>
-                        <a href="#" className="hover:text-white transition-colors">Preise</a>
+                        <Link href="/impressum" className="hover:text-white transition-colors">Impressum</Link>
+                        <Link href="/datenschutz" className="hover:text-white transition-colors">Datenschutz</Link>
+                        <a href="#preise" className="hover:text-white transition-colors">Preise</a>
                     </div>
                 </div>
             </footer>

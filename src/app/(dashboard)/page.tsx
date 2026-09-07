@@ -24,6 +24,7 @@ import {
 import { RealtimeClock } from "@/components/RealtimeClock";
 import { useAuth } from "@/context/AuthContext";
 import { useStartup } from "@/hooks/useStartup";
+import { useAccountSettings } from "@/hooks/useAccountSettings";
 import { cn } from "@/lib/utils";
 
 const formatDate = (date: Date) =>
@@ -36,8 +37,9 @@ const formatDate = (date: Date) =>
 
 export default function Home() {
   const router = useRouter();
-  const { user, profile, currentEmployee } = useAuth();
+  const { profile } = useAuth();
   const { data: startup } = useStartup();
+  const { data: accountSettings } = useAccountSettings();
 
   React.useEffect(() => {
     if (profile?.role === "developer") {
@@ -59,14 +61,9 @@ export default function Home() {
     .map((part) => part[0]?.toUpperCase())
     .join("") || "FY";
 
-  const employeeName = currentEmployee
-    ? `${currentEmployee.personalData.firstName} ${currentEmployee.personalData.lastName}`.trim()
-    : "";
-  const accountName = startup.account.name?.trim();
-  const authName = profile?.name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Benutzer";
-  const userName = (accountName && accountName !== "Benutzer")
-    ? accountName
-    : (profile?.role === "employee" ? (employeeName || authName) : authName);
+  const userName = accountSettings.onboardingCompleted && accountSettings.name?.trim() && accountSettings.name.trim() !== "Benutzer"
+    ? accountSettings.name.trim()
+    : "Benutzer";
 
   const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
   const permissions = profile?.permissions || {};

@@ -149,8 +149,13 @@ export function AccountSettings({ nameOnly = false }: AccountSettingsProps) {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || errorData.error || errorData.details || 'Löschvorgang auf dem Server fehlgeschlagen.');
+                const errorData = await response.json().catch(() => ({}));
+                const errorMessage = errorData.details || errorData.message || errorData.error || `Löschvorgang auf dem Server fehlgeschlagen (HTTP ${response.status}).`;
+                console.warn('[AccountDeletion] Server response:', {
+                    status: response.status,
+                    error: errorData,
+                });
+                throw new Error(errorMessage);
             }
 
             // Remove all FlowY browser caches, including tenant data not suffixed by user ID.
@@ -177,7 +182,7 @@ export function AccountSettings({ nameOnly = false }: AccountSettingsProps) {
                 window.location.href = '/login';
             }, 2000);
         } catch (error: any) {
-            console.error('Deletion failed', error);
+            console.warn('Deletion failed', error);
             showToast(`Fehler: ${error.message || 'Unbekannter Fehler'}.`, "error");
             setIsDeleting(false);
         }

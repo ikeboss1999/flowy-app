@@ -69,7 +69,9 @@ export function CustomerSettings({ readOnly = false }: CustomerSettingsProps) {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (readOnly) return;
         const { name, value } = e.target;
-        const finalValue = e.target.type === 'number' ? Number(value) : value;
+        const finalValue = e.target.type === 'number'
+            ? (name === 'nextNumber' ? Math.max(1, Number(value) || 1) : Number(value))
+            : value;
         updateData({ [name]: finalValue });
     };
 
@@ -81,7 +83,7 @@ export function CustomerSettings({ readOnly = false }: CustomerSettingsProps) {
 
     // Helfer zur Generierung der Vorschau-Nummer
     const formatPreview = () => {
-        const numStr = String(data.nextNumber || 0);
+        const numStr = String(Math.max(1, Number(data.nextNumber) || 1));
         const padding = Math.max(0, (data.mindestLaenge || 5) - numStr.length);
         const formattedNum = "0".repeat(padding) + numStr;
         return `${data.prefix || ''}${formattedNum}`;
@@ -131,6 +133,7 @@ export function CustomerSettings({ readOnly = false }: CustomerSettingsProps) {
                             onChange={handleChange}
                             disabled={readOnly}
                             className={inputClasses}
+                            min={1}
                         />
                     </div>
                     <div>

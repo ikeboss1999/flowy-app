@@ -1168,9 +1168,14 @@ export function EmployeeDetailModal({
                                     </div>
                                 ) : (
                                     docs.map((doc) => (
-                                        <button
+                                        <div
                                             key={doc.id}
                                             onClick={() => onPreviewDocument(doc)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter" || event.key === " ") onPreviewDocument(doc);
+                                            }}
+                                            role="button"
+                                            tabIndex={0}
                                             className="group flex w-full items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-100/70"
                                         >
                                             <div className="flex min-w-0 items-center gap-4">
@@ -1220,7 +1225,7 @@ export function EmployeeDetailModal({
                                                     </button>
                                                 )}
                                             </div>
-                                        </button>
+                                        </div>
                                     ))
                                 )}
                             </div>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Activity, ArchiveRestore, BarChart3, CreditCard, Gauge, LayoutDashboard, ScrollText, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PlanManagement } from './PlanManagement';
 
 const items = [
     { href: '/admin', label: 'Übersicht', icon: LayoutDashboard },
@@ -19,6 +20,7 @@ const items = [
 export function AdminNav() {
     const pathname = usePathname();
     return (
+        <>
         <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
             {items.map(item => {
                 const active = item.href === '/admin' ? pathname === item.href : pathname.startsWith(item.href);
@@ -32,5 +34,7 @@ export function AdminNav() {
                 );
             })}
         </nav>
+        {pathname === '/admin/billing' && <PlanManagement />}
+        </>
     );
 }

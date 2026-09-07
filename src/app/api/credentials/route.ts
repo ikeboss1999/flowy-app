@@ -8,7 +8,7 @@ import { encrypt, decrypt } from '@/lib/encryption';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const auth = await requireApiSession();
+    const auth = await requireApiSession('credentials_read');
     if (!auth.ok) return auth.response;
     if (auth.session.role === 'employee') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-    const auth = await requireApiSession();
+    const auth = await requireApiSession('credentials_write');
     if (!auth.ok) return auth.response;
     if (auth.session.role === 'employee') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    const auth = await requireApiSession();
+    const auth = await requireApiSession('credentials_write');
     if (!auth.ok) return auth.response;
     if (auth.session.role === 'employee') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

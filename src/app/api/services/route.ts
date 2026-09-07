@@ -8,7 +8,7 @@ import { serviceForStorage } from '@/lib/service-nickname';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const auth = await requireApiSession(['invoices_write', 'offers_write']);
+    const auth = await requireApiSession('catalog');
     if (!auth.ok) return auth.response;
     const userId = auth.companyOwnerId;
 
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-    const auth = await requireApiSession(['invoices_write', 'offers_write']);
+    const auth = await requireApiSession('catalog');
     if (!auth.ok) return auth.response;
     const userId = auth.companyOwnerId;
 
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    const auth = await requireApiSession(['invoices_write', 'offers_write']);
+    const auth = await requireApiSession('catalog');
     if (!auth.ok) return auth.response;
     const userId = auth.companyOwnerId;
 

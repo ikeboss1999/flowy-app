@@ -13,6 +13,7 @@ const PUBLIC_AUTH_ROUTES = new Set([
     '/api/auth/logout',
     '/api/auth/start',
     '/api/auth/me',
+    '/api/public/plans',
 ]);
 
 // Vercel Cron requests do not carry a user session cookie. These exact routes
@@ -69,7 +70,7 @@ export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/auth/callback');
-    const isWelcomePage = pathname === '/welcome';
+    const isPublicPage = pathname === '/welcome' || pathname === '/impressum' || pathname === '/datenschutz';
     const isApiRoute = pathname.startsWith('/api');
     const isPublicApi =
         PUBLIC_AUTH_ROUTES.has(pathname) ||
@@ -84,10 +85,14 @@ export async function middleware(request: NextRequest) {
     // Verify tokens cryptographically
     let isSessionValid = false;
     let isSbValid = false;
+    let sessionPayload: JWTPayload | null = null;
 
     if (sessionToken) {
         const payload = await verifySessionTokenEdge(sessionToken);
-        if (payload) isSessionValid = true;
+        if (payload) {
+            isSessionValid = true;
+            sessionPayload = payload;
+        }
     }
 
     if (sbAccessToken) {
@@ -95,6 +100,7 @@ export async function middleware(request: NextRequest) {
     }
 
     const isAuthenticated = isSessionValid || isSbValid;
+    const isDeveloperSession = sessionPayload?.role === 'developer';
     // 2. Protect API Routes (except auth)
     if (isApiRoute) {
         if (!isPublicApi && !isAuthenticated) {
@@ -112,10 +118,13 @@ export async function middleware(request: NextRequest) {
 
     // 3. Protect UI Pages
     if (!isAuthenticated) {
-        if (!isAuthPage && !isWelcomePage) {
+        if (!isAuthPage && !isPublicPage) {
             return NextResponse.redirect(new URL('/welcome', request.url));
         }
     } else {
+        if (isDeveloperSession && !pathname.startsWith('/admin') && !isPublicPage) {
+            return NextResponse.redirect(new URL('/admin', request.url));
+        }
         // Authenticated users on login/register/callback go to the app home if not resetting password
         if (isAuthPage && !pathname.startsWith('/auth/callback') && pathname !== '/login/reset-password') {
             return NextResponse.redirect(new URL('/', request.url));

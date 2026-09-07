@@ -42,6 +42,17 @@ import { offerPdfFileName } from "@/lib/document-filenames";
 
 export const dynamic = 'force-dynamic';
 
+function documentYear(value?: string) {
+    if (!value) return null;
+    const text = String(value).trim();
+    const european = text.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})/);
+    if (european) return Number(european[3]);
+    const iso = text.match(/^(\d{4})[.\-/]/);
+    if (iso) return Number(iso[1]);
+    const parsed = new Date(text).getFullYear();
+    return Number.isFinite(parsed) && parsed > 1900 ? parsed : null;
+}
+
 async function fetchSignedOfferPdfUrl(offerId: string) {
     const response = await fetch(`/api/offers/pdf-url?id=${encodeURIComponent(offerId)}`);
     if (!response.ok) {
@@ -174,7 +185,7 @@ export default function OffersPage() {
                 (offer.offerNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (offer.customerName || "").toLowerCase().includes(searchQuery.toLowerCase());
             const matchesStatus = filterStatus === "all" || offer.status === filterStatus;
-            const matchesYear = new Date(offer.issueDate).getFullYear() === selectedYear;
+            const matchesYear = documentYear(offer.issueDate) === selectedYear;
             return matchesSearch && matchesStatus && matchesYear;
         });
 
@@ -200,14 +211,14 @@ export default function OffersPage() {
     }, [offers, searchQuery, filterStatus, selectedYear, sortBy, sortOrder]);
 
     const stats = useMemo(() => ({
-        total: offers.filter(o => new Date(o.issueDate).getFullYear() === selectedYear).length,
-        accepted: offers.filter(o => o.status === 'accepted' && new Date(o.issueDate).getFullYear() === selectedYear).length,
-        sent: offers.filter(o => o.status === 'sent' && new Date(o.issueDate).getFullYear() === selectedYear).length,
-        rejected: offers.filter(o => o.status === 'rejected' && new Date(o.issueDate).getFullYear() === selectedYear).length,
+        total: offers.filter(o => documentYear(o.issueDate) === selectedYear).length,
+        accepted: offers.filter(o => o.status === 'accepted' && documentYear(o.issueDate) === selectedYear).length,
+        sent: offers.filter(o => o.status === 'sent' && documentYear(o.issueDate) === selectedYear).length,
+        rejected: offers.filter(o => o.status === 'rejected' && documentYear(o.issueDate) === selectedYear).length,
     }), [offers, selectedYear]);
 
     const availableYears = useMemo(() => {
-        const years = new Set(offers.map(o => new Date(o.issueDate).getFullYear()));
+        const years = new Set(offers.map(o => documentYear(o.issueDate)).filter((year): year is number => year !== null));
         if (years.size === 0) years.add(new Date().getFullYear());
         return Array.from(years).sort((a, b) => b - a);
     }, [offers]);
@@ -240,7 +251,7 @@ export default function OffersPage() {
                             <select
                                 value={selectedYear}
                                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                                className="px-6 py-3 bg-white/10 border border-white/10 rounded-xl font-bold text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                                className="px-6 py-3 bg-white/10 border border-white/10 rounded-xl font-bold text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all [&>option]:bg-white [&>option]:text-slate-900"
                             >
                                 {availableYears.map(year => (
                                     <option key={year} value={year}>{year}</option>
@@ -521,7 +532,7 @@ export default function OffersPage() {
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </button>
                                                     {actionMenuOfferId === offer.id && (
-                                                        <div className="absolute right-0 top-11 z-30 w-56 overflow-hidden rounded-2xl border border-slate-100 bg-white p-1 shadow-2xl shadow-slate-950/10">
+                                                        <div className="absolute bottom-11 right-0 z-50 w-56 overflow-hidden rounded-2xl border border-slate-100 bg-white p-1 shadow-2xl shadow-slate-950/10">
                                                             <button
                                                                 onClick={() => openProjectAssignment(offer)}
                                                                 disabled={!!offer.projectId}

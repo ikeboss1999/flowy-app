@@ -3,6 +3,11 @@ import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/render
 import { Invoice } from '@/types/invoice';
 import { CompanyData } from '@/types/company';
 import { Customer } from '@/types/customer';
+import { richTextLines } from '@/lib/rich-text';
+
+function RichTextBlock({ value, style }: { value: string; style?: any }) {
+    return <View style={style}>{richTextLines(value).map((line, index) => <Text key={index} style={{ fontSize: 9, color: '#555555' }}>{line.map((segment, segmentIndex) => <Text key={segmentIndex} style={{ fontFamily: segment.bold && segment.italic ? 'Helvetica-BoldOblique' : segment.bold ? 'Helvetica-Bold' : segment.italic ? 'Helvetica-Oblique' : 'Helvetica', textDecoration: segment.underline ? 'underline' : undefined }}>{segment.text}</Text>)}</Text>)}</View>;
+}
 
 const styles = StyleSheet.create({
     page: {
@@ -415,26 +420,43 @@ export const InvoiceReactPDF: React.FC<InvoiceReactPDFProps> = ({ invoice, custo
                                         <Text style={[styles.cPos, styles.tdText, { color: '#aaaaaa' }]}>—</Text>
                                         <View style={{ width: '93%', paddingLeft: 8 }}>
                                             <Text style={{ fontSize: 9.5, color: '#333333' }}>
-                                                {item.description}
+                                                <RichTextBlock value={item.description} />
                                             </Text>
                                         </View>
+                                    </View>
+                                );
+                            }
+                            const isFlatRate = item.unit === 'PA' || item.unit === 'pauschal';
+                            if (isFlatRate) {
+                                return (
+                                    <View key={item.id} style={styles.tableRow}>
+                                        <Text style={[styles.cPos, styles.tdText]}>{pos}</Text>
+                                        <View style={{ ...styles.cDesc, width: '61%' }}>
+                                            {item.title ? <Text style={{ fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#000000' }}>{item.title}</Text> : null}
+                                            {item.description ? <RichTextBlock value={item.description} style={{ marginTop: item.title ? 1 : 0 }} /> : null}
+                                        </View>
+                                        <Text style={[styles.cTotal, styles.tdBold, { width: '32%' }]}>
+                                            {'€ ' + (Number(item.totalPrice) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                                        </Text>
                                     </View>
                                 );
                             }
                             return (
                                 <View key={item.id} style={styles.tableRow}>
                                     <Text style={[styles.cPos, styles.tdText]}>{pos}</Text>
-                                    <View style={styles.cDesc}>
+                                    <View style={isFlatRate ? { ...styles.cDesc, width: '61%' } : styles.cDesc}>
                                         {item.title ? <Text style={{ fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#000000' }}>{item.title}</Text> : null}
-                                        {item.description ? <Text style={{ fontSize: 9, color: '#555555', marginTop: item.title ? 1 : 0 }}>{item.description}</Text> : null}
+                                        {item.description ? <RichTextBlock value={item.description} style={{ marginTop: item.title ? 1 : 0 }} /> : null}
                                         {!item.title && !item.description ? <Text style={{ color: '#aaaaaa' }}>—</Text> : null}
                                     </View>
-                                    <Text style={[styles.cUnit, styles.tdText]}>{item.unit === 'pauschal' ? 'PA' : item.unit}</Text>
+                                    {!isFlatRate && <>
+                                    <Text style={[styles.cUnit, styles.tdText]}>{item.unit}</Text>
                                     <Text style={[styles.cQty, styles.tdText]}>{item.quantity}</Text>
-                                    <Text style={[styles.cPrice, styles.tdText]}>
+                                    </>}
+                                    <Text style={[styles.cPrice, styles.tdText, isFlatRate ? { width: 0, paddingRight: 0, fontSize: 0 } : {}]}>
                                         {'€ ' + (Number(item.pricePerUnit) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                                     </Text>
-                                    <Text style={[styles.cTotal, styles.tdBold]}>
+                                    <Text style={[styles.cTotal, styles.tdBold, isFlatRate ? { width: '32%' } : {}]}>
                                         {'€ ' + (Number(item.totalPrice) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                                     </Text>
                                 </View>

@@ -177,17 +177,20 @@ export const OfferPDF = forwardRef<HTMLDivElement, OfferPDFProps>(({ offer, cust
                                     </tr>
                                 );
                             }
+                            const isFlatRate = item.unit === 'PA' || item.unit === 'pauschal';
                             return (
                                 <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
                                     <td style={{ padding: '10px 5px', fontSize: '10pt', textAlign: 'center', color: '#444' }}>{pos}</td>
-                                    <td style={{ padding: '10px 10px', fontSize: '10pt' }}>
+                                    <td colSpan={isFlatRate ? 3 : undefined} style={{ padding: '10px 10px', fontSize: '10pt' }}>
                                         {item.title && <div style={{ fontWeight: 'bold' }}>{item.title}</div>}
                                         {item.description && <div style={{ fontSize: '9.5pt', color: '#555', marginTop: item.title ? '2px' : 0 }}>{item.description}</div>}
                                         {!item.title && !item.description && <div style={{ color: '#aaa' }}>—</div>}
                                     </td>
-                                    <td style={{ padding: '10px 5px', fontSize: '10pt', textAlign: 'center' }}>{item.unit === 'pauschal' ? 'PA' : item.unit}</td>
-                                    <td style={{ padding: '10px 5px', fontSize: '10pt', textAlign: 'center' }}>{item.quantity}</td>
-                                    <td style={{ padding: '10px 10px', fontSize: '10pt', textAlign: 'right' }}>€ {(Number(item.pricePerUnit) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</td>
+                                    {!isFlatRate && <>
+                                        <td style={{ padding: '10px 5px', fontSize: '10pt', textAlign: 'center' }}>{item.unit}</td>
+                                        <td style={{ padding: '10px 5px', fontSize: '10pt', textAlign: 'center' }}>{item.quantity}</td>
+                                    </>}
+                                    {!isFlatRate && <td style={{ padding: '10px 10px', fontSize: '10pt', textAlign: 'right' }}>€ {(Number(item.pricePerUnit) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</td>}
                                     <td style={{ padding: '10px 10px', fontSize: '10pt', textAlign: 'right', fontWeight: 'bold' }}>€ {(Number(item.totalPrice) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</td>
                                 </tr>
                             );

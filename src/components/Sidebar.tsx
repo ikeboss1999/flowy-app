@@ -25,7 +25,8 @@ import {
     FolderOpen,
     Inbox,
     FileCheck,
-    KeyRound
+    KeyRound,
+    LockKeyhole
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/app-version";
@@ -42,6 +43,7 @@ interface MenuItem {
     href?: string;
     children?: MenuItem[];
     adminOnly?: boolean;
+    feature?: string;
 }
 
 function getPreviousMonthValue() {
@@ -141,6 +143,8 @@ export function Sidebar() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const { isDrawerLayout } = useDevice();
     const [isOpen, setIsOpen] = useState(false);
+    const [packageFeatures, setPackageFeatures] = useState<string[] | null>(null);
+    const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -179,6 +183,26 @@ export function Sidebar() {
     };
     const { data: companySettings } = useCompanySettings();
     const [expandedItems, setExpandedItems] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (!profile?.companyOwnerId && !currentEmployee?.userId) return;
+        const loadPackageFeatures = () => {
+            fetch('/api/license', { cache: 'no-store' })
+                .then(async response => {
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    setPackageFeatures(data.assigned && data.plan && Array.isArray(data.plan.features) ? data.plan.features : null);
+                })
+                .catch(() => undefined);
+        };
+        loadPackageFeatures();
+        window.addEventListener('focus', loadPackageFeatures);
+        return () => window.removeEventListener('focus', loadPackageFeatures);
+    }, [profile?.companyOwnerId, currentEmployee?.userId]);
+
+    const featureByHref: Record<string, string> = { '/calendar': 'calendar', '/crm': 'crm', '/customers': 'customers', '/projects': 'projects', '/vehicles': 'vehicles', '/services': 'catalog', '/position-presets': 'catalog', '/employees': 'employees', '/time-tracking': 'time_tracking', '/time-tracking/archive': 'time_tracking', '/offers': 'offers', '/orders': 'orders', '/invoices': 'invoices', '/invoices/dunning': 'dunning', '/reports': 'reports', '/archive': 'archive', '/credentials': 'credentials' };
+    const isFeatureLocked = (item: MenuItem) => { const feature = item.feature || (item.href ? featureByHref[item.href] : undefined); return !!feature && packageFeatures !== null && !packageFeatures.includes(feature); };
+    const handleFeatureClick = (event: React.MouseEvent, item: MenuItem) => { if (!isFeatureLocked(item)) return; event.preventDefault(); setUpgradeFeature(item.label); };
 
     const toggleExpand = (label: string) => {
         setExpandedItems(prev =>
@@ -419,9 +443,9 @@ export function Sidebar() {
                 key={item.label}
                 href={item.href!}
                 title={item.label}
-                onClick={() => isDrawerMode && setIsOpen(false)}
-                onMouseEnter={() => prefetchForHref(item.href)}
-                onFocus={() => prefetchForHref(item.href)}
+                onClick={(event) => { handleFeatureClick(event, item); if (!isFeatureLocked(item) && isDrawerMode) setIsOpen(false); }}
+                onMouseEnter={() => !isFeatureLocked(item) && prefetchForHref(item.href)}
+                onFocus={() => !isFeatureLocked(item) && prefetchForHref(item.href)}
                 className={cn(
                     "flex rounded-2xl py-2.5 transition-all duration-300 group/item text-sm font-bold",
                     "items-center gap-4 px-4",
@@ -438,6 +462,7 @@ export function Sidebar() {
                 <span className="whitespace-nowrap transition-all duration-200">
                     {item.label}
                 </span>
+                {isFeatureLocked(item) && <LockKeyhole className="ml-auto h-3.5 w-3.5 text-amber-300" />}
             </Link>
         );
     };
@@ -477,7 +502,8 @@ export function Sidebar() {
                                 <Link
                                     key={child.label}
                                     href={child.href!}
-                                    onMouseEnter={() => prefetchForHref(child.href)}
+                                    onClick={(event) => handleFeatureClick(event, child)}
+                                    onMouseEnter={() => !isFeatureLocked(child) && prefetchForHref(child.href)}
                                     className={cn(
                                         "flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-black transition-all hover:translate-x-0.5",
                                         childActive
@@ -487,6 +513,7 @@ export function Sidebar() {
                                 >
                                     <ChildIcon className="h-4 w-4 shrink-0" />
                                     <span className="whitespace-nowrap">{child.label}</span>
+                                    {isFeatureLocked(child) && <LockKeyhole className="ml-auto h-3.5 w-3.5 text-amber-300" />}
                                 </Link>
                             );
                         })}
@@ -511,12 +538,14 @@ export function Sidebar() {
                 key={item.label}
                 href={item.href!}
                 title={item.label}
-                onMouseEnter={() => prefetchForHref(item.href)}
-                onFocus={() => prefetchForHref(item.href)}
+                onClick={(event) => handleFeatureClick(event, item)}
+                onMouseEnter={() => !isFeatureLocked(item) && prefetchForHref(item.href)}
+                onFocus={() => !isFeatureLocked(item) && prefetchForHref(item.href)}
                 className={iconButtonClass}
             >
                 <span className="pointer-events-none absolute inset-0 rounded-2xl bg-white/0 transition-all duration-300 group-hover:bg-white/5" />
                 <Icon className="relative h-5 w-5 shrink-0 transition-transform duration-300 group-hover:scale-125" />
+                {isFeatureLocked(item) && <LockKeyhole className="absolute -right-1 -top-1 h-3 w-3 text-amber-300" />}
                 {Popover}
             </Link>
         );
@@ -649,6 +678,7 @@ export function Sidebar() {
                     )}
                 </div>
             </aside>
+            {upgradeFeature && <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/60 p-5 backdrop-blur-sm" onClick={() => setUpgradeFeature(null)}><div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-7 text-white shadow-2xl" onClick={event => event.stopPropagation()}><div className="flex items-center gap-3"><LockKeyhole className="h-6 w-6 text-amber-300" /><h2 className="text-xl font-black">{upgradeFeature} ist nicht enthalten</h2></div><p className="mt-4 text-sm leading-relaxed text-white/60">Diese Funktion ist in Ihrem aktuellen FlowY-Paket nicht freigeschaltet. Wenden Sie sich an FlowY, um ein passendes Upgrade zu besprechen.</p><button onClick={() => setUpgradeFeature(null)} className="mt-6 w-full rounded-xl bg-white px-4 py-3 text-sm font-black text-slate-900">Verstanden</button></div></div>}
         </>
     );
 }

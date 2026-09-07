@@ -1,25 +1,26 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 export default function AuthCallbackPage() {
     const { session, isLoading } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     useEffect(() => {
         if (!isLoading) {
             if (session) {
-                // If session is established (e.g. accepted invite), redirect to password setting
-                router.push('/login/reset-password');
+                // New company registrations continue with onboarding; invitations still set a password.
+                router.push(searchParams.get('flow') === 'signup' ? '/onboarding' : '/login/reset-password');
             } else {
                 // If not authenticated, redirect to login page
                 router.push('/login');
             }
         }
-    }, [session, isLoading, router]);
+    }, [session, isLoading, router, searchParams]);
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-[#050510] text-white">

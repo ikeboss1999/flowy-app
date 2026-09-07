@@ -8,6 +8,7 @@ type AuditRow = { id: string; created_at: string; action: string; target_type?: 
 
 const actionNames: Record<string, string> = {
     'billing.updated': 'Zahlung aktualisiert', 'tenant.suspended': 'Firmenkonto gesperrt',
+    'trial.extended': 'Testphase verlängert', 'trial.ended': 'Testphase beendet', 'trial.converted_paid': 'Testphase in bezahlt umgewandelt',
     'tenant.unsuspended': 'Firmenkonto entsperrt', 'session.revoked': 'Sitzung beendet',
     'tenant.sessions_revoked': 'Alle Sitzungen beendet', 'usage.refreshed': 'Nutzung aktualisiert',
     'backup.restore_started': 'Wiederherstellung gestartet', 'backup.restored': 'Backup wiederhergestellt',

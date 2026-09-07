@@ -36,6 +36,17 @@ import { useAuth } from "@/context/AuthContext";
 
 export const dynamic = 'force-dynamic';
 
+function documentYear(value?: string) {
+    if (!value) return null;
+    const text = String(value).trim();
+    const european = text.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})/);
+    if (european) return Number(european[3]);
+    const iso = text.match(/^(\d{4})[.\-/]/);
+    if (iso) return Number(iso[1]);
+    const parsed = new Date(text).getFullYear();
+    return Number.isFinite(parsed) && parsed > 1900 ? parsed : null;
+}
+
 export default function InvoicesPage() {
     usePermissionGuard("invoices_read");
     const { profile } = useAuth();
@@ -110,7 +121,7 @@ export default function InvoicesPage() {
 
             const matchesStatus = filterStatus === "all" || invoice.status === filterStatus;
 
-            const matchesYear = new Date(invoice.issueDate).getFullYear() === selectedYear;
+            const matchesYear = documentYear(invoice.issueDate) === selectedYear;
 
             return matchesSearch && matchesStatus && matchesYear;
         });
@@ -140,14 +151,14 @@ export default function InvoicesPage() {
     const stats = useMemo(() => {
         return {
             total: invoices.length,
-            paid: invoices.filter(i => i.status === 'paid' && new Date(i.issueDate).getFullYear() === selectedYear).length,
-            pending: invoices.filter(i => i.status === 'pending' && new Date(i.issueDate).getFullYear() === selectedYear).length,
-            overdue: invoices.filter(i => i.status === 'overdue' && new Date(i.issueDate).getFullYear() === selectedYear).length,
+            paid: invoices.filter(i => i.status === 'paid' && documentYear(i.issueDate) === selectedYear).length,
+            pending: invoices.filter(i => i.status === 'pending' && documentYear(i.issueDate) === selectedYear).length,
+            overdue: invoices.filter(i => i.status === 'overdue' && documentYear(i.issueDate) === selectedYear).length,
         };
     }, [invoices, selectedYear]);
 
     const availableYears = useMemo(() => {
-        const years = new Set(invoices.map(inv => new Date(inv.issueDate).getFullYear()));
+        const years = new Set(invoices.map(inv => documentYear(inv.issueDate)).filter((year): year is number => year !== null));
         if (years.size === 0) years.add(new Date().getFullYear());
         return Array.from(years).sort((a, b) => b - a);
     }, [invoices]);
@@ -182,7 +193,7 @@ export default function InvoicesPage() {
                         <select
                             value={selectedYear}
                             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                            className="px-6 py-3 bg-white/10 border border-white/10 rounded-xl font-bold text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer"
+                            className="px-6 py-3 bg-white/10 border border-white/10 rounded-xl font-bold text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer [&>option]:bg-white [&>option]:text-slate-900"
                         >
                             {availableYears.map(year => (
                                 <option key={year} value={year}>{year}</option>

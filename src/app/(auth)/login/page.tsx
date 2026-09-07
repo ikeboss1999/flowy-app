@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, Lock, Mail, User, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { preloadStartup } from "@/lib/startup-preload"
+import publicSiteContent from "../../../../content/public-site.json"
 
 export default function LoginPage() {
     const searchParams = useSearchParams()
@@ -21,6 +22,7 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false)
     const [isMounted, setIsMounted] = useState(false)
     const router = useRouter()
+    const requestedPlanSlug = /^[a-z0-9-]{1,80}$/.test(searchParams.get('plan') || '') ? searchParams.get('plan')! : 'start'
 
     useEffect(() => {
         setIsMounted(true)
@@ -32,6 +34,7 @@ export default function LoginPage() {
         const mode = searchParams.get('mode')
         if (mode === 'register') setIsLogin(false)
         else setIsLogin(true)
+        if (searchParams.get('reason') === 'trial-expired') setError('Ihre FlowY-Testphase ist beendet. Bitte wenden Sie sich an FlowY, um Ihren Zugang freizuschalten.')
     }, [searchParams, isMounted])
 
 
@@ -61,16 +64,22 @@ export default function LoginPage() {
                 // Relying on onAuthStateChange alone causes a race condition
                 // where router.push fires before the cookie is set.
                 if (session?.access_token) {
-                    await fetch('/api/auth/sync-session', {
+                    const syncResponse = await fetch('/api/auth/sync-session', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ access_token: session.access_token })
                     })
+                    if (!syncResponse.ok) {
+                        const syncError = await syncResponse.json().catch(() => ({}));
+                        await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
+                        await supabase.auth.signOut();
+                        throw new Error(syncError.message || (syncError.error === 'TRIAL_EXPIRED' ? 'Ihre FlowY-Testphase ist beendet. Bitte wenden Sie sich an FlowY.' : 'Anmeldung konnte nicht abgeschlossen werden.'));
+                    }
                 }
                 await preloadStartup()
                 window.location.href = "/"
             } else {
-                const redirectUrl = `${window.location.origin}/auth/callback`;
+                const redirectUrl = `${window.location.origin}/auth/callback?flow=signup`;
 
                 const { error } = await supabase.auth.signUp({
                     email,
@@ -78,6 +87,9 @@ export default function LoginPage() {
                     options: {
                         data: {
                             full_name: fullName,
+                            requested_plan: requestedPlanSlug,
+                            trial_days: publicSiteContent.trial.days,
+                            trial_requested_at: new Date().toISOString(),
                         },
                         emailRedirectTo: redirectUrl
                     },

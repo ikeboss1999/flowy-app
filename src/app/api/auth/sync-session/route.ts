@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SignJWT } from 'jose';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { isTenantSuspended } from '@/lib/tenant-access';
+import { getTenantSuspensionReason, isTenantSuspended, isTrialAccessBlocked } from '@/lib/tenant-access';
+import { provisionRequestedTrial } from '@/lib/trial-provisioning';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,12 @@ export async function POST(request: NextRequest) {
             const { data: role } = await supabaseAdmin.from('user_roles').select('company_owner_id, role').eq('user_id', user.id).maybeSingle();
             const companyOwnerId = role?.company_owner_id || user.id;
             if (role?.role !== 'developer' && await isTenantSuspended(companyOwnerId)) {
+                const reason = await getTenantSuspensionReason(companyOwnerId);
+                if (reason === 'Testphase beendet') return NextResponse.json({ error: 'TRIAL_EXPIRED', message: 'Ihre FlowY-Testphase ist beendet. Bitte wenden Sie sich an FlowY, um Ihren Zugang freizuschalten.' }, { status: 403 });
                 return NextResponse.json({ error: 'Account suspended' }, { status: 403 });
+            }
+            if (role?.role !== 'developer' && await isTrialAccessBlocked(companyOwnerId)) {
+                return NextResponse.json({ error: 'TRIAL_EXPIRED', message: 'Ihre FlowY-Testphase ist beendet. Bitte wenden Sie sich an FlowY, um Ihren Zugang freizuschalten.' }, { status: 403 });
             }
         }
 
@@ -56,10 +62,16 @@ export async function POST(request: NextRequest) {
         }
 
         const secret = new TextEncoder().encode(rawSecret);
-        const companyOwnerId = supabaseAdmin
-            ? ((await supabaseAdmin.from('user_roles').select('company_owner_id').eq('user_id', user.id).maybeSingle()).data?.company_owner_id || user.id)
-            : user.id;
+        const resolvedRole = supabaseAdmin
+            ? (await supabaseAdmin.from('user_roles').select('company_owner_id, role').eq('user_id', user.id).maybeSingle()).data
+            : null;
+        const companyOwnerId = resolvedRole?.company_owner_id || user.id;
         if (supabaseAdmin) {
+            try {
+                await provisionRequestedTrial(user, companyOwnerId, resolvedRole?.role);
+            } catch (provisioningError) {
+                console.error('[SyncSession] Trial provisioning failed:', provisioningError instanceof Error ? provisioningError.message : provisioningError);
+            }
             const now = new Date().toISOString();
             const { data: existingSession } = await supabaseAdmin.from('admin_user_sessions').select('revoked_at').eq('id', requestedSessionId).maybeSingle();
             if (existingSession?.revoked_at) return NextResponse.json({ error: 'Session revoked' }, { status: 401 });
@@ -70,7 +82,7 @@ export async function POST(request: NextRequest) {
         const sessionToken = await new SignJWT({
             userId: user.id,
             email: user.email || '',
-            role: 'owner',
+            role: resolvedRole?.role || user.app_metadata?.role || 'owner',
             sid: requestedSessionId,
         })
             .setProtectedHeader({ alg: 'HS256' })

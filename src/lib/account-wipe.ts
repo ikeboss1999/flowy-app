@@ -21,9 +21,17 @@ async function deleteTenantRows(table: string, companyOwnerId: string): Promise<
 
 async function verifyTenantTableEmpty(table: string, companyOwnerId: string): Promise<void> {
     if (!supabaseAdmin) throw new Error('Supabase Admin-Client ist nicht konfiguriert.');
-    const { count, error } = await supabaseAdmin.from(table).select('id', { count: 'exact', head: true }).eq('userId', companyOwnerId);
+    const { count, error } = await supabaseAdmin.from(table).select('userId', { count: 'exact', head: true }).eq('userId', companyOwnerId);
     if (error && !isMissingRelation(error)) throw new Error(`Kontrolle von ${table} fehlgeschlagen: ${error.message}`);
     if ((count || 0) > 0) throw new Error(`Löschung unvollständig: ${count} Datensätze in ${table} verblieben.`);
+}
+
+async function deleteRowsByValues(table: string, column: string, values: string[]): Promise<void> {
+    if (!supabaseAdmin) throw new Error('Supabase Admin-Client ist nicht konfiguriert.');
+    for (let index = 0; index < values.length; index += 200) {
+        const { error } = await supabaseAdmin.from(table).delete().in(column, values.slice(index, index + 200));
+        if (error && !isMissingRelation(error)) throw new Error(`Löschen aus ${table} über ${column} fehlgeschlagen: ${error.message}`);
+    }
 }
 
 /**
@@ -57,6 +65,13 @@ export async function wipeAccount(userId: string): Promise<WipeResult> {
         }
 
         const backup = await createAccountBackup(companyOwnerId);
+
+        const { data: employees, error: employeesError } = await supabaseAdmin
+            .from('employees')
+            .select('id')
+            .eq('userId', companyOwnerId);
+        if (employeesError && !isMissingRelation(employeesError)) throw new Error(`Mitarbeiter konnten nicht geladen werden: ${employeesError.message}`);
+        const employeeIds = (employees || []).map(employee => String(employee.id || '')).filter(Boolean);
 
         const { data: roles, error: rolesError } = await supabaseAdmin
             .from('user_roles')
@@ -108,6 +123,12 @@ export async function wipeAccount(userId: string): Promise<WipeResult> {
             'employees',
             'vehicles',
         ];
+        // Legacy/mobile records can reference the tenant's employees while carrying
+        // an older or missing userId. Remove those children by their foreign key too.
+        if (employeeIds.length) {
+            await deleteRowsByValues('time_entries', 'employeeId', employeeIds);
+            await deleteRowsByValues('timesheets', 'employeeId', employeeIds);
+        }
         for (const table of deletionOrder) await deleteTenantRows(table, companyOwnerId);
         for (const subUserId of subUserIds) await deleteTenantRows('todos', subUserId);
         await deleteTenantRows('settings', companyOwnerId);

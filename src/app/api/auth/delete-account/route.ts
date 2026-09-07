@@ -36,7 +36,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'Benutzer-ID stimmt nicht mit der aktuellen Sitzung ueberein.' }, { status: 403 });
         }
 
-        if (confirmation !== 'LÖSCHEN') {
+        const isOnboardingCancellation = confirmation === 'ONBOARDING_CANCEL';
+        if (confirmation !== 'LÖSCHEN' && confirmation !== 'LOESCHEN' && !isOnboardingCancellation) {
             return NextResponse.json({ message: 'Die Löschbestätigung ist ungültig.' }, { status: 400 });
         }
 
@@ -48,8 +49,10 @@ export async function POST(req: Request) {
             .eq('userId', sessionUserId)
             .maybeSingle();
         if (settingsError) return NextResponse.json({ message: 'PIN konnte nicht geprüft werden.' }, { status: 500 });
-        const savedPin = settings?.accountSettings?.pinCode;
-        if (!savedPin || pin !== savedPin) {
+        const accountSettings = settings?.accountSettings || {};
+        const savedPin = accountSettings.pinCode;
+        const canCancelIncompleteOnboarding = isOnboardingCancellation && accountSettings.onboardingCompleted !== true;
+        if (!canCancelIncompleteOnboarding && (!savedPin || pin !== savedPin)) {
             return NextResponse.json({ message: savedPin ? 'PIN ist nicht korrekt.' : 'Bitte legen Sie vor der Kontolöschung einen PIN fest.' }, { status: 403 });
         }
 

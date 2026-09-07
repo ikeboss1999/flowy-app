@@ -8,6 +8,7 @@ import { APP_VERSION } from "@/lib/app-version";
 export function AppInfo() {
     const { profile } = useAuth();
     const [deviceInfo, setDeviceInfo] = useState({ os: "Lade...", browser: "Lade...", screen: "Lade..." });
+    const [license, setLicense] = useState<{ assigned: boolean; billing?: { plan_name: string; billing_cycle: string; price_amount: number; currency: string; payment_status: string; trial_ends_at?: string }; plan?: { name: string; features: string[] } | null } | null>(null);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -40,6 +41,15 @@ export function AppInfo() {
             });
         }
     }, []);
+
+    useEffect(() => {
+        fetch('/api/license', { cache: 'no-store' }).then(async response => {
+            if (!response.ok) throw new Error('Lizenzdaten nicht verfügbar');
+            setLicense(await response.json());
+        }).catch(() => setLicense({ assigned: false }));
+    }, []);
+
+    const statusLabels: Record<string, string> = { unknown: 'Nicht festgelegt', trial: 'Testphase', paid: 'Bezahlt', open: 'Offen', overdue: 'Überfällig', failed: 'Fehlgeschlagen', cancelled: 'Gekündigt', free: 'Kostenlos' };
 
     // Format Role name
     const getRoleLabel = (role: string | undefined) => {
@@ -83,8 +93,26 @@ export function AppInfo() {
                             </div>
                             <div className="flex justify-between border-b border-white/10 pb-2">
                                 <span className="text-indigo-200/70 font-semibold text-sm">Lizenz</span>
-                                <span className="font-bold text-sm text-emerald-400">Enterprise</span>
+                                <span className="font-bold text-sm text-emerald-400">{license === null ? 'Wird geladen…' : license.assigned ? (license.plan?.name || license.billing?.plan_name) : 'Nicht zugewiesen'}</span>
                             </div>
+                            {license?.assigned && <>
+                                <div className="flex justify-between border-b border-white/10 pb-2">
+                                    <span className="text-indigo-200/70 font-semibold text-sm">Lizenzstatus</span>
+                                    <span className="font-bold text-sm">{statusLabels[license.billing?.payment_status || 'unknown'] || license.billing?.payment_status}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/10 pb-2">
+                                    <span className="text-indigo-200/70 font-semibold text-sm">Abrechnung</span>
+                                    <span className="font-bold text-sm">{license.billing?.billing_cycle === 'yearly' ? 'Jährlich' : license.billing?.billing_cycle === 'monthly' ? 'Monatlich' : license.billing?.billing_cycle === 'free' ? 'Kostenlos' : 'Manuell'} · {Number(license.billing?.price_amount || 0).toLocaleString('de-AT', { minimumFractionDigits: 2 })} {license.billing?.currency || 'EUR'}</span>
+                                </div>
+                                {license.billing?.trial_ends_at && <div className="flex justify-between border-b border-white/10 pb-2">
+                                    <span className="text-indigo-200/70 font-semibold text-sm">Testphase bis</span>
+                                    <span className="font-bold text-sm">{new Date(license.billing.trial_ends_at).toLocaleDateString('de-AT')}</span>
+                                </div>}
+                                <div className="flex justify-between border-b border-white/10 pb-2">
+                                    <span className="text-indigo-200/70 font-semibold text-sm">Funktionen</span>
+                                    <span className="font-bold text-sm">{license.plan?.features?.length ?? 0} enthalten</span>
+                                </div>
+                            </>}
                             <div className="flex justify-between pb-2">
                                 <span className="text-indigo-200/70 font-semibold text-sm">Entwickler</span>
                                 <span className="font-bold text-sm flex items-center gap-1.5">

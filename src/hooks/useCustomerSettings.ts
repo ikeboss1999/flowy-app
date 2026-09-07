@@ -12,7 +12,7 @@ export interface CustomerSettings {
 
 const initialData: CustomerSettings = {
     prefix: "KD-",
-    nextNumber: 10000,
+    nextNumber: 1,
     mindestLaenge: 5,
 };
 
