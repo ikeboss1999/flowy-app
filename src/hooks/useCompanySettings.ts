@@ -24,7 +24,8 @@ const initialData: CompanyData = {
     bic: '',
     iban: '',
     nextEmployeeNumber: '100001',
-    employeeNumberPrefix: 'MA-'
+    employeeNumberPrefix: 'MA-',
+    employeeNumberPadding: 1
 };
 
 export function useCompanySettings() {

@@ -7,11 +7,13 @@ import { useAuth } from '@/context/AuthContext';
 export interface ProjectSettings {
     projectNumberPrefix: string;
     nextProjectNumber: number;
+    projectNumberPadding: number;
 }
 
 const DEFAULT: ProjectSettings = {
     projectNumberPrefix: 'PRJ-',
     nextProjectNumber: 1,
+    projectNumberPadding: 1,
 };
 
 export function useProjectSettings() {

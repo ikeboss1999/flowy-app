@@ -46,9 +46,7 @@ export async function GET(request: Request) {
             throw error;
         }
 
-        const filesList = archiveFiles || [];
-
-        return NextResponse.json(filesList);
+        return NextResponse.json(archiveFiles || []);
     } catch (e) {
         console.error('[ArchiveFiles] GET failed:', e);
         return NextResponse.json({ error: 'Failed to fetch files' }, { status: 500 });

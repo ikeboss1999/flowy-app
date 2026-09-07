@@ -35,6 +35,7 @@ interface EmployeeModalProps {
     onGenerateContract?: (employee: Employee) => void;
     initialEmployee?: Employee;
     getNextNumber?: () => string;
+    existingEmployees?: Employee[];
 }
 
 const TABS = [
@@ -66,6 +67,7 @@ const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 const AVATAR_THUMB_SIZE = 128;
 
 const isEncryptedEmployeeValue = (value?: string) => typeof value === "string" && value.startsWith("gcm:v1:");
+
 
 function createAvatarThumbnail(file: File): Promise<Blob> {
     return new Promise((resolve, reject) => {
@@ -120,7 +122,7 @@ function createAvatarThumbnail(file: File): Promise<Blob> {
     });
 }
 
-export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, initialEmployee, getNextNumber }: EmployeeModalProps) {
+export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, initialEmployee, getNextNumber, existingEmployees = [] }: EmployeeModalProps) {
     const [employeeId, setEmployeeId] = useState("");
     const [isHydratingEmployee, setIsHydratingEmployee] = useState(false);
 
@@ -238,9 +240,9 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                     .then((res) => res.json())
                     .then((data) => {
                         if (data && !data.error) {
-                            const fullEmployee = {
-                                ...data,
-                                employment: {
+                                const fullEmployee = {
+                                    ...data,
+                                    employment: {
                                     ...data.employment,
                                     workerType: data.employment?.workerType || "Arbeiter",
                                     classification: data.employment?.classification || "",
@@ -494,34 +496,45 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
 
     const hasAvatar = !!(formData.avatarUrl || formData.avatar);
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = (e?: React.SyntheticEvent) => {
+        e?.preventDefault();
 
         // 1. Mandatory Field Validation
+        // Keep the current form state intact when validation fails.
+        const hasValue = (value?: string) => Boolean(value?.trim());
         const missingFields: string[] = [];
-        if (!formData.personalData.firstName) missingFields.push("Vorname");
-        if (!formData.personalData.lastName) missingFields.push("Nachname");
-        if (!formData.personalData.birthday) missingFields.push("Geburtsdatum");
-        if (!formData.personalData.birthPlace) missingFields.push("Geburtsort");
-        if (!formData.personalData.birthCountry) missingFields.push("Geburtsland");
+        if (!hasValue(formData.personalData.firstName)) missingFields.push("Vorname");
+        if (!hasValue(formData.personalData.lastName)) missingFields.push("Nachname");
+        if (!hasValue(formData.personalData.birthday)) missingFields.push("Geburtsdatum");
+        if (!hasValue(formData.personalData.birthPlace)) missingFields.push("Geburtsort");
+        if (!hasValue(formData.personalData.birthCountry)) missingFields.push("Geburtsland");
         if (!formData.personalData.nationality) missingFields.push("Staatsbürgerschaft");
         if (!formData.personalData.street || !formData.personalData.zip || !formData.personalData.city) missingFields.push("Vollständige Anschrift");
-        if (!formData.personalData.socialSecurityNumber) missingFields.push("Sozialversicherungsnummer");
-        if (!formData.employment.startDate) missingFields.push("Eintrittsdatum");
-        if (!formData.bankDetails.iban) missingFields.push("IBAN");
+        if (!hasValue(formData.personalData.socialSecurityNumber)) missingFields.push("Sozialversicherungsnummer");
+        if (!hasValue(formData.employment.startDate)) missingFields.push("Eintrittsdatum");
 
         if (missingFields.length > 0) {
             showToast(`Bitte füllen Sie folgende Pflichtfelder aus: ${missingFields.join(", ")}`, 'error');
             // Auto-switch to first tab with error if possible
-            if (!formData.personalData.firstName || !formData.personalData.lastName || !formData.personalData.birthday) {
+            if (!formData.personalData.firstName || !formData.personalData.lastName || !hasValue(formData.personalData.birthday)) {
                 setActiveTab("personal");
             } else if (!formData.employment.startDate) {
                 setActiveTab("employment");
-            } else if (!formData.bankDetails.iban) {
-                setActiveTab("bank");
             }
             return;
         }
+
+        const normalizedEmployeeNumber = formData.employeeNumber.trim().toLocaleLowerCase();
+        const duplicateEmployee = existingEmployees.some((employee) =>
+            employee.id !== initialEmployee?.id
+            && employee.employeeNumber?.trim().toLocaleLowerCase() === normalizedEmployeeNumber
+        );
+        if (normalizedEmployeeNumber && duplicateEmployee) {
+            showToast(`Die Personalnummer ${formData.employeeNumber} ist bereits vergeben.`, 'error');
+            setActiveTab("personal");
+            return;
+        }
+
 
         // 2. Validation for Non-EU Passport
         const isEUEWR = EU_EWR_COUNTRIES.includes(formData.personalData.nationality);
@@ -772,7 +785,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
 
                     {/* Right side: Form + Footer */}
                     <div className="flex-1 flex flex-col overflow-hidden bg-white">
-                        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto bg-slate-50/50 p-4 xl:p-8">
+                        <form id="employee-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto bg-slate-50/50 p-4 xl:p-8">
                             {activeTab === "personal" && (
                                 <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-10">
                                     {/* Group: Basisinformationen */}
@@ -903,9 +916,22 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 </label>
                                                 <input
                                                     type="date"
+                                                    max="9999-12-31"
                                                     className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium shadow-sm"
                                                     value={formData.personalData.birthday}
-                                                    onChange={e => setFormData({ ...formData, personalData: { ...formData.personalData, birthday: e.target.value } })}
+                                                    onChange={e => {
+                                                        const [year, month, day] = e.target.value.split("-");
+                                                        const normalizedBirthday = year && month && day
+                                                            ? `${year.slice(0, 4)}-${month}-${day}`
+                                                            : e.target.value;
+                                                        setFormData({
+                                                            ...formData,
+                                                            personalData: {
+                                                                ...formData.personalData,
+                                                                birthday: normalizedBirthday,
+                                                            },
+                                                        });
+                                                    }}
                                                 />
                                             </div>
                                             <div className="space-y-2">
@@ -1349,7 +1375,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div className="md:col-span-2 space-y-3">
                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
-                                                    IBAN <span className="text-rose-500">*</span>
+                                                    IBAN
                                                 </label>
                                                 <input
                                                     className="w-full px-6 py-5 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-black font-mono uppercase tracking-wider shadow-sm"
@@ -1608,7 +1634,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                 </button>
                             )}
                             <button
-                                type="submit"
+                                type="button"
                                 onClick={handleSubmit}
                                 className="min-w-[220px] rounded-2xl bg-gradient-to-r from-indigo-600 to-fuchsia-500 px-7 py-3.5 text-sm font-black text-white shadow-xl shadow-indigo-500/25 transition-all hover:-translate-y-0.5 active:scale-95"
                             >

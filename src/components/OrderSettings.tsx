@@ -6,11 +6,14 @@ import {
     CheckCircle2,
     ChevronDown,
     ChevronUp,
+    Eye,
     Hash,
     Type,
     Mail
 } from "lucide-react";
 import { useOrderSettings } from "@/hooks/useOrderSettings";
+import { useOrders } from "@/hooks/useOrders";
+import { nextYearlySequence } from "@/lib/document-numbering";
 import { cn } from "@/lib/utils";
 
 interface OrderSettingsProps {
@@ -58,6 +61,7 @@ function AccordionSection({ title, icon: Icon, isOpen, onToggle, children }: Acc
 
 export function OrderSettings({ readOnly = false }: OrderSettingsProps) {
     const { data, updateData, isLoading } = useOrderSettings();
+    const { orders } = useOrders();
     const [openSection, setOpenSection] = useState<string | null>("general");
     const [showSuccess, setShowSuccess] = useState(false);
 
@@ -85,6 +89,8 @@ export function OrderSettings({ readOnly = false }: OrderSettingsProps) {
         readOnly && "cursor-not-allowed bg-slate-100 text-slate-500"
     );
     const labelClasses = "block text-sm font-bold text-slate-700 mb-2 ml-1";
+    const currentYear = new Date().getFullYear();
+    const previewNumber = nextYearlySequence(orders as any[], currentYear, "orderNumber");
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
@@ -102,7 +108,7 @@ export function OrderSettings({ readOnly = false }: OrderSettingsProps) {
                 isOpen={openSection === "general"}
                 onToggle={() => toggleSection("general")}
             >
-                <div className="grid grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
                     <div>
                         <label className={labelClasses}>Präfix (z.B. AB-2024-)</label>
                         <input
@@ -125,6 +131,31 @@ export function OrderSettings({ readOnly = false }: OrderSettingsProps) {
                             disabled={readOnly}
                             className={inputClasses}
                         />
+                    </div>
+                    <div>
+                        <label className={labelClasses}>Mindeststellen (Padding)</label>
+                        <input
+                            type="number"
+                            name="mindestLaenge"
+                            value={data.mindestLaenge}
+                            onChange={handleChange}
+                            disabled={readOnly}
+                            className={inputClasses}
+                            min={1}
+                            max={10}
+                        />
+                    </div>
+                </div>
+
+                <div className="mt-8 flex items-center gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-6">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                        <Eye className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Vorschau nächste Nummer</div>
+                        <div className="text-xl font-black text-indigo-600">
+                            {`${currentYear}/${data.prefix || ''}${String(previewNumber).padStart(Math.max(1, Number(data.mindestLaenge) || 3), '0')}`}
+                        </div>
                     </div>
                 </div>
             </AccordionSection>
@@ -163,7 +194,7 @@ export function OrderSettings({ readOnly = false }: OrderSettingsProps) {
             </AccordionSection>
 
             {/* E-Mail Vorlage */}
-            <AccordionSection
+            {false && <AccordionSection
                 title="E-Mail Vorlage für Auftragsversand"
                 icon={Mail}
                 isOpen={openSection === "email"}
@@ -198,7 +229,7 @@ export function OrderSettings({ readOnly = false }: OrderSettingsProps) {
                         />
                     </div>
                 </div>
-            </AccordionSection>
+            </AccordionSection>}
 
             <div className="pt-8 flex justify-end gap-4">
                 {!readOnly && (

@@ -10,11 +10,15 @@ const DEFAULT_INTRO = `Vielen Dank für Ihr Vertrauen. Hiermit bestätigen wir I
 const DEFAULT_TERMS = `Zahlungsbedingungen: 14 Tage netto nach Rechnungserhalt ohne Abzug.
 Es gelten unsere allgemeinen Geschäftsbedingungen.`;
 
+const NEUTRAL_DEFAULT_TERMS = 'Zahlungsbedingungen gemäß Vereinbarung.';
+
 const initialData: OrderSettings = {
     nextOrderNumber: 1,
     prefix: "AB-",
+    // Bewahrt das bisherige Auftragsformat AB-001, kann in den Einstellungen angepasst werden.
+    mindestLaenge: 3,
     defaultIntroText: DEFAULT_INTRO,
-    defaultTerms: DEFAULT_TERMS,
+    defaultTerms: NEUTRAL_DEFAULT_TERMS,
     emailSubject: "Auftragsbestätigung {documentNumber}",
     emailBody: "Sehr geehrte Kundin, Sehr geehrter Kunde,\n\nvielen Dank für Ihre Beauftragung. Hiermit erhalten Sie unsere Auftragsbestätigung {documentNumber}.\n\nMit freundlichen Grüßen"
 };
@@ -27,7 +31,14 @@ export function useOrderSettings() {
     const { data: allSettings, isLoading, mutate } = useSWR(key, fetcher);
 
     const data: OrderSettings = allSettings?.orderSettings
-        ? { ...initialData, ...allSettings.orderSettings }
+        ? {
+            ...initialData,
+            ...allSettings.orderSettings,
+            // Den bisherigen voreingestellten 14-Tage-Text nicht weiter als Standard anzeigen.
+            defaultTerms: allSettings.orderSettings.defaultTerms === DEFAULT_TERMS
+                ? NEUTRAL_DEFAULT_TERMS
+                : (allSettings.orderSettings.defaultTerms ?? NEUTRAL_DEFAULT_TERMS),
+        }
         : initialData;
 
     const updateData = async (newData: Partial<OrderSettings>) => {

@@ -25,6 +25,7 @@ import { RealtimeClock } from "@/components/RealtimeClock";
 import { useAuth } from "@/context/AuthContext";
 import { useStartup } from "@/hooks/useStartup";
 import { useAccountSettings } from "@/hooks/useAccountSettings";
+import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { cn } from "@/lib/utils";
 
 const formatDate = (date: Date) =>
@@ -40,6 +41,7 @@ export default function Home() {
   const { profile } = useAuth();
   const { data: startup } = useStartup();
   const { data: accountSettings } = useAccountSettings();
+  const { events: calendarEvents = [] } = useCalendarEvents();
 
   React.useEffect(() => {
     if (profile?.role === "developer") {
@@ -87,6 +89,45 @@ export default function Home() {
   const canOpenDashboard = canReadInvoices || canReadOffers || canReadOrders || canReadProjects || canReadEmployees || canUseTime || canReadReports;
 
   const status = startup.status;
+  const toDateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const todayKey = toDateKey(today);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowKey = toDateKey(tomorrow);
+  const upcomingEvents = calendarEvents
+    .filter((event) => event.startDate <= tomorrowKey && event.endDate >= todayKey)
+    .sort((a, b) => (a.startTime || "99:99").localeCompare(b.startTime || "99:99"));
+
+  const actionNotices = [
+    canReadInvoices && status.overdueInvoices > 0 && {
+      label: "Fällige Rechnungen",
+      detail: `${status.overdueInvoices} Rechnung${status.overdueInvoices === 1 ? "" : "en"} prüfen`,
+      href: "/invoices",
+      icon: AlertTriangle,
+      tone: "rose",
+    },
+    canReadInvoices && status.invoiceDrafts > 0 && {
+      label: "Rechnungsentwürfe",
+      detail: `${status.invoiceDrafts} Entwurf${status.invoiceDrafts === 1 ? "" : "e"} fertigstellen`,
+      href: "/invoices",
+      icon: FileText,
+      tone: "amber",
+    },
+    canReadOffers && status.openOffers > 0 && {
+      label: "Offene Angebote",
+      detail: `${status.openOffers} Angebot${status.openOffers === 1 ? "" : "e"} warten auf Antwort`,
+      href: "/offers",
+      icon: FileSignature,
+      tone: "indigo",
+    },
+    canReadProjects && status.activeProjects > 0 && {
+      label: "Aktive Projekte",
+      detail: `${status.activeProjects} Projekt${status.activeProjects === 1 ? "" : "e"} in Bearbeitung`,
+      href: "/projects",
+      icon: Briefcase,
+      tone: "emerald",
+    },
+  ].filter(Boolean) as Array<{ label: string; detail: string; href: string; icon: React.ElementType; tone: "rose" | "amber" | "indigo" | "emerald" }>;
 
   const primaryActions = [
     canWriteInvoices && {
@@ -332,7 +373,12 @@ export default function Home() {
             <Link
               key={item.label}
               href={item.href}
-              className="group rounded-[1.5rem] border border-slate-100 bg-gradient-to-br from-slate-50 to-white p-5 transition hover:-translate-y-0.5 hover:border-indigo-100 hover:shadow-xl hover:shadow-slate-200/70"
+              className={cn(
+                "group rounded-[1.5rem] border border-slate-100 bg-gradient-to-br from-slate-50 to-white p-5 transition hover:-translate-y-0.5 hover:border-indigo-100 hover:shadow-xl hover:shadow-slate-200/70",
+                item.tone === "indigo" && "border-l-4 border-l-indigo-400",
+                item.tone === "emerald" && "border-l-4 border-l-emerald-400",
+                item.tone === "amber" && "border-l-4 border-l-amber-400",
+              )}
             >
               <div className="flex items-start justify-between">
                 <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl border", toneClasses[item.tone as keyof typeof toneClasses])}>
@@ -349,39 +395,108 @@ export default function Home() {
       </section>
       )}
 
-      <section suppressHydrationWarning className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
+      <section suppressHydrationWarning className="grid items-start grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-8">
+        <div className="self-start rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm sm:p-7">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-black text-slate-900">Arbeitsbereiche</h2>
-              <p className="text-sm font-semibold text-slate-500">Direkt in den passenden Bereich springen.</p>
+              <h2 className="text-2xl font-black text-slate-900">Mitteilungszentrale</h2>
+              <p className="text-sm font-semibold text-slate-500">Was heute Aufmerksamkeit braucht.</p>
             </div>
+            <span className={cn("rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider", actionNotices.length > 0 ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600")}>
+              {actionNotices.length > 0 ? `${actionNotices.length} offen` : "Alles erledigt"}
+            </span>
           </div>
           <div suppressHydrationWarning className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
-            {modules.map((module) => {
-              const Icon = module.icon;
+            {actionNotices.length > 0 ? actionNotices.map((notice) => {
+              const Icon = notice.icon;
               return (
                 <Link
-                  key={module.href}
-                  href={module.href}
-                  className="group rounded-[1.5rem] border border-slate-100 bg-slate-50/70 p-5 transition hover:bg-white hover:shadow-lg"
+                  key={`${notice.href}-${notice.label}`}
+                  href={notice.href}
+                  className={cn(
+                    "group flex items-center gap-4 rounded-[1.5rem] border border-slate-100 bg-slate-50/70 p-5 transition hover:bg-white hover:shadow-lg",
+                    notice.tone === "rose" && "border-l-4 border-l-rose-400",
+                    notice.tone === "amber" && "border-l-4 border-l-amber-400",
+                    notice.tone === "indigo" && "border-l-4 border-l-indigo-400",
+                    notice.tone === "emerald" && "border-l-4 border-l-emerald-400",
+                  )}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className={cn("flex h-11 w-11 items-center justify-center rounded-2xl border", toneClasses[module.tone])}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <ArrowUpRight className="h-4 w-4 text-slate-300 transition group-hover:text-indigo-500" />
+                  <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border", notice.tone === "rose" ? "border-rose-100 bg-rose-50 text-rose-600" : notice.tone === "amber" ? "border-amber-100 bg-amber-50 text-amber-600" : notice.tone === "emerald" ? "border-emerald-100 bg-emerald-50 text-emerald-600" : "border-indigo-100 bg-indigo-50 text-indigo-600")}>
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <p className="mt-5 text-lg font-black text-slate-900">{module.label}</p>
-                  <p suppressHydrationWarning className="mt-1 text-sm font-bold text-slate-500">{module.description}</p>
+                  <div className="min-w-0 flex-1"><p className="text-lg font-black text-slate-900">{notice.label}</p><p className="mt-1 text-sm font-bold text-slate-500">{notice.detail}</p></div>
+                  <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-indigo-500" />
                 </Link>
               );
-            })}
+            }) : <div className="col-span-full rounded-2xl border border-emerald-100 bg-emerald-50 p-5"><p className="font-black text-emerald-900">Alles im grünen Bereich</p><p className="mt-1 text-sm font-semibold text-emerald-700">Aktuell besteht kein dringender Handlungsbedarf.</p></div>}
+          </div>
+
+          <div className="hidden mt-5 grid gap-4 md:grid-cols-3">
+            <div className="rounded-[1.5rem] border border-slate-100 bg-slate-900 p-5 text-white shadow-lg shadow-slate-900/10">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-white/40">Tipp</p>
+              <p className="mt-2 text-base font-black">Fertige PDFs bleiben unverÃ¤ndert.</p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-white/60">Neue Stammdaten wirken erst bei neu finalisierten Dokumenten.</p>
+            </div>
+            <div className="rounded-[1.5rem] border border-indigo-100 bg-indigo-50/70 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-500">FlowY-Tipp</p>
+              <p className="mt-2 text-base font-black text-slate-900">Nummernkreise zentral pflegen</p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">PrÃ¤fixe und nÃ¤chste Nummern findest du gesammelt in den Einstellungen.</p>
+            </div>
+            <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50/70 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-600">Gut zu wissen</p>
+              <p className="mt-2 text-base font-black text-slate-900">Kalender aktuell halten</p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">Termine von heute und morgen erscheinen automatisch hier.</p>
+            </div>
           </div>
         </div>
 
+        <section className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm sm:p-7">
+          <div className="mb-5">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-500">FlowY-Tipps</p>
+            <h2 className="mt-1 text-2xl font-black text-slate-900">Praktisch f&#252;r deinen Arbeitsalltag</h2>
+            <p className="text-sm font-semibold text-slate-500">Kleine Hinweise, die dir die t&#228;gliche Arbeit erleichtern.</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-[1.5rem] border border-slate-100 bg-slate-900 p-5 text-white shadow-lg shadow-slate-900/10">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-white/40">Tipp</p>
+              <p className="mt-2 text-base font-black">Fertige PDFs bleiben unver&#228;ndert.</p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-white/60">Neue Stammdaten wirken erst bei neu finalisierten Dokumenten.</p>
+            </div>
+            <div className="rounded-[1.5rem] border border-indigo-100 bg-indigo-50/70 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-500">FlowY-Tipp</p>
+              <p className="mt-2 text-base font-black text-slate-900">Nummernkreise zentral pflegen</p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">Pr&#228;fixe und n&#228;chste Nummern findest du gesammelt in den Einstellungen.</p>
+            </div>
+            <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50/70 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-600">Gut zu wissen</p>
+              <p className="mt-2 text-base font-black text-slate-900">Kalender aktuell halten</p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">Termine von heute und morgen erscheinen automatisch in deiner Mitteilungszentrale.</p>
+            </div>
+          </div>
+        </section>
+        </div>
+
         <aside suppressHydrationWarning className="space-y-5">
-          <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
+          {canUseCalendar && (
+            <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div><h2 className="text-xl font-black text-slate-900">Heute</h2><p className="text-sm font-semibold text-slate-500">Kalender und Termine</p></div>
+                <Link href="/calendar" className="text-xs font-black uppercase tracking-wider text-indigo-600">Öffnen</Link>
+              </div>
+              {upcomingEvents.length > 0 ? (
+                <div className="space-y-2">
+                  {upcomingEvents.slice(0, 6).map((event) => (
+                    <Link key={event.id} href="/calendar" className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 transition hover:bg-indigo-50">
+                      <Calendar className="h-4 w-4 shrink-0 text-indigo-600" />
+                      <div className="min-w-0 flex-1"><p className="truncate font-black text-slate-800">{event.title}</p><p className="text-xs font-bold text-slate-400">{event.startDate === todayKey ? "Heute" : "Morgen"} · {event.isAllDay ? "Ganztägig" : event.startTime || "Termin"}</p></div>
+                    </Link>
+                  ))}
+                </div>
+              ) : <p className="rounded-2xl bg-slate-50 px-4 py-5 text-sm font-semibold text-slate-500">Heute und morgen sind keine Termine eingetragen.</p>}
+            </div>
+          )}
+          <div className="hidden rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-black text-slate-900">Heute nützlich</h2>
             <div className="mt-5 space-y-3">
               {canUseCalendar && (
@@ -412,14 +527,108 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-slate-100 bg-slate-900 p-6 text-white shadow-xl shadow-slate-900/10">
+          <div className="hidden rounded-[2rem] border border-slate-100 bg-slate-900 p-6 text-white shadow-xl shadow-slate-900/10">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-white/40">Tipp</p>
             <p className="mt-3 text-lg font-black">Fertige PDFs bleiben unverändert.</p>
             <p className="mt-2 text-sm font-semibold leading-relaxed text-white/60">
               Neue Änderungen an Firmendaten oder Logo wirken erst bei neu finalisierten Dokumenten.
             </p>
           </div>
+
+          <div className="hidden grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="rounded-[2rem] border border-indigo-100 bg-indigo-50/70 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-500">FlowY-Tipp</p>
+              <p className="mt-2 text-base font-black text-slate-900">Nummernkreise zentral pflegen</p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">
+                Präfixe und nächste Nummern findest du gesammelt in den Einstellungen.
+              </p>
+            </div>
+            <div className="rounded-[2rem] border border-emerald-100 bg-emerald-50/70 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-600">Gut zu wissen</p>
+              <p className="mt-2 text-base font-black text-slate-900">Kalender immer aktuell halten</p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">
+                Termine von heute und morgen erscheinen automatisch in deiner Mitteilungszentrale.
+              </p>
+            </div>
+          </div>
         </aside>
+
+        <section className="hidden xl:col-start-1 rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm sm:p-7">
+          <div className="mb-5">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-500">FlowY-Tipps</p>
+            <h2 className="mt-1 text-2xl font-black text-slate-900">Praktisch f&#252;r deinen Arbeitsalltag</h2>
+            <p className="text-sm font-semibold text-slate-500">Kleine Hinweise, die dir die t&#228;gliche Arbeit erleichtern.</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-[1.5rem] border border-slate-100 bg-slate-900 p-5 text-white shadow-lg shadow-slate-900/10">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-white/40">Tipp</p>
+              <p className="mt-2 text-base font-black">Fertige PDFs bleiben unver&#228;ndert.</p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-white/60">Neue Stammdaten wirken erst bei neu finalisierten Dokumenten.</p>
+            </div>
+            <div className="rounded-[1.5rem] border border-indigo-100 bg-indigo-50/70 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-500">FlowY-Tipp</p>
+              <p className="mt-2 text-base font-black text-slate-900">Nummernkreise zentral pflegen</p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">Pr&#228;fixe und n&#228;chste Nummern findest du gesammelt in den Einstellungen.</p>
+            </div>
+            <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50/70 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-600">Gut zu wissen</p>
+              <p className="mt-2 text-base font-black text-slate-900">Kalender aktuell halten</p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">Termine von heute und morgen erscheinen automatisch in deiner Mitteilungszentrale.</p>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section className="hidden rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm sm:p-7">
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-500">FlowY-Tipps</p>
+            <h2 className="mt-1 text-2xl font-black text-slate-900">Praktisch fÃ¼r deinen Arbeitsalltag</h2>
+            <p className="text-sm font-semibold text-slate-500">Kleine Hinweise, die dir die tÃ¤gliche Arbeit erleichtern.</p>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-[1.5rem] border border-slate-100 bg-slate-900 p-5 text-white shadow-lg shadow-slate-900/10">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-white/40">Tipp</p>
+            <p className="mt-2 text-base font-black">Fertige PDFs bleiben unverÃ¤ndert.</p>
+            <p className="mt-1 text-sm font-semibold leading-relaxed text-white/60">Neue Stammdaten wirken erst bei neu finalisierten Dokumenten.</p>
+          </div>
+          <div className="rounded-[1.5rem] border border-indigo-100 bg-indigo-50/70 p-5">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-500">FlowY-Tipp</p>
+            <p className="mt-2 text-base font-black text-slate-900">Nummernkreise zentral pflegen</p>
+            <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">PrÃ¤fixe und nÃ¤chste Nummern findest du gesammelt in den Einstellungen.</p>
+          </div>
+          <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50/70 p-5">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-600">Gut zu wissen</p>
+            <p className="mt-2 text-base font-black text-slate-900">Kalender aktuell halten</p>
+            <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">Termine von heute und morgen erscheinen automatisch in deiner Mitteilungszentrale.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="hidden rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm sm:p-7">
+        <div className="mb-5">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-500">FlowY-Tipps</p>
+          <h2 className="mt-1 text-2xl font-black text-slate-900">Praktisch f&#252;r deinen Arbeitsalltag</h2>
+          <p className="text-sm font-semibold text-slate-500">Kleine Hinweise, die dir die t&#228;gliche Arbeit erleichtern.</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-[1.5rem] border border-slate-100 bg-slate-900 p-5 text-white shadow-lg shadow-slate-900/10">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-white/40">Tipp</p>
+            <p className="mt-2 text-base font-black">Fertige PDFs bleiben unver&#228;ndert.</p>
+            <p className="mt-1 text-sm font-semibold leading-relaxed text-white/60">Neue Stammdaten wirken erst bei neu finalisierten Dokumenten.</p>
+          </div>
+          <div className="rounded-[1.5rem] border border-indigo-100 bg-indigo-50/70 p-5">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-500">FlowY-Tipp</p>
+            <p className="mt-2 text-base font-black text-slate-900">Nummernkreise zentral pflegen</p>
+            <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">Pr&#228;fixe und n&#228;chste Nummern findest du gesammelt in den Einstellungen.</p>
+          </div>
+          <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50/70 p-5">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-600">Gut zu wissen</p>
+            <p className="mt-2 text-base font-black text-slate-900">Kalender aktuell halten</p>
+            <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">Termine von heute und morgen erscheinen automatisch in deiner Mitteilungszentrale.</p>
+          </div>
+        </div>
       </section>
     </div>
   );

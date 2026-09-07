@@ -9,7 +9,10 @@ export function useCalendarEvents() {
     const { user } = useAuth();
 
     const key = user ? `/api/calendar-events?userId=${user.id}` : null;
-    const { data = [], isLoading, mutate } = useSWR<CalendarEvent[]>(key, fetcher);
+    const { data = [], isLoading, mutate } = useSWR<CalendarEvent[]>(key, fetcher, {
+        revalidateOnMount: true,
+        revalidateOnFocus: true,
+    });
 
     const addEvent = async (eventData: Omit<CalendarEvent, 'id' | 'userId' | 'createdAt'>) => {
         if (!user) return;

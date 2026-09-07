@@ -8,10 +8,13 @@ import {
     ChevronDown,
     ChevronUp,
     CheckCircle2,
+    Eye,
     Mail,
     Percent,
 } from "lucide-react";
 import { useOfferSettings } from "@/hooks/useOfferSettings";
+import { useOffers } from "@/hooks/useOffers";
+import { nextYearlySequence } from "@/lib/document-numbering";
 import { cn } from "@/lib/utils";
 
 interface OfferSettingsProps {
@@ -59,7 +62,8 @@ function AccordionSection({ title, icon: Icon, isOpen, onToggle, children }: Acc
 
 export function OfferSettings({ readOnly = false }: OfferSettingsProps) {
     const { data, updateData, isLoading } = useOfferSettings();
-    const [openSection, setOpenSection] = useState<string | null>("general");
+    const { offers } = useOffers();
+    const [openSection, setOpenSection] = useState<string | null>("numbering");
     const [showSuccess, setShowSuccess] = useState(false);
 
     if (isLoading) return <div className="p-8 text-slate-400 font-bold">Laden...</div>;
@@ -83,6 +87,8 @@ export function OfferSettings({ readOnly = false }: OfferSettingsProps) {
         readOnly && "cursor-not-allowed bg-slate-100 text-slate-500"
     );
     const labelClasses = "block text-sm font-bold text-slate-700 mb-2 ml-1";
+    const currentYear = new Date().getFullYear();
+    const previewNumber = nextYearlySequence(offers as any[], currentYear, "offerNumber");
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
@@ -93,44 +99,86 @@ export function OfferSettings({ readOnly = false }: OfferSettingsProps) {
                 <h2 className="text-3xl font-black text-slate-900 tracking-tight">Angebotseinstellungen</h2>
             </div>
 
-            {/* Allgemeine Einstellungen */}
+            {/* Nummernkreis & Präfix */}
             <AccordionSection
-                title="Allgemeine Angebotseinstellungen"
+                title="Nummernkreis & Präfix"
                 icon={Hash}
-                isOpen={openSection === "general"}
-                onToggle={() => toggleSection("general")}
+                isOpen={openSection === "numbering"}
+                onToggle={() => toggleSection("numbering")}
             >
                 <div className="space-y-6">
-                    <div>
-                        <label className={labelClasses}>Nächste Angebotsnummer</label>
-                        <p className="text-xs text-slate-400 font-medium mb-3 ml-1">
-                            Die Angebotsnummer wird als <span className="font-black text-slate-600">JJJJ/A-XX</span> formatiert (z.B. 2026/A-04).
-                        </p>
-                        <input
-                            type="number"
-                            min="1"
-                            value={data.nextOfferNumber}
-                            onChange={(e) => updateReadonlySafe({ nextOfferNumber: Number(e.target.value) })}
-                            disabled={readOnly}
-                            className={inputClasses}
-                        />
+                    <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+                        <div>
+                            <label className={labelClasses}>Präfix (z.B. A-)</label>
+                            <input
+                                type="text"
+                                value={data.prefix}
+                                onChange={(e) => updateReadonlySafe({ prefix: e.target.value })}
+                                disabled={readOnly}
+                                className={inputClasses}
+                                placeholder="A-"
+                            />
+                        </div>
+                        <div>
+                            <label className={labelClasses}>Mindeststellen (Padding)</label>
+                            <input
+                                type="number"
+                                min="1"
+                                max="10"
+                                value={data.mindestLaenge}
+                                onChange={(e) => updateReadonlySafe({ mindestLaenge: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
+                                disabled={readOnly}
+                                className={inputClasses}
+                            />
+                        </div>
+                        <div>
+                            <label className={labelClasses}>Nächste Angebotsnummer</label>
+                            <input
+                                type="number"
+                                min="1"
+                                value={data.nextOfferNumber}
+                                onChange={(e) => updateReadonlySafe({ nextOfferNumber: Number(e.target.value) })}
+                                disabled={readOnly}
+                                className={inputClasses}
+                            />
+                        </div>
                     </div>
                     <div>
-                        <label className={labelClasses}>Standard-Angebotsgültigkeit (in Tagen)</label>
-                        <p className="text-xs text-slate-400 font-medium mb-3 ml-1">
-                            Wenn in der Angebotserstellung kein festes Gültigkeitsdatum gewählt wird, greift dieser Standardwert (z.B. &quot;20 Tage ab Ausstellungsdatum&quot;).
-                        </p>
-                        <input
-                            type="number"
-                            min="1"
-                            value={data.defaultValidityDays}
-                            onChange={(e) => updateReadonlySafe({ defaultValidityDays: Number(e.target.value) })}
-                            disabled={readOnly}
-                            className={inputClasses}
-                        />
+                        <div className="mt-8 flex items-center gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-6">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                                <Eye className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Vorschau nächste Nummer</div>
+                                <div className="text-xl font-black text-indigo-600">
+                                    {`${currentYear}/${data.prefix || ''}${String(previewNumber).padStart(Math.max(1, Number(data.mindestLaenge) || 1), '0')}`}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </AccordionSection>
+
+            <AccordionSection
+                title="Allgemeine Angebotseinstellungen"
+                icon={AlignLeft}
+                isOpen={openSection === "general" || openSection === "texts" || openSection === "discount"}
+                onToggle={() => toggleSection("general")}
+            >
+                <div className="mb-8">
+                    <label className={labelClasses}>Standard-Angebotsgültigkeit (in Tagen)</label>
+                    <p className="text-xs text-slate-400 font-medium mb-3 ml-1">
+                        Wenn in der Angebotserstellung kein festes Gültigkeitsdatum gewählt wird, greift dieser Standardwert.
+                    </p>
+                    <input
+                        type="number"
+                        min="1"
+                        value={data.defaultValidityDays}
+                        onChange={(e) => updateReadonlySafe({ defaultValidityDays: Number(e.target.value) })}
+                        disabled={readOnly}
+                        className={inputClasses}
+                    />
+                </div>
 
             {/* Textbausteine */}
             <AccordionSection
@@ -229,9 +277,10 @@ export function OfferSettings({ readOnly = false }: OfferSettingsProps) {
                     </div>
                 </div>
             </AccordionSection>
+            </AccordionSection>
 
             {/* E-Mail Vorlage */}
-            <AccordionSection
+            {false && <AccordionSection
                 title="E-Mail Vorlage für Angebotsversand"
                 icon={Mail}
                 isOpen={openSection === "email"}
@@ -264,7 +313,7 @@ export function OfferSettings({ readOnly = false }: OfferSettingsProps) {
                         />
                     </div>
                 </div>
-            </AccordionSection>
+            </AccordionSection>}
 
             <div className="pt-8 flex justify-end gap-4">
                 {!readOnly && (

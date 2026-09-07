@@ -17,6 +17,7 @@ import {
     X
 } from "lucide-react";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { GlobalDocumentSettings } from "@/components/GlobalDocumentSettings";
 import { cn } from "@/lib/utils";
 
 interface AccordionSectionProps {
@@ -509,6 +510,8 @@ export function CompanySettings() {
                     </div>
                 </div>
             </AccordionSection>
+
+            <GlobalDocumentSettings />
 
             <div className="pt-8 flex justify-end gap-4">
                 <button

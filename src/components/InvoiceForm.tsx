@@ -58,6 +58,7 @@ import { Service } from "@/types/service";
 import { CustomerSearchSelect } from "@/components/CustomerSearchSelect";
 import { InvoiceReactPDF } from "@/components/InvoiceReactPDF";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { formatYearlyNumber, nextYearlySequence } from "@/lib/document-numbering";
 
 interface InvoiceFormProps {
   initialData?: Partial<Invoice>;
@@ -275,9 +276,9 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
   // Initialize from settings and params
   useEffect(() => {
     if (!isSettingsLoading && !initialData && settings) {
-      setInvoiceNumber(
-        `${new Date().getFullYear()}/${String(settings.nextInvoiceNumber || 1).padStart(2, "0")}`,
-      );
+      const year = new Date().getFullYear();
+      const next = nextYearlySequence(invoices as any[], year, "invoiceNumber");
+      setInvoiceNumber(formatYearlyNumber(year, settings.prefix || "", next, Math.max(1, Number(settings.mindestLaenge) || 2)));
       const defaultTerm = settings.paymentTerms.find(
         (t) => t.id === settings.defaultPaymentTermId,
       );
@@ -721,7 +722,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
         } else {
           await addInvoice(invoiceData);
           await updateSettings({
-            nextInvoiceNumber: settings.nextInvoiceNumber + 1,
+          nextInvoiceNumber: Number(invoiceNumber.match(/(\d+)$/)?.[1] || settings.nextInvoiceNumber || 1) + 1,
           });
         }
 
@@ -743,7 +744,7 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     } else {
       await addInvoice(invoiceData);
       await updateSettings({
-        nextInvoiceNumber: settings.nextInvoiceNumber + 1,
+        nextInvoiceNumber: Number(invoiceNumber.match(/(\d+)$/)?.[1] || settings.nextInvoiceNumber || 1) + 1,
       });
     }
 

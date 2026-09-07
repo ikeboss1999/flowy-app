@@ -16,6 +16,7 @@ export interface OrderItem {
 export interface OrderSettings {
     nextOrderNumber: number;
     prefix: string;
+    mindestLaenge: number;
     defaultIntroText: string;
     defaultTerms: string;
     emailSubject?: string;

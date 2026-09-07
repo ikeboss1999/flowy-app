@@ -20,6 +20,7 @@ import { nanoid } from "nanoid";
 import { offerPdfFileName } from "@/lib/document-filenames";
 import { LockedPdfPreview } from "@/components/LockedPdfPreview";
 import { triggerMailto, replacePlaceholders } from "@/lib/email-helpers";
+import { formatYearlyNumber, nextYearlySequence } from "@/lib/document-numbering";
 
 const OfferPDFPreview = dynamic(
     async () => {
@@ -266,7 +267,10 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
         setIsConverting(true);
         setOrderActionMessage("Auftrag wird vorbereitet ...");
         try {
-            const orderNum = `${orderSettings.prefix}${String(orderSettings.nextOrderNumber).padStart(3, '0')}`;
+            const year = new Date().getFullYear();
+            const orderPadding = Math.max(1, Number(orderSettings.mindestLaenge) || 3);
+            const orderSequence = nextYearlySequence(orders as any[], year, "orderNumber");
+            const orderNum = formatYearlyNumber(year, orderSettings.prefix, orderSequence, orderPadding);
             if (orders.some((order) => order.orderNumber?.trim() === orderNum.trim())) {
                 setOrderActionMessage(`Auftragsnummer ${orderNum} ist bereits vergeben.`);
                 showToast(`Auftragsnummer ${orderNum} ist bereits vergeben. Bitte passen Sie den Nummernkreis in den Einstellungen an.`, "error");
@@ -310,7 +314,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
             setOrderActionMessage("Auftrag wird gespeichert ...");
             await addOrder(newOrder);
             await updateOffer(offer.id, { status: 'accepted' });
-            await updateOrderSettings({ nextOrderNumber: orderSettings.nextOrderNumber + 1 });
+            await updateOrderSettings({ nextOrderNumber: orderSequence + 1 });
 
             setOrderActionMessage("Auftrag wurde erstellt.");
             setShowSuccess(true);
@@ -332,7 +336,9 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
         if (!offer || isConvertingInvoice || !canCreateInvoice) return;
         setIsConvertingInvoice(true);
         try {
-            const invoiceNum = `${new Date().getFullYear()}/${String(invoiceSettings.nextInvoiceNumber || 1).padStart(2, "0")}`;
+            const year = new Date().getFullYear();
+            const invoiceSequence = nextYearlySequence(invoices as any[], year, "invoiceNumber");
+            const invoiceNum = formatYearlyNumber(year, invoiceSettings.prefix || "", invoiceSequence, Math.max(1, Number(invoiceSettings.mindestLaenge) || 2));
             if (invoices.some((invoice) => invoice.invoiceNumber?.trim() === invoiceNum.trim())) {
                 showToast(`Rechnungsnummer ${invoiceNum} ist bereits vergeben. Bitte passen Sie den Nummernkreis in den Einstellungen an.`, "error");
                 return;
@@ -376,7 +382,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
             };
 
             await addInvoice(newInvoice);
-            await updateInvoiceSettings({ nextInvoiceNumber: invoiceSettings.nextInvoiceNumber + 1 });
+            await updateInvoiceSettings({ nextInvoiceNumber: invoiceSequence + 1 });
 
             showToast("Rechnung erfolgreich als Entwurf erstellt!", "success");
             setShowInvoiceSuccess(true);

@@ -13,6 +13,8 @@ export interface PaymentTerm {
 export interface InvoiceSettings {
     // Allgemeine Rechnungseinstellungen
     nextInvoiceNumber: number;
+    prefix: string;
+    mindestLaenge: number;
     paymentTerms: PaymentTerm[];
     defaultPaymentTermId: string;
     defaultTaxRate: number;

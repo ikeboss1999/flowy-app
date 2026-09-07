@@ -32,7 +32,6 @@ import { DienstzettelPDF } from "@/components/DienstzettelPDF";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
 import { cn } from "@/lib/utils";
 import { useEmployees } from "@/hooks/useEmployees";
-import { useArchiveFiles } from "@/hooks/useArchiveFiles";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useNotification } from "@/context/NotificationContext";
 import { useAuth } from "@/context/AuthContext";
@@ -58,7 +57,6 @@ const initialsFor = (employee: Employee) =>
 
 export default function EmployeesPage() {
     const { employees, addEmployee, updateEmployee, deleteEmployee, getNextEmployeeNumber, isLoading } = useEmployees();
-    const { files: globalArchiveFiles = [] } = useArchiveFiles();
     const { data: companySettings } = useCompanySettings();
     usePermissionGuard("employees_read");
 
@@ -842,9 +840,14 @@ export default function EmployeesPage() {
                         employees.map((employee) => {
                             const empName = employeeName(employee);
                             const folderName = `Personal - ${empName}`;
-                            const docs = globalArchiveFiles.filter((file) => {
-                                const matchesEmployee = file.employeeId === employee.id || file.folder === folderName || file.folder?.startsWith(folderName + "/");
-                                if (!matchesEmployee) return false;
+                            const docs = (employee.documents || []).map((document) => ({
+                                id: `emp-doc-${document.id}`,
+                                name: document.name,
+                                storagePath: document.content || "",
+                                mimeType: document.type || "application/octet-stream",
+                                size: undefined,
+                                createdAt: document.uploadDate,
+                            })).filter((file) => {
                                 const query = searchQuery.trim().toLowerCase();
                                 if (!query) return true;
                                 return file.name.toLowerCase().includes(query) || empName.toLowerCase().includes(query);
@@ -882,7 +885,7 @@ export default function EmployeesPage() {
                                                     const formattedSize = doc.size ? `${(doc.size / 1024).toFixed(0)} KB` : "-";
 
                                                     return (
-                                                        <button
+                                                        <div
                                                             key={doc.id}
                                                             onClick={() => handlePreview({
                                                                 id: rawDocId,
@@ -892,6 +895,21 @@ export default function EmployeesPage() {
                                                                 fileSize: formattedSize,
                                                                 content: fileContent,
                                                             })}
+                                                            role="button"
+                                                            tabIndex={0}
+                                                            onKeyDown={(event) => {
+                                                                if (event.key === "Enter" || event.key === " ") {
+                                                                    event.preventDefault();
+                                                                    handlePreview({
+                                                                        id: rawDocId,
+                                                                        name: doc.name,
+                                                                        type: doc.mimeType || "application/pdf",
+                                                                        uploadDate: doc.createdAt,
+                                                                        fileSize: formattedSize,
+                                                                        content: fileContent,
+                                                                    });
+                                                                }
+                                                            }}
                                                             className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-200 hover:shadow-sm"
                                                         >
                                                             <div className="flex min-w-0 items-center gap-3">
@@ -929,7 +947,7 @@ export default function EmployeesPage() {
                                                                     </button>
                                                                 )}
                                                             </div>
-                                                        </button>
+                                                        </div>
                                                     );
                                                 })}
                                             </div>
@@ -960,6 +978,7 @@ export default function EmployeesPage() {
                 onGenerateContract={handleManualGenerateContract}
                 initialEmployee={editingEmployee}
                 getNextNumber={getNextEmployeeNumber}
+                existingEmployees={employees}
             />
 
             <DocumentPreviewModal

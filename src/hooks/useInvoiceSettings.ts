@@ -7,6 +7,9 @@ import { fetcher } from '@/lib/fetcher';
 
 const initialData: InvoiceSettings = {
     nextInvoiceNumber: 1,
+    // Bewahrt das bisherige Format 2026/01; ein eigener Prefix kann ergänzt werden.
+    prefix: "",
+    mindestLaenge: 2,
     paymentTerms: [
         { id: '1', name: 'Sofort', text: 'sofort nach Rechnungserhalt', days: 0 },
         { id: '2', name: '7 Tage', text: 'zahlbar innerhalb von 7 Tagen ohne Abzug', days: 7 },

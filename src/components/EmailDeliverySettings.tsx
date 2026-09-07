@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertCircle, Bold, CheckCircle2, ChevronDown, ImagePlus, Italic, Link, List, Mail, Send, ShieldCheck, Trash2, Underline } from 'lucide-react';
+import { AlertCircle, Bold, CheckCircle2, ChevronDown, ClipboardList, FileText, ImagePlus, Italic, Link, List, Mail, Receipt, Send, ShieldCheck, Trash2, Underline } from 'lucide-react';
 import { useEmailSettings } from '@/hooks/useEmailSettings';
+import { useOfferSettings } from '@/hooks/useOfferSettings';
+import { useOrderSettings } from '@/hooks/useOrderSettings';
+import { useInvoiceSettings } from '@/hooks/useInvoiceSettings';
 import { cn } from '@/lib/utils';
 import { htmlToPlainText, plainTextToHtml, sanitizeEmailHtml } from '@/lib/email-html';
 
@@ -136,6 +139,9 @@ function SettingsSection({
 
 export function EmailDeliverySettings() {
     const { delivery, logs, updateDelivery, deleteConnection, isLoading, refresh } = useEmailSettings();
+    const { data: offerSettings, updateData: updateOfferSettings } = useOfferSettings();
+    const { data: orderSettings, updateData: updateOrderSettings } = useOrderSettings();
+    const { data: invoiceSettings, updateData: updateInvoiceSettings } = useInvoiceSettings();
     const [smtpPassword, setSmtpPassword] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
@@ -379,6 +385,56 @@ export function EmailDeliverySettings() {
                             {isSaving ? 'Speichert...' : 'Signatur speichern'}
                         </button>
                     </div>
+                </div>
+            </SettingsSection>
+
+            <SettingsSection
+                title="E-Mail Vorlagen für Dokumente"
+                description="Betreff und Nachricht für Angebote, Aufträge und Rechnungen zentral verwalten."
+                icon={Mail}
+                isOpen={openSection === 'templates'}
+                onToggle={() => setOpenSection(openSection === 'templates' ? null : 'templates')}
+            >
+                <div className="space-y-6">
+                    {[
+                        { key: 'offer', eyebrow: 'ANGEBOT', title: 'Angebotsversand', icon: FileText, accent: 'border-indigo-200 bg-indigo-50/40', iconStyle: 'bg-indigo-100 text-indigo-600', data: offerSettings, update: updateOfferSettings, subjectPlaceholder: 'Angebot {documentNumber}' },
+                        { key: 'order', eyebrow: 'AUFTRAG', title: 'Auftragsversand', icon: ClipboardList, accent: 'border-violet-200 bg-violet-50/40', iconStyle: 'bg-violet-100 text-violet-600', data: orderSettings, update: updateOrderSettings, subjectPlaceholder: 'Auftragsbestätigung {documentNumber}' },
+                        { key: 'invoice', eyebrow: 'RECHNUNG', title: 'Rechnungsversand', icon: Receipt, accent: 'border-emerald-200 bg-emerald-50/40', iconStyle: 'bg-emerald-100 text-emerald-600', data: invoiceSettings, update: updateInvoiceSettings, subjectPlaceholder: 'Rechnung {documentNumber}' },
+                    ].map((template) => (
+                        <div key={template.key} className={cn('rounded-3xl border p-5 shadow-sm', template.accent)}>
+                            <div className="flex items-center gap-3 border-b border-white/80 pb-4">
+                                <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl', template.iconStyle)}>
+                                    <template.icon className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{template.eyebrow}</p>
+                                    <h4 className="mt-0.5 text-lg font-black text-slate-900">{template.title}</h4>
+                                </div>
+                            </div>
+                            <div className="mt-4 space-y-4">
+                                <div>
+                                    <label className={labelClasses}>Standard-Betreff</label>
+                                    <input
+                                        value={template.data.emailSubject || ''}
+                                        onChange={(event) => template.update({ emailSubject: event.target.value } as any)}
+                                        className={inputClasses}
+                                        placeholder={template.subjectPlaceholder}
+                                    />
+                                </div>
+                                <div>
+                                    <label className={labelClasses}>Standard-Nachrichtentext</label>
+                                    <textarea
+                                        rows={6}
+                                        value={template.data.emailBody || ''}
+                                        onChange={(event) => template.update({ emailBody: event.target.value } as any)}
+                                        className={cn(inputClasses, 'resize-y font-medium')}
+                                        placeholder="Sehr geehrte Damen und Herren..."
+                                    />
+                                </div>
+                                <p className="text-xs font-semibold text-slate-400">Verwenden Sie <code className="rounded bg-white px-1.5 py-0.5 font-black text-indigo-600">{'{documentNumber}'}</code> für die Dokumentnummer.</p>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </SettingsSection>
 

@@ -10,9 +10,12 @@ import {
     CheckCircle2,
     BellRing,
     History,
-    Trash2
+    Trash2,
+    Eye
 } from "lucide-react";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
+import { useInvoices } from "@/hooks/useInvoices";
+import { nextYearlySequence } from "@/lib/document-numbering";
 import { cn } from "@/lib/utils";
 import { DunningLevel, PaymentTerm } from '@/types/invoice';
 
@@ -107,6 +110,7 @@ function DunningCard({ title, level, onChange, bgColor, borderColor, textColor, 
 
 export function InvoiceSettings({ readOnly = false }: InvoiceSettingsProps) {
     const { data, updateData, updateDunningLevel, isLoading } = useInvoiceSettings();
+    const { invoices } = useInvoices();
     const [openSection, setOpenSection] = useState<string | null>("general");
     const [showSuccess, setShowSuccess] = useState(false);
 
@@ -161,6 +165,8 @@ export function InvoiceSettings({ readOnly = false }: InvoiceSettingsProps) {
         readOnly && "cursor-not-allowed bg-slate-100 text-slate-500"
     );
     const labelClasses = "block text-sm font-bold text-slate-700 mb-2 ml-1";
+    const currentYear = new Date().getFullYear();
+    const previewNumber = nextYearlySequence(invoices as any[], currentYear, "invoiceNumber");
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
@@ -171,15 +177,26 @@ export function InvoiceSettings({ readOnly = false }: InvoiceSettingsProps) {
                 <h2 className="text-3xl font-black text-slate-900 tracking-tight">Rechnungseinstellungen</h2>
             </div>
 
-            {/* Allgemeine Rechnungseinstellungen */}
+            {/* Nummernkreis & Präfix */}
             <AccordionSection
-                title="Allgemeine Rechnungseinstellungen"
+                title="Nummernkreis & Präfix"
                 icon={FileText}
                 isOpen={openSection === "general"}
                 onToggle={() => toggleSection("general")}
             >
                 <div className="space-y-8">
-                    <div className="grid grid-cols-1 gap-8">
+                    <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+                        <div>
+                            <label className={labelClasses}>Präfix (z.B. RE-)</label>
+                            <input
+                                type="text"
+                                value={data.prefix}
+                                onChange={(e) => !readOnly && updateData({ prefix: e.target.value })}
+                                disabled={readOnly}
+                                className={inputClasses}
+                                placeholder="RE-"
+                            />
+                        </div>
                         <div>
                             <label className={labelClasses}>Nächste Rechnungsnummer</label>
                             <input
@@ -191,34 +208,29 @@ export function InvoiceSettings({ readOnly = false }: InvoiceSettingsProps) {
                                 className={inputClasses}
                             />
                         </div>
-                    </div>
-
-
-                    <div className="grid grid-cols-2 gap-8">
                         <div>
-                            <label className={labelClasses}>Standard Steuersatz (%)</label>
+                            <label className={labelClasses}>Mindeststellen (Padding)</label>
                             <input
                                 type="number"
-                                name="defaultTaxRate"
-                                value={data.defaultTaxRate}
-                                onChange={handleChange}
+                                min="1"
+                                max="10"
+                                value={data.mindestLaenge}
+                                onChange={(e) => !readOnly && updateData({ mindestLaenge: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })}
                                 disabled={readOnly}
                                 className={inputClasses}
                             />
                         </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-6">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                            <Eye className="h-5 w-5" />
+                        </div>
                         <div>
-                            <label className={labelClasses}>Standardwährung</label>
-                            <select
-                                name="defaultCurrency"
-                                value={data.defaultCurrency}
-                                onChange={handleChange}
-                                disabled={readOnly}
-                                className={selectClasses}
-                            >
-                                <option value="EUR (€)">EUR (€)</option>
-                                <option value="USD ($)">USD ($)</option>
-                                <option value="CHF (CHF)">CHF (CHF)</option>
-                            </select>
+                            <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Vorschau nächste Nummer</div>
+                            <div className="text-xl font-black text-indigo-600">
+                                {`${currentYear}/${data.prefix || ''}${String(previewNumber).padStart(Math.max(1, Number(data.mindestLaenge) || 2), '0')}`}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -403,7 +415,7 @@ export function InvoiceSettings({ readOnly = false }: InvoiceSettingsProps) {
             </AccordionSection>
 
             {/* E-Mail Vorlage */}
-            <AccordionSection
+            {false && <AccordionSection
                 title="E-Mail Vorlage für Rechnungsversand"
                 icon={Mail}
                 isOpen={openSection === "email"}
@@ -438,7 +450,7 @@ export function InvoiceSettings({ readOnly = false }: InvoiceSettingsProps) {
                         />
                     </div>
                 </div>
-            </AccordionSection>
+            </AccordionSection>}
 
             <div className="pt-8 flex justify-end gap-4">
                 {!readOnly && (

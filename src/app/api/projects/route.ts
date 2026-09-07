@@ -146,8 +146,8 @@ function readProjectSettings(settings: any) {
     return settings?.projectSettings || settings?.accountSettings?.projectSettings || {};
 }
 
-function formatProjectNumber(prefix: string, value: number) {
-    return `${prefix}${value}`;
+function formatProjectNumber(prefix: string, value: number, padding = 1) {
+    return `${prefix}${String(value).padStart(Math.max(1, padding), '0')}`;
 }
 
 async function getProjectNumberConfig(client: any, companyOwnerId: string) {
@@ -163,6 +163,7 @@ async function getProjectNumberConfig(client: any, companyOwnerId: string) {
         ? projectSettings.projectNumberPrefix
         : DEFAULT_PROJECT_PREFIX;
     const configuredNextNumber = Math.max(1, Number(projectSettings.nextProjectNumber) || 1);
+    const padding = Math.min(10, Math.max(1, Number(projectSettings.projectNumberPadding) || 1));
 
     const { data: existingNumbers, error: numbersError } = await client
         .from('projects')
@@ -181,6 +182,7 @@ async function getProjectNumberConfig(client: any, companyOwnerId: string) {
     return {
         settings: data || {},
         prefix,
+        padding,
         nextNumber: Math.max(configuredNextNumber, highestUsedNumber + 1),
     };
 }
@@ -191,6 +193,7 @@ async function updateNextProjectNumber(
     actorUserId: string,
     settings: any,
     prefix: string,
+    padding: number,
     nextNumber: number,
 ) {
     const currentProjectSettings = readProjectSettings(settings);
@@ -200,6 +203,7 @@ async function updateNextProjectNumber(
         projectSettings: {
             ...currentProjectSettings,
             projectNumberPrefix: prefix,
+            projectNumberPadding: padding,
             nextProjectNumber: nextNumber,
         },
         updatedAt: new Date().toISOString(),
@@ -315,7 +319,7 @@ export async function POST(request: Request) {
         if (!existingProject) {
             numberConfig = await getProjectNumberConfig(client, companyOwnerId);
             allocatedNumber = numberConfig.nextNumber;
-            projectNumber = formatProjectNumber(numberConfig.prefix, allocatedNumber);
+            projectNumber = formatProjectNumber(numberConfig.prefix, allocatedNumber, numberConfig.padding);
         }
 
         const projectData = {
@@ -343,7 +347,7 @@ export async function POST(request: Request) {
             }
 
             allocatedNumber += 1;
-            projectData.projectNumber = formatProjectNumber(numberConfig.prefix, allocatedNumber);
+            projectData.projectNumber = formatProjectNumber(numberConfig.prefix, allocatedNumber, numberConfig.padding);
         }
 
         if (saveError) throw saveError;
@@ -356,6 +360,7 @@ export async function POST(request: Request) {
                     session.userId,
                     numberConfig.settings,
                     numberConfig.prefix,
+                    numberConfig.padding,
                     allocatedNumber + 1,
                 );
             } catch (settingsError) {

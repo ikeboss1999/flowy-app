@@ -14,6 +14,8 @@ export interface OfferItem {
 
 export interface OfferSettings {
     nextOfferNumber: number;
+    prefix: string;
+    mindestLaenge: number;
     defaultIntroText: string;
     defaultValidityDays?: number;
     defaultDiscountEnabled?: boolean;

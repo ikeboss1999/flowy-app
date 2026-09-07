@@ -32,4 +32,5 @@ export interface CompanyData {
     // Nummernkreis Mitarbeiter
     nextEmployeeNumber?: string;
     employeeNumberPrefix?: string;
+    employeeNumberPadding?: number;
 }

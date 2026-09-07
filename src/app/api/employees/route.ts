@@ -102,7 +102,7 @@ export async function GET(request: Request) {
     try {
         const client = supabaseAdmin || supabase;
         const selectColumns = summaryOnly
-            ? 'id,employeeNumber,personalData,employment,additionalInfo,weeklySchedule,createdAt,updatedAt,userId,appAccess,pendingChanges,sharedFolders,created_by,updated_by'
+            ? 'id,employeeNumber,personalData,employment,additionalInfo,weeklySchedule,documents,createdAt,updatedAt,userId,appAccess,pendingChanges,sharedFolders,created_by,updated_by'
             : '*';
         const { data: employees, error } = await (client as any)
             .from('employees')
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
         const payload = await request.json();
         const employee = payload.employee || payload;
 
-        const isNew = !employee.id;
+        let isNew = !employee.id;
         const requiredPermission = isNew ? 'employees_create' : 'employees_write';
         if (!hasPermission(session, requiredPermission)) {
             return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
@@ -160,6 +160,11 @@ export async function POST(request: Request) {
                 createdBy = existingRow.created_by;
                 existingDecrypted = decryptEmployee(existingRow as any);
                 previousAvatarStoragePath = getEmployeeAvatarStoragePath(existingDecrypted.avatar);
+            } else {
+                // The client creates a temporary id before submitting a new
+                // employee. Treat that id as a new record when it is not in
+                // the database yet, so numbering is advanced as well.
+                isNew = true;
             }
         }
 
@@ -172,6 +177,29 @@ export async function POST(request: Request) {
                 employeeId: empId,
             }),
         };
+
+        const normalizedEmployeeNumber = String(normalizedEmployee.employeeNumber || '').trim().toLocaleLowerCase();
+        if (normalizedEmployeeNumber) {
+            const { data: existingNumberRows, error: numberLookupError } = await client
+                .from('employees')
+                .select('id,employeeNumber')
+                .eq('userId', companyOwnerId);
+
+            if (numberLookupError) throw numberLookupError;
+
+            const duplicateNumber = (existingNumberRows || []).some((row: any) => {
+                if (row.id === empId) return false;
+                const existingNumber = String(decryptEmployee(row as any).employeeNumber || '').trim().toLocaleLowerCase();
+                return existingNumber === normalizedEmployeeNumber;
+            });
+
+            if (duplicateNumber) {
+                return NextResponse.json(
+                    { message: `Die Personalnummer ${normalizedEmployee.employeeNumber} ist bereits vergeben.` },
+                    { status: 409 },
+                );
+            }
+        }
 
         const encryptedEmployee = encryptEmployee(normalizedEmployee);
         const { employeeNumber, personalData, bankDetails, employment, additionalInfo, weeklySchedule, documents, avatar, pendingChanges, sharedFolders, createdAt } = encryptedEmployee;
@@ -216,6 +244,52 @@ export async function POST(request: Request) {
 
         const { error } = await safeUpsert(client, 'employees', employeeData);
         if (error) throw error;
+
+        // Keep the company numbering counter in sync with newly created
+        // employees. This is intentionally done server-side so the counter
+        // cannot be lost when the client is navigating or generating a
+        // Dienstzettel immediately after creation.
+        if (isNew) {
+            // `encryptEmployee` may encrypt the employee number as well. Use
+            // the plain value from the submitted employee for the counter.
+            const numericEmployeeNumber = parseInt(
+                String(normalizedEmployee.employeeNumber || '').replace(/\D/g, ''),
+                10,
+            ) || 0;
+            if (numericEmployeeNumber > 0) {
+                const { data: settingsRow } = await client
+                    .from('settings')
+                    .select('companyData')
+                    .eq('userId', companyOwnerId)
+                    .maybeSingle();
+
+                if (settingsRow) {
+                    const currentCompanyData = settingsRow.companyData || {};
+                    const configuredNext = parseInt(
+                        String(currentCompanyData.nextEmployeeNumber || '').replace(/\D/g, ''),
+                        10,
+                    ) || 1;
+
+                    if (numericEmployeeNumber >= configuredNext) {
+                        const { error: counterError } = await client
+                            .from('settings')
+                            .update({
+                                companyData: {
+                                    ...currentCompanyData,
+                                    nextEmployeeNumber: String(numericEmployeeNumber + 1),
+                                },
+                                updatedAt: new Date().toISOString(),
+                                updated_by: session.userId,
+                            })
+                            .eq('userId', companyOwnerId);
+
+                        if (counterError) {
+                            console.error('[EmployeesAPI] Failed to advance employee number counter:', counterError);
+                        }
+                    }
+                }
+            }
+        }
 
         const nextAvatarStoragePath = getEmployeeAvatarStoragePath(String(avatar || ''));
         if (previousAvatarStoragePath && previousAvatarStoragePath !== nextAvatarStoragePath && supabaseAdmin) {

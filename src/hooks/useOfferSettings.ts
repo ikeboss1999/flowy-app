@@ -9,6 +9,9 @@ const DEFAULT_INTRO = `Vielen Dank für Ihre Anfrage. Wir erlauben uns, Ihnen fo
 
 const initialData: OfferSettings = {
     nextOfferNumber: 1,
+    prefix: "A-",
+    // Bewahrt das bisherige Angebotsformat 2026/A-01, kann in den Einstellungen angepasst werden.
+    mindestLaenge: 2,
     defaultIntroText: DEFAULT_INTRO,
     defaultValidityDays: 20,
     defaultDiscountEnabled: false,

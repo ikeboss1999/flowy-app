@@ -1,14 +1,17 @@
 "use client";
 
 import useSWR from 'swr';
+import { useCallback } from 'react';
 import { Employee } from '@/types/employee';
 import { useAuth } from '@/context/AuthContext';
 import { fetcher } from '@/lib/fetcher';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 
 export function useEmployees() {
     const { user, currentEmployee, profile, refreshEmployee } = useAuth();
 
     const activeUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
+    const { data: companySettings, updateData: updateCompanySettings } = useCompanySettings();
     const key = activeUserId ? `/api/employees?summary=1&userId=${activeUserId}` : null;
 
     const { data = [], isLoading, mutate } = useSWR<Employee[]>(key, fetcher);
@@ -27,6 +30,14 @@ export function useEmployees() {
             if (!response.ok) {
                 const text = await response.text();
                 throw new Error(text || `HTTP ${response.status}`);
+            }
+            const highestEmployeeNumber = [...data, newEmployee].reduce((highest, item) => {
+                const numericValue = parseInt(String(item.employeeNumber || '').replace(/\D/g, ''), 10) || 0;
+                return Math.max(highest, numericValue);
+            }, 0);
+            const configuredNextNumber = parseInt(String(companySettings.nextEmployeeNumber || '').replace(/\D/g, ''), 10) || 1;
+            if (highestEmployeeNumber >= configuredNextNumber) {
+                await updateCompanySettings({ nextEmployeeNumber: String(highestEmployeeNumber + 1) });
             }
         } catch (e) {
             console.error('Failed to add employee', e);
@@ -95,12 +106,15 @@ export function useEmployees() {
         }
     };
 
-    const getNextEmployeeNumber = () => {
-        if (data.length === 0) return "100001";
-        const max = Math.max(...data.map(e => parseInt(e.employeeNumber) || 0));
-        const next = Math.max(max + 1, 100001);
-        return next.toString();
-    };
+    const getNextEmployeeNumber = useCallback(() => {
+        const prefix = companySettings.employeeNumberPrefix ?? 'MA-';
+        const padding = Math.min(10, Math.max(1, Number(companySettings.employeeNumberPadding) || 1));
+        const configuredStart = Math.max(1, Number(String(companySettings.nextEmployeeNumber ?? '').replace(/\D/g, '')) || 100001);
+        if (data.length === 0) return `${prefix}${String(configuredStart).padStart(padding, '0')}`;
+        const max = Math.max(...data.map(e => parseInt(String(e.employeeNumber || '').replace(/\D/g, ''), 10) || 0));
+        const next = Math.max(max + 1, configuredStart);
+        return `${prefix}${String(next).padStart(padding, '0')}`;
+    }, [companySettings, data]);
 
     return {
         employees: data,

@@ -56,6 +56,7 @@ import { Service } from "@/types/service";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
 import { OfferReactPDF } from "@/components/OfferReactPDF";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { formatYearlyNumber, nextYearlySequence } from "@/lib/document-numbering";
 
 interface OfferFormProps {
   initialData?: Partial<Offer>;
@@ -202,8 +203,9 @@ export function OfferForm({ initialData }: OfferFormProps) {
     if (initialData || settingsLoaded || isOfferSettingsLoading) return;
     setSettingsLoaded(true);
     const year = new Date().getFullYear();
-    const next = String(offerSettings.nextOfferNumber).padStart(2, "0");
-    setOfferNumber(`${year}/A-${next}`);
+    const padding = Math.max(1, Number(offerSettings.mindestLaenge) || 2);
+    const next = nextYearlySequence(offers as any[], year, "offerNumber");
+    setOfferNumber(formatYearlyNumber(year, offerSettings.prefix || "A-", next, padding));
     setIntroText(offerSettings.defaultIntroText);
     setDiscountEnabled(!!offerSettings.defaultDiscountEnabled);
     setDiscountDays(offerSettings.defaultDiscountDays || 5);
@@ -499,7 +501,7 @@ export function OfferForm({ initialData }: OfferFormProps) {
         await addOffer(offerData);
         // Increment next offer number in settings
         await updateOfferSettings({
-          nextOfferNumber: offerSettings.nextOfferNumber + 1,
+          nextOfferNumber: Number(offerNumber.match(/(\d+)$/)?.[1] || offerSettings.nextOfferNumber || 1) + 1,
         });
       }
 
