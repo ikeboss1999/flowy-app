@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
     X,
     User,
@@ -19,8 +19,6 @@ import {
     Activity,
     LogOut,
     Camera,
-    Loader2,
-    CheckCircle2
 } from "lucide-react";
 import { Employee, EmploymentStatus, EmployeeDocument } from "@/types/employee";
 import { cn } from "@/lib/utils";
@@ -28,10 +26,7 @@ import { useRef } from "react";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import { useNotification } from "@/context/NotificationContext";
 import { useUsers } from "@/hooks/useUsers";
-import { useAutoSave } from "@/hooks/useAutoSave";
-import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { mutate } from "swr";
 
 interface EmployeeModalProps {
     isOpen: boolean;
@@ -126,12 +121,8 @@ function createAvatarThumbnail(file: File): Promise<Blob> {
 }
 
 export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, initialEmployee, getNextNumber }: EmployeeModalProps) {
-    const { user, currentEmployee, profile } = useAuth();
-    const activeUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
     const [employeeId, setEmployeeId] = useState("");
-    const [isInitialized, setIsInitialized] = useState(false);
     const [isHydratingEmployee, setIsHydratingEmployee] = useState(false);
-    const initialValuesRef = useRef<any>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState("personal");
@@ -204,9 +195,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
         if (!isOpen) return;
         const nextId = initialEmployee?.id || Math.random().toString(36).substr(2, 9);
         setEmployeeId(nextId);
-        setIsInitialized(false);
         setIsHydratingEmployee(!!initialEmployee?.id);
-        initialValuesRef.current = null;
         if (initialEmployee) {
             setFormData({
                 ...initialEmployee,
@@ -285,14 +274,6 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                 }
                             };
                             setFormData(fullEmployee);
-                            initialValuesRef.current = {
-                                ...fullEmployee,
-                                additionalInfo: {
-                                    ...fullEmployee.additionalInfo,
-                                    isDraft: (fullEmployee.additionalInfo as any)?.isDraft
-                                }
-                            };
-                            setIsInitialized(true);
                             setIsHydratingEmployee(false);
                         }
                     })
@@ -370,62 +351,6 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
             setIsHydratingEmployee(false);
         }
     }, [initialEmployee, isOpen, getNextNumber, showToast]);
-
-    useEffect(() => {
-        if (isHydratingEmployee) return;
-        if (isOpen && !isInitialized && formData.id) {
-            initialValuesRef.current = {
-                ...formData,
-                additionalInfo: {
-                    ...formData.additionalInfo,
-                    isDraft: initialEmployee ? (formData.additionalInfo as any)?.isDraft : true
-                }
-            };
-            setIsInitialized(true);
-        }
-    }, [isOpen, isInitialized, formData, initialEmployee, isHydratingEmployee]);
-
-    const isDirty = useMemo(() => {
-        if (!initialEmployee || !initialValuesRef.current) return false;
-        return JSON.stringify(formData) !== JSON.stringify({
-            ...initialValuesRef.current,
-            additionalInfo: {
-                ...initialValuesRef.current.additionalInfo,
-                isDraft: formData.additionalInfo?.isDraft
-            }
-        });
-    }, [formData, initialEmployee]);
-
-    const autoSavePayload = useMemo(() => {
-        const isDraftVal = initialEmployee ? (formData.additionalInfo as any)?.isDraft : false;
-        return {
-            ...formData,
-            additionalInfo: {
-                ...formData.additionalInfo,
-                isDraft: isDraftVal
-            }
-        };
-    }, [formData, initialEmployee]);
-
-    const { isSaving, lastSaved } = useAutoSave({
-        id: employeeId,
-        endpoint: "/api/employees",
-        data: autoSavePayload,
-        isDirty,
-        enabled: !isHydratingEmployee,
-        onSaveSuccess: () => {
-            initialValuesRef.current = {
-                ...formData,
-                additionalInfo: {
-                    ...formData.additionalInfo,
-                    isDraft: initialEmployee ? (formData.additionalInfo as any)?.isDraft : false
-                }
-            };
-            if (activeUserId) {
-                mutate(`/api/employees?summary=1&userId=${activeUserId}`);
-            }
-        }
-    });
 
     const generateStaffId = () => {
         const id = Math.floor(10000000 + Math.random() * 90000000).toString();
@@ -788,15 +713,6 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                             <h2 className="text-2xl font-black text-white leading-none sm:text-[28px]">
                                 {initialEmployee ? "Mitarbeiter bearbeiten" : "Neuer Mitarbeiter"}
                             </h2>
-                            {isSaving ? (
-                                <span className="flex items-center gap-1.5 px-3 py-1 bg-white/10 border border-white/20 rounded-full text-xs font-semibold text-white/80 animate-pulse">
-                                    <Loader2 className="h-3 w-3 animate-spin" /> Auto-Save...
-                                </span>
-                            ) : lastSaved ? (
-                                <span className="flex items-center gap-1.5 px-3 py-1 bg-white/10 border border-white/20 rounded-full text-xs font-semibold text-white/80">
-                                    <CheckCircle2 className="h-3 w-3 text-emerald-300" /> Gespeichert {lastSaved}
-                                </span>
-                            ) : null}
                             </div>
                             <div className="mt-2 flex flex-wrap items-center gap-3">
                                 <p className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-white/75">#{formData.employeeNumber || "---"}</p>
