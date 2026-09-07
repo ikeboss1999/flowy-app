@@ -727,13 +727,31 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
                             <Text style={styles.acceptanceLabel}>Bauvorhaben</Text>
                             <Text>{offer.constructionProject || '-'}</Text>
                         </View>
+                        <View style={styles.acceptanceRow}>
+                            <Text style={styles.acceptanceLabel}>Auftragssumme netto</Text>
+                            <Text style={styles.validityBold}>
+                                {'€ ' + offer.subtotal.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                            </Text>
+                        </View>
+                        <View style={styles.acceptanceRow}>
+                            <Text style={styles.acceptanceLabel}>{`Umsatzsteuer ${isRC ? 0 : offer.taxRate}%`}</Text>
+                            <Text style={styles.validityBold}>
+                                {isRC ? 'nicht ausgewiesen' : '€ ' + offer.taxAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                            </Text>
+                        </View>
                         <View style={[styles.acceptanceRow, { borderBottomWidth: 0 }]}>
-                            <Text style={styles.acceptanceLabel}>Auftragssumme</Text>
+                            <Text style={styles.acceptanceLabel}>Auftragssumme brutto</Text>
                             <Text style={styles.validityBold}>
                                 {'€ ' + offer.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
                             </Text>
                         </View>
                     </View>
+
+                    {isRC && (
+                        <Text style={{ marginTop: 10, fontSize: 8, color: '#475569' }}>
+                            Übergang der Steuerschuld für Bauleistungen gem. § 19 Abs. 1a UStG. Die Umsatzsteuer wird vom Auftraggeber geschuldet.
+                        </Text>
+                    )}
 
                     <Text style={styles.acceptanceText}>
                         Der Auftraggeber bestätigt, das Angebot gelesen zu haben und erteilt auf dieser Grundlage den Auftrag zur Ausführung.

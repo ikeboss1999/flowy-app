@@ -837,7 +837,11 @@ export default function EmployeesPage() {
                     </div>
 
                     {employees.length > 0 ? (
-                        employees.map((employee) => {
+                        [...employees].sort((a, b) => {
+                            const numberA = parseInt(a.employeeNumber?.replace(/\D/g, "") || "", 10) || 0;
+                            const numberB = parseInt(b.employeeNumber?.replace(/\D/g, "") || "", 10) || 0;
+                            return numberA - numberB;
+                        }).map((employee) => {
                             const empName = employeeName(employee);
                             const folderName = `Personal - ${empName}`;
                             const docs = (employee.documents || []).map((document) => ({

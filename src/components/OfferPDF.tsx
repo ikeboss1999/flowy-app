@@ -284,8 +284,11 @@ export const OfferPDF = forwardRef<HTMLDivElement, OfferPDFProps>(({ offer, cust
                             ['Angebotsdatum', formatDate(offer.issueDate)],
                             ['Kunde', customer?.name || offer.customerName || '-'],
                             ['Bauvorhaben', offer.constructionProject || '-'],
+                            ['Auftragssumme netto', `€ ${offer.subtotal.toLocaleString('de-DE', { minimumFractionDigits: 2 })}`],
+                            [`Umsatzsteuer ${offer.isReverseCharge ? 0 : offer.taxRate}%`, offer.isReverseCharge ? 'nicht ausgewiesen' : `€ ${offer.taxAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}`],
+                            ['Auftragssumme brutto', `€ ${offer.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}`],
                             ['Auftragssumme', `€ ${offer.totalAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })}`],
-                        ].map(([label, value]) => (
+                        ].filter(([label]) => label !== 'Auftragssumme').map(([label, value]) => (
                             <div key={label} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', padding: '8px 0' }}>
                                 <strong>{label}</strong>
                                 <span>{value}</span>
