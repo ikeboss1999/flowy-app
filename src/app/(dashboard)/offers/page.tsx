@@ -547,6 +547,18 @@ export default function OffersPage() {
                                                                 <Link2 className="h-4 w-4" />
                                                                 <span>{offer.projectId ? "Bereits zugeordnet" : "Projekt zuordnen"}</span>
                                                             </button>
+                                                            {offer.status === "accepted" && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setActionMenuOfferId(null);
+                                                                        router.push(`/subcontractor-descriptions/new?offerId=${encodeURIComponent(offer.id)}`);
+                                                                    }}
+                                                                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-black text-violet-700 transition-all hover:bg-violet-50"
+                                                                >
+                                                                    <FileText className="h-4 w-4" />
+                                                                    <span>Leistungsbeschreibung erstellen</span>
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>}

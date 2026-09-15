@@ -71,7 +71,13 @@ const menuGroups: MenuGroup[] = [
         title: "Vertrieb & CRM",
         items: [
             { icon: Inbox, label: "Anfragen (CRM)", href: "/crm" },
-            { icon: Users, label: "Kunden", href: "/customers" },
+            {
+                icon: Users,
+                label: "Kontakte",
+                children: [
+                    { icon: Users, label: "Kunden & Subunternehmer", href: "/customers" },
+                ]
+            },
         ]
     },
     {
@@ -111,6 +117,7 @@ const menuGroups: MenuGroup[] = [
                 label: "Finanzen",
                 children: [
                     { icon: FileSignature, label: "Angebote", href: "/offers" },
+                    { icon: FileText, label: "Leistungsbeschreibungen", href: "/subcontractor-descriptions" },
                     { icon: FileCheck, label: "Aufträge", href: "/orders" },
                     { icon: FileText, label: "Rechnungen", href: "/invoices" },
                     { icon: AlertTriangle, label: "Mahnwesen", href: "/invoices/dunning" },
@@ -200,7 +207,7 @@ export function Sidebar() {
         return () => window.removeEventListener('focus', loadPackageFeatures);
     }, [profile?.companyOwnerId, currentEmployee?.userId]);
 
-    const featureByHref: Record<string, string> = { '/calendar': 'calendar', '/crm': 'crm', '/customers': 'customers', '/projects': 'projects', '/vehicles': 'vehicles', '/services': 'catalog', '/position-presets': 'catalog', '/employees': 'employees', '/time-tracking': 'time_tracking', '/time-tracking/archive': 'time_tracking', '/offers': 'offers', '/orders': 'orders', '/invoices': 'invoices', '/invoices/dunning': 'dunning', '/reports': 'reports', '/archive': 'archive', '/credentials': 'credentials' };
+    const featureByHref: Record<string, string> = { '/calendar': 'calendar', '/crm': 'crm', '/customers': 'customers', '/subcontractor-descriptions': 'customers', '/projects': 'projects', '/vehicles': 'vehicles', '/services': 'catalog', '/position-presets': 'catalog', '/employees': 'employees', '/time-tracking': 'time_tracking', '/time-tracking/archive': 'time_tracking', '/offers': 'offers', '/orders': 'orders', '/invoices': 'invoices', '/invoices/dunning': 'dunning', '/reports': 'reports', '/archive': 'archive', '/credentials': 'credentials' };
     const isFeatureLocked = (item: MenuItem) => { const feature = item.feature || (item.href ? featureByHref[item.href] : undefined); return !!feature && packageFeatures !== null && !packageFeatures.includes(feature); };
     const handleFeatureClick = (event: React.MouseEvent, item: MenuItem) => { if (!isFeatureLocked(item)) return; event.preventDefault(); setUpgradeFeature(item.label); };
 
@@ -237,6 +244,7 @@ export function Sidebar() {
         const byHref: Record<string, string[]> = {
             "/dashboard": ["/api/dashboard/summary"],
             "/customers": [`/api/customers?userId=${activeUserId}`],
+            "/subcontractor-descriptions": [`/api/subcontractor-descriptions?userId=${activeUserId}`, `/api/subcontractors?userId=${activeUserId}`, ...sharedSettings],
             "/employees": [`/api/employees?summary=1&userId=${activeUserId}`],
             "/projects": [
                 `/api/projects?userId=${activeUserId}`,
@@ -346,6 +354,7 @@ export function Sidebar() {
             if (item.href === '/calendar' && !perms.calendar_use) return false;
             if (item.href === '/crm' && !perms.crm_read) return false;
             if (item.href === '/customers' && !perms.customers_read) return false;
+            if (item.href === '/subcontractor-descriptions' && !perms.customers_read) return false;
             if (item.href === '/projects' && !perms.projects_read) return false;
             if (item.href === '/vehicles' && !perms.vehicles_use) return false;
             if (item.href === '/archive' && !perms.archive_read) return false;

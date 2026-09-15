@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import { useAuth } from '@/context/AuthContext';
 import { fetcher } from '@/lib/fetcher';
 import { ProjectFile, FileFolder } from '@/types/project_file';
+import { supabase } from '@/lib/supabase';
 
 async function readApiError(response: Response, fallback: string) {
     const body = await response.json().catch(() => null);
@@ -19,15 +20,23 @@ export function useProjectFiles(projectId: string) {
 
     const uploadFile = async (file: File, folder: FileFolder): Promise<void> => {
         if (!activeUserId) throw new Error('Not authenticated');
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('projectId', projectId);
-        formData.append('folder', folder);
+        const prepare = await fetch('/api/project-files/upload-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectId, folder, name: file.name, mimeType: file.type, size: file.size }),
+        });
+        if (!prepare.ok) throw new Error(await readApiError(prepare, 'Upload konnte nicht vorbereitet werden.'));
+        const { path, token } = await prepare.json();
 
-        const res = await fetch('/api/project-files', { method: 'POST', body: formData });
-        if (!res.ok) {
-            throw new Error(await readApiError(res, 'Datei konnte nicht hochgeladen werden.'));
-        }
+        const { error: uploadError } = await supabase.storage.from('project-files').uploadToSignedUrl(path, token, file);
+        if (uploadError) throw new Error(uploadError.message || 'Datei konnte nicht hochgeladen werden.');
+
+        const complete = await fetch('/api/project-files/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectId, folder, name: file.name, mimeType: file.type, size: file.size, storagePath: path }),
+        });
+        if (!complete.ok) throw new Error(await readApiError(complete, 'Datei konnte nicht gespeichert werden.'));
         await mutate();
     };
 

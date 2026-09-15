@@ -23,9 +23,9 @@ const ALLOWED_MIME_TYPES = new Set([
 
 const getClient = () => supabaseAdmin || supabase;
 
-async function verifyCustomerAccess(customerId: string, companyOwnerId: string) {
+async function verifyCustomerAccess(customerId: string, companyOwnerId: string, entity: string = "customer") {
     const { data, error } = await getClient()
-        .from("customers")
+        .from(entity === "subcontractor" ? "subcontractors" : "customers")
         .select("id")
         .eq("id", customerId)
         .eq("userId", companyOwnerId)
@@ -49,7 +49,9 @@ function sanitizePart(value: string) {
 export async function GET(request: Request) {
     const session = await getUserSession();
     const companyOwnerId = session?.companyOwnerId;
-    const customerId = new URL(request.url).searchParams.get("customerId");
+    const params = new URL(request.url).searchParams;
+    const customerId = params.get("customerId");
+    const entity = params.get("entity") || "customer";
 
     if (!companyOwnerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (!customerId) return NextResponse.json({ error: "Missing customerId" }, { status: 400 });
@@ -92,6 +94,7 @@ export async function POST(request: Request) {
         const file = formData.get("file") as File;
         const customerId = String(formData.get("customerId") || "");
         const folder = String(formData.get("folder") || "Allgemein");
+        const entity = String(formData.get("entity") || "customer");
 
         if (!customerId) return NextResponse.json({ error: "Missing customerId" }, { status: 400 });
         if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -99,7 +102,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: `File type "${file.type}" is not allowed.` }, { status: 400 });
         }
 
-        const canAccessCustomer = await verifyCustomerAccess(customerId, companyOwnerId);
+        const canAccessCustomer = await verifyCustomerAccess(customerId, companyOwnerId, entity);
         if (!canAccessCustomer) {
             return NextResponse.json({ error: "Customer not found" }, { status: 404 });
         }
@@ -107,7 +110,7 @@ export async function POST(request: Request) {
         const ext = file.name.split(".").pop()?.replace(/[^a-zA-Z0-9]/g, "") ?? "";
         const baseName = file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
         const sanitizedName = ext ? `${baseName}.${ext}` : baseName;
-        const storagePath = `${companyOwnerId}/customers/${sanitizePart(customerId)}/${sanitizePart(folder)}/${Date.now()}-${sanitizedName}`;
+        const storagePath = `${companyOwnerId}/${entity === "subcontractor" ? "subcontractors" : "customers"}/${sanitizePart(customerId)}/${sanitizePart(folder)}/${Date.now()}-${sanitizedName}`;
         const buffer = Buffer.from(await file.arrayBuffer());
 
         const { error: uploadError } = await getClient().storage

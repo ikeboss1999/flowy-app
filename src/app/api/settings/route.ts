@@ -58,6 +58,24 @@ function readSettingsBlock(settings: any = {}, key: string) {
     return settings?.[key] || settings?.accountSettings?.[key] || null;
 }
 
+async function reconcileSubcontractorNextNumber(client: any, userId: string, settings: any) {
+    const current = readSettingsBlock(settings, 'subcontractorSettings') || {};
+    try {
+        const { data } = await client
+            .from('subcontractors')
+            .select('subcontractor_number')
+            .eq('userId', userId)
+            .limit(1000);
+        const highest = (data || []).reduce((max: number, entry: any) => {
+            const match = String(entry?.subcontractor_number || '').match(/(\d+)$/);
+            return Math.max(max, match ? Number(match[1]) || 0 : 0);
+        }, 0);
+        return { ...current, nextNumber: Math.max(1, Number(current.nextNumber) || 1, highest + 1) };
+    } catch {
+        return current;
+    }
+}
+
 function isMissingSettingsColumnError(error: any, key: string) {
     return !!error && (
         error.code === 'PGRST204' ||
@@ -128,6 +146,7 @@ export async function GET(request: Request) {
                     orderSettings: readSettingsBlock(data, 'orderSettings'),
                     projectSettings: readSettingsBlock(data, 'projectSettings'),
                     customerSettings: readSettingsBlock(data, 'customerSettings'),
+                    subcontractorSettings: await reconcileSubcontractorNextNumber(client, settingsUserId, data),
                 };
                 logApiPerformance('/api/settings', startedAt, { payload, note: 'employee' });
                 return NextResponse.json(payload);
@@ -142,17 +161,22 @@ export async function GET(request: Request) {
             processed.orderSettings = readSettingsBlock(processed, 'orderSettings');
             processed.projectSettings = readSettingsBlock(processed, 'projectSettings');
             processed.customerSettings = readSettingsBlock(processed, 'customerSettings');
+            processed.subcontractorSettings = await reconcileSubcontractorNextNumber(client, settingsUserId, processed);
             if (processed.invoiceSettings && Object.keys(processed.invoiceSettings).length === 0) processed.invoiceSettings = null;
             if (processed.offerSettings && Object.keys(processed.offerSettings).length === 0) processed.offerSettings = null;
             if (processed.orderSettings && Object.keys(processed.orderSettings).length === 0) processed.orderSettings = null;
             if (processed.projectSettings && Object.keys(processed.projectSettings).length === 0) processed.projectSettings = null;
             if (processed.customerSettings && Object.keys(processed.customerSettings).length === 0) processed.customerSettings = null;
+            if (processed.subcontractorSettings && Object.keys(processed.subcontractorSettings).length === 0) processed.subcontractorSettings = null;
             logApiPerformance('/api/settings', startedAt, { payload: processed });
             return NextResponse.json(processed);
         }
 
-        logApiPerformance('/api/settings', startedAt, { payload: {}, note: 'empty' });
-        return NextResponse.json({});
+        const emptyPayload = {
+            subcontractorSettings: await reconcileSubcontractorNextNumber(client, settingsUserId, {}),
+        };
+        logApiPerformance('/api/settings', startedAt, { payload: emptyPayload, note: 'empty' });
+        return NextResponse.json(emptyPayload);
     } catch (e) {
         console.error('[SettingsAPI] GET failed:', e);
         return NextResponse.json({ error: 'Failed' }, { status: 500 });
@@ -227,6 +251,16 @@ export async function POST(request: Request) {
             }
             if (payload.type === 'project') updatedSettings.projectSettings = payload.data;
             if (payload.type === 'customer') updatedSettings.customerSettings = payload.data;
+            // The settings table is deployed with different optional columns in
+            // existing projects. Keep this block in accountSettings as the
+            // portable source of truth, so the number never falls back to 1
+            // simply because an optional column is missing.
+            if (payload.type === 'subcontractor') {
+                updatedSettings.accountSettings = {
+                    ...(currentSettings.accountSettings || {}),
+                    subcontractorSettings: payload.data,
+                };
+            }
         } else {
             updatedSettings = {
                 ...updatedSettings,

@@ -27,6 +27,10 @@ import { useNotification } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { useAuth } from "@/context/AuthContext";
+import { useSubcontractors } from "@/hooks/useSubcontractors";
+import { Subcontractor } from "@/types/subcontractor";
+import { SubcontractorModal } from "@/components/SubcontractorModal";
+import { SubcontractorDetailModal } from "@/components/SubcontractorDetailModal";
 
 const filterOptions: Array<{ id: CustomerType | "all"; label: string; icon: React.ElementType }> = [
     { id: "all", label: "Alle", icon: Filter },
@@ -38,12 +42,17 @@ export default function CustomersPage() {
     usePermissionGuard("customers_read");
     const { profile } = useAuth();
     const { customers, addCustomer, updateCustomer, deleteCustomer, isLoading } = useCustomers();
+    const { subcontractors, saveSubcontractor, deleteSubcontractor, isLoading: isLoadingSubcontractors } = useSubcontractors();
     const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
     const [filterType, setFilterType] = useState<CustomerType | "all">("all");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | undefined>(undefined);
     const [selectedDetailCustomer, setSelectedDetailCustomer] = useState<Customer | undefined>(undefined);
+    const [activeContactType, setActiveContactType] = useState<"customers" | "subcontractors">("customers");
+    const [isSubcontractorModalOpen, setIsSubcontractorModalOpen] = useState(false);
+    const [editingSubcontractor, setEditingSubcontractor] = useState<Subcontractor | undefined>(undefined);
+    const [selectedSubcontractor, setSelectedSubcontractor] = useState<Subcontractor | undefined>(undefined);
     const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
     const canWriteCustomers = isAdminOrDev || profile?.permissions?.["*"] === true || !!profile?.permissions?.customers_write;
 
@@ -80,6 +89,11 @@ export default function CustomersPage() {
                 return numA.localeCompare(numB, undefined, { numeric: true, sensitivity: "base" });
             });
     }, [customers, searchQuery, filterType]);
+
+    const filteredSubcontractors = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        return subcontractors.filter(item => !query || [item.name, item.contactPerson, item.email, item.phone, item.subcontractor_number, item.city, item.taxId].some(value => String(value || "").toLowerCase().includes(query))).sort((a, b) => String(a.subcontractor_number || "").localeCompare(String(b.subcontractor_number || ""), undefined, { numeric: true }));
+    }, [subcontractors, searchQuery]);
 
     const openCreateModal = () => {
         if (!canWriteCustomers) return;
@@ -162,13 +176,13 @@ export default function CustomersPage() {
                                 </div>
                                 <span className="text-sm font-black uppercase tracking-[0.35em] text-cyan-100">CRM</span>
                             </div>
-                            <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Kundenverwaltung</h1>
+                            <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Kontakte</h1>
                             <p className="mt-3 max-w-2xl text-base font-medium text-white/65">
                                 Kontakte, Kundennummern, Rechnungsdaten und Geschäftsdetails an einem Ort.
                             </p>
                         </div>
 
-                        {canWriteCustomers && (
+                        {canWriteCustomers && activeContactType === "customers" && (
                             <button
                                 onClick={openCreateModal}
                                 className="flex w-fit items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 shadow-xl shadow-black/10 transition-all hover:-translate-y-0.5"
@@ -176,9 +190,17 @@ export default function CustomersPage() {
                                 <Plus className="h-5 w-5" /> Neuer Kunde
                             </button>
                         )}
+                        {canWriteCustomers && activeContactType === "subcontractors" && (
+                            <button onClick={() => { setEditingSubcontractor(undefined); setIsSubcontractorModalOpen(true); }} className="flex w-fit items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 shadow-xl shadow-black/10 transition-all hover:-translate-y-0.5"><Plus className="h-5 w-5" /> Neuer Subunternehmer</button>
+                        )}
                     </div>
 
-                    <div className="relative mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                    <div className="relative mt-8 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/10 p-1">
+                        <button onClick={() => { setActiveContactType("customers"); setSearchQuery(""); }} className={cn("rounded-xl px-5 py-3 text-sm font-black", activeContactType === "customers" ? "bg-white text-slate-950" : "text-white/70 hover:bg-white/10")}>Kunden <span className="ml-2 opacity-60">{customers.length}</span></button>
+                        <button onClick={() => { setActiveContactType("subcontractors"); setSearchQuery(""); }} className={cn("rounded-xl px-5 py-3 text-sm font-black", activeContactType === "subcontractors" ? "bg-white text-slate-950" : "text-white/70 hover:bg-white/10")}>Subunternehmer <span className="ml-2 opacity-60">{subcontractors.length}</span></button>
+                    </div>
+
+                    {activeContactType === "customers" && <div className="relative mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                         {[
                             { label: "Gesamt", value: stats.total, icon: Users, className: "border-white/10 bg-white/10 text-white" },
                             { label: "Privat", value: stats.private, icon: User, className: "border-purple-300/20 bg-purple-400/10 text-purple-100" },
@@ -196,7 +218,7 @@ export default function CustomersPage() {
                                 </div>
                             </div>
                         ))}
-                    </div>
+                    </div>}
                 </div>
 
                 <div className="border-t border-slate-100 bg-slate-50/80 p-4">
@@ -212,7 +234,7 @@ export default function CustomersPage() {
                             />
                         </div>
 
-                        <div className="flex gap-2 overflow-x-auto rounded-2xl bg-white p-1 ring-1 ring-slate-200">
+                        {activeContactType === "customers" && <div className="flex gap-2 overflow-x-auto rounded-2xl bg-white p-1 ring-1 ring-slate-200">
                             {filterOptions.map(({ id, label, icon: Icon }) => (
                                 <button
                                     key={id}
@@ -228,12 +250,14 @@ export default function CustomersPage() {
                                     {label}
                                 </button>
                             ))}
-                        </div>
+                        </div>}
                     </div>
                 </div>
             </div>
 
-            {filteredCustomers.length > 0 ? (
+            {activeContactType === "subcontractors" ? (
+                filteredSubcontractors.length > 0 ? <div className="grid gap-4 xl:grid-cols-2">{filteredSubcontractors.map(item => <div key={item.id} onClick={() => setSelectedSubcontractor(item)} className="group cursor-pointer overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg"><div className="flex flex-col gap-5 p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div className="flex min-w-0 items-start gap-4"><div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600"><Briefcase className="h-7 w-7" /></div><div className="min-w-0"><div className="mb-2 flex flex-wrap items-center gap-2"><span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">Subunternehmer</span><span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black text-slate-500">{item.subcontractor_number}</span>{item.hfuListed ? <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-700">HFU geprüft</span> : <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-[10px] font-black text-amber-700">25 % prüfen</span>}</div><h3 className="truncate text-2xl font-black text-slate-900">{item.name}</h3><p className="mt-1 truncate text-sm font-semibold text-slate-500">{[item.street, `${item.zip || ""} ${item.city || ""}`.trim()].filter(Boolean).join(", ") || "Keine Adresse"}</p>{item.contactPerson && <p className="mt-1 truncate text-sm font-semibold text-slate-500">Ansprechpartner: {item.contactPerson}</p>}</div></div><div className="flex shrink-0 items-center gap-2" onClick={event => event.stopPropagation()}><span className={cn("rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider", item.status === "active" ? "bg-emerald-50 text-emerald-700" : item.status === "inactive" ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700")}>{item.status === "active" ? "Aktiv" : item.status === "inactive" ? "Inaktiv" : "Gesperrt"}</span>{canWriteCustomers && <><button onClick={() => { setEditingSubcontractor(item); setIsSubcontractorModalOpen(true); }} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600"><Edit2 className="h-4 w-4" /></button><button onClick={() => showConfirm({ title: "Subunternehmer löschen?", message: "Möchten Sie diesen Kontakt wirklich löschen?", variant: "danger", confirmLabel: "Jetzt löschen", onConfirm: () => deleteSubcontractor(item.id) })} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button></>}</div></div><div className="grid gap-3 border-t border-slate-100 pt-5 md:grid-cols-3"><div className="rounded-2xl bg-slate-50 px-4 py-3"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">E-Mail</p><p className="truncate text-sm font-bold text-slate-700">{item.email || "-"}</p></div><div className="rounded-2xl bg-slate-50 px-4 py-3"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Telefon</p><p className="truncate text-sm font-bold text-slate-700">{item.phone || "-"}</p></div><div className="rounded-2xl bg-slate-50 px-4 py-3"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">UID</p><p className="truncate text-sm font-bold text-slate-700">{item.taxId || "-"}</p></div></div></div></div>)}</div> : <div className="rounded-[36px] border border-dashed border-indigo-200 bg-indigo-50/40 px-6 py-24 text-center"><h4 className="text-xl font-black text-slate-900">Keine Subunternehmer gefunden</h4><p className="mt-2 font-medium text-slate-500">Legen Sie Ihren ersten Subunternehmer an.</p></div>
+            ) : filteredCustomers.length > 0 ? (
                 <div className="grid gap-4 xl:grid-cols-2">
                     {filteredCustomers.map((customer) => {
                         const isBusiness = customer.type === "business";
@@ -417,6 +441,8 @@ export default function CustomersPage() {
                     setSelectedDetailCustomer(updatedCustomer);
                 }}
             />
+            <SubcontractorModal isOpen={isSubcontractorModalOpen} onClose={() => setIsSubcontractorModalOpen(false)} onSave={saveSubcontractor} initial={editingSubcontractor} existing={subcontractors} />
+            <SubcontractorDetailModal item={selectedSubcontractor} onClose={() => setSelectedSubcontractor(undefined)} />
         </div>
     );
 }

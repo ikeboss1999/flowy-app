@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic";
 
 const getClient = () => supabaseAdmin || supabase;
 
-async function verifyCustomerAccess(customerId: string, companyOwnerId: string) {
+async function verifyCustomerAccess(customerId: string, companyOwnerId: string, entity: string = "customer") {
     const { data, error } = await getClient()
-        .from("customers")
+        .from(entity === "subcontractor" ? "subcontractors" : "customers")
         .select("id")
         .eq("id", customerId)
         .eq("userId", companyOwnerId)
@@ -24,7 +24,9 @@ async function verifyCustomerAccess(customerId: string, companyOwnerId: string) 
 export async function GET(request: Request) {
     const session = await getUserSession();
     const companyOwnerId = session?.companyOwnerId;
-    const customerId = new URL(request.url).searchParams.get("customerId");
+    const params = new URL(request.url).searchParams;
+    const customerId = params.get("customerId");
+    const entity = params.get("entity") || "customer";
 
     if (!companyOwnerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (!customerId) return NextResponse.json({ error: "Missing customerId" }, { status: 400 });
@@ -58,10 +60,10 @@ export async function POST(request: Request) {
     if (!hasPermission(session, "customers_write")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     try {
-        const { customerId, name } = await request.json();
+        const { customerId, name, entity = "customer" } = await request.json();
         if (!customerId || !name?.trim()) return NextResponse.json({ error: "Missing data" }, { status: 400 });
 
-        const canAccessCustomer = await verifyCustomerAccess(customerId, companyOwnerId);
+        const canAccessCustomer = await verifyCustomerAccess(customerId, companyOwnerId, entity);
         if (!canAccessCustomer) {
             return NextResponse.json({ error: "Customer not found" }, { status: 404 });
         }

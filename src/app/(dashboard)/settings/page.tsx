@@ -13,6 +13,7 @@ import { AppSettings } from "@/components/AppSettings";
 import { UserManagement } from "@/components/UserManagement";
 import { AppInfo } from "@/components/AppInfo";
 import { CustomerSettings } from "@/components/CustomerSettings";
+import { SubcontractorSettings } from "@/components/SubcontractorSettings";
 import { EmailDeliverySettings } from "@/components/EmailDeliverySettings";
 import {
     Settings as SettingsIcon,
@@ -85,7 +86,7 @@ const TABS = [
 ];
 
 const DOC_SUBTABS = [
-    { id: "customer", label: "Kunden", icon: Users2 },
+    { id: "customer", label: "Kontakte", icon: Users2 },
     { id: "offer", label: "Angebot", icon: FileText },
     { id: "order", label: "Auftrag", icon: FileSignature },
     { id: "invoice", label: "Rechnung", icon: Receipt },
@@ -278,7 +279,7 @@ export default function SettingsPage() {
                                         ))}
                                     </div>
 
-                                    {docSubTab === "customer" && <CustomerSettings readOnly={isEmployee} />}
+                                    {docSubTab === "customer" && <><CustomerSettings readOnly={isEmployee} /><SubcontractorSettings readOnly={isEmployee} /></>}
                                     {docSubTab === "offer" && <OfferSettings readOnly={isEmployee} />}
                                     {docSubTab === "order" && <OrderSettings readOnly={isEmployee} />}
                                     {docSubTab === "invoice" && <InvoiceSettings readOnly={isEmployee} />}

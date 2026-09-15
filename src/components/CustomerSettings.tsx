@@ -101,7 +101,7 @@ export function CustomerSettings({ readOnly = false }: CustomerSettingsProps) {
                 <div className="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
                     <Users2 className="h-6 w-6 text-white" />
                 </div>
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight font-outfit">Kunden-Nummernkreis</h2>
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight font-outfit">Kontakte-Nummernkreis</h2>
             </div>
 
             {/* Nummernkreis & Präfix */}
