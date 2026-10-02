@@ -6,17 +6,18 @@ import { useAuth } from '@/context/AuthContext';
 import { fetcher } from '@/lib/fetcher';
 
 export function useVehicles() {
-    const { user } = useAuth();
+    const { user, currentEmployee, profile } = useAuth();
+    const activeUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
 
-    const key = user ? `/api/vehicles?userId=${user.id}` : null;
+    const key = activeUserId ? `/api/vehicles?userId=${activeUserId}` : null;
     const { data = [], isLoading, mutate } = useSWR<Vehicle[]>(key, fetcher);
 
     const addVehicle = async (vehicle: Vehicle) => {
-        if (!user) return;
+        if (!activeUserId) return;
         const newVehicle: Vehicle = {
             ...vehicle,
             id: Math.random().toString(36).substr(2, 9),
-            userId: user.id,
+            userId: activeUserId,
             createdAt: new Date().toISOString()
         };
         mutate([newVehicle, ...data], false);
@@ -24,7 +25,7 @@ export function useVehicles() {
             await fetch('/api/vehicles', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, vehicle: newVehicle })
+                body: JSON.stringify({ userId: activeUserId, vehicle: newVehicle })
             });
             return newVehicle;
         } catch (e) {
@@ -34,7 +35,7 @@ export function useVehicles() {
     };
 
     const updateVehicle = async (id: string, updates: Partial<Vehicle>) => {
-        if (!user) return;
+        if (!activeUserId) return;
         const current = data.find(v => v.id === id);
         if (!current) return;
         const updated = { ...current, ...updates };
@@ -43,7 +44,7 @@ export function useVehicles() {
             await fetch('/api/vehicles', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, vehicle: updated })
+                body: JSON.stringify({ userId: activeUserId, vehicle: updated })
             });
         } catch (e) {
             console.error('Failed to update vehicle', e);
@@ -52,7 +53,7 @@ export function useVehicles() {
     };
 
     const deleteVehicle = async (id: string) => {
-        if (!user) return;
+        if (!activeUserId) return;
         mutate(data.filter(v => v.id !== id), false);
         try {
             await fetch(`/api/vehicles/${id}`, { method: 'DELETE' });

@@ -6,19 +6,20 @@ import { useAuth } from '@/context/AuthContext';
 import { fetcher } from '@/lib/fetcher';
 
 export function useCalendarEvents() {
-    const { user } = useAuth();
+    const { user, currentEmployee, profile } = useAuth();
+    const activeUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
 
-    const key = user ? `/api/calendar-events?userId=${user.id}` : null;
+    const key = activeUserId ? `/api/calendar-events?userId=${activeUserId}` : null;
     const { data = [], isLoading, mutate } = useSWR<CalendarEvent[]>(key, fetcher, {
         revalidateOnMount: true,
         revalidateOnFocus: true,
     });
 
     const addEvent = async (eventData: Omit<CalendarEvent, 'id' | 'userId' | 'createdAt'>) => {
-        if (!user) return;
+        if (!activeUserId) return;
         const newEvent: CalendarEvent = {
             id: Math.random().toString(36).substr(2, 9),
-            userId: user.id,
+            userId: activeUserId,
             ...eventData,
             createdAt: new Date().toISOString()
         };
@@ -27,7 +28,7 @@ export function useCalendarEvents() {
             await fetch('/api/calendar-events', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, event: newEvent })
+                body: JSON.stringify({ userId: activeUserId, event: newEvent })
             });
         } catch (e) {
             console.error(e);
@@ -36,7 +37,7 @@ export function useCalendarEvents() {
     };
 
     const updateEvent = async (id: string, eventData: Partial<CalendarEvent>) => {
-        if (!user) return;
+        if (!activeUserId) return;
         const event = data.find(e => e.id === id);
         if (!event) return;
         const updatedEvent = { ...event, ...eventData };
@@ -45,7 +46,7 @@ export function useCalendarEvents() {
             await fetch('/api/calendar-events', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, event: updatedEvent })
+                body: JSON.stringify({ userId: activeUserId, event: updatedEvent })
             });
         } catch (e) {
             console.error(e);
@@ -54,7 +55,7 @@ export function useCalendarEvents() {
     };
 
     const deleteEvent = async (id: string) => {
-        if (!user) return;
+        if (!activeUserId) return;
         mutate(data.filter(e => e.id !== id), false);
         try {
             await fetch(`/api/calendar-events?id=${id}`, { method: 'DELETE' });

@@ -24,13 +24,14 @@ async function readErrorMessage(res: Response) {
 
 export function createResourceHook<T extends ResourceItem>(endpoint: string) {
     return function () {
-        const { user } = useAuth();
-        const key = user ? `${endpoint}?userId=${user.id}` : null;
+        const { user, currentEmployee, profile } = useAuth();
+        const activeUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
+        const key = activeUserId ? `${endpoint}?userId=${activeUserId}` : null;
         const { data = [], isLoading, mutate } = useSWR<T[]>(key, fetcher);
 
         const add = async (item: T): Promise<void> => {
-            if (!user) return;
-            const newItem = { ...item, userId: user.id };
+            if (!activeUserId) return;
+            const newItem = { ...item, userId: activeUserId };
             mutate([newItem, ...data], false);
             try {
                 const res = await fetch(endpoint, {

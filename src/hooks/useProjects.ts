@@ -48,8 +48,7 @@ export function useProjects() {
     const { showToast } = useNotification();
 
     const activeUserId = profile?.companyOwnerId || currentEmployee?.userId || user?.id;
-    // The scope only separates SWR caches. The API derives the actual company from the session.
-    const key = activeUserId ? `/api/projects?scope=${encodeURIComponent(activeUserId)}` : null;
+    const key = activeUserId ? `/api/projects?userId=${encodeURIComponent(activeUserId)}` : null;
     const initialFallback = getCachedProjects(activeUserId);
 
     const { data = initialFallback, isLoading, mutate } = useSWR<Project[]>(key, fetcher, {

@@ -43,16 +43,27 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid user data' }, { status: 401 });
         }
 
+        let resolvedRole: { company_owner_id?: string; role?: string } | null = null;
+        let companyOwnerId = user.id;
+
         if (supabaseAdmin) {
             const { data: role } = await supabaseAdmin.from('user_roles').select('company_owner_id, role').eq('user_id', user.id).maybeSingle();
-            const companyOwnerId = role?.company_owner_id || user.id;
-            if (role?.role !== 'developer' && await isTenantSuspended(companyOwnerId)) {
-                const reason = await getTenantSuspensionReason(companyOwnerId);
-                if (reason === 'Testphase beendet') return NextResponse.json({ error: 'TRIAL_EXPIRED', message: 'Ihre FlowY-Testphase ist beendet. Bitte wenden Sie sich an FlowY, um Ihren Zugang freizuschalten.' }, { status: 403 });
-                return NextResponse.json({ error: 'Account suspended' }, { status: 403 });
-            }
-            if (role?.role !== 'developer' && await isTrialAccessBlocked(companyOwnerId)) {
-                return NextResponse.json({ error: 'TRIAL_EXPIRED', message: 'Ihre FlowY-Testphase ist beendet. Bitte wenden Sie sich an FlowY, um Ihren Zugang freizuschalten.' }, { status: 403 });
+            resolvedRole = role;
+            companyOwnerId = role?.company_owner_id || user.id;
+
+            if (role?.role !== 'developer') {
+                const [suspended, trialBlocked] = await Promise.all([
+                    isTenantSuspended(companyOwnerId),
+                    isTrialAccessBlocked(companyOwnerId)
+                ]);
+                if (suspended) {
+                    const reason = await getTenantSuspensionReason(companyOwnerId);
+                    if (reason === 'Testphase beendet') return NextResponse.json({ error: 'TRIAL_EXPIRED', message: 'Ihre FlowY-Testphase ist beendet. Bitte wenden Sie sich an FlowY, um Ihren Zugang freizuschalten.' }, { status: 403 });
+                    return NextResponse.json({ error: 'Account suspended' }, { status: 403 });
+                }
+                if (trialBlocked) {
+                    return NextResponse.json({ error: 'TRIAL_EXPIRED', message: 'Ihre FlowY-Testphase ist beendet. Bitte wenden Sie sich an FlowY, um Ihren Zugang freizuschalten.' }, { status: 403 });
+                }
             }
         }
 
@@ -62,10 +73,6 @@ export async function POST(request: NextRequest) {
         }
 
         const secret = new TextEncoder().encode(rawSecret);
-        const resolvedRole = supabaseAdmin
-            ? (await supabaseAdmin.from('user_roles').select('company_owner_id, role').eq('user_id', user.id).maybeSingle()).data
-            : null;
-        const companyOwnerId = resolvedRole?.company_owner_id || user.id;
         if (supabaseAdmin) {
             try {
                 await provisionRequestedTrial(user, companyOwnerId, resolvedRole?.role);

@@ -67,6 +67,7 @@ export default function EmployeesPage() {
     const { cache, mutate: mutateAll } = useSWRConfig();
 
     const [searchQuery, setSearchQuery] = useState("");
+    const deferredSearchQuery = React.useDeferredValue(searchQuery);
     const [filterStatus, setFilterStatus] = useState<EmploymentStatus | "all">("all");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>(undefined);
@@ -105,7 +106,7 @@ export default function EmployeesPage() {
     }, [employees]);
 
     const filteredEmployees = useMemo(() => {
-        const query = searchQuery.trim().toLowerCase();
+        const query = deferredSearchQuery.trim().toLowerCase();
 
         return employees
             .filter((employee) => {
@@ -127,7 +128,7 @@ export default function EmployeesPage() {
                 const numB = parseInt(b.employeeNumber.replace(/\D/g, "")) || 0;
                 return numA - numB;
             });
-    }, [employees, filterStatus, listTab, searchQuery]);
+    }, [employees, filterStatus, listTab, deferredSearchQuery]);
 
     const employeeDetailKey = (id: string) => `/api/employees/${id}`;
 

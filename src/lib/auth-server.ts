@@ -2,20 +2,31 @@ import { cookies } from 'next/headers';
 import { supabase } from './supabase';
 import { supabaseAdmin } from './supabase-admin';
 import { verifySessionToken } from './auth';
-import { isTenantSuspended, isTrialAccessBlocked, isWebSessionAllowed } from './tenant-access';
+import { isTenantSuspended, isTrialAccessBlocked, isWebSessionAllowed, getTenantBillingRecord } from './tenant-access';
 
 const sessionCache = new Map<string, { session: any; expiresAt: number }>();
+const planFeaturesCache = new Map<string, { features: string[]; expiresAt: number }>();
 
 async function attachPlanFeatures(session: any) {
     if (!supabaseAdmin || !session?.companyOwnerId || session.role === 'developer') return session;
     try {
-        const { data: billing } = await supabaseAdmin.from('admin_tenant_billing').select('plan_id,plan_name').eq('company_owner_id', session.companyOwnerId).maybeSingle();
+        const billing = await getTenantBillingRecord(session.companyOwnerId);
         if (!billing) return session;
+
+        const cacheKey = String(billing.plan_id || billing.plan_name || 'default');
+        const cachedPlan = planFeaturesCache.get(cacheKey);
+        if (cachedPlan && cachedPlan.expiresAt > Date.now()) {
+            return { ...session, planFeatures: cachedPlan.features };
+        }
+
         let planQuery = supabaseAdmin.from('admin_subscription_plans').select('features');
         const { data: plan } = billing.plan_id
             ? await planQuery.eq('id', billing.plan_id).maybeSingle()
             : await planQuery.ilike('name', String(billing.plan_name || '')).maybeSingle();
-        return { ...session, planFeatures: Array.isArray(plan?.features) ? plan.features : [] };
+
+        const features = Array.isArray(plan?.features) ? plan.features : [];
+        planFeaturesCache.set(cacheKey, { features, expiresAt: Date.now() + 300_000 });
+        return { ...session, planFeatures: features };
     } catch { return session; }
 }
 
@@ -91,10 +102,15 @@ export async function getUserSession(options: { allowExpiredTrial?: boolean } = 
                     accessToken: sbAccessToken
                 };
                 const enrichedSession = await attachPlanFeatures(resolvedSession);
-                if (enrichedSession.role !== 'developer' && (await isTenantSuspended(enrichedSession.companyOwnerId))) return null;
-                if (!options.allowExpiredTrial && enrichedSession.role !== 'developer' && (await isTrialAccessBlocked(enrichedSession.companyOwnerId))) return null;
-                if (enrichedSession.role !== 'developer' && !(await isWebSessionAllowed(enrichedSession.companyOwnerId, undefined, supabaseIssuedAt))) return null;
-                sessionCache.set(sbAccessToken, { session: enrichedSession, expiresAt: Date.now() + 5000 });
+                if (enrichedSession.role !== 'developer') {
+                    const [suspended, trialBlocked, webAllowed] = await Promise.all([
+                        isTenantSuspended(enrichedSession.companyOwnerId),
+                        !options.allowExpiredTrial ? isTrialAccessBlocked(enrichedSession.companyOwnerId) : Promise.resolve(false),
+                        isWebSessionAllowed(enrichedSession.companyOwnerId, undefined, supabaseIssuedAt)
+                    ]);
+                    if (suspended || trialBlocked || !webAllowed) return null;
+                }
+                sessionCache.set(sbAccessToken, { session: enrichedSession, expiresAt: Date.now() + 30_000 });
                 return enrichedSession;
             }
         } catch (e) {
@@ -105,6 +121,11 @@ export async function getUserSession(options: { allowExpiredTrial?: boolean } = 
     // 2. Try Legacy session_token
     const token = (await cookieStore).get('session_token')?.value;
     if (token) {
+        const cached = sessionCache.get(token);
+        if (cached && cached.expiresAt > Date.now()) {
+            return cached.session;
+        }
+
         const payload = await verifySessionToken(token);
         if (payload) {
             const userId = payload.userId;
@@ -165,9 +186,20 @@ export async function getUserSession(options: { allowExpiredTrial?: boolean } = 
                 employeeId: payload.employeeId
             };
             const enrichedSession = await attachPlanFeatures(resolvedSession);
-            if (enrichedSession.role !== 'developer' && (await isTenantSuspended(enrichedSession.companyOwnerId))) return null;
-            if (!options.allowExpiredTrial && enrichedSession.role !== 'developer' && (await isTrialAccessBlocked(enrichedSession.companyOwnerId))) return null;
-            if (enrichedSession.role !== 'developer' && !(await isWebSessionAllowed(enrichedSession.companyOwnerId, typeof payload.sid === 'string' ? payload.sid : undefined, typeof payload.iat === 'number' ? payload.iat : undefined))) return null;
+            if (enrichedSession.role !== 'developer') {
+                const [suspended, trialBlocked, webAllowed] = await Promise.all([
+                    isTenantSuspended(enrichedSession.companyOwnerId),
+                    !options.allowExpiredTrial ? isTrialAccessBlocked(enrichedSession.companyOwnerId) : Promise.resolve(false),
+                    isWebSessionAllowed(enrichedSession.companyOwnerId, typeof payload.sid === 'string' ? payload.sid : undefined, typeof payload.iat === 'number' ? payload.iat : undefined)
+                ]);
+                if (suspended || trialBlocked || !webAllowed) return null;
+            }
+
+            sessionCache.set(token, {
+                session: enrichedSession,
+                expiresAt: Date.now() + 30_000
+            });
+
             return enrichedSession;
         }
     }

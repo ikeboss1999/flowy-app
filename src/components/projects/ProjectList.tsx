@@ -37,11 +37,19 @@ const STATUS_OPTIONS: Array<{ id: ProjectStatus | "all"; label: string }> = [
 export function ProjectList({ projects, customers, onEdit, onDelete, onView, canWrite = true }: ProjectListProps) {
     const { showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
+    const deferredSearchQuery = React.useDeferredValue(searchQuery);
     const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">("all");
 
+    const customerMap = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const c of customers) {
+            map.set(c.id, c.name);
+        }
+        return map;
+    }, [customers]);
+
     const getCustomerName = (id: string) => {
-        const customer = customers.find(c => c.id === id);
-        return customer ? customer.name : "Unbekannter Kunde";
+        return customerMap.get(id) || "Unbekannter Kunde";
     };
 
     const getStatusStyle = (status: ProjectStatus) => {
@@ -73,10 +81,10 @@ export function ProjectList({ projects, customers, onEdit, onDelete, onView, can
     }), [projects]);
 
     const filteredProjects = useMemo(() => {
-        const query = searchQuery.trim().toLowerCase();
+        const query = deferredSearchQuery.trim().toLowerCase();
 
         return projects.filter(project => {
-            const customerName = customers.find(customer => customer.id === project.customerId)?.name || "Unbekannter Kunde";
+            const customerName = customerMap.get(project.customerId) || "Unbekannter Kunde";
             const matchesStatus = statusFilter === "all" || project.status === statusFilter;
             const matchesSearch =
                 !query ||
@@ -88,7 +96,20 @@ export function ProjectList({ projects, customers, onEdit, onDelete, onView, can
 
             return matchesStatus && matchesSearch;
         });
-    }, [projects, searchQuery, statusFilter, customers]);
+    }, [projects, deferredSearchQuery, statusFilter, customerMap]);
+
+    const handleDeletePrompt = React.useCallback((project: Project) => {
+        const projectLabel = project.projectNumber
+            ? `${project.projectNumber} – ${project.name}`
+            : project.name;
+        showConfirm({
+            title: "Baustelle löschen?",
+            message: `Möchten Sie „${projectLabel}“ wirklich unwiderruflich löschen?`,
+            confirmLabel: "Jetzt löschen",
+            variant: "danger",
+            onConfirm: () => onDelete(project.id),
+        });
+    }, [showConfirm, onDelete]);
 
     const statCards = [
         { id: "active" as const, label: "Laufend", value: stats.active, icon: Briefcase, className: "bg-emerald-50 text-emerald-700 border-emerald-100" },
@@ -192,76 +213,15 @@ export function ProjectList({ projects, customers, onEdit, onDelete, onView, can
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {filteredProjects.map((project) => (
-                                        <tr
+                                        <ProjectTableRow
                                             key={project.id}
-                                            onClick={() => onView(project)}
-                                            className="group cursor-pointer transition-all hover:bg-slate-50/80"
-                                        >
-                                            <td className="px-6 py-5">
-                                                <div className="font-black text-slate-900 transition-colors group-hover:text-indigo-600">{project.name}</div>
-                                                {project.projectNumber && (
-                                                    <div className="mt-1 text-xs font-bold text-indigo-500">{project.projectNumber}</div>
-                                                )}
-                                                {project.description && (
-                                                    <div className="mt-1 line-clamp-1 text-xs font-medium text-slate-400">{project.description}</div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-5 font-bold text-slate-700">
-                                                {getCustomerName(project.customerId)}
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                <span className={cn("rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wider", getStatusStyle(project.status))}>
-                                                    {getStatusLabel(project.status)}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-5 text-sm font-semibold text-slate-500">
-                                                <div className="flex items-center gap-1.5">
-                                                    <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                                                    {project.address.city || "-"}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-5 text-sm font-semibold text-slate-500">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                                                    {new Date(project.createdAt).toLocaleDateString("de-DE")}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                {canWrite && (
-                                                    <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                                                        <button
-                                                            onClick={(event) => {
-                                                                event.stopPropagation();
-                                                                onEdit(project);
-                                                            }}
-                                                            className="rounded-xl border border-transparent p-2.5 text-slate-400 transition-all hover:border-slate-100 hover:bg-white hover:text-indigo-600 hover:shadow-md"
-                                                            title="Bearbeiten"
-                                                        >
-                                                            <Edit2 className="h-4 w-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={(event) => {
-                                                                event.stopPropagation();
-                                                                const projectLabel = project.projectNumber
-                                                                    ? `${project.projectNumber} – ${project.name}`
-                                                                    : project.name;
-                                                                showConfirm({
-                                                                    title: "Baustelle löschen?",
-                                                                    message: `Möchten Sie „${projectLabel}“ wirklich unwiderruflich löschen?`,
-                                                                    confirmLabel: "Jetzt löschen",
-                                                                    variant: "danger",
-                                                                    onConfirm: () => onDelete(project.id),
-                                                                });
-                                                            }}
-                                                            className="rounded-xl border border-transparent p-2.5 text-slate-400 transition-all hover:border-rose-100 hover:bg-white hover:text-rose-600 hover:shadow-md"
-                                                            title="Loeschen"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </td>
-                                        </tr>
+                                            project={project}
+                                            customerName={customerMap.get(project.customerId) || "Unbekannter Kunde"}
+                                            canWrite={canWrite}
+                                            onView={onView}
+                                            onEdit={onEdit}
+                                            onDeletePrompt={handleDeletePrompt}
+                                        />
                                     ))}
                                 </tbody>
                             </table>
@@ -272,3 +232,104 @@ export function ProjectList({ projects, customers, onEdit, onDelete, onView, can
         </div>
     );
 }
+
+interface ProjectTableRowProps {
+    project: Project;
+    customerName: string;
+    canWrite: boolean;
+    onView: (project: Project) => void;
+    onEdit: (project: Project) => void;
+    onDeletePrompt: (project: Project) => void;
+}
+
+const ProjectTableRow = React.memo(function ProjectTableRow({
+    project,
+    customerName,
+    canWrite,
+    onView,
+    onEdit,
+    onDeletePrompt,
+}: ProjectTableRowProps) {
+    const getStatusStyle = (status: ProjectStatus) => {
+        switch (status) {
+            case "active": return "bg-emerald-50 text-emerald-600 border-emerald-100";
+            case "completed": return "bg-slate-50 text-slate-600 border-slate-100";
+            case "planned": return "bg-indigo-50 text-indigo-600 border-indigo-100";
+            case "on_hold": return "bg-amber-50 text-amber-600 border-amber-100";
+            default: return "bg-slate-50 text-slate-600 border-slate-100";
+        }
+    };
+
+    const getStatusLabel = (status: ProjectStatus) => {
+        switch (status) {
+            case "active": return "Laufend";
+            case "completed": return "Abgeschlossen";
+            case "planned": return "Geplant";
+            case "on_hold": return "Pausiert";
+            default: return status;
+        }
+    };
+
+    return (
+        <tr
+            onClick={() => onView(project)}
+            className="group cursor-pointer transition-all hover:bg-slate-50/80"
+        >
+            <td className="px-6 py-5">
+                <div className="font-black text-slate-900 transition-colors group-hover:text-indigo-600">{project.name}</div>
+                {project.projectNumber && (
+                    <div className="mt-1 text-xs font-bold text-indigo-500">{project.projectNumber}</div>
+                )}
+                {project.description && (
+                    <div className="mt-1 line-clamp-1 text-xs font-medium text-slate-400">{project.description}</div>
+                )}
+            </td>
+            <td className="px-6 py-5 font-bold text-slate-700">
+                {customerName}
+            </td>
+            <td className="px-6 py-5">
+                <span className={cn("rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wider", getStatusStyle(project.status))}>
+                    {getStatusLabel(project.status)}
+                </span>
+            </td>
+            <td className="px-6 py-5 text-sm font-semibold text-slate-500">
+                <div className="flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                    {project.address.city || "-"}
+                </div>
+            </td>
+            <td className="px-6 py-5 text-sm font-semibold text-slate-500">
+                <div className="flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                    {new Date(project.createdAt).toLocaleDateString("de-DE")}
+                </div>
+            </td>
+            <td className="px-6 py-5">
+                {canWrite && (
+                    <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onEdit(project);
+                            }}
+                            className="rounded-xl border border-transparent p-2.5 text-slate-400 transition-all hover:border-slate-100 hover:bg-white hover:text-indigo-600 hover:shadow-md"
+                            title="Bearbeiten"
+                        >
+                            <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onDeletePrompt(project);
+                            }}
+                            className="rounded-xl border border-transparent p-2.5 text-slate-400 transition-all hover:border-rose-100 hover:bg-white hover:text-rose-600 hover:shadow-md"
+                            title="Loeschen"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </button>
+                    </div>
+                )}
+            </td>
+        </tr>
+    );
+});

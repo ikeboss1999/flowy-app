@@ -55,14 +55,16 @@ export default function DashboardLayout({
 
     const isDeveloperRedirect = !isAuthLoading && profile?.role === "developer" && !pathname.startsWith("/admin");
     const isOnboardingRoute = pathname === "/onboarding";
-    const needsOnboarding = !isOnboardingRoute && !!user && !isAuthLoading && !isCompanySettingsLoading && !companySettingsError && !companySettings.companyName.trim() && user.user_metadata?.onboarding_completed !== true;
+    const userPossiblyNeedsOnboarding = !!user && user.user_metadata?.onboarding_completed !== true;
+    const needsOnboarding = !isOnboardingRoute && userPossiblyNeedsOnboarding && !isAuthLoading && !isCompanySettingsLoading && !companySettingsError && !companySettings.companyName.trim();
     React.useEffect(() => {
         if (needsOnboarding) window.location.replace("/onboarding");
     }, [needsOnboarding]);
 
     const isHomeLoading = pathname === "/" && (!isStartupReady || !isLogoReady);
+    const isWaitingForOnboardingCheck = userPossiblyNeedsOnboarding && isCompanySettingsLoading;
 
-    if (isAuthLoading || isHomeLoading || isDeveloperRedirect || isCompanySettingsLoading || needsOnboarding) {
+    if (isAuthLoading || isHomeLoading || isDeveloperRedirect || isWaitingForOnboardingCheck || needsOnboarding) {
         return (
             <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden bg-[#020205]">
                 <div className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-600/10 blur-[120px] pointer-events-none" />

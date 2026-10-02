@@ -56,7 +56,6 @@ import { ServiceSelectionModal } from "@/components/ServiceSelectionModal";
 import { ServiceModal } from "@/components/ServiceModal";
 import { Service } from "@/types/service";
 import { CustomerSearchSelect } from "@/components/CustomerSearchSelect";
-import { InvoiceReactPDF } from "@/components/InvoiceReactPDF";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { formatYearlyNumber, nextYearlySequence } from "@/lib/document-numbering";
 
@@ -685,7 +684,10 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
       setIsGeneratingPDF(true);
       try {
         // Generate Blob using React-PDF dynamically
-        const { pdf } = await import("@react-pdf/renderer");
+        const [{ pdf }, { InvoiceReactPDF }] = await Promise.all([
+          import("@react-pdf/renderer"),
+          import("@/components/InvoiceReactPDF"),
+        ]);
         const blob = await pdf(
           <InvoiceReactPDF
             invoice={invoiceData}

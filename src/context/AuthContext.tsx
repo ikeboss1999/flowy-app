@@ -104,12 +104,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch { }
 
         const initAuth = async () => {
-            // 1. Cookie-backed session check, including PIN employees.
-            await refreshProfile();
-
-            // 2. Supabase Session Check
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                // 1. Supabase Session Check & Profile Refresh in parallel
+                const [sessionResult] = await Promise.all([
+                    supabase.auth.getSession().catch(err => {
+                        console.error("Supabase session error:", err);
+                        return { data: { session: null } };
+                    }),
+                    refreshProfile()
+                ]);
+
+                const session = sessionResult.data?.session;
                 if (mounted && session) {
                     setSession(session);
                     setUser(session.user ?? null);
@@ -129,10 +134,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     }
                 }
             } catch (err) {
-                console.error("Supabase session error:", err);
+                console.error("Auth init error:", err);
+            } finally {
+                if (mounted) setIsLoading(false);
             }
-
-            if (mounted) setIsLoading(false);
         };
 
         initAuth();

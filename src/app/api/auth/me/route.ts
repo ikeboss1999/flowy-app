@@ -7,6 +7,11 @@ import { Employee } from '@/types/employee';
 import { logApiPerformance } from '@/lib/api-performance';
 
 export const dynamic = 'force-dynamic';
+type CachedEmployeeEntry = {
+    employee: Employee | null;
+    expiresAt: number;
+};
+const employeeMeCache = new Map<string, CachedEmployeeEntry>();
 
 export async function GET() {
     const startedAt = performance.now();
@@ -20,47 +25,60 @@ export async function GET() {
 
         let employee: Employee | null = null;
 
-        if (session.role === 'employee' && session.employeeId) {
-            const client = supabaseAdmin || supabase;
-            const { data, error } = await client
-                .from('employees')
-                .select('*')
-                .eq('id', session.employeeId)
-                .eq('userId', session.companyOwnerId)
-                .maybeSingle();
+        if (session.role === 'employee') {
+            const cacheKey = session.employeeId || session.userId || session.email || '';
+            const cached = employeeMeCache.get(cacheKey);
+            if (cached && cached.expiresAt > Date.now()) {
+                employee = cached.employee;
+            } else {
+                if (session.employeeId) {
+                    const client = supabaseAdmin || supabase;
+                    const { data, error } = await client
+                        .from('employees')
+                        .select('*')
+                        .eq('id', session.employeeId)
+                        .eq('userId', session.companyOwnerId)
+                        .maybeSingle();
 
-            if (!error && data) {
-                const decrypted = decryptEmployee(data as Employee);
-                employee = {
-                    ...decrypted,
-                    appAccess: decrypted.appAccess
-                        ? { ...decrypted.appAccess, accessPIN: '' }
-                    : decrypted.appAccess,
-                };
-            }
-        }
-
-        if (session.role === 'employee' && !employee && session.email) {
-            const client = supabaseAdmin || supabase;
-            const { data, error } = await client
-                .from('employees')
-                .select('*')
-                .eq('userId', session.companyOwnerId);
-
-            if (!error && data) {
-                const sessionEmail = String(session.email).trim().toLowerCase();
-                const matched = (data as Employee[])
-                    .map((item) => decryptEmployee(item as Employee))
-                    .find((item) => String(item.personalData?.email || '').trim().toLowerCase() === sessionEmail);
-
-                if (matched) {
-                    employee = {
-                        ...matched,
-                        appAccess: matched.appAccess
-                            ? { ...matched.appAccess, accessPIN: '' }
-                            : matched.appAccess,
-                    };
+                    if (!error && data) {
+                        const decrypted = decryptEmployee(data as Employee);
+                        employee = {
+                            ...decrypted,
+                            appAccess: decrypted.appAccess
+                                ? { ...decrypted.appAccess, accessPIN: '' }
+                                : decrypted.appAccess,
+                        };
+                    }
                 }
+
+                if (!employee && session.email) {
+                    const client = supabaseAdmin || supabase;
+                    const { data, error } = await client
+                        .from('employees')
+                        .select('*')
+                        .eq('userId', session.companyOwnerId);
+
+                    if (!error && data) {
+                        const sessionEmail = String(session.email).trim().toLowerCase();
+                        const matched = (data as Employee[])
+                            .map((item) => decryptEmployee(item as Employee))
+                            .find((item) => String(item.personalData?.email || '').trim().toLowerCase() === sessionEmail);
+
+                        if (matched) {
+                            employee = {
+                                ...matched,
+                                appAccess: matched.appAccess
+                                    ? { ...matched.appAccess, accessPIN: '' }
+                                    : matched.appAccess,
+                            };
+                        }
+                    }
+                }
+
+                employeeMeCache.set(cacheKey, {
+                    employee,
+                    expiresAt: Date.now() + 60_000
+                });
             }
         }
 

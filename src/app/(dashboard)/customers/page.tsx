@@ -45,6 +45,7 @@ export default function CustomersPage() {
     const { subcontractors, saveSubcontractor, deleteSubcontractor, isLoading: isLoadingSubcontractors } = useSubcontractors();
     const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
+    const deferredSearchQuery = React.useDeferredValue(searchQuery);
     const [filterType, setFilterType] = useState<CustomerType | "all">("all");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | undefined>(undefined);
@@ -65,7 +66,7 @@ export default function CustomersPage() {
     }), [customers]);
 
     const filteredCustomers = useMemo(() => {
-        const query = searchQuery.trim().toLowerCase();
+        const query = deferredSearchQuery.trim().toLowerCase();
 
         return customers
             .filter(customer => {
@@ -88,12 +89,12 @@ export default function CustomersPage() {
                 const numB = b.customer_number || "";
                 return numA.localeCompare(numB, undefined, { numeric: true, sensitivity: "base" });
             });
-    }, [customers, searchQuery, filterType]);
+    }, [customers, deferredSearchQuery, filterType]);
 
     const filteredSubcontractors = useMemo(() => {
-        const query = searchQuery.trim().toLowerCase();
+        const query = deferredSearchQuery.trim().toLowerCase();
         return subcontractors.filter(item => !query || [item.name, item.contactPerson, item.email, item.phone, item.subcontractor_number, item.city, item.taxId].some(value => String(value || "").toLowerCase().includes(query))).sort((a, b) => String(a.subcontractor_number || "").localeCompare(String(b.subcontractor_number || ""), undefined, { numeric: true }));
-    }, [subcontractors, searchQuery]);
+    }, [subcontractors, deferredSearchQuery]);
 
     const openCreateModal = () => {
         if (!canWriteCustomers) return;
@@ -123,13 +124,13 @@ export default function CustomersPage() {
         }
     };
 
-    const handleEditCustomer = (customer: Customer) => {
+    const handleEditCustomer = React.useCallback((customer: Customer) => {
         if (!canWriteCustomers) return;
         setEditingCustomer(customer);
         setIsModalOpen(true);
-    };
+    }, [canWriteCustomers]);
 
-    const handleDeleteCustomer = (id: string) => {
+    const handleDeleteCustomer = React.useCallback((id: string) => {
         if (!canWriteCustomers) return;
         showConfirm({
             title: "Kunden löschen?",
@@ -138,19 +139,32 @@ export default function CustomersPage() {
             confirmLabel: "Jetzt löschen",
             onConfirm: () => {
                 deleteCustomer(id);
-                if (selectedDetailCustomer?.id === id) {
-                    setSelectedDetailCustomer(undefined);
-                }
+                setSelectedDetailCustomer(prev => prev?.id === id ? undefined : prev);
                 showToast("Kunde erfolgreich gelöscht.", "success");
             }
         });
-    };
+    }, [canWriteCustomers, showConfirm, deleteCustomer, showToast]);
 
-    const handleCopyEmail = (email?: string) => {
+    const handleCopyEmail = React.useCallback((email?: string) => {
         if (!email) return;
         navigator.clipboard.writeText(email);
         showToast("E-Mail-Adresse in die Zwischenablage kopiert.", "success");
-    };
+    }, [showToast]);
+
+    const handleEditSubcontractor = React.useCallback((item: Subcontractor) => {
+        setEditingSubcontractor(item);
+        setIsSubcontractorModalOpen(true);
+    }, []);
+
+    const handleDeleteSubcontractorPrompt = React.useCallback((item: Subcontractor) => {
+        showConfirm({
+            title: "Subunternehmer löschen?",
+            message: "Möchten Sie diesen Kontakt wirklich löschen?",
+            variant: "danger",
+            confirmLabel: "Jetzt löschen",
+            onConfirm: () => deleteSubcontractor(item.id)
+        });
+    }, [showConfirm, deleteSubcontractor]);
 
     if (isLoading) {
         return (
@@ -256,152 +270,38 @@ export default function CustomersPage() {
             </div>
 
             {activeContactType === "subcontractors" ? (
-                filteredSubcontractors.length > 0 ? <div className="grid gap-4 xl:grid-cols-2">{filteredSubcontractors.map(item => <div key={item.id} onClick={() => setSelectedSubcontractor(item)} className="group cursor-pointer overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg"><div className="flex flex-col gap-5 p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div className="flex min-w-0 items-start gap-4"><div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600"><Briefcase className="h-7 w-7" /></div><div className="min-w-0"><div className="mb-2 flex flex-wrap items-center gap-2"><span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">Subunternehmer</span><span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black text-slate-500">{item.subcontractor_number}</span>{item.hfuListed ? <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-700">HFU geprüft</span> : <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-[10px] font-black text-amber-700">25 % prüfen</span>}</div><h3 className="truncate text-2xl font-black text-slate-900">{item.name}</h3><p className="mt-1 truncate text-sm font-semibold text-slate-500">{[item.street, `${item.zip || ""} ${item.city || ""}`.trim()].filter(Boolean).join(", ") || "Keine Adresse"}</p>{item.contactPerson && <p className="mt-1 truncate text-sm font-semibold text-slate-500">Ansprechpartner: {item.contactPerson}</p>}</div></div><div className="flex shrink-0 items-center gap-2" onClick={event => event.stopPropagation()}><span className={cn("rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider", item.status === "active" ? "bg-emerald-50 text-emerald-700" : item.status === "inactive" ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700")}>{item.status === "active" ? "Aktiv" : item.status === "inactive" ? "Inaktiv" : "Gesperrt"}</span>{canWriteCustomers && <><button onClick={() => { setEditingSubcontractor(item); setIsSubcontractorModalOpen(true); }} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600"><Edit2 className="h-4 w-4" /></button><button onClick={() => showConfirm({ title: "Subunternehmer löschen?", message: "Möchten Sie diesen Kontakt wirklich löschen?", variant: "danger", confirmLabel: "Jetzt löschen", onConfirm: () => deleteSubcontractor(item.id) })} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button></>}</div></div><div className="grid gap-3 border-t border-slate-100 pt-5 md:grid-cols-3"><div className="rounded-2xl bg-slate-50 px-4 py-3"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">E-Mail</p><p className="truncate text-sm font-bold text-slate-700">{item.email || "-"}</p></div><div className="rounded-2xl bg-slate-50 px-4 py-3"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Telefon</p><p className="truncate text-sm font-bold text-slate-700">{item.phone || "-"}</p></div><div className="rounded-2xl bg-slate-50 px-4 py-3"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">UID</p><p className="truncate text-sm font-bold text-slate-700">{item.taxId || "-"}</p></div></div></div></div>)}</div> : <div className="rounded-[36px] border border-dashed border-indigo-200 bg-indigo-50/40 px-6 py-24 text-center"><h4 className="text-xl font-black text-slate-900">Keine Subunternehmer gefunden</h4><p className="mt-2 font-medium text-slate-500">Legen Sie Ihren ersten Subunternehmer an.</p></div>
+                filteredSubcontractors.length > 0 ? (
+                    <div className="grid gap-4 xl:grid-cols-2">
+                        {filteredSubcontractors.map(item => (
+                            <SubcontractorCard
+                                key={item.id}
+                                item={item}
+                                canWrite={canWriteCustomers}
+                                onSelect={setSelectedSubcontractor}
+                                onEdit={handleEditSubcontractor}
+                                onDeletePrompt={handleDeleteSubcontractorPrompt}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="rounded-[36px] border border-dashed border-indigo-200 bg-indigo-50/40 px-6 py-24 text-center">
+                        <h4 className="text-xl font-black text-slate-900">Keine Subunternehmer gefunden</h4>
+                        <p className="mt-2 font-medium text-slate-500">Legen Sie Ihren ersten Subunternehmer an.</p>
+                    </div>
+                )
             ) : filteredCustomers.length > 0 ? (
                 <div className="grid gap-4 xl:grid-cols-2">
-                    {filteredCustomers.map((customer) => {
-                        const isBusiness = customer.type === "business";
-                        return (
-                            <div
-                                key={customer.id}
-                                onClick={() => setSelectedDetailCustomer(customer)}
-                                className="group cursor-pointer overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg"
-                            >
-                                <div className="flex flex-col gap-5 p-5 sm:p-6">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="flex min-w-0 items-start gap-4">
-                                            <div className={cn(
-                                                "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border shadow-sm",
-                                                isBusiness
-                                                    ? "border-emerald-100 bg-emerald-50 text-emerald-600"
-                                                    : "border-purple-100 bg-purple-50 text-purple-600"
-                                            )}>
-                                                {isBusiness ? <Briefcase className="h-7 w-7" /> : <User className="h-7 w-7" />}
-                                            </div>
-
-                                            <div className="min-w-0">
-                                                <div className="mb-2 flex flex-wrap items-center gap-2">
-                                                    <span className={cn(
-                                                        "rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider",
-                                                        isBusiness ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700"
-                                                    )}>
-                                                        {isBusiness ? "Firma" : "Privat"}
-                                                    </span>
-                                                    {customer.customer_number && (
-                                                        <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black text-slate-500">
-                                                            {customer.customer_number}
-                                                        </span>
-                                                    )}
-                                                    {isBusiness && customer.reverseChargeEnabled && (
-                                                        <span className="rounded-lg border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-[10px] font-black text-cyan-700">
-                                                            Reverse Charge
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                <h3 className="truncate text-2xl font-black leading-tight text-slate-900 transition-colors group-hover:text-indigo-600" title={customer.name}>
-                                                    {customer.name}
-                                                </h3>
-                                                <p className="mt-1 flex items-center gap-1.5 truncate text-sm font-semibold text-slate-500">
-                                                    <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
-                                                    {[customer.address?.street, `${customer.address?.zip || ""} ${customer.address?.city || ""}`.trim()].filter(Boolean).join(", ") || "Keine Adresse"}
-                                                </p>
-                                                {isBusiness && customer.contactPerson && (
-                                                    <p className="mt-1 flex items-center gap-1.5 truncate text-sm font-semibold text-slate-500">
-                                                        <User className="h-4 w-4 shrink-0 text-slate-400" />
-                                                        Ansprechpartner: {customer.contactPerson}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="flex shrink-0 items-center gap-2">
-                                            <span className={cn(
-                                                "hidden rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider sm:inline-flex",
-                                                customer.status === "active" ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" :
-                                                    customer.status === "inactive" ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100" :
-                                                    customer.status === "draft" ? "bg-slate-100 text-slate-600 ring-1 ring-slate-200" :
-                                                        "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
-                                            )}>
-                                                {customer.status === "active" ? "Aktiv" : customer.status === "inactive" ? "Inaktiv" : customer.status === "draft" ? "Entwurf" : "Gesperrt"}
-                                            </span>
-                                            {canWriteCustomers && (
-                                            <>
-                                            <button
-                                                onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    handleEditCustomer(customer);
-                                                }}
-                                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
-                                                title="Bearbeiten"
-                                            >
-                                                <Edit2 className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                                onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    handleDeleteCustomer(customer.id);
-                                                }}
-                                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                                                title="Löschen"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                            </>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="grid gap-3 border-t border-slate-100 pt-5 md:grid-cols-3">
-                                        <div className="min-w-0 rounded-2xl bg-slate-50 px-4 py-3">
-                                            <p className="mb-1 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                <Mail className="h-3.5 w-3.5" /> E-Mail
-                                            </p>
-                                            <div className="flex items-center gap-2">
-                                                <span className="truncate text-sm font-bold text-slate-700">{customer.email || "-"}</span>
-                                                {customer.email && (
-                                                    <>
-                                                        <button
-                                                            onClick={(event) => {
-                                                                event.stopPropagation();
-                                                                handleCopyEmail(customer.email);
-                                                            }}
-                                                            className="shrink-0 text-slate-400 hover:text-indigo-600"
-                                                            title="E-Mail kopieren"
-                                                        >
-                                                            <Copy className="h-3.5 w-3.5" />
-                                                        </button>
-                                                        <a
-                                                            href={`mailto:${customer.email}`}
-                                                            onClick={(event) => event.stopPropagation()}
-                                                            className="shrink-0 text-slate-400 hover:text-indigo-600"
-                                                            title="E-Mail schreiben"
-                                                        >
-                                                            <ExternalLink className="h-3.5 w-3.5" />
-                                                        </a>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="min-w-0 rounded-2xl bg-slate-50 px-4 py-3">
-                                            <p className="mb-1 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                <Phone className="h-3.5 w-3.5" /> Telefon
-                                            </p>
-                                            <span className="truncate text-sm font-bold text-slate-700">{customer.phone || "-"}</span>
-                                        </div>
-
-                                        <div className="min-w-0 rounded-2xl bg-slate-50 px-4 py-3">
-                                            <p className="mb-1 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                <Building2 className="h-3.5 w-3.5" /> Steuerdaten
-                                            </p>
-                                            <span className="truncate text-sm font-bold text-slate-700">{customer.taxId || customer.commercialRegisterNumber || "-"}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+                    {filteredCustomers.map((customer) => (
+                        <CustomerCard
+                            key={customer.id}
+                            customer={customer}
+                            canWrite={canWriteCustomers}
+                            onSelect={setSelectedDetailCustomer}
+                            onEdit={handleEditCustomer}
+                            onDelete={handleDeleteCustomer}
+                            onCopyEmail={handleCopyEmail}
+                        />
+                    ))}
                 </div>
             ) : (
                 <div className="flex flex-col items-center justify-center rounded-[36px] border border-dashed border-indigo-200 bg-indigo-50/40 px-6 py-24 text-center">
@@ -446,3 +346,231 @@ export default function CustomersPage() {
         </div>
     );
 }
+
+interface CustomerCardProps {
+    customer: Customer;
+    canWrite: boolean;
+    onSelect: (customer: Customer) => void;
+    onEdit: (customer: Customer) => void;
+    onDelete: (id: string) => void;
+    onCopyEmail: (email?: string) => void;
+}
+
+const CustomerCard = React.memo(function CustomerCard({
+    customer,
+    canWrite,
+    onSelect,
+    onEdit,
+    onDelete,
+    onCopyEmail,
+}: CustomerCardProps) {
+    const isBusiness = customer.type === "business";
+    return (
+        <div
+            onClick={() => onSelect(customer)}
+            className="group cursor-pointer overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg"
+        >
+            <div className="flex flex-col gap-5 p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex min-w-0 items-start gap-4">
+                        <div className={cn(
+                            "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border shadow-sm",
+                            isBusiness
+                                ? "border-emerald-100 bg-emerald-50 text-emerald-600"
+                                : "border-purple-100 bg-purple-50 text-purple-600"
+                        )}>
+                            {isBusiness ? <Briefcase className="h-7 w-7" /> : <User className="h-7 w-7" />}
+                        </div>
+
+                        <div className="min-w-0">
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                                <span className={cn(
+                                    "rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider",
+                                    isBusiness ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700"
+                                )}>
+                                    {isBusiness ? "Firma" : "Privat"}
+                                </span>
+                                {customer.customer_number && (
+                                    <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black text-slate-500">
+                                        {customer.customer_number}
+                                    </span>
+                                )}
+                                {isBusiness && customer.reverseChargeEnabled && (
+                                    <span className="rounded-lg border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-[10px] font-black text-cyan-700">
+                                        Reverse Charge
+                                    </span>
+                                )}
+                            </div>
+
+                            <h3 className="truncate text-2xl font-black leading-tight text-slate-900 transition-colors group-hover:text-indigo-600" title={customer.name}>
+                                {customer.name}
+                            </h3>
+                            <p className="mt-1 flex items-center gap-1.5 truncate text-sm font-semibold text-slate-500">
+                                <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+                                {[customer.address?.street, `${customer.address?.zip || ""} ${customer.address?.city || ""}`.trim()].filter(Boolean).join(", ") || "Keine Adresse"}
+                            </p>
+                            {isBusiness && customer.contactPerson && (
+                                <p className="mt-1 flex items-center gap-1.5 truncate text-sm font-semibold text-slate-500">
+                                    <User className="h-4 w-4 shrink-0 text-slate-400" />
+                                    Ansprechpartner: {customer.contactPerson}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
+                        <span className={cn(
+                            "hidden rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider sm:inline-flex",
+                            customer.status === "active" ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" :
+                                customer.status === "inactive" ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100" :
+                                customer.status === "draft" ? "bg-slate-100 text-slate-600 ring-1 ring-slate-200" :
+                                    "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
+                        )}>
+                            {customer.status === "active" ? "Aktiv" : customer.status === "inactive" ? "Inaktiv" : customer.status === "draft" ? "Entwurf" : "Gesperrt"}
+                        </span>
+                        {canWrite && (
+                        <>
+                        <button
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onEdit(customer);
+                            }}
+                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+                            title="Bearbeiten"
+                        >
+                            <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onDelete(customer.id);
+                            }}
+                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                            title="Löschen"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </button>
+                        </>
+                        )}
+                    </div>
+                </div>
+
+                <div className="grid gap-3 border-t border-slate-100 pt-5 md:grid-cols-3">
+                    <div className="min-w-0 rounded-2xl bg-slate-50 px-4 py-3">
+                        <p className="mb-1 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <Mail className="h-3.5 w-3.5" /> E-Mail
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <span className="truncate text-sm font-bold text-slate-700">{customer.email || "-"}</span>
+                            {customer.email && (
+                                <>
+                                    <button
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            onCopyEmail(customer.email);
+                                        }}
+                                        className="shrink-0 text-slate-400 hover:text-indigo-600"
+                                        title="E-Mail kopieren"
+                                    >
+                                        <Copy className="h-3.5 w-3.5" />
+                                    </button>
+                                    <a
+                                        href={`mailto:${customer.email}`}
+                                        onClick={(event) => event.stopPropagation()}
+                                        className="shrink-0 text-slate-400 hover:text-indigo-600"
+                                        title="E-Mail schreiben"
+                                    >
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="min-w-0 rounded-2xl bg-slate-50 px-4 py-3">
+                        <p className="mb-1 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <Phone className="h-3.5 w-3.5" /> Telefon
+                        </p>
+                        <span className="truncate text-sm font-bold text-slate-700">{customer.phone || "-"}</span>
+                    </div>
+
+                    <div className="min-w-0 rounded-2xl bg-slate-50 px-4 py-3">
+                        <p className="mb-1 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <Building2 className="h-3.5 w-3.5" /> Steuerdaten
+                        </p>
+                        <span className="truncate text-sm font-bold text-slate-700">{customer.taxId || customer.commercialRegisterNumber || "-"}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+});
+
+interface SubcontractorCardProps {
+    item: Subcontractor;
+    canWrite: boolean;
+    onSelect: (item: Subcontractor) => void;
+    onEdit: (item: Subcontractor) => void;
+    onDeletePrompt: (item: Subcontractor) => void;
+}
+
+const SubcontractorCard = React.memo(function SubcontractorCard({
+    item,
+    canWrite,
+    onSelect,
+    onEdit,
+    onDeletePrompt,
+}: SubcontractorCardProps) {
+    return (
+        <div onClick={() => onSelect(item)} className="group cursor-pointer overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg">
+            <div className="flex flex-col gap-5 p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex min-w-0 items-start gap-4">
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600">
+                            <Briefcase className="h-7 w-7" />
+                        </div>
+                        <div className="min-w-0">
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                                <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">Subunternehmer</span>
+                                <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black text-slate-500">{item.subcontractor_number}</span>
+                                {item.hfuListed ? <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-700">HFU geprüft</span> : <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-[10px] font-black text-amber-700">25 % prüfen</span>}
+                            </div>
+                            <h3 className="truncate text-2xl font-black text-slate-900">{item.name}</h3>
+                            <p className="mt-1 truncate text-sm font-semibold text-slate-500">{[item.street, `${item.zip || ""} ${item.city || ""}`.trim()].filter(Boolean).join(", ") || "Keine Adresse"}</p>
+                            {item.contactPerson && <p className="mt-1 truncate text-sm font-semibold text-slate-500">Ansprechpartner: {item.contactPerson}</p>}
+                        </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2" onClick={event => event.stopPropagation()}>
+                        <span className={cn("rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider", item.status === "active" ? "bg-emerald-50 text-emerald-700" : item.status === "inactive" ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700")}>
+                            {item.status === "active" ? "Aktiv" : item.status === "inactive" ? "Inaktiv" : "Gesperrt"}
+                        </span>
+                        {canWrite && (
+                            <>
+                                <button onClick={() => onEdit(item)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600">
+                                    <Edit2 className="h-4 w-4" />
+                                </button>
+                                <button onClick={() => onDeletePrompt(item)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600">
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+                <div className="grid gap-3 border-t border-slate-100 pt-5 md:grid-cols-3">
+                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">E-Mail</p>
+                        <p className="truncate text-sm font-bold text-slate-700">{item.email || "-"}</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Telefon</p>
+                        <p className="truncate text-sm font-bold text-slate-700">{item.phone || "-"}</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">UID</p>
+                        <p className="truncate text-sm font-bold text-slate-700">{item.taxId || "-"}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+});

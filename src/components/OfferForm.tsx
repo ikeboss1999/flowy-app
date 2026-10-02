@@ -54,7 +54,6 @@ import { ServiceSelectionModal } from "@/components/ServiceSelectionModal";
 import { ServiceModal } from "@/components/ServiceModal";
 import { Service } from "@/types/service";
 import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
-import { OfferReactPDF } from "@/components/OfferReactPDF";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { formatYearlyNumber, nextYearlySequence } from "@/lib/document-numbering";
 
@@ -462,7 +461,10 @@ export function OfferForm({ initialData }: OfferFormProps) {
       };
 
       if (status !== "draft") {
-        const { pdf } = await import("@react-pdf/renderer");
+        const [{ pdf }, { OfferReactPDF }] = await Promise.all([
+          import("@react-pdf/renderer"),
+          import("@/components/OfferReactPDF"),
+        ]);
         const blob = await pdf(
           <OfferReactPDF
             offer={offerData}

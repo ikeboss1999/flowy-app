@@ -237,8 +237,13 @@ export async function GET(request: Request) {
             .order('createdAt', { ascending: false })
             .limit(500);
         if (error) throw error;
-        logApiPerformance('/api/projects', startedAt, { payload: projects });
-        return NextResponse.json(projects);
+        const listItems = (projects || []).map((project: any) => {
+            if (!project?.diaryEntries) return project;
+            const { diaryEntries, ...rest } = project;
+            return rest;
+        });
+        logApiPerformance('/api/projects', startedAt, { rows: listItems.length, payload: listItems });
+        return NextResponse.json(listItems);
     } catch (e) {
         console.error(e);
         return NextResponse.json({ error: 'Failed' }, { status: 500 });
