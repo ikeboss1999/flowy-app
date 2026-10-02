@@ -44,6 +44,11 @@ const formatDate = (date?: string) => {
     return new Date(date).toLocaleDateString("de-AT");
 };
 
+const getLocalDateValue = () => {
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+
 const employeeName = (employee: Employee) =>
     `${employee.personalData.firstName} ${employee.personalData.lastName}`.trim() || "Unbenannter Mitarbeiter";
 
@@ -76,13 +81,17 @@ export default function EmployeesPage() {
     const [listTab, setListTab] = useState<"active" | "inactive">("active");
     const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
     const [deactivatingEmployee, setDeactivatingEmployee] = useState<Employee | null>(null);
+    const [reactivatingEmployee, setReactivatingEmployee] = useState<Employee | null>(null);
     const [exitDate, setExitDate] = useState(new Date().toISOString().split("T")[0]);
+    const [reactivationDate, setReactivationDate] = useState(getLocalDateValue);
+    const [createReactivationContract, setCreateReactivationContract] = useState(false);
     const [exitReason, setExitReason] = useState("Vorübergehend / Winterpause");
     const [pdfEmployee, setPdfEmployee] = useState<Employee | null>(null);
     const [contractEmployee, setContractEmployee] = useState<Employee | null>(null);
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
     const [previewDoc, setPreviewDoc] = useState<EmployeeDocument | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [archiveDocumentLoadingId, setArchiveDocumentLoadingId] = useState<string | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const { avatarByEmployeeId, setAvatarByEmployeeId } = useEmployeeAvatars(employees.length > 0);
 
@@ -337,7 +346,7 @@ export default function EmployeesPage() {
 
     const handleDeactivateConfirm = async () => {
         if (!deactivatingEmployee) return;
-        updateEmployee(deactivatingEmployee.id, {
+        await updateEmployee(deactivatingEmployee.id, {
             ...deactivatingEmployee,
             employment: {
                 ...deactivatingEmployee.employment,
@@ -350,29 +359,58 @@ export default function EmployeesPage() {
         setDeactivatingEmployee(null);
     };
 
+    const prepareEmployeeDeactivation = async (employee: Employee) => {
+        try {
+            const fullEmployee = await preloadEmployeeDetail(employee);
+            setDeactivatingEmployee(fullEmployee);
+        } catch (error) {
+            console.error("Employee detail could not be loaded before deactivation:", error);
+            showToast("Mitarbeiterdaten konnten nicht geladen werden. Bitte erneut versuchen.", "error");
+        }
+    };
+
     const handleReactivateEmployee = async (employee: Employee) => {
-        showConfirm({
-            title: "Mitarbeiter reaktivieren?",
-            message: `Möchten Sie ${employeeName(employee)} reaktivieren und einen frischen Dienstzettel generieren?`,
-            confirmLabel: "Reaktivieren",
-            cancelLabel: "Abbrechen",
-            variant: "primary",
-            onConfirm: async () => {
-                const updatedEmployee: Employee = {
-                    ...employee,
-                    employment: {
-                        ...employee.employment,
-                        isActive: true,
-                        endDate: undefined,
-                        exitReason: undefined,
-                        startDate: new Date().toISOString().split("T")[0],
-                    },
-                };
-                updateEmployee(employee.id, updatedEmployee);
-                showToast("Mitarbeiter reaktiviert. Dienstzettel wird erstellt...", "info");
-                handleManualGenerateContract(updatedEmployee);
+        let fullEmployee: Employee;
+        try {
+            fullEmployee = await preloadEmployeeDetail(employee);
+        } catch (error) {
+            console.error("Employee detail could not be loaded before reactivation:", error);
+            showToast("Mitarbeiterdaten konnten nicht geladen werden. Bitte erneut versuchen.", "error");
+            return;
+        }
+
+        setReactivationDate(getLocalDateValue());
+        setCreateReactivationContract(false);
+        setReactivatingEmployee(fullEmployee);
+    };
+
+    const handleReactivateConfirm = async () => {
+        if (!reactivatingEmployee || !reactivationDate) {
+            showToast("Bitte geben Sie ein Eintrittsdatum an.", "error");
+            return;
+        }
+
+        const updatedEmployee: Employee = {
+            ...reactivatingEmployee,
+            employment: {
+                ...reactivatingEmployee.employment,
+                isActive: true,
+                endDate: undefined,
+                exitReason: undefined,
+                startDate: reactivationDate,
             },
-        });
+        };
+
+        await updateEmployee(reactivatingEmployee.id, updatedEmployee);
+        setReactivatingEmployee(null);
+
+        if (createReactivationContract) {
+            showToast("Mitarbeiter reaktiviert. Dienstzettel wird erstellt...", "info");
+            void handleManualGenerateContract(updatedEmployee);
+            return;
+        }
+
+        showToast("Mitarbeiter wurde reaktiviert.", "success");
     };
 
     const handleDeleteDocument = (employeeId: string, docId: string) => {
@@ -468,6 +506,50 @@ export default function EmployeesPage() {
     const handlePreview = (doc: EmployeeDocument) => {
         setPreviewDoc(doc);
         setIsPreviewOpen(true);
+    };
+
+    const loadArchiveDocument = async (employeeId: string, documentId: string) => {
+        const employee = await fetcher(`/api/employees/${employeeId}`) as Employee;
+        return employee.documents?.find((document) => document.id === documentId) || null;
+    };
+
+    const handleArchiveDocumentPreview = async (employeeId: string, documentId: string) => {
+        setArchiveDocumentLoadingId(documentId);
+        try {
+            const document = await loadArchiveDocument(employeeId, documentId);
+            if (!document?.content) {
+                showToast("Der Inhalt dieses Dokuments ist nicht verfügbar.", "error");
+                return;
+            }
+            handlePreview(document);
+        } catch (error) {
+            console.error("Failed to load archived employee document:", error);
+            showToast("Dokument konnte nicht geladen werden.", "error");
+        } finally {
+            setArchiveDocumentLoadingId(null);
+        }
+    };
+
+    const handleArchiveDocumentDownload = async (employeeId: string, documentId: string) => {
+        setArchiveDocumentLoadingId(documentId);
+        try {
+            const document = await loadArchiveDocument(employeeId, documentId);
+            if (!document?.content) {
+                showToast("Der Inhalt dieses Dokuments ist nicht verfügbar.", "error");
+                return;
+            }
+            const link = window.document.createElement("a");
+            link.href = document.content;
+            link.download = document.name;
+            window.document.body.appendChild(link);
+            link.click();
+            window.document.body.removeChild(link);
+        } catch (error) {
+            console.error("Failed to download archived employee document:", error);
+            showToast("Dokument konnte nicht geladen werden.", "error");
+        } finally {
+            setArchiveDocumentLoadingId(null);
+        }
     };
 
     const handleDownloadPDF = async (employee: Employee) => {
@@ -775,7 +857,7 @@ export default function EmployeesPage() {
                                                     </button>
                                                 ) : canWrite && (isActive ? (
                                                     <button
-                                                        onClick={() => setDeactivatingEmployee(displayEmployee)}
+                                                        onClick={() => void prepareEmployeeDeactivation(displayEmployee)}
                                                         className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 transition hover:bg-rose-100"
                                                         title="Abmelden"
                                                     >
@@ -886,33 +968,19 @@ export default function EmployeesPage() {
                                             <div className="grid gap-2">
                                                 {docs.map((doc) => {
                                                     const rawDocId = doc.id?.replace(/^emp-doc-/, "") || doc.id;
-                                                    const fileContent = doc.storagePath || "";
                                                     const formattedSize = doc.size ? `${(doc.size / 1024).toFixed(0)} KB` : "-";
+                                                    const isDocumentLoading = archiveDocumentLoadingId === rawDocId;
 
                                                     return (
                                                         <div
                                                             key={doc.id}
-                                                            onClick={() => handlePreview({
-                                                                id: rawDocId,
-                                                                name: doc.name,
-                                                                type: doc.mimeType || "application/pdf",
-                                                                uploadDate: doc.createdAt,
-                                                                fileSize: formattedSize,
-                                                                content: fileContent,
-                                                            })}
+                                                            onClick={() => void handleArchiveDocumentPreview(employee.id, rawDocId)}
                                                             role="button"
                                                             tabIndex={0}
                                                             onKeyDown={(event) => {
                                                                 if (event.key === "Enter" || event.key === " ") {
                                                                     event.preventDefault();
-                                                                    handlePreview({
-                                                                        id: rawDocId,
-                                                                        name: doc.name,
-                                                                        type: doc.mimeType || "application/pdf",
-                                                                        uploadDate: doc.createdAt,
-                                                                        fileSize: formattedSize,
-                                                                        content: fileContent,
-                                                                    });
+                                                                    void handleArchiveDocumentPreview(employee.id, rawDocId);
                                                                 }
                                                             }}
                                                             className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-200 hover:shadow-sm"
@@ -928,19 +996,12 @@ export default function EmployeesPage() {
                                                             </div>
                                                             <div className="flex gap-2" onClick={(event) => event.stopPropagation()}>
                                                                 <button
-                                                                    onClick={() => {
-                                                                        if (!fileContent) return;
-                                                                        const link = document.createElement("a");
-                                                                        link.href = fileContent;
-                                                                        link.download = doc.name;
-                                                                        document.body.appendChild(link);
-                                                                        link.click();
-                                                                        document.body.removeChild(link);
-                                                                    }}
-                                                                    className="flex h-10 items-center gap-2 rounded-xl bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:bg-slate-100"
+                                                                    onClick={() => void handleArchiveDocumentDownload(employee.id, rawDocId)}
+                                                                    disabled={isDocumentLoading}
+                                                                    className="flex h-10 items-center gap-2 rounded-xl bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:bg-slate-100 disabled:cursor-wait disabled:opacity-60"
                                                                 >
-                                                                    <Download className="h-4 w-4" />
-                                                                    Download
+                                                                    {isDocumentLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                                                    {isDocumentLoading ? "Laden..." : "Download"}
                                                                 </button>
                                                                 {canWrite && (
                                                                     <button
@@ -1005,7 +1066,7 @@ export default function EmployeesPage() {
                     onDownloadPDF={(employee) => handleDownloadPDF(employee)}
                     onDeactivate={canWrite ? (employee) => {
                         setSelectedEmployee(null);
-                        setDeactivatingEmployee(employee);
+                        void prepareEmployeeDeactivation(employee);
                     } : undefined}
                     onReactivate={canWrite ? (employee) => {
                         setSelectedEmployee(null);
@@ -1087,6 +1148,66 @@ export default function EmployeesPage() {
                                 className="rounded-2xl bg-rose-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-700"
                             >
                                 Abmelden
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {reactivatingEmployee && (
+                <div className="fixed inset-0 z-[160] flex items-center justify-center bg-white/30 p-4">
+                    <div className="w-full max-w-md rounded-[32px] border border-white bg-white p-7 shadow-2xl">
+                        <div className="text-center">
+                            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                                <UserCheck className="h-7 w-7" />
+                            </div>
+                            <h3 className="text-2xl font-black text-slate-950">Mitarbeiter reaktivieren</h3>
+                            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+                                Legen Sie fest, ab wann {employeeName(reactivatingEmployee)} wieder beschäftigt ist.
+                            </p>
+                        </div>
+
+                        <div className="mt-6 space-y-4">
+                            <label className="block">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Neues Eintrittsdatum</span>
+                                <input
+                                    type="date"
+                                    value={reactivationDate}
+                                    onChange={(event) => setReactivationDate(event.target.value)}
+                                    className="mt-2 h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 font-bold outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                />
+                            </label>
+
+                            <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4 transition hover:border-indigo-200">
+                                <input
+                                    type="checkbox"
+                                    checked={createReactivationContract}
+                                    onChange={(event) => setCreateReactivationContract(event.target.checked)}
+                                    className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <span>
+                                    <span className="block font-black text-slate-900">Neuen Dienstzettel erstellen</span>
+                                    <span className="mt-1 block text-sm font-medium leading-5 text-slate-500">
+                                        Optional: Erstellt einen neuen Dienstzettel mit dem gewählten Eintrittsdatum und legt ihn im Mitarbeiterarchiv ab.
+                                    </span>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div className="mt-7 grid grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setReactivatingEmployee(null)}
+                                className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-200"
+                            >
+                                Abbrechen
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void handleReactivateConfirm()}
+                                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-700"
+                            >
+                                Reaktivieren
                             </button>
                         </div>
                     </div>

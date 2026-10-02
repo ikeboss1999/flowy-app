@@ -63,6 +63,25 @@ const EUROPEAN_COUNTRIES = [
     "Spanien", "Tschechien", "Türkei", "Ukraine", "Ungarn", "Vatikanstadt", "Vereinigtes Königreich"
 ];
 
+function normalizeIbanInput(value: string) {
+    const compact = value.replace(/\s+/g, "").toUpperCase();
+    if (compact.startsWith("AT")) {
+        return `AT${compact.slice(2).replace(/\D/g, "").slice(0, 18)}`;
+    }
+    return compact.slice(0, 34);
+}
+
+function isValidAustrianIban(value: string) {
+    if (!value) return true;
+    const iban = value.replace(/\s+/g, "").toUpperCase();
+    if (!iban.startsWith("AT")) return true;
+    if (!/^AT\d{18}$/.test(iban)) return false;
+
+    const numericValue = `${iban.slice(4)}${iban.slice(0, 4)}`.replace(/[A-Z]/g, (letter) => String(letter.charCodeAt(0) - 55));
+    const remainder = numericValue.split("").reduce((current, digit) => (current * 10 + Number(digit)) % 97, 0);
+    return remainder === 1;
+}
+
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 const AVATAR_THUMB_SIZE = 128;
 
@@ -532,6 +551,12 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
         if (normalizedEmployeeNumber && duplicateEmployee) {
             showToast(`Die Personalnummer ${formData.employeeNumber} ist bereits vergeben.`, 'error');
             setActiveTab("personal");
+            return;
+        }
+
+        if (!isValidAustrianIban(formData.bankDetails.iban)) {
+            showToast("Bitte geben Sie eine gültige österreichische IBAN ein: AT plus 18 Ziffern.", "error");
+            setActiveTab("bank");
             return;
         }
 
@@ -1380,7 +1405,8 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 <input
                                                     className="w-full px-6 py-5 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-black font-mono uppercase tracking-wider shadow-sm"
                                                     value={formData.bankDetails.iban}
-                                                    onChange={e => setFormData({ ...formData, bankDetails: { ...formData.bankDetails, iban: e.target.value } })}
+                                                    onChange={e => setFormData({ ...formData, bankDetails: { ...formData.bankDetails, iban: normalizeIbanInput(e.target.value) } })}
+                                                    maxLength={formData.bankDetails.iban.toUpperCase().startsWith("AT") ? 20 : 34}
                                                     placeholder="AT00 0000 0000 0000 0000"
                                                 />
                                             </div>
@@ -1389,7 +1415,7 @@ export function EmployeeModal({ isOpen, onClose, onSave, onGenerateContract, ini
                                                 <input
                                                     className="w-full px-6 py-5 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-black font-mono uppercase tracking-wider shadow-sm"
                                                     value={formData.bankDetails.bic}
-                                                    onChange={e => setFormData({ ...formData, bankDetails: { ...formData.bankDetails, bic: e.target.value } })}
+                                                    onChange={e => setFormData({ ...formData, bankDetails: { ...formData.bankDetails, bic: e.target.value.toUpperCase() } })}
                                                     placeholder="RZBA AT WW"
                                                 />
                                             </div>

@@ -11,11 +11,13 @@ import { DashboardPrefetch } from "@/components/DashboardPrefetch";
 import { useDevice } from "@/hooks/useDevice";
 import { useStartup } from "@/hooks/useStartup";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useAccountSettings } from "@/hooks/useAccountSettings";
 import { cn } from "@/lib/utils";
 import { preloadImage } from "@/lib/startup-preload";
 import { AdminSessionHeartbeat } from "@/components/AdminSessionHeartbeat";
 import { TrialNotice } from "@/components/TrialNotice";
 import { useAuth } from "@/context/AuthContext";
+import { NavigationProgress } from "@/components/NavigationProgress";
 
 const Sidebar = dynamic(
     () => import("@/components/Sidebar").then((mod) => mod.Sidebar),
@@ -31,6 +33,7 @@ export default function DashboardLayout({
     const pathname = usePathname();
     const { profile, user, isLoading: isAuthLoading } = useAuth();
     const { data: companySettings, isLoading: isCompanySettingsLoading, error: companySettingsError } = useCompanySettings();
+    const { isLoading: isAccountSettingsLoading } = useAccountSettings();
     const { data: startup, isReady: isStartupReady } = useStartup();
     const [isLogoReady, setIsLogoReady] = React.useState(false);
 
@@ -61,7 +64,9 @@ export default function DashboardLayout({
         if (needsOnboarding) window.location.replace("/onboarding");
     }, [needsOnboarding]);
 
-    const isHomeLoading = pathname === "/" && (!isStartupReady || !isLogoReady);
+    // Do not render the dashboard greeting with the "Benutzer" fallback
+    // while the configured account name is still being fetched.
+    const isHomeLoading = pathname === "/" && (!isStartupReady || !isLogoReady || isAccountSettingsLoading);
     const isWaitingForOnboardingCheck = userPossiblyNeedsOnboarding && isCompanySettingsLoading;
 
     if (isAuthLoading || isHomeLoading || isDeveloperRedirect || isWaitingForOnboardingCheck || needsOnboarding) {
@@ -84,6 +89,7 @@ export default function DashboardLayout({
     return (
         <div className="flex min-h-screen bg-slate-50 overflow-x-hidden">
             <OnboardingCheck />
+            <NavigationProgress />
             <Sidebar />
             <ReloadButton />
             <GlobalTodoWidget />

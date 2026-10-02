@@ -25,7 +25,9 @@ function getPreviousMonthValue() {
     const date = new Date();
     date.setDate(1);
     date.setMonth(date.getMonth() - 1);
-    return date.toISOString().slice(0, 7);
+    // toISOString uses UTC. Around local midnight that can move the date
+    // into the prior month, so use the browser's local year and month here.
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export default function TimeTrackingPage() {

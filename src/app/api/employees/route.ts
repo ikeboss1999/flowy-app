@@ -21,6 +21,19 @@ const emptyBankDetails = {
     bankName: '',
 };
 
+function normalizeIban(value: unknown) {
+    return String(value || '').replace(/\s+/g, '').toUpperCase();
+}
+
+function isValidAustrianIban(value: string) {
+    if (!value.startsWith('AT')) return true;
+    if (!/^AT\d{18}$/.test(value)) return false;
+
+    const numericValue = `${value.slice(4)}${value.slice(0, 4)}`.replace(/[A-Z]/g, (letter) => String(letter.charCodeAt(0) - 55));
+    const remainder = numericValue.split('').reduce((current, digit) => (current * 10 + Number(digit)) % 97, 0);
+    return remainder === 1;
+}
+
 function stripDocumentContent(documents: any[] = []) {
     return documents.map(({ content, ...document }) => document);
 }
@@ -171,12 +184,25 @@ export async function POST(request: Request) {
         const normalizedEmployee = {
             ...employee,
             id: empId,
+            bankDetails: {
+                ...emptyBankDetails,
+                ...(employee.bankDetails || {}),
+                iban: normalizeIban(employee.bankDetails?.iban),
+                bic: String(employee.bankDetails?.bic || '').toUpperCase(),
+            },
             avatar: await persistEmployeeInlineAvatar({
                 avatar: employee.avatar,
                 companyOwnerId,
                 employeeId: empId,
             }),
         };
+
+        if (!isValidAustrianIban(normalizedEmployee.bankDetails.iban)) {
+            return NextResponse.json(
+                { message: 'Ungültige österreichische IBAN. Verwenden Sie AT plus 18 Ziffern.' },
+                { status: 400 },
+            );
+        }
 
         const normalizedEmployeeNumber = String(normalizedEmployee.employeeNumber || '').trim().toLocaleLowerCase();
         if (normalizedEmployeeNumber) {
@@ -213,14 +239,30 @@ export async function POST(request: Request) {
             }
         }
 
-        // Fetch existing employee to preserve documents if summary mode payload is passed
+        // The employee overview intentionally omits document content for
+        // performance. Edits and reactivations originating there must never
+        // overwrite the stored file data with these content-free summaries.
+        // Document deletion is handled exclusively by the documents endpoint.
         let finalDocuments = documents;
         if (existingDecrypted) {
-            const existingDocs = existingDecrypted.documents || [];
-            // If incoming documents is empty/undefined but DB has documents, keep DB documents
-            if ((!documents || documents.length === 0) && existingDocs.length > 0) {
-                finalDocuments = existingDocs;
-            }
+            const existingDocs = Array.isArray(existingDecrypted.documents) ? existingDecrypted.documents : [];
+            const incomingDocs = Array.isArray(documents) ? documents : [];
+            const incomingById = new Map(incomingDocs.map((document: any) => [document.id, document]));
+            const existingIds = new Set(existingDocs.map((document: any) => document.id));
+
+            finalDocuments = [
+                ...existingDocs.map((existingDocument: any) => {
+                    const incomingDocument = incomingById.get(existingDocument.id);
+                    if (!incomingDocument) return existingDocument;
+
+                    return {
+                        ...existingDocument,
+                        ...incomingDocument,
+                        content: incomingDocument.content || existingDocument.content,
+                    };
+                }),
+                ...incomingDocs.filter((document: any) => !existingIds.has(document.id)),
+            ];
         }
 
         const employeeData = {

@@ -1124,8 +1124,8 @@ export function EmployeeDetailModal({
 
                                 <InfoCard icon={CreditCard} title="Bankverbindung">
                                     <InfoRow label="Bankinstitut" value={currentEmp.bankDetails.bankName} />
-                                    <InfoRow label="IBAN" value={currentEmp.bankDetails.iban} mono />
-                                    <InfoRow label="BIC" value={currentEmp.bankDetails.bic} mono />
+                                    <InfoRow label="IBAN" value={String(currentEmp.bankDetails.iban || "").toUpperCase()} mono />
+                                    <InfoRow label="BIC" value={String(currentEmp.bankDetails.bic || "").toUpperCase()} mono />
                                 </InfoCard>
 
                                 <div className="xl:col-span-2">

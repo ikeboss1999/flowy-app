@@ -216,18 +216,29 @@ function formatHours(value: number) {
     return value.toFixed(2).replace('.', ',');
 }
 
+function toLocalMonthValue(date: Date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
 function getPreviousMonthValue() {
     const date = new Date();
     date.setDate(1);
     date.setMonth(date.getMonth() - 1);
-    return date.toISOString().slice(0, 7);
+    return toLocalMonthValue(date);
 }
 
 function getPreviousMonth(month: string) {
     const [year, monthIndex] = month.split('-').map(Number);
-    const date = new Date(year, monthIndex - 1, 1);
-    date.setMonth(date.getMonth() - 1);
-    return date.toISOString().slice(0, 7);
+    return toLocalMonthValue(new Date(year, monthIndex - 2, 1));
+}
+
+function getSelectableMonths() {
+    return Array.from({ length: 14 }, (_, index) => {
+        const date = new Date();
+        date.setDate(1);
+        date.setMonth(date.getMonth() - (12 - index));
+        return toLocalMonthValue(date);
+    });
 }
 
 export default function EmployeeTimeTrackingPage() {
@@ -240,8 +251,11 @@ export default function EmployeeTimeTrackingPage() {
     const { user, currentEmployee, profile } = useAuth();
     const [selectedMonth, setSelectedMonth] = useState<string>(getPreviousMonthValue());
     const { employees, isLoading: employeesLoading } = useEmployees();
+    const selectableMonths = useMemo(() => getSelectableMonths(), []);
     const { entries, deleteEntry, isLoading: entriesLoading, timesheets, finalizeMonth, reopenMonth, refreshEntries } = useTimeEntries({
-        months: [selectedMonth, getPreviousMonth(selectedMonth)],
+        // The dropdown shows these months, so their finalized status must be
+        // loaded as well. Otherwise unloaded months look falsely "offen".
+        months: selectableMonths,
     });
     const { data: companySettings } = useCompanySettings();
     const { showToast, showConfirm } = useNotification();
@@ -300,7 +314,7 @@ export default function EmployeeTimeTrackingPage() {
         return timesheets.find(t => t.employeeId === employeeId && t.month === selectedMonth);
     }, [timesheets, employeeId, selectedMonth]);
 
-    const isFinalized = currentTimesheet ? currentTimesheet.status !== 'draft' : false;
+    const isFinalized = currentTimesheet?.status === 'finalized';
 
     const displayedMonthEntries = useMemo(() => {
         const merged = new Map<string, TimeEntry>();
@@ -814,26 +828,19 @@ export default function EmployeeTimeTrackingPage() {
                         >
                             {(() => {
                                 const startMonthStr = employee?.employment?.startDate ? employee.employment.startDate.slice(0, 7) : '2024-01';
-                                const options = [];
-                                // Generate months from 12 months ago until 1 month in the future
-                                for (let i = 0; i < 14; i++) {
-                                    const date = new Date();
-                                    date.setMonth(date.getMonth() - (12 - i));
-                                    const value = date.toISOString().slice(0, 7);
-                                    
-                                    // Only add if month is at or after employee's start date
-                                    if (value >= startMonthStr) {
-                                        const label = date.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+                                return selectableMonths
+                                    .filter(value => value >= startMonthStr)
+                                    .map(value => {
+                                        const [year, month] = value.split('-').map(Number);
+                                        const label = new Date(year, month - 1, 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
                                         const status = timesheets.find(t => t.employeeId === employeeId && t.month === value)?.status;
-                                        const labelStatus = status && status !== 'draft' ? 'gesperrt' : 'offen';
-                                        options.push(
+                                        const labelStatus = status === 'finalized' ? 'gesperrt' : 'offen';
+                                        return (
                                             <option key={value} value={value}>
                                                 {label} - {labelStatus}
                                             </option>
                                         );
-                                    }
-                                }
-                                return options;
+                                    });
                             })()}
                         </select>
                         <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
