@@ -13,11 +13,15 @@ function extractInvoiceStoragePath(value?: string | null) {
         const url = new URL(value);
         const publicPrefix = '/storage/v1/object/public/invoices/';
         const signedPrefix = '/storage/v1/object/sign/invoices/';
+        const authenticatedPrefix = '/storage/v1/object/authenticated/invoices/';
         if (url.pathname.startsWith(publicPrefix)) {
             return decodeURIComponent(url.pathname.slice(publicPrefix.length));
         }
         if (url.pathname.startsWith(signedPrefix)) {
             return decodeURIComponent(url.pathname.slice(signedPrefix.length));
+        }
+        if (url.pathname.startsWith(authenticatedPrefix)) {
+            return decodeURIComponent(url.pathname.slice(authenticatedPrefix.length));
         }
     } catch {
         return null;
@@ -62,15 +66,28 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Draft invoices do not have a locked PDF' }, { status: 400 });
         }
 
-        const storagePath = invoice.pdfPath || extractInvoiceStoragePath(invoice.pdfUrl);
+        // Older invoices can contain the path in either field, or a previously generated
+        // public/signed URL. Normalize both variants before creating a fresh signed URL.
+        const rawPdfPath = typeof invoice.pdfPath === 'string' && !invoice.pdfPath.startsWith('http')
+            ? invoice.pdfPath
+            : null;
+        const storagePath = rawPdfPath
+            || extractInvoiceStoragePath(invoice.pdfPath)
+            || (typeof invoice.pdfUrl === 'string' && !invoice.pdfUrl.startsWith('http') ? invoice.pdfUrl : null)
+            || extractInvoiceStoragePath(invoice.pdfUrl);
+        const directPdfUrl = [invoice.pdfUrl, invoice.pdfPath]
+            .find((value: unknown): value is string => typeof value === 'string' && value.startsWith('http'));
 
         if (storagePath) {
             if (!supabaseAdmin) {
+                if (directPdfUrl) {
+                    return NextResponse.json({ url: directPdfUrl, expiresIn: null });
+                }
                 return NextResponse.json({ error: 'Storage not configured' }, { status: 503 });
             }
             if (!storagePath.startsWith(`${companyOwnerId}/`)) {
-                if (invoice.pdfUrl?.startsWith('http')) {
-                    return NextResponse.json({ url: invoice.pdfUrl, expiresIn: null });
+                if (directPdfUrl) {
+                    return NextResponse.json({ url: directPdfUrl, expiresIn: null });
                 }
                 return NextResponse.json({ error: 'Access denied' }, { status: 403 });
             }
@@ -87,8 +104,8 @@ export async function GET(request: Request) {
             return NextResponse.json({ url: data.signedUrl, expiresIn: 3600 });
         }
 
-        if (invoice.pdfUrl?.startsWith('http')) {
-            return NextResponse.json({ url: invoice.pdfUrl, expiresIn: null });
+        if (directPdfUrl) {
+            return NextResponse.json({ url: directPdfUrl, expiresIn: null });
         }
 
         return NextResponse.json({ error: 'Invoice has no stored PDF' }, { status: 404 });

@@ -15,7 +15,9 @@ import {
     ArrowUpDown,
     Edit2,
     Loader2,
-    Plus
+    Plus,
+    X,
+    Files
 } from "lucide-react";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useCustomers } from "@/hooks/useCustomers";
@@ -47,6 +49,23 @@ function documentYear(value?: string) {
     return Number.isFinite(parsed) && parsed > 1900 ? parsed : null;
 }
 
+function invoiceMonthKey(value?: string) {
+    if (!value) return null;
+    const text = String(value).trim();
+    const european = text.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})/);
+    if (european) return `${european[3]}-${String(Number(european[2])).padStart(2, "0")}`;
+    const iso = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (iso) return `${iso[1]}-${String(Number(iso[2])).padStart(2, "0")}`;
+    const parsed = new Date(text);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function invoiceMonthLabel(monthKey: string) {
+    const [year, month] = monthKey.split("-").map(Number);
+    return new Intl.DateTimeFormat("de-AT", { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1));
+}
+
 export default function InvoicesPage() {
     usePermissionGuard("invoices_read");
     const { profile } = useAuth();
@@ -65,6 +84,12 @@ export default function InvoicesPage() {
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
     const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportFromInvoiceId, setExportFromInvoiceId] = useState("");
+    const [exportToInvoiceId, setExportToInvoiceId] = useState("");
+    const [exportMode, setExportMode] = useState<"range" | "month">("range");
+    const [exportMonth, setExportMonth] = useState("");
+    const [isExportingInvoices, setIsExportingInvoices] = useState(false);
     const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
     const canWriteInvoices = isAdminOrDev || profile?.permissions?.["*"] === true || !!profile?.permissions?.invoices_write;
 
@@ -109,6 +134,109 @@ export default function InvoicesPage() {
             console.error('[PDF Download]', err);
         } finally {
             setDownloadingIds(prev => { const n = new Set(prev); n.delete(invoice.id); return n; });
+        }
+    };
+
+    // Only finalized invoices with an already stored PDF can be part of a collective export.
+    // This intentionally does not regenerate documents: the original finalized PDFs are merged as-is.
+    const exportableInvoices = useMemo(() => {
+        return invoices
+            .filter((invoice) => invoice.status !== "draft" && Boolean(invoice.pdfPath || invoice.pdfUrl))
+            .sort((a, b) => (a.invoiceNumber || "").localeCompare(b.invoiceNumber || "", undefined, { numeric: true }));
+    }, [invoices]);
+
+    const exportMonths = useMemo(() => {
+        const months = new Set(exportableInvoices.map((invoice) => invoiceMonthKey(invoice.issueDate)).filter((month): month is string => Boolean(month)));
+        return Array.from(months).sort((a, b) => b.localeCompare(a));
+    }, [exportableInvoices]);
+
+    const selectedExportInvoices = useMemo(() => {
+        if (exportMode === "month") {
+            return exportableInvoices.filter((invoice) => invoiceMonthKey(invoice.issueDate) === exportMonth);
+        }
+        const fromIndex = exportableInvoices.findIndex((invoice) => invoice.id === exportFromInvoiceId);
+        const toIndex = exportableInvoices.findIndex((invoice) => invoice.id === exportToInvoiceId);
+        if (fromIndex < 0 || toIndex < 0) return [];
+        return exportableInvoices.slice(Math.min(fromIndex, toIndex), Math.max(fromIndex, toIndex) + 1);
+    }, [exportableInvoices, exportFromInvoiceId, exportToInvoiceId, exportMode, exportMonth]);
+
+    const openExportModal = () => {
+        if (exportableInvoices.length === 0) {
+            showToast("Es gibt keine finalisierten Rechnungen mit gespeicherter PDF zum Exportieren.", "info");
+            return;
+        }
+
+        setExportFromInvoiceId((current) => current || exportableInvoices[0].id);
+        setExportToInvoiceId((current) => current || exportableInvoices[exportableInvoices.length - 1].id);
+        setExportMonth((current) => current || exportMonths[0] || "");
+        setIsExportModalOpen(true);
+    };
+
+    const handleCollectivePdfExport = async () => {
+        if (selectedExportInvoices.length === 0) {
+            showToast("Bitte wählen Sie einen Rechnungsbereich aus.", "error");
+            return;
+        }
+
+        setIsExportingInvoices(true);
+        try {
+            const { PDFDocument } = await import("pdf-lib");
+            const mergedPdf = await PDFDocument.create();
+            const skippedInvoiceNumbers: string[] = [];
+
+            for (const invoice of selectedExportInvoices) {
+                try {
+                    const signedUrlResponse = await fetch(`/api/invoices/pdf-url?id=${encodeURIComponent(invoice.id)}`);
+                    if (!signedUrlResponse.ok) {
+                        skippedInvoiceNumbers.push(invoice.invoiceNumber);
+                        continue;
+                    }
+
+                    const { url } = await signedUrlResponse.json();
+                    const pdfResponse = await fetch(url);
+                    if (!pdfResponse.ok) {
+                        skippedInvoiceNumbers.push(invoice.invoiceNumber);
+                        continue;
+                    }
+
+                    const sourcePdf = await PDFDocument.load(await pdfResponse.arrayBuffer());
+                    const pages = await mergedPdf.copyPages(sourcePdf, sourcePdf.getPageIndices());
+                    pages.forEach((page) => mergedPdf.addPage(page));
+                } catch {
+                    skippedInvoiceNumbers.push(invoice.invoiceNumber);
+                }
+            }
+
+            if (mergedPdf.getPageCount() === 0) {
+                throw new Error("Für den gewählten Bereich wurde keine gespeicherte Rechnungs-PDF gefunden.");
+            }
+
+            const pdfBytes = await mergedPdf.save();
+            const pdfArrayBuffer = new Uint8Array(pdfBytes).buffer as ArrayBuffer;
+            const fileUrl = URL.createObjectURL(new Blob([pdfArrayBuffer], { type: "application/pdf" }));
+            const downloadLink = document.createElement("a");
+            const fromNumber = selectedExportInvoices[0].invoiceNumber;
+            const toNumber = selectedExportInvoices[selectedExportInvoices.length - 1].invoiceNumber;
+            downloadLink.href = fileUrl;
+            downloadLink.download = exportMode === "month"
+                ? `Rechnungen_${invoiceMonthLabel(exportMonth)}.pdf`.replace(/[\\/:*?"<>|]/g, "-")
+                : `Rechnungen_${fromNumber}_bis_${toNumber}.pdf`.replace(/[\\/:*?"<>|]/g, "-");
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            downloadLink.remove();
+            URL.revokeObjectURL(fileUrl);
+
+            setIsExportModalOpen(false);
+            const exportedCount = selectedExportInvoices.length - skippedInvoiceNumbers.length;
+            if (skippedInvoiceNumbers.length > 0) {
+                showToast(`${exportedCount} Rechnungen wurden exportiert. Nicht einbezogen (PDF fehlt): ${skippedInvoiceNumbers.join(", ")}.`, "info");
+            } else {
+                showToast(`${exportedCount} Rechnungen wurden zu einer PDF zusammengefügt.`, "success");
+            }
+        } catch (error) {
+            showToast(error instanceof Error ? error.message : "Der Sammel-Export konnte nicht erstellt werden.", "error");
+        } finally {
+            setIsExportingInvoices(false);
         }
     };
 
@@ -201,6 +329,12 @@ export default function InvoicesPage() {
                         </select>
                     </div>
 
+                    <button
+                        onClick={openExportModal}
+                        className="border border-white/15 bg-white/10 px-5 py-3.5 rounded-2xl font-bold text-white flex items-center gap-2 transition-all hover:bg-white/15 active:scale-95 shrink-0"
+                    >
+                        <Files className="h-5 w-5" /> Rechnungen exportieren
+                    </button>
                     {/* Neue Rechnung Button */}
                     {canWriteInvoices && (
                         <button
@@ -475,6 +609,77 @@ export default function InvoicesPage() {
                 customer={customers.find(c => c.id === previewInvoice?.customerId)}
                 companySettings={companySettings}
             />
+
+            {isExportModalOpen && (
+                <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
+                    <button
+                        type="button"
+                        aria-label="Export-Fenster schließen"
+                        onClick={() => !isExportingInvoices && setIsExportModalOpen(false)}
+                        className="absolute inset-0 bg-slate-950/35 backdrop-blur-sm"
+                    />
+                    <div className="relative w-full max-w-xl overflow-hidden rounded-[30px] border border-white/70 bg-white shadow-2xl shadow-slate-950/30 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-800 px-7 py-6 text-white">
+                            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-fuchsia-400/20 blur-2xl" />
+                            <div className="relative flex items-start justify-between gap-4">
+                                <div>
+                                    <div className="mb-2 flex items-center gap-2 text-cyan-200">
+                                        <Files className="h-5 w-5" />
+                                        <span className="text-[11px] font-black uppercase tracking-[0.22em]">PDF-Sammelexport</span>
+                                    </div>
+                                    <h2 className="text-2xl font-black">Rechnungen zusammenfügen</h2>
+                                    <p className="mt-2 text-sm font-medium text-white/70">Es werden ausschließlich bereits finalisierte Rechnungs-PDFs verwendet.</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => !isExportingInvoices && setIsExportModalOpen(false)}
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10 transition hover:bg-white/20 disabled:opacity-50"
+                                    disabled={isExportingInvoices}
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6 p-7">
+                            <p className="text-sm font-medium leading-6 text-slate-500">Wählen Sie einen Nummernbereich oder einen Monat. FlowY fügt die vorhandenen finalisierten Rechnungs-PDFs in einer Datei zusammen.</p>
+                            <div className="grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
+                                <button type="button" onClick={() => setExportMode("range")} className={cn("rounded-xl px-3 py-2.5 text-sm font-black transition", exportMode === "range" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700")}>Rechnungsnummern</button>
+                                <button type="button" onClick={() => setExportMode("month")} className={cn("rounded-xl px-3 py-2.5 text-sm font-black transition", exportMode === "month" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700")}>Bestimmter Monat</button>
+                            </div>
+                            {exportMode === "range" ? <div className="grid gap-4 sm:grid-cols-2">
+                                <label className="block">
+                                    <span className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-500">Von Rechnungsnummer</span>
+                                    <select value={exportFromInvoiceId} onChange={(event) => setExportFromInvoiceId(event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10">
+                                        {exportableInvoices.map((invoice) => <option key={invoice.id} value={invoice.id}>{invoice.invoiceNumber} · {invoice.customerName}</option>)}
+                                    </select>
+                                </label>
+                                <label className="block">
+                                    <span className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-500">Bis Rechnungsnummer</span>
+                                    <select value={exportToInvoiceId} onChange={(event) => setExportToInvoiceId(event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10">
+                                        {exportableInvoices.map((invoice) => <option key={invoice.id} value={invoice.id}>{invoice.invoiceNumber} · {invoice.customerName}</option>)}
+                                    </select>
+                                </label>
+                            </div> : <label className="block">
+                                <span className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-500">Monat auswählen</span>
+                                <select value={exportMonth} onChange={(event) => setExportMonth(event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-bold capitalize text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10">
+                                    {exportMonths.map((month) => <option key={month} value={month}>{invoiceMonthLabel(month)}</option>)}
+                                </select>
+                            </label>}
+                            <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-800">
+                                {selectedExportInvoices.length > 0 ? exportMode === "month" ? <><strong>{selectedExportInvoices.length} Rechnungen</strong> aus <strong className="capitalize">{invoiceMonthLabel(exportMonth)}</strong> werden zusammengefügt.</> : <><strong>{selectedExportInvoices.length} Rechnungen</strong> werden zusammengefügt: {selectedExportInvoices[0].invoiceNumber} bis {selectedExportInvoices[selectedExportInvoices.length - 1].invoiceNumber}.</> : "Bitte wählen Sie einen Rechnungsbereich aus."}
+                            </div>
+                            <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+                                <button type="button" onClick={() => setIsExportModalOpen(false)} disabled={isExportingInvoices} className="rounded-2xl border border-slate-200 px-5 py-3 font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50">Abbrechen</button>
+                                <button type="button" onClick={handleCollectivePdfExport} disabled={isExportingInvoices || selectedExportInvoices.length === 0} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-5 py-3 font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">
+                                    {isExportingInvoices ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
+                                    {isExportingInvoices ? "PDFs werden zusammengefügt..." : "Gesammelte PDF herunterladen"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div>
     );
