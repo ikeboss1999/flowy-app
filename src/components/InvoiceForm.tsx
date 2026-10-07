@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Plus,
   Trash2,
@@ -63,6 +63,11 @@ interface InvoiceFormProps {
   initialData?: Partial<Invoice>;
 }
 
+function formatInvoiceReferenceDate(value?: string): string {
+  const [datePart] = String(value || "").split("T");
+  const [year, month, day] = datePart.split("-");
+  return year && month && day ? `${day}.${month}.${year}` : datePart;
+}
 
 function SortableItem({
   id,
@@ -167,6 +172,8 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [positionToolbarAnchor, setPositionToolbarAnchor] = useState<HTMLDivElement | null>(null);
   const [isPositionToolbarFloating, setIsPositionToolbarFloating] = useState(false);
+  const hasInitializedInvoiceNumber = useRef(Boolean(initialData?.invoiceNumber));
+  const hasAppliedUrlPrefill = useRef(false);
   const { showToast, showConfirm } = useNotification();
 
   useEffect(() => {
@@ -241,27 +248,27 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     ],
   );
 
-  // Auto-apply customer-specific payment terms
+  // Apply the selected customer's term, otherwise the global default. This is
+  // intentionally the only place that initializes payment terms for new invoices.
   useEffect(() => {
-    if (!customerId || isCustomersLoading || isSettingsLoading || initialData)
-      return;
+    if (isCustomersLoading || isSettingsLoading || initialData || !settings) return;
 
-    const customer = customers.find((c) => c.id === customerId);
-    if (customer && customer.defaultPaymentTermId) {
-      const customerTerm = settings.paymentTerms?.find(
-        (t) => t.id === customer.defaultPaymentTermId,
-      );
-      if (customerTerm) {
-        setPaymentTerms(customerTerm.text);
-      }
+    const customer = customerId ? customers.find((c) => c.id === customerId) : undefined;
+    const paymentTermId = customer?.defaultPaymentTermId || settings.defaultPaymentTermId;
+    const paymentTerm = settings.paymentTerms?.find((term) => term.id === paymentTermId);
+
+    if (paymentTerm && paymentTerms !== paymentTerm.text) {
+      setPaymentTerms(paymentTerm.text);
     }
   }, [
     customerId,
     customers,
     isCustomersLoading,
-    settings,
+    settings.defaultPaymentTermId,
+    settings.paymentTerms,
     isSettingsLoading,
     initialData,
+    paymentTerms,
   ]);
 
   const previousInvoices = useMemo(() => {
@@ -273,8 +280,13 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
           inv.projectId === projectId &&
           inv.billingType === "partial" &&
           inv.status !== "canceled" &&
+          inv.status !== "draft" &&
           inv.id !== initialData?.id,
       )
+      .sort((a, b) => {
+        const byPartialNumber = (a.partialPaymentNumber || 0) - (b.partialPaymentNumber || 0);
+        return byPartialNumber || a.issueDate.localeCompare(b.issueDate);
+      })
       .map((inv) => ({
         id: inv.id,
         invoiceNumber: inv.invoiceNumber,
@@ -285,14 +297,11 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
 
   // Initialize from settings and params
   useEffect(() => {
-    if (!isSettingsLoading && !initialData && settings) {
+    if (!isSettingsLoading && !initialData && settings && !hasInitializedInvoiceNumber.current) {
       const year = new Date().getFullYear();
       const next = nextYearlySequence(invoices as any[], year, "invoiceNumber");
       setInvoiceNumber(formatYearlyNumber(year, settings.prefix || "", next, Math.max(1, Number(settings.mindestLaenge) || 2)));
-      const defaultTerm = settings.paymentTerms.find(
-        (t) => t.id === settings.defaultPaymentTermId,
-      );
-      if (defaultTerm) setPaymentTerms(defaultTerm.text);
+      hasInitializedInvoiceNumber.current = true;
     }
 
     // Prefill from URL Params
@@ -301,7 +310,8 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
       searchParams &&
       !isProjectsLoading &&
       !isCustomersLoading &&
-      !isInvoicesLoading
+      !isInvoicesLoading &&
+      !hasAppliedUrlPrefill.current
     ) {
       const paramProjectId = searchParams.get("projectId");
       const paramCustomerId = searchParams.get("customerId");
@@ -348,17 +358,34 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
         if (!isNaN(num)) setPartialPaymentNumber(num);
       }
 
-      // Handle Amount and First Item prefill
+      // Create project invoices from the payment plan. Every follow-up partial
+      // invoice shows the accumulated performance and deducts earlier issued
+      // partial invoices, so only the current installment remains payable.
       if (paramAmount || paramSubjectExtra) {
         const amount = paramAmount ? parseFloat(paramAmount) : 0;
         const activeBillingType = (paramBillingType as any) || billingType;
 
         if (!isNaN(amount) && amount > 0) {
+          const proj = projects.find((p) => p.id === paramProjectId);
+          const completedPartialInvoices = (invoices as Invoice[])
+            .filter(
+              (inv: Invoice) =>
+                inv.projectId === paramProjectId &&
+                inv.billingType === "partial" &&
+                inv.status !== "canceled" &&
+                inv.status !== "draft",
+            )
+            .sort((a, b) => {
+              const byPartialNumber = (a.partialPaymentNumber || 0) - (b.partialPaymentNumber || 0);
+              return byPartialNumber || a.issueDate.localeCompare(b.issueDate);
+            });
+
           if (activeBillingType === "final") {
-            // For Final Invoice:
-            // 1. Add Total Project Sum (estimate or budget)
-            const proj = projects.find((p) => p.id === paramProjectId);
-            const totalBudget = proj?.budget || 0;
+            const plannedTotal = (proj?.paymentPlan || []).reduce(
+              (sum, item) => sum + (Number(item.amount) || 0),
+              0,
+            );
+            const totalBudget = Number(proj?.budget) || plannedTotal;
 
             const finalItems: InvoiceItem[] = [
               {
@@ -371,19 +398,11 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
               },
             ];
 
-            // 2. Subtract Previous Partial Invoices
-            const prevInvs = (invoices as any[]).filter(
-              (inv: any) =>
-                inv.projectId === paramProjectId &&
-                inv.billingType === "partial" &&
-                inv.status !== "canceled" &&
-                inv.id !== (initialData as any)?.id,
-            );
-
-            prevInvs.forEach((inv, idx) => {
+            completedPartialInvoices.forEach((inv, index) => {
+              const partialNumber = inv.partialPaymentNumber || index + 1;
               finalItems.push({
                 id: Math.random().toString(36).substr(2, 9),
-                description: `abzgl. ${idx + 1}. Teilrechnung Nr. ${inv.invoiceNumber}`,
+                description: `abzgl. ${partialNumber}. Teilrechnung Nr. ${inv.invoiceNumber} vom ${formatInvoiceReferenceDate(inv.issueDate)}`,
                 quantity: 1,
                 unit: "pauschal",
                 pricePerUnit: -inv.subtotal,
@@ -392,8 +411,37 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
             });
 
             setItems(finalItems);
+          } else if (activeBillingType === "partial" && completedPartialInvoices.length > 0) {
+            const partialNumber = Number(paramPartialNumber) || completedPartialInvoices.length + 1;
+            const accumulatedPerformance = completedPartialInvoices.reduce(
+              (sum, invoice) => sum + (Number(invoice.subtotal) || 0),
+              0,
+            ) + amount;
+            const partialItems: InvoiceItem[] = [
+              {
+                id: "accumulated-performance",
+                description: `Leistungsstand laut Auftrag bis einschließlich ${partialNumber}. Teilrechnung`,
+                quantity: 1,
+                unit: "pauschal",
+                pricePerUnit: accumulatedPerformance,
+                totalPrice: accumulatedPerformance,
+              },
+            ];
+
+            completedPartialInvoices.forEach((invoice, index) => {
+              const previousPartialNumber = invoice.partialPaymentNumber || index + 1;
+              partialItems.push({
+                id: `deduction-${invoice.id}`,
+                description: `abzgl. ${previousPartialNumber}. Teilrechnung Nr. ${invoice.invoiceNumber} vom ${formatInvoiceReferenceDate(invoice.issueDate)}`,
+                quantity: 1,
+                unit: "pauschal",
+                pricePerUnit: -invoice.subtotal,
+                totalPrice: -invoice.subtotal,
+              });
+            });
+
+            setItems(partialItems);
           } else {
-            // Standard or Partial
             setItems([
               {
                 id: "1",
@@ -407,6 +455,8 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
           }
         }
       }
+
+      hasAppliedUrlPrefill.current = true;
     }
   }, [
     settings,
