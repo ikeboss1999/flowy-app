@@ -22,6 +22,7 @@ import {
   Users,
 } from "lucide-react";
 import { RealtimeClock } from "@/components/RealtimeClock";
+import { WeatherCard } from "@/components/WeatherCard";
 import { useAuth } from "@/context/AuthContext";
 import { useStartup } from "@/hooks/useStartup";
 import { useAccountSettings } from "@/hooks/useAccountSettings";
@@ -257,26 +258,6 @@ export default function Home() {
     tone: "indigo" | "emerald" | "amber" | "rose" | "slate";
   }>;
 
-  const toneClasses = {
-    indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
-    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    amber: "bg-amber-50 text-amber-600 border-amber-100",
-    rose: "bg-rose-50 text-rose-600 border-rose-100",
-    slate: "bg-slate-50 text-slate-600 border-slate-100",
-  };
-
-  const quickStartActions = [
-    canWriteInvoices && { label: "Rechnung erstellen", description: "Neue Rechnung erfassen und finalisieren", href: "/invoices/new", icon: FileText, tone: "indigo" },
-    canWriteOffers && { label: "Angebot schreiben", description: "Angebot vorbereiten und versenden", href: "/offers/new", icon: FileSignature, tone: "emerald" },
-    canUseTime && { label: "Zeiten erfassen", description: "Monatszeiten der Mitarbeiter pflegen", href: "/time-tracking", icon: Clock, tone: "amber" },
-  ].filter(Boolean) as Array<{
-    label: string;
-    description: string;
-    href: string;
-    icon: React.ElementType;
-    tone: "indigo" | "emerald" | "amber" | "rose" | "slate";
-  }>;
-
   return (
     <div className="p-4 sm:p-6 lg:p-8 2xl:p-12 space-y-8 lg:space-y-10 animate-in fade-in duration-500">
       <section suppressHydrationWarning className="rounded-[2.25rem] border border-indigo-100/60 bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-700 p-5 sm:p-8 shadow-2xl shadow-indigo-950/10 overflow-hidden relative text-white">
@@ -358,42 +339,7 @@ export default function Home() {
         </div>
       </section>
 
-      {quickStartActions.length > 0 && (
-      <section suppressHydrationWarning className="rounded-[2rem] border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
-        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-black text-slate-900">Schnellstart</h2>
-            <p className="text-sm font-semibold text-slate-500">Die wichtigsten Aktionen direkt griffbereit.</p>
-          </div>
-        </div>
-        <div suppressHydrationWarning className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {quickStartActions.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={cn(
-                "group rounded-[1.5rem] border border-slate-100 bg-gradient-to-br from-slate-50 to-white p-5 transition hover:-translate-y-0.5 hover:border-indigo-100 hover:shadow-xl hover:shadow-slate-200/70",
-                item.tone === "indigo" && "border-l-4 border-l-indigo-400",
-                item.tone === "emerald" && "border-l-4 border-l-emerald-400",
-                item.tone === "amber" && "border-l-4 border-l-amber-400",
-              )}
-            >
-              <div className="flex items-start justify-between">
-                <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl border", toneClasses[item.tone as keyof typeof toneClasses])}>
-                  <Icon className="h-6 w-6" />
-                </div>
-                <ArrowUpRight className="h-5 w-5 text-slate-300 transition group-hover:text-indigo-500" />
-              </div>
-              <p className="mt-5 text-lg font-black text-slate-900">{item.label}</p>
-              <p suppressHydrationWarning className="mt-1 text-sm font-bold leading-relaxed text-slate-500">{item.description}</p>
-            </Link>
-          );
-        })}
-        </div>
-      </section>
-      )}
+      <WeatherCard city={startup.company.city} />
 
       <section suppressHydrationWarning className="grid items-start grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-8">

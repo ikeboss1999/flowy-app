@@ -42,7 +42,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
     { id: 'overview', label: 'Übersicht', icon: LayoutGrid },
     { id: 'documents', label: 'Dokumente', icon: FileText },
     { id: 'payment', label: 'Zahlungsplan', icon: ListChecks },
-    { id: 'files', label: 'Dateien', icon: FolderOpen },
+    { id: 'files', label: 'Ablage', icon: FolderOpen },
     { id: 'diary', label: 'Bautagebuch', icon: BookOpen },
 ];
 
@@ -150,6 +150,21 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
             new Date(b.data.issueDate).getTime() - new Date(a.data.issueDate).getTime()
         );
     }, [projectOffers, financials.invoices, orders, project.id]);
+
+    const documentGroups = useMemo(() => {
+        const groups = [
+            { kind: 'offer' as const, label: 'Angebote' },
+            { kind: 'order' as const, label: 'Auftragsbestätigungen' },
+            { kind: 'invoice' as const, label: 'Rechnungen' },
+        ];
+
+        return groups
+            .map((group) => ({
+                ...group,
+                rows: documents.filter((document) => document.kind === group.kind),
+            }))
+            .filter((group) => group.rows.length > 0);
+    }, [documents]);
 
     const handleSavePaymentPlan = async (plan: PaymentPlanItem[]) => {
         if (!canWrite) return false;
@@ -522,7 +537,19 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {documents.map(row => {
+                                    {documentGroups.map(group => (
+                                        <React.Fragment key={group.kind}>
+                                            <tr className="bg-slate-50/80">
+                                                <td colSpan={6} className="px-6 py-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-700">{group.label}</span>
+                                                        <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-slate-400 shadow-sm ring-1 ring-slate-100">
+                                                            {group.rows.length}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {group.rows.map(row => {
                                         if (row.kind === 'offer') {
                                             const o = row.data;
                                             return (
@@ -622,7 +649,9 @@ export function ProjectDetails({ project, customer, invoices, offers, orders, on
                                                 </td>
                                             </tr>
                                         );
-                                    })}
+                                            })}
+                                        </React.Fragment>
+                                    ))}
                                 </tbody>
                             </table>
                             </div>
