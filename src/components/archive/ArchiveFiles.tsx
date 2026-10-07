@@ -63,6 +63,7 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
     const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
     const [newFileName, setNewFileName] = useState('');
     const [movingFile, setMovingFile] = useState<ArchiveFile | null>(null);
+    const [movingFolder, setMovingFolder] = useState<string | null>(null);
     
     const [confirmDialog, setConfirmDialog] = useState<{
         isOpen: boolean;
@@ -277,6 +278,57 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
         }
     };
 
+    const handleMoveFolder = async (folderPath: string, targetFolder: string) => {
+        if (!canManageArchive) return;
+
+        const folderName = folderPath.split('/').pop() || folderPath;
+        const targetPath = `${targetFolder}/${folderName}`;
+        const nestedPrefix = `${folderPath}/`;
+
+        if (targetPath === folderPath) {
+            setMovingFolder(null);
+            return;
+        }
+
+        if (allFolders.includes(targetPath)) {
+            setUploadError(`Im Zielordner existiert bereits ein Ordner namens „${folderName}“.`);
+            return;
+        }
+
+        try {
+            const folderRecord = folders.find((folder) => folder.name === folderPath);
+            if (folderRecord) {
+                await renameFolder(folderRecord.id, targetPath);
+            } else {
+                await addFolder(targetPath);
+            }
+
+            const nestedFolderRecords = folders.filter((folder) => folder.name.startsWith(nestedPrefix));
+            for (const nestedFolder of nestedFolderRecords) {
+                await renameFolder(nestedFolder.id, `${targetPath}/${nestedFolder.name.slice(nestedPrefix.length)}`);
+            }
+
+            const filesToMove = files.filter((file) => file.folder === folderPath || file.folder?.startsWith(nestedPrefix));
+            await Promise.all(filesToMove.map((file) => {
+                const updatedFolder = file.folder === folderPath
+                    ? targetPath
+                    : `${targetPath}/${file.folder.slice(nestedPrefix.length)}`;
+                return updateFile(file.id, { folder: updatedFolder });
+            }));
+
+            if (selectedFolder === folderPath) {
+                setSelectedFolder(targetPath);
+            } else if (selectedFolder?.startsWith(nestedPrefix)) {
+                setSelectedFolder(`${targetPath}/${selectedFolder.slice(nestedPrefix.length)}`);
+            }
+
+            setMovingFolder(null);
+            await triggerMutate();
+        } catch {
+            setUploadError('Ordner konnte nicht verschoben werden.');
+        }
+    };
+
     const resolveAndOpen = async (file: ArchiveFile) => {
         const newWindow = window.open('about:blank', '_blank');
         if (newWindow) {
@@ -402,6 +454,9 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                                             {canManageArchive && <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => { setRenamingFolderOldPath(folderName); setRenamingFolderNewName(displayName); }} title="Umbenennen" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
                                                     <Edit2 className="h-4 w-4" />
+                                                </button>
+                                                <button onClick={() => setMovingFolder(folderName)} title="Verschieben" className="p-2 bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-100 transition-colors">
+                                                    <ArrowRightLeft className="h-4 w-4" />
                                                 </button>
                                                 <button onClick={() => handleDeleteFolderUI(folderName)} title="Löschen" className="p-2 bg-slate-50 hover:bg-rose-50 text-slate-300 hover:text-rose-600 rounded-xl border border-slate-100 transition-colors">
                                                     <Trash2 className="h-4 w-4" />
@@ -541,6 +596,13 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                         title="Ordner umbenennen"
                     >
                         <Edit2 className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={() => setMovingFolder(selectedFolder)}
+                        className="p-2 bg-white border border-slate-200 text-slate-400 hover:text-indigo-650 hover:border-indigo-150 rounded-xl shadow-sm transition-all"
+                        title="Ordner verschieben"
+                    >
+                        <ArrowRightLeft className="h-4 w-4" />
                     </button>
                     <button 
                         onClick={() => handleDeleteFolderUI(selectedFolder)} 
@@ -749,6 +811,48 @@ export function ArchiveFiles({ title = "Allgemeines Archiv" }: ArchiveFilesProps
                             ))}
                         </div>
                         <button onClick={() => setMovingFile(null)} className="w-full mt-6 px-4 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 font-outfit">Abbrechen</button>
+                    </div>
+                </div>
+            )}
+
+            {canManageArchive && movingFolder && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center bg-white/30 p-4">
+                    <div className="w-full max-w-md rounded-[24px] bg-white p-8 shadow-2xl">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">Ordner verschieben</p>
+                        <h3 className="mt-1 text-xl font-black text-slate-900 font-outfit">
+                            „{movingFolder.split('/').pop()}“ verschieben
+                        </h3>
+                        <p className="mt-2 text-sm font-medium leading-relaxed text-slate-500">
+                            Unterordner und enthaltene Dateien werden mitverschoben.
+                        </p>
+                        <div className="mt-5 max-h-64 space-y-2 overflow-y-auto">
+                            {allFolders
+                                .filter((folder) => {
+                                    const currentParent = movingFolder.split('/').slice(0, -1).join('/');
+                                    return folder !== movingFolder
+                                        && !folder.startsWith(`${movingFolder}/`)
+                                        && folder !== currentParent;
+                                })
+                                .map((folder) => (
+                                    <button
+                                        key={folder}
+                                        onClick={() => handleMoveFolder(movingFolder, folder)}
+                                        className="flex w-full items-center gap-3 rounded-xl border border-slate-100 px-4 py-3 text-left font-bold text-slate-700 transition-colors hover:bg-indigo-50 font-outfit"
+                                    >
+                                        <FolderOpen className="h-4 w-4 shrink-0 text-indigo-500" />
+                                        <span className="truncate">{folder}</span>
+                                    </button>
+                                ))}
+                            {allFolders.filter((folder) => {
+                                const currentParent = movingFolder.split('/').slice(0, -1).join('/');
+                                return folder !== movingFolder && !folder.startsWith(`${movingFolder}/`) && folder !== currentParent;
+                            }).length === 0 && (
+                                <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm font-medium text-slate-400">
+                                    Kein zulässiger Zielordner vorhanden.
+                                </p>
+                            )}
+                        </div>
+                        <button onClick={() => setMovingFolder(null)} className="mt-6 w-full rounded-xl bg-slate-100 px-4 py-3 font-bold text-slate-600 hover:bg-slate-200 font-outfit">Abbrechen</button>
                     </div>
                 </div>
             )}

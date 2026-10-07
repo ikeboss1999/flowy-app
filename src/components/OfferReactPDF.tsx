@@ -6,7 +6,7 @@ import { Customer } from '@/types/customer';
 import { richTextLines } from '@/lib/rich-text';
 
 function RichTextBlock({ value, style }: { value: string; style?: any }) {
-    return <View style={style}>{richTextLines(value).map((line, index) => <Text key={index} style={{ fontSize: 9, color: '#555555' }}>{line.map((segment, segmentIndex) => <Text key={segmentIndex} style={{ fontFamily: segment.bold && segment.italic ? 'Helvetica-BoldOblique' : segment.bold ? 'Helvetica-Bold' : segment.italic ? 'Helvetica-Oblique' : 'Helvetica', textDecoration: segment.underline ? 'underline' : undefined }}>{segment.text}</Text>)}</Text>)}</View>;
+    return <View style={style}>{richTextLines(value).map((line, index) => <Text key={index} style={{ fontSize: 9, color: '#555555', lineHeight: 1.35 }}>{line.map((segment, segmentIndex) => <Text key={segmentIndex} style={{ fontFamily: segment.bold && segment.italic ? 'Helvetica-BoldOblique' : segment.bold ? 'Helvetica-Bold' : segment.italic ? 'Helvetica-Oblique' : 'Helvetica', textDecoration: segment.underline ? 'underline' : undefined }}>{segment.text}</Text>)}</Text>)}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -544,9 +544,7 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
                                     <View key={item.id} wrap={false} style={styles.tableRow}>
                                         <Text style={[styles.cPos, styles.tdText, { color: '#aaaaaa' }]}>—</Text>
                                         <View style={{ width: '93%', paddingLeft: 8 }}>
-                                            <Text style={{ fontSize: 9.5, color: '#333333' }}>
-                                                <RichTextBlock value={item.description} />
-                                            </Text>
+                                            <RichTextBlock value={item.description} />
                                         </View>
                                     </View>
                                 );

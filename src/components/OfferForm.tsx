@@ -140,6 +140,8 @@ export function OfferForm({ initialData }: OfferFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedPresetIds, setSavedPresetIds] = useState<string[]>([]);
+  const [positionToolbarAnchor, setPositionToolbarAnchor] = useState<HTMLDivElement | null>(null);
+  const [isPositionToolbarFloating, setIsPositionToolbarFloating] = useState(false);
   const { showToast, showConfirm } = useNotification();
 
   const isLoading =
@@ -148,6 +150,15 @@ export function OfferForm({ initialData }: OfferFormProps) {
     isOfferSettingsLoading ||
     isOffersLoading ||
     isProjectsLoading;
+
+  useEffect(() => {
+    if (!positionToolbarAnchor) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsPositionToolbarFloating(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+    }, { threshold: 0 });
+    observer.observe(positionToolbarAnchor);
+    return () => observer.disconnect();
+  }, [positionToolbarAnchor]);
 
   // Form State
   const [documentType, setDocumentType] = useState<'offer' | 'estimate'>(
@@ -637,6 +648,14 @@ export function OfferForm({ initialData }: OfferFormProps) {
 
   return (
     <div className="mx-auto space-y-10 transition-all duration-300 w-full max-w-none px-4 lg:px-6 2xl:px-10">
+      {isPositionToolbarFloating && (
+        <div className="fixed left-1/2 top-4 z-[120] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-2xl shadow-slate-900/15 backdrop-blur">
+          <button type="button" onClick={addTitleItem} className="shrink-0 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100"><AlignLeft className="mr-1.5 inline h-3.5 w-3.5" />Titel</button>
+          <button type="button" onClick={addStandardItem} className="shrink-0 rounded-xl px-3 py-2 text-xs font-bold text-indigo-600 transition hover:bg-indigo-50"><Plus className="mr-1.5 inline h-3.5 w-3.5" />Position</button>
+          <button type="button" onClick={addDetailedItem} className="shrink-0 rounded-xl px-3 py-2 text-xs font-bold text-indigo-600 transition hover:bg-indigo-50"><Plus className="mr-1.5 inline h-3.5 w-3.5" />Detail-Pos.</button>
+          <button type="button" onClick={addInfoItem} className="shrink-0 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100"><Info className="mr-1.5 inline h-3.5 w-3.5" />Info</button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-slate-400 font-bold uppercase tracking-widest text-xs mb-1">
@@ -1046,11 +1065,11 @@ export function OfferForm({ initialData }: OfferFormProps) {
           <div className="glass-card p-5 xl:p-7 2xl:p-8 space-y-8 xl:space-y-10 w-full min-w-0">
         {/* ── Section 4: Positionen ── */}
         <div className="space-y-8">
-          <div className="flex justify-between items-center">
+          <div ref={setPositionToolbarAnchor} className="-mx-2 flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm md:flex-row md:items-center md:justify-between">
             <h3 className="text-xl font-bold text-slate-800 tracking-tight">
               Angebotspositionen
             </h3>
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl p-1">
+            <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-1">
               <button
                 type="button"
                 onClick={addTitleItem}
@@ -1120,16 +1139,10 @@ export function OfferForm({ initialData }: OfferFormProps) {
                                 </span>
                                 <div className="flex-1 min-w-0">
                                   {type === "info" && (
-                                    <textarea
-                                      rows={2}
+                                    <RichTextEditor
                                       value={item.description || ""}
-                                      onChange={(e) =>
-                                        updateItem(item.id, "description", e.target.value)
-                                      }
-                                      className={cn(
-                                        inputClasses,
-                                        "py-3 px-4 border-amber-100 text-sm resize-y bg-transparent",
-                                      )}
+                                      onChange={(value) => updateItem(item.id, "description", value)}
+                                      className="border-amber-100 bg-amber-50/20"
                                       placeholder="Informationstext / Hinweis..."
                                     />
                                   )}
