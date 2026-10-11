@@ -50,6 +50,10 @@ export interface Offer {
     status: OfferStatus;
     projectId?: string;
     notes?: string;
+    attachmentName?: string;
+    attachmentPath?: string;
+    attachmentMimeType?: string;
+    attachmentSize?: number;
     createdAt: string;
     updatedAt: string;
     userId?: string;

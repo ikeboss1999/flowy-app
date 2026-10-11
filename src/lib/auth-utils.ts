@@ -7,10 +7,14 @@ export const generateVerificationCode = () => {
     return Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit number
 };
 
-export const getAuthErrorMessage = (error: any): string => {
+export const getAuthErrorMessage = (error: unknown): string => {
     if (!error) return "Ein unbekannter Fehler ist aufgetreten.";
 
-    const message = error.message?.toLowerCase() || "";
+    const message = error instanceof Error
+        ? error.message.toLowerCase()
+        : typeof error === "object" && "message" in error && typeof error.message === "string"
+            ? error.message.toLowerCase()
+            : "";
 
     if (message.includes("invalid login credentials")) {
         return "Ungültige E-Mail-Adresse oder Passwort.";

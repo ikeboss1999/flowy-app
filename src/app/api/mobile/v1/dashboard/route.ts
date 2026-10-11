@@ -185,7 +185,7 @@ export async function GET(request: Request) {
         const todayEntry = (todayEntriesResult.data || [])[0] || null;
         const weekEntries = weekEntriesResult.data || [];
         const weekMinutes = weekEntries.reduce((sum: number, entry: any) => sum + Number(entry.duration || 0), 0);
-        const weekOvertime = weekEntries.reduce((sum: number, entry: any) => sum + Number(entry.overtime || 0), 0);
+        const weekOvertime = weekEntries.reduce((sum: number, entry: any) => sum + Math.max(0, Number(entry.overtime) || 0), 0);
         const expectedMinutes = expectedWeeklyMinutes(auth.employee.weeklySchedule);
         const receiptsByDocumentId = new Map((receiptsResult.data || []).map((receipt: any) => [receipt.documentId, receipt.readAt]));
         const documents = (documentsResult.data || []).map((document: any) => ({

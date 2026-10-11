@@ -4,6 +4,7 @@ import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { getAuthErrorMessage } from "@/lib/auth-utils"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 
 export default function ResetPasswordPage() {
@@ -36,7 +37,7 @@ export default function ResetPasswordPage() {
             setTimeout(() => {
                 router.push("/login")
             }, 3000)
-        } catch (err: any) {
+        } catch (err: unknown) {
             setError(getAuthErrorMessage(err))
         } finally {
             setLoading(false)
@@ -49,7 +50,7 @@ export default function ResetPasswordPage() {
 
             <div className="w-full max-w-[600px] z-10 p-6 flex flex-col items-center">
                 <div className="mb-8">
-                    <img src="/logo.png" alt="FlowY" className="h-16 object-contain" />
+                    <Image src="/logo.png" alt="FlowY" width={64} height={64} priority className="h-16 w-16 object-contain" />
                 </div>
 
                 <div className="text-center mb-10 space-y-4">

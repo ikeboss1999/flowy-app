@@ -9,6 +9,8 @@ import {
     Edit2,
     ExternalLink,
     Filter,
+    LayoutGrid,
+    List,
     Mail,
     MapPin,
     Phone,
@@ -42,11 +44,13 @@ export default function CustomersPage() {
     usePermissionGuard("customers_read");
     const { profile } = useAuth();
     const { customers, addCustomer, updateCustomer, deleteCustomer, isLoading } = useCustomers();
-    const { subcontractors, saveSubcontractor, deleteSubcontractor, isLoading: isLoadingSubcontractors } = useSubcontractors();
+    const { subcontractors, saveSubcontractor, deleteSubcontractor } = useSubcontractors();
     const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
     const deferredSearchQuery = React.useDeferredValue(searchQuery);
     const [filterType, setFilterType] = useState<CustomerType | "all">("all");
+    const [contactView, setContactView] = useState<"grid" | "list">("grid");
+    const [hasLoadedContactView, setHasLoadedContactView] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | undefined>(undefined);
     const [selectedDetailCustomer, setSelectedDetailCustomer] = useState<Customer | undefined>(undefined);
@@ -56,6 +60,17 @@ export default function CustomersPage() {
     const [selectedSubcontractor, setSelectedSubcontractor] = useState<Subcontractor | undefined>(undefined);
     const isAdminOrDev = profile?.role === "admin" || profile?.role === "developer";
     const canWriteCustomers = isAdminOrDev || profile?.permissions?.["*"] === true || !!profile?.permissions?.customers_write;
+
+    React.useEffect(() => {
+        const savedView = window.localStorage.getItem("flowy_contacts_view");
+        if (savedView === "grid" || savedView === "list") setContactView(savedView);
+        setHasLoadedContactView(true);
+    }, []);
+
+    React.useEffect(() => {
+        if (!hasLoadedContactView) return;
+        window.localStorage.setItem("flowy_contacts_view", contactView);
+    }, [contactView, hasLoadedContactView]);
 
     const stats = useMemo(() => ({
         total: customers.length,
@@ -248,41 +263,64 @@ export default function CustomersPage() {
                             />
                         </div>
 
-                        {activeContactType === "customers" && <div className="flex gap-2 overflow-x-auto rounded-2xl bg-white p-1 ring-1 ring-slate-200">
-                            {filterOptions.map(({ id, label, icon: Icon }) => (
+                        {activeContactType === "customers" && (
+                            <div className="flex items-center gap-2">
+                                <div className="flex gap-2 overflow-x-auto rounded-2xl bg-white p-1 ring-1 ring-slate-200">
+                                    {filterOptions.map(({ id, label, icon: Icon }) => (
+                                        <button
+                                            key={id}
+                                            onClick={() => setFilterType(id)}
+                                            className={cn(
+                                                "flex shrink-0 items-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition-all",
+                                                filterType === id
+                                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
+                                                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                                            )}
+                                        >
+                                            <Icon className="h-4 w-4" />
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
                                 <button
-                                    key={id}
-                                    onClick={() => setFilterType(id)}
-                                    className={cn(
-                                        "flex shrink-0 items-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition-all",
-                                        filterType === id
-                                            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
-                                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                                    )}
+                                    type="button"
+                                    onClick={() => setContactView(view => view === "grid" ? "list" : "grid")}
+                                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-sm transition-all hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+                                    title={contactView === "grid" ? "Listenansicht anzeigen" : "Kachelansicht anzeigen"}
+                                    aria-label={contactView === "grid" ? "Listenansicht anzeigen" : "Kachelansicht anzeigen"}
                                 >
-                                    <Icon className="h-4 w-4" />
-                                    {label}
+                                    {contactView === "grid" ? <List className="h-5 w-5" /> : <LayoutGrid className="h-5 w-5" />}
                                 </button>
-                            ))}
-                        </div>}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
             {activeContactType === "subcontractors" ? (
                 filteredSubcontractors.length > 0 ? (
-                    <div className="grid gap-4 xl:grid-cols-2">
-                        {filteredSubcontractors.map(item => (
-                            <SubcontractorCard
-                                key={item.id}
-                                item={item}
-                                canWrite={canWriteCustomers}
-                                onSelect={setSelectedSubcontractor}
-                                onEdit={handleEditSubcontractor}
-                                onDeletePrompt={handleDeleteSubcontractorPrompt}
-                            />
-                        ))}
-                    </div>
+                    contactView === "grid" ? (
+                        <div className="grid gap-4 xl:grid-cols-2">
+                            {filteredSubcontractors.map(item => (
+                                <SubcontractorCard
+                                    key={item.id}
+                                    item={item}
+                                    canWrite={canWriteCustomers}
+                                    onSelect={setSelectedSubcontractor}
+                                    onEdit={handleEditSubcontractor}
+                                    onDeletePrompt={handleDeleteSubcontractorPrompt}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <SubcontractorList
+                            items={filteredSubcontractors}
+                            canWrite={canWriteCustomers}
+                            onSelect={setSelectedSubcontractor}
+                            onEdit={handleEditSubcontractor}
+                            onDeletePrompt={handleDeleteSubcontractorPrompt}
+                        />
+                    )
                 ) : (
                     <div className="rounded-[36px] border border-dashed border-indigo-200 bg-indigo-50/40 px-6 py-24 text-center">
                         <h4 className="text-xl font-black text-slate-900">Keine Subunternehmer gefunden</h4>
@@ -290,19 +328,30 @@ export default function CustomersPage() {
                     </div>
                 )
             ) : filteredCustomers.length > 0 ? (
-                <div className="grid gap-4 xl:grid-cols-2">
-                    {filteredCustomers.map((customer) => (
-                        <CustomerCard
-                            key={customer.id}
-                            customer={customer}
-                            canWrite={canWriteCustomers}
-                            onSelect={setSelectedDetailCustomer}
-                            onEdit={handleEditCustomer}
-                            onDelete={handleDeleteCustomer}
-                            onCopyEmail={handleCopyEmail}
-                        />
-                    ))}
-                </div>
+                contactView === "grid" ? (
+                    <div className="grid gap-4 xl:grid-cols-2">
+                        {filteredCustomers.map((customer) => (
+                            <CustomerCard
+                                key={customer.id}
+                                customer={customer}
+                                canWrite={canWriteCustomers}
+                                onSelect={setSelectedDetailCustomer}
+                                onEdit={handleEditCustomer}
+                                onDelete={handleDeleteCustomer}
+                                onCopyEmail={handleCopyEmail}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <CustomerList
+                        customers={filteredCustomers}
+                        canWrite={canWriteCustomers}
+                        onSelect={setSelectedDetailCustomer}
+                        onEdit={handleEditCustomer}
+                        onDelete={handleDeleteCustomer}
+                        onCopyEmail={handleCopyEmail}
+                    />
+                )
             ) : (
                 <div className="flex flex-col items-center justify-center rounded-[36px] border border-dashed border-indigo-200 bg-indigo-50/40 px-6 py-24 text-center">
                     <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-white text-indigo-500 shadow-sm">
@@ -506,6 +555,64 @@ const CustomerCard = React.memo(function CustomerCard({
     );
 });
 
+interface CustomerListProps {
+    customers: Customer[];
+    canWrite: boolean;
+    onSelect: (customer: Customer) => void;
+    onEdit: (customer: Customer) => void;
+    onDelete: (id: string) => void;
+    onCopyEmail: (email?: string) => void;
+}
+
+function CustomerList({ customers, canWrite, onSelect, onEdit, onDelete, onCopyEmail }: CustomerListProps) {
+    return (
+        <div className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
+            <div className="hidden grid-cols-12 items-center gap-5 border-b border-slate-100 bg-slate-50/70 px-7 py-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 lg:grid">
+                <span className="col-span-5">Kontakt</span><span className="col-span-3">Kontaktwege</span><span className="col-span-2">Status</span><span className="col-span-2 text-right">Aktionen</span>
+            </div>
+            <div className="divide-y divide-slate-100">
+                {customers.map(customer => {
+                    const isBusiness = customer.type === "business";
+                    const statusLabel = customer.status === "active" ? "Aktiv" : customer.status === "inactive" ? "Inaktiv" : customer.status === "draft" ? "Entwurf" : "Gesperrt";
+                    return (
+                        <div
+                            key={customer.id}
+                            onClick={() => onSelect(customer)}
+                            className="group grid cursor-pointer gap-4 px-5 py-5 transition-colors hover:bg-indigo-50/40 lg:grid-cols-12 lg:items-center lg:gap-5 lg:px-7"
+                        >
+                            <div className="flex min-w-0 items-center gap-3 lg:col-span-5">
+                                <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border", isBusiness ? "border-emerald-100 bg-emerald-50 text-emerald-600" : "border-purple-100 bg-purple-50 text-purple-600")}>
+                                    {isBusiness ? <Briefcase className="h-5 w-5" /> : <User className="h-5 w-5" />}
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <p className="truncate font-black text-slate-900 group-hover:text-indigo-600">{customer.name}</p>
+                                        <span className={cn("rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider", isBusiness ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700")}>{isBusiness ? "Firma" : "Privat"}</span>
+                                    </div>
+                                    <p className="mt-1 truncate text-xs font-bold text-slate-500">{customer.customer_number || "Ohne Kundennummer"} · {[customer.address?.zip, customer.address?.city].filter(Boolean).join(" ") || "Kein Ort"}</p>
+                                </div>
+                            </div>
+                            <div className="min-w-0 text-sm font-semibold text-slate-600 lg:col-span-3">
+                                <p className="truncate">{customer.email || "Keine E-Mail-Adresse"}</p>
+                                <p className="mt-1 truncate text-xs text-slate-400">{customer.phone || "Keine Telefonnummer"}</p>
+                            </div>
+                            <div className="flex min-w-0 items-center gap-2 lg:col-span-2">
+                                <span className={cn("rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider", customer.status === "active" ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" : customer.status === "inactive" ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100" : customer.status === "draft" ? "bg-slate-100 text-slate-600 ring-1 ring-slate-200" : "bg-rose-50 text-rose-700 ring-1 ring-rose-100")}>{statusLabel}</span>
+                                {customer.taxId && <span className="hidden truncate text-xs font-bold text-slate-400 xl:inline">{customer.taxId}</span>}
+                            </div>
+                            <div className="flex items-center gap-2 lg:col-span-2 lg:justify-end" onClick={event => event.stopPropagation()}>
+                                {customer.email && <button type="button" onClick={() => onCopyEmail(customer.email)} title="E-Mail kopieren" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"><Copy className="h-4 w-4" /></button>}
+                                {canWrite && <button type="button" onClick={() => onEdit(customer)} title="Bearbeiten" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"><Edit2 className="h-4 w-4" /></button>}
+                                {canWrite && <button type="button" onClick={() => onDelete(customer.id)} title="Löschen" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 interface SubcontractorCardProps {
     item: Subcontractor;
     canWrite: boolean;
@@ -574,3 +681,43 @@ const SubcontractorCard = React.memo(function SubcontractorCard({
         </div>
     );
 });
+
+interface SubcontractorListProps {
+    items: Subcontractor[];
+    canWrite: boolean;
+    onSelect: (item: Subcontractor) => void;
+    onEdit: (item: Subcontractor) => void;
+    onDeletePrompt: (item: Subcontractor) => void;
+}
+
+function SubcontractorList({ items, canWrite, onSelect, onEdit, onDeletePrompt }: SubcontractorListProps) {
+    return (
+        <div className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
+            <div className="hidden grid-cols-12 items-center gap-5 border-b border-slate-100 bg-slate-50/70 px-7 py-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 lg:grid">
+                <span className="col-span-5">Subunternehmer</span><span className="col-span-3">Kontaktwege</span><span className="col-span-2">Status</span><span className="col-span-2 text-right">Aktionen</span>
+            </div>
+            <div className="divide-y divide-slate-100">
+                {items.map(item => (
+                    <div key={item.id} onClick={() => onSelect(item)} className="group grid cursor-pointer gap-4 px-5 py-5 transition-colors hover:bg-indigo-50/40 lg:grid-cols-12 lg:items-center lg:gap-5 lg:px-7">
+                        <div className="flex min-w-0 items-center gap-3 lg:col-span-5">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-600"><Briefcase className="h-5 w-5" /></div>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2"><p className="truncate font-black text-slate-900 group-hover:text-indigo-600">{item.name}</p><span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-700">Subunternehmer</span></div>
+                                <p className="mt-1 truncate text-xs font-bold text-slate-500">{item.subcontractor_number || "Ohne Sub-Nummer"} · {[item.zip, item.city].filter(Boolean).join(" ") || "Kein Ort"}</p>
+                            </div>
+                        </div>
+                        <div className="min-w-0 text-sm font-semibold text-slate-600 lg:col-span-3"><p className="truncate">{item.email || "Keine E-Mail-Adresse"}</p><p className="mt-1 truncate text-xs text-slate-400">{item.phone || "Keine Telefonnummer"}</p></div>
+                        <div className="flex min-w-0 flex-wrap items-center gap-2 lg:col-span-2">
+                            <span className={cn("rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider", item.status === "active" ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" : item.status === "inactive" ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100" : "bg-rose-50 text-rose-700 ring-1 ring-rose-100")}>{item.status === "active" ? "Aktiv" : item.status === "inactive" ? "Inaktiv" : "Gesperrt"}</span>
+                            <span className={cn("rounded-full px-3 py-1 text-[10px] font-black", item.hfuListed ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}>{item.hfuListed ? "HFU geprüft" : "25 % prüfen"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 lg:col-span-2 lg:justify-end" onClick={event => event.stopPropagation()}>
+                            {canWrite && <button type="button" onClick={() => onEdit(item)} title="Bearbeiten" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"><Edit2 className="h-4 w-4" /></button>}
+                            {canWrite && <button type="button" onClick={() => onDeletePrompt(item)} title="Löschen" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}

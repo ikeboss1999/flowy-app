@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { getAuthErrorMessage } from "@/lib/auth-utils"
 import { useRouter, useSearchParams } from "next/navigation"
+import Image from "next/image"
 import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, Lock, Mail, User, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { preloadStartup } from "@/lib/startup-preload"
@@ -97,8 +98,8 @@ export default function LoginPage() {
                 if (error) throw error
                 setMessage("Registrierung erfolgreich! Bitte überprüfe deine E-Mails.")
             }
-        } catch (err: any) {
-            setError(err.message || getAuthErrorMessage(err))
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : getAuthErrorMessage(err))
         } finally {
             setLoading(false)
         }
@@ -120,7 +121,7 @@ export default function LoginPage() {
             })
             if (error) throw error
             setMessage("Eine E-Mail zum Zurücksetzen des Passworts wurde gesendet.")
-        } catch (err: any) {
+        } catch (err: unknown) {
             setError(getAuthErrorMessage(err))
         } finally {
             setLoading(false)
@@ -141,7 +142,7 @@ export default function LoginPage() {
                 <div className="mb-10 relative group cursor-pointer" onClick={() => router.push('/')}>
                     <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full group-hover:bg-indigo-500/30 transition-all duration-500 opacity-60" />
                     <div className="relative flex items-center justify-center p-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl">
-                        <img src="/logo.png" alt="FlowY" className="h-16 w-16 object-contain" />
+                        <Image src="/logo.png" alt="FlowY" width={64} height={64} priority className="h-16 w-16 object-contain" />
                     </div>
                 </div>
 

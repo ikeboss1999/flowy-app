@@ -14,6 +14,9 @@ import {
   AlignLeft,
   GripVertical,
   Info,
+  Paperclip,
+  Upload,
+  X,
 } from "lucide-react";
 import { useNotification } from "@/context/NotificationContext";
 import {
@@ -58,6 +61,13 @@ import { Service } from "@/types/service";
 import { CustomerSearchSelect } from "@/components/CustomerSearchSelect";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { formatYearlyNumber, nextYearlySequence } from "@/lib/document-numbering";
+import {
+  appendAttachmentToPdf,
+  DOCUMENT_ATTACHMENT_ACCEPT,
+  DOCUMENT_ATTACHMENT_MAX_SIZE,
+  DocumentAttachmentMeta,
+  isSupportedDocumentAttachment,
+} from "@/lib/document-attachment-pdf";
 
 interface InvoiceFormProps {
   initialData?: Partial<Invoice>;
@@ -222,6 +232,20 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     string | undefined
   >(initialData?.paymentPlanItemId);
   const [processor, setProcessor] = useState(initialData?.processor || "");
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [storedAttachment, setStoredAttachment] = useState<DocumentAttachmentMeta | null>(
+    initialData?.attachmentPath && initialData.attachmentName
+      ? {
+          name: initialData.attachmentName,
+          path: initialData.attachmentPath,
+          mimeType: initialData.attachmentMimeType || "application/pdf",
+          size: initialData.attachmentSize || 0,
+        }
+      : null,
+  );
+  const [attachmentName, setAttachmentName] = useState(initialData?.attachmentName || "");
+  const [attachmentRemoved, setAttachmentRemoved] = useState(false);
 
   // Set default processor from company settings
   useEffect(() => {
@@ -662,6 +686,62 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     };
   };
 
+  const handleAttachmentSelection = (file?: File) => {
+    if (!file) return;
+    if (!isSupportedDocumentAttachment(file)) {
+      setError("Als Anhang sind nur PDF-, PNG- und JPG-Dateien erlaubt.");
+      return;
+    }
+    if (file.size > DOCUMENT_ATTACHMENT_MAX_SIZE) {
+      setError("Der Anhang darf maximal 10 MB groß sein.");
+      return;
+    }
+    setAttachmentFile(file);
+    setAttachmentName(file.name);
+    setAttachmentRemoved(false);
+    setError(null);
+  };
+
+  const removeAttachment = () => {
+    setAttachmentFile(null);
+    setAttachmentName("");
+    if (storedAttachment?.path) setAttachmentRemoved(true);
+    setStoredAttachment(null);
+    if (attachmentInputRef.current) attachmentInputRef.current.value = "";
+  };
+
+  const uploadAttachment = async (documentId: string): Promise<DocumentAttachmentMeta | null> => {
+    if (!attachmentFile) {
+      return attachmentRemoved ? null : storedAttachment
+        ? { ...storedAttachment, name: attachmentName.trim() || storedAttachment.name }
+        : null;
+    }
+    const formData = new FormData();
+    formData.append("kind", "invoice");
+    formData.append("documentId", documentId);
+    formData.append("file", attachmentFile);
+    formData.append("displayName", attachmentName.trim() || attachmentFile.name);
+    const response = await fetch("/api/document-attachments", { method: "POST", body: formData });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(data?.error || "Der Anhang konnte nicht hochgeladen werden.");
+    return data as DocumentAttachmentMeta;
+  };
+
+  const loadStoredAttachment = async (documentId: string, attachment: DocumentAttachmentMeta): Promise<Blob> => {
+    if (attachmentFile) return attachmentFile;
+    const response = await fetch(`/api/document-attachments?kind=invoice&id=${encodeURIComponent(documentId)}`);
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.url) throw new Error(data?.error || "Der gespeicherte Anhang konnte nicht geladen werden.");
+    const fileResponse = await fetch(data.url);
+    if (!fileResponse.ok) throw new Error("Der gespeicherte Anhang konnte nicht geladen werden.");
+    return fileResponse.blob();
+  };
+
+  const deleteAttachmentFromStorage = async (path?: string) => {
+    if (!path) return;
+    await fetch(`/api/document-attachments?kind=invoice&path=${encodeURIComponent(path)}`, { method: "DELETE" });
+  };
+
   const handleSave = async (status: InvoiceStatus) => {
     setError(null);
 
@@ -703,8 +783,18 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
       return;
     }
 
+    const documentId = initialData?.id || Math.random().toString(36).substr(2, 9);
+    const previousAttachmentPath = storedAttachment?.path;
+    let nextAttachment: DocumentAttachmentMeta | null;
+    try {
+      nextAttachment = await uploadAttachment(documentId);
+    } catch (attachmentError) {
+      setError(attachmentError instanceof Error ? attachmentError.message : "Der Anhang konnte nicht hochgeladen werden.");
+      return;
+    }
+
     const invoiceData: Invoice = {
-      id: initialData?.id || Math.random().toString(36).substr(2, 9),
+      id: documentId,
       invoiceNumber,
       subjectExtra,
       constructionProject,
@@ -736,6 +826,10 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
         billingType === "partial" || billingType === "final"
           ? previousInvoices
           : undefined,
+      attachmentName: nextAttachment?.name,
+      attachmentPath: nextAttachment?.path,
+      attachmentMimeType: nextAttachment?.mimeType,
+      attachmentSize: nextAttachment?.size,
       createdAt: initialData?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       pdfUrl: initialData?.pdfUrl,
@@ -749,13 +843,18 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
           import("@react-pdf/renderer"),
           import("@/components/InvoiceReactPDF"),
         ]);
-        const blob = await pdf(
+        let blob = await pdf(
           <InvoiceReactPDF
             invoice={invoiceData}
             customer={customer}
             companySettings={invoiceData.performancePeriod?.companySnapshot || companySettings!}
           />,
         ).toBlob();
+
+        if (nextAttachment) {
+          const attachmentBlob = await loadStoredAttachment(documentId, nextAttachment);
+          blob = await appendAttachmentToPdf(blob, attachmentBlob, nextAttachment.mimeType);
+        }
 
         const pdfFile = new File([blob], "invoice.pdf", { type: "application/pdf" });
         const formData = new FormData();
@@ -789,6 +888,10 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
           });
         }
 
+        if (previousAttachmentPath && previousAttachmentPath !== nextAttachment?.path) {
+          void deleteAttachmentFromStorage(previousAttachmentPath);
+        }
+
         setIsGeneratingPDF(false);
         showToast("Rechnung wurde finalisiert und als PDF gespeichert.", "success");
         window.location.assign("/invoices");
@@ -803,13 +906,21 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
     // For Drafts
     try {
     if (initialData?.id) {
-      await updateInvoice(initialData.id, invoiceData);
+          await updateInvoice(initialData.id, invoiceData);
     } else {
       await addInvoice(invoiceData);
       await updateSettings({
         nextInvoiceNumber: Number(invoiceNumber.match(/(\d+)$/)?.[1] || settings.nextInvoiceNumber || 1) + 1,
       });
     }
+
+    if (previousAttachmentPath && previousAttachmentPath !== nextAttachment?.path) {
+      void deleteAttachmentFromStorage(previousAttachmentPath);
+    }
+    setStoredAttachment(nextAttachment);
+    setAttachmentFile(null);
+    setAttachmentName(nextAttachment?.name || "");
+    setAttachmentRemoved(false);
 
     showConfirm({
       title: "Entwurf gespeichert",
@@ -1555,6 +1666,34 @@ export function InvoiceForm({ initialData }: InvoiceFormProps) {
                 </span>
               </div>
             </div>
+          </div>
+
+          <div className="rounded-[1.75rem] border border-slate-100 bg-slate-50/70 p-5 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-indigo-100 bg-indigo-50 text-indigo-600"><Paperclip className="h-5 w-5" /></div>
+                <div>
+                  <p className="font-black text-slate-900">Anhang hinzufügen</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">PDF, PNG oder JPG bis 10 MB. Der Anhang wird am Ende der Rechnung eingefügt.</p>
+                </div>
+              </div>
+              {!attachmentFile && !storedAttachment ? (
+                <button type="button" onClick={() => attachmentInputRef.current?.click()} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-indigo-100 bg-white px-5 py-3 text-sm font-black text-indigo-600 transition hover:bg-indigo-50"><Upload className="h-4 w-4" /> Datei auswählen</button>
+              ) : (
+                <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-indigo-100 bg-white px-3 py-2 text-sm font-bold text-slate-700">
+                  <Paperclip className="h-4 w-4 shrink-0 text-indigo-500" />
+                  <input
+                    value={attachmentName || attachmentFile?.name || storedAttachment?.name || ""}
+                    onChange={(event) => setAttachmentName(event.target.value)}
+                    className="min-w-0 max-w-[16rem] bg-transparent px-1 py-1 text-sm font-bold text-slate-700 outline-none placeholder:text-slate-400"
+                    placeholder="Dateiname"
+                    aria-label="Dateiname des Anhangs"
+                  />
+                  <button type="button" onClick={removeAttachment} className="rounded-xl p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500" aria-label="Anhang entfernen"><X className="h-4 w-4" /></button>
+                </div>
+              )}
+            </div>
+            <input ref={attachmentInputRef} type="file" accept={DOCUMENT_ATTACHMENT_ACCEPT} className="hidden" onChange={(event) => handleAttachmentSelection(event.target.files?.[0])} />
           </div>
 
           {/* Footer Actions */}

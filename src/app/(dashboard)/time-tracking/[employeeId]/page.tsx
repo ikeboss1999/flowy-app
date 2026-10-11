@@ -195,8 +195,9 @@ const TimeEntryRow = memo(({
                         step="0.5"
                         className="w-full text-sm font-medium text-slate-700 outline-none text-right"
                         placeholder="0"
-                        value={entry?.overtime || ""}
-                        onChange={(e) => onUpdate(dateStr, 'overtime', parseFloat(e.target.value) || 0)}
+                        min="0"
+                        value={Math.max(0, entry?.overtime ?? 0) || ""}
+                        onChange={(e) => onUpdate(dateStr, 'overtime', Math.max(0, parseFloat(e.target.value) || 0))}
                         disabled={isFinalized}
                     />
                 </div>
@@ -381,7 +382,7 @@ export default function EmployeeTimeTrackingPage() {
             return {
                 workHours: totals.workHours + workHours,
                 badWeatherHours: totals.badWeatherHours + getBadWeatherHours(entry),
-                overtimeHours: totals.overtimeHours + (entry.overtime || 0),
+                overtimeHours: totals.overtimeHours + Math.max(0, entry.overtime || 0),
                 normalWorkDays: totals.normalWorkDays + (workHours > 3 && workHours < 9 ? 1 : 0),
                 longWorkDays: totals.longWorkDays + (workHours >= 9 ? 1 : 0)
             };
@@ -405,7 +406,7 @@ export default function EmployeeTimeTrackingPage() {
             };
 
             const calculateAutoOvertime = (entry: TimeEntry) => {
-                if (!employee || !employee.weeklySchedule) return entry.overtime || 0;
+                if (!employee || !employee.weeklySchedule) return Math.max(0, entry.overtime || 0);
 
                 // Only auto-calculate for work-related types
                 if (!['WORK', 'BAD_WEATHER', 'WORK_BAD_WEATHER'].includes(entry.type)) {
@@ -419,15 +420,18 @@ export default function EmployeeTimeTrackingPage() {
                 if (schedule && schedule.enabled) {
                     const actualHours = (entry.duration || 0) / 60;
                     const targetHours = schedule.hours || 0;
-                    return actualHours - targetHours;
+                    // Under-hours are not overtime. The app only records a
+                    // positive overtime balance; negative time is not shown
+                    // or persisted in the overtime field.
+                    return Math.max(0, actualHours - targetHours);
                 }
 
                 // If the day is not in schedule (e.g. weekend work), all hours are overtime
-                return (entry.duration || 0) / 60;
+                return Math.max(0, (entry.duration || 0) / 60);
             };
 
             if (existing) {
-                let updated = { ...existing, [field]: value };
+                const updated = { ...existing, [field]: value };
 
                 // Auto-calculate overtime if duration or type changes
                 if (field === 'duration' || field === 'type') {
@@ -441,7 +445,7 @@ export default function EmployeeTimeTrackingPage() {
             }
 
             // New Entry Scenario
-            let newEntry: TimeEntry = {
+            const newEntry: TimeEntry = {
                 id: Math.random().toString(36).substr(2, 9),
                 employeeId,
                 date,

@@ -87,7 +87,6 @@ export default function Home() {
   const canReadDunning = canUse("dunning_read");
   const canReadReports = canUse("reports_read");
   const canUseCatalog = canWriteInvoices || canWriteOffers;
-  const canOpenDashboard = canReadInvoices || canReadOffers || canReadOrders || canReadProjects || canReadEmployees || canUseTime || canReadReports;
 
   const status = startup.status;
   const toDateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -129,27 +128,6 @@ export default function Home() {
       tone: "emerald",
     },
   ].filter(Boolean) as Array<{ label: string; detail: string; href: string; icon: React.ElementType; tone: "rose" | "amber" | "indigo" | "emerald" }>;
-
-  const primaryActions = [
-    canWriteInvoices && {
-      label: "Neue Rechnung",
-      href: "/invoices/new",
-      icon: FileText,
-      color: "bg-primary-gradient text-white shadow-indigo-500/20",
-    },
-    canWriteOffers && {
-      label: "Neues Angebot",
-      href: "/offers/new",
-      icon: FileSignature,
-      color: "bg-white text-slate-800 border border-slate-200",
-    },
-    canReadProjects && {
-      label: "Projekt öffnen",
-      href: "/projects",
-      icon: Briefcase,
-      color: "bg-white text-slate-800 border border-slate-200",
-    },
-  ].filter(Boolean) as Array<{ label: string; href: string; icon: React.ElementType; color: string }>;
 
   const modules = [
     canReadCrm && {
@@ -295,38 +273,8 @@ export default function Home() {
                 {`Willkommen, ${userName}`}
               </h1>
               <p suppressHydrationWarning className="mt-3 max-w-3xl text-base font-semibold leading-relaxed text-white/75 sm:text-lg">
-                {`${companyName} ist bereit. Wählen Sie direkt den nächsten Arbeitsschritt oder öffnen Sie die Übersicht.`}
+                {`${companyName} ist bereit. Alle wichtigen Informationen finden Sie weiter unten auf Ihrer Startseite.`}
               </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              {primaryActions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <Link
-                    key={action.href}
-                    href={action.href}
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-black shadow-lg transition hover:scale-[1.02] active:scale-95",
-                      action.color.includes("bg-primary-gradient")
-                        ? "bg-white text-indigo-700 shadow-white/10"
-                        : "bg-white/10 text-white border border-white/15 backdrop-blur hover:bg-white/15",
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {action.label}
-                  </Link>
-                );
-              })}
-              {canOpenDashboard && (
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white shadow-sm backdrop-blur transition hover:bg-white/15"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  Zur Übersicht
-                </Link>
-              )}
             </div>
           </div>
 
@@ -339,7 +287,7 @@ export default function Home() {
         </div>
       </section>
 
-      <WeatherCard city={startup.company.city} />
+      <WeatherCard city={startup.company.city} zipCode={startup.company.zipCode} country={startup.company.country} />
 
       <section suppressHydrationWarning className="grid items-start grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-8">

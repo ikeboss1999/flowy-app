@@ -102,6 +102,9 @@ export async function POST(request: Request) {
             .from('time_entries')
             .upsert({
                 ...entry,
+                // Overtime is a positive extra-hours value. Do not accept a
+                // negative balance from any client or older form state.
+                overtime: Math.max(0, Number(entry.overtime) || 0),
                 id: entryId,
                 userId,
                 createdAt: entry.createdAt || now

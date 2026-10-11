@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { getAuthErrorMessage } from '@/lib/auth';
@@ -25,7 +26,7 @@ export default function ForgotPasswordPage() {
             if (resetError) throw resetError;
 
             setMessage("Wir haben Ihnen einen Link zum Zurücksetzen des Passworts gesendet.");
-        } catch (err: any) {
+        } catch (err: unknown) {
             setError(getAuthErrorMessage(err));
         } finally {
             setLoading(false);
@@ -44,7 +45,7 @@ export default function ForgotPasswordPage() {
                 {/* Header Section */}
                 <div className="text-center mb-10">
                     <div className="inline-flex items-center justify-center h-24 w-24 rounded-[2rem] bg-white/5 backdrop-blur-3xl border border-white/10 shadow-2xl shadow-indigo-500/20 p-3 mb-8 hover:scale-105 transition-transform duration-500">
-                        <img src="/logo.png" alt="FlowY Logo" className="h-full w-full object-contain drop-shadow-[0_0_20px_rgba(99,102,241,0.4)]" />
+                        <Image src="/logo.png" alt="FlowY Logo" width={72} height={72} priority className="h-full w-full object-contain drop-shadow-[0_0_20px_rgba(99,102,241,0.4)]" />
                     </div>
                     <h1 className="text-5xl font-black text-white tracking-tight mb-4">
                         Passwort <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-400">vergessen?</span>

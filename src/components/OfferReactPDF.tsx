@@ -631,6 +631,7 @@ export const OfferReactPDF: React.FC<OfferReactPDFProps> = ({ offer, customer, c
                     <Text>Mit freundlichen Grüßen</Text>
                     <Text style={styles.signatureName}>{ceoName}</Text>
                     <Text>Geschäftsführer</Text>
+                    {offer.attachmentName ? <Text style={{ marginTop: 12 }}>{`Anhang: ${offer.attachmentName}`}</Text> : null}
                 </View>
 
                 {/* ── Footer ── */}

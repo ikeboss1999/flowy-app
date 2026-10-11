@@ -517,6 +517,7 @@ export const InvoiceReactPDF: React.FC<InvoiceReactPDFProps> = ({ invoice, custo
                         {'Mit freundlichen Grüßen\n\n'}
                         <Text style={styles.signatureName}>{ceoName}</Text>
                         {'\nGeschäftsführer'}
+                        {invoice.attachmentName ? `\n\nAnhang: ${invoice.attachmentName}` : ''}
                     </Text>
                 </View>
 

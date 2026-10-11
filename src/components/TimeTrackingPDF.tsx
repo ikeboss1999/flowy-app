@@ -102,7 +102,7 @@ export const TimeTrackingPDF = forwardRef<HTMLDivElement, TimeTrackingPDFProps>(
     const monthDays = generateMonthDays();
     const totalOvertime = monthDays.reduce((acc, { entry }) => {
         if (!entry) return acc;
-        return acc + (entry.overtime || 0);
+        return acc + Math.max(0, entry.overtime || 0);
     }, 0);
 
     return (
@@ -171,7 +171,7 @@ export const TimeTrackingPDF = forwardRef<HTMLDivElement, TimeTrackingPDFProps>(
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                         const hours = entry ? calculateHours(entry) : 0;
                         const swHours = entry ? calculateBadWeatherHours(entry) : 0;
-                        const overtime = entry?.overtime !== undefined ? entry.overtime : 0;
+                        const overtime = Math.max(0, entry?.overtime ?? 0);
 
                         return (
                             <tr key={date.toISOString()} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: isWeekend ? '#f8fafc' : 'transparent' }}>

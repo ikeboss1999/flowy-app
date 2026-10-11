@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
     ArrowRight,
@@ -56,7 +57,7 @@ export default function WelcomePage() {
             {/* Navigation */}
             <nav className="relative z-50 flex items-center justify-between px-4 md:px-8 py-4 md:py-6 max-w-7xl mx-auto backdrop-blur-md bg-white/[0.02] border-b border-white/5 sticky top-0 pt-[env(safe-area-inset-top,1.5rem)]">
                 <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                    <img src="/logo.png" alt="FlowY Logo" className="h-14 w-14 p-1.5 bg-white/10 rounded-2xl shadow-2xl shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-500" />
+                    <Image src="/logo.png" alt="FlowY Logo" width={56} height={56} priority className="h-14 w-14 p-1.5 bg-white/10 rounded-2xl shadow-2xl shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-500" />
                     <div className="flex flex-col">
                         <span className="text-3xl font-black tracking-tighter uppercase font-outfit leading-none">FlowY</span>
                         <span className="text-[10px] font-black tracking-[0.3em] text-indigo-400 uppercase opacity-70">Professional</span>

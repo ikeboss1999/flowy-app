@@ -4,11 +4,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTimeEntries } from '@/hooks/useTimeEntries';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { FileText, Calendar, CheckCircle, Download, Folder, ChevronRight, ChevronDown, Eye, Loader2, X } from 'lucide-react';
+import { FileText, Calendar, CheckCircle, Download, Folder, ChevronRight, ChevronDown, Eye, Loader2, X, Files } from 'lucide-react';
 import { TimeTrackingPreviewModal } from './TimeTrackingPreviewModal';
 import { Employee } from '@/types/employee';
 import { TimesheetMeta } from '@/types/time-tracking';
 import { timesheetPdfFileName } from '@/lib/document-filenames';
+import { useNotification } from '@/context/NotificationContext';
 
 export function TimesheetArchiveList() {
     const { timesheets, entries, isLoading: timeEntriesLoading } = useTimeEntries();
@@ -28,6 +29,10 @@ export function TimesheetArchiveList() {
     const [employeeFilter, setEmployeeFilter] = useState('all');
     const [showInactiveEmployees, setShowInactiveEmployees] = useState(false);
     const [hasMounted, setHasMounted] = useState(false);
+    const [isMonthExportOpen, setIsMonthExportOpen] = useState(false);
+    const [exportMonth, setExportMonth] = useState('');
+    const [isExportingMonth, setIsExportingMonth] = useState(false);
+    const { showToast } = useNotification();
 
     const getEmployee = useCallback((id: string) => employees.find(e => e.id === id) ?? null, [employees]);
     const isActiveEmployee = (employee: Employee | null) => !!employee && employee.employment.isActive !== false;
@@ -82,6 +87,24 @@ export function TimesheetArchiveList() {
                 .map(t => t.month.slice(0, 4))
         )).sort((a, b) => b.localeCompare(a));
     }, [timesheets]);
+
+    // This deliberately ignores the visible archive filters: a monthly export
+    // must always contain every finalized employee timesheet for that month.
+    const archiveMonths = useMemo(() => {
+        return Array.from(new Set(
+            timesheets
+                .filter(t => t.status === 'finalized')
+                .map(t => t.month.slice(0, 7))
+        )).sort((a, b) => b.localeCompare(a));
+    }, [timesheets]);
+
+    const formatMonth = (month: string) => {
+        const [year, monthNumber] = month.split('-').map(Number);
+        return new Date(year, monthNumber - 1, 1).toLocaleDateString('de-DE', {
+            month: 'long',
+            year: 'numeric',
+        });
+    };
 
     const groupedByEmployee = finalized.reduce((acc, sheet) => {
         if (!acc[sheet.employeeId]) acc[sheet.employeeId] = [];
@@ -194,6 +217,73 @@ export function TimesheetArchiveList() {
         }
     };
 
+    const openMonthExport = () => {
+        setExportMonth(current => current || archiveMonths[0] || '');
+        setIsMonthExportOpen(true);
+    };
+
+    const handleMonthExport = async () => {
+        if (!exportMonth || isExportingMonth) return;
+
+        const sheetsForMonth = timesheets
+            .filter(sheet => sheet.status === 'finalized' && sheet.month.slice(0, 7) === exportMonth)
+            .sort((a, b) => {
+                const employeeA = getEmployee(a.employeeId);
+                const employeeB = getEmployee(b.employeeId);
+                return (employeeA?.employeeNumber || '').localeCompare(employeeB?.employeeNumber || '', undefined, { numeric: true });
+            });
+
+        if (!sheetsForMonth.length) {
+            showToast('Für diesen Monat gibt es keine abgeschlossenen Stundenzettel.', 'info');
+            return;
+        }
+
+        const missingPdfs = sheetsForMonth.filter(sheet => !sheet.pdfUrl);
+        if (missingPdfs.length) {
+            showToast('Mindestens ein Stundenzettel dieses Monats besitzt keine gespeicherte PDF. Der Sammel-Export wurde nicht erstellt.', 'error');
+            return;
+        }
+
+        setIsExportingMonth(true);
+        try {
+            const { PDFDocument } = await import('pdf-lib');
+            const mergedPdf = await PDFDocument.create();
+
+            for (const sheet of sheetsForMonth) {
+                const signedUrl = await fetchSignedTimesheetPdfUrl(sheet.id, true);
+                const response = await fetch(signedUrl);
+                if (!response.ok) {
+                    const employee = getEmployee(sheet.employeeId);
+                    const name = employee
+                        ? `${employee.personalData.firstName} ${employee.personalData.lastName}`
+                        : 'eines Mitarbeiters';
+                    throw new Error(`Die PDF von ${name} konnte nicht geladen werden.`);
+                }
+
+                const sourcePdf = await PDFDocument.load(await (await response.blob()).arrayBuffer());
+                const pages = await mergedPdf.copyPages(sourcePdf, sourcePdf.getPageIndices());
+                pages.forEach(page => mergedPdf.addPage(page));
+            }
+
+            const bytes = await mergedPdf.save();
+            const blob = new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Zeiterfassung-${exportMonth}.pdf`;
+            link.click();
+            URL.revokeObjectURL(url);
+
+            showToast(`${sheetsForMonth.length} Stundenzettel wurden zu einer PDF zusammengefügt.`, 'success');
+            setIsMonthExportOpen(false);
+        } catch (error) {
+            console.error('[Timesheet month export]', error);
+            showToast(error instanceof Error ? error.message : 'Der Sammel-Export konnte nicht erstellt werden.', 'error');
+        } finally {
+            setIsExportingMonth(false);
+        }
+    };
+
     const getFilteredEntries = () => {
         if (!selectedEmployee || !selectedMonth) return [];
         return entries
@@ -224,7 +314,7 @@ export function TimesheetArchiveList() {
 
     return (
         <div className="space-y-4">
-            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 grid grid-cols-1 md:grid-cols-[1fr_180px_240px_auto] gap-3">
+            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 grid grid-cols-1 md:grid-cols-[1fr_180px_240px_auto_auto] gap-3">
                 <input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -266,6 +356,15 @@ export function TimesheetArchiveList() {
                         </span>
                     )}
                 </label>
+                <button
+                    type="button"
+                    onClick={openMonthExport}
+                    disabled={!archiveMonths.length}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    <Files className="h-4 w-4" />
+                    Monats-Export
+                </button>
             </div>
 
             {finalized.length === 0 && (
@@ -418,6 +517,68 @@ export function TimesheetArchiveList() {
                 month={selectedMonth}
                 companySettings={companySettings}
             />
+
+            {isMonthExportOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/30 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-lg overflow-hidden rounded-[28px] border border-white/20 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-violet-900 px-7 py-6 text-white">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-200">Zeit-Archiv</p>
+                                    <h3 className="mt-1 text-2xl font-black">Stundenzettel exportieren</h3>
+                                    <p className="mt-2 text-sm font-medium text-white/65">Alle abgeschlossenen Mitarbeiter-PDFs eines Monats werden in einer Datei zusammengeführt.</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => !isExportingMonth && setIsMonthExportOpen(false)}
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white/70 transition hover:bg-white/15 hover:text-white disabled:opacity-50"
+                                    disabled={isExportingMonth}
+                                    aria-label="Export schließen"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="space-y-5 p-7">
+                            <div>
+                                <label className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-500">Monat auswählen</label>
+                                <select
+                                    value={exportMonth}
+                                    onChange={(event) => setExportMonth(event.target.value)}
+                                    disabled={isExportingMonth}
+                                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:opacity-60"
+                                >
+                                    {archiveMonths.map(month => (
+                                        <option key={month} value={month}>{formatMonth(month)}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-semibold leading-relaxed text-indigo-900">
+                                Es werden nur bereits abgeschlossene und gespeicherte Stundenzettel exportiert. Die Original-PDFs bleiben unverändert.
+                            </div>
+                            <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsMonthExportOpen(false)}
+                                    disabled={isExportingMonth}
+                                    className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+                                >
+                                    Abbrechen
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleMonthExport}
+                                    disabled={!exportMonth || isExportingMonth}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-primary-gradient px-5 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {isExportingMonth ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                    {isExportingMonth ? 'Export wird erstellt ...' : 'PDF herunterladen'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

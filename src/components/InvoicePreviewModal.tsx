@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import { invoicePdfFileName } from "@/lib/document-filenames";
 import { LockedPdfPreview } from "@/components/LockedPdfPreview";
+import { DraftAttachmentPdfPreview, appendStoredDraftAttachment } from "@/components/DraftAttachmentPdfPreview";
 import { triggerMailto, replacePlaceholders } from "@/lib/email-helpers";
 import { useEmailSettings } from "@/hooks/useEmailSettings";
 
@@ -83,6 +84,26 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
     const canReopenInvoice = profile?.role === 'admin' || profile?.role === 'developer';
     const canCreateDunning = profile?.role === 'admin' || profile?.role === 'developer' || profile?.permissions?.["*"] === true || !!profile?.permissions?.dunning_write;
     const isSmtpConfigured = !!delivery.smtpHost && !!delivery.smtpPort && !!delivery.smtpUser && !!delivery.fromEmail && !!delivery.hasSmtpPassword;
+    const draftAttachment = invoice.attachmentPath
+        ? { path: invoice.attachmentPath, mimeType: invoice.attachmentMimeType }
+        : undefined;
+
+    const generateInvoicePdf = async () => {
+        const { pdf } = await import('@react-pdf/renderer');
+        const { InvoiceReactPDF } = await import('@/components/InvoiceReactPDF');
+        return pdf(
+            React.createElement(InvoiceReactPDF, {
+                invoice,
+                customer,
+                companySettings: invoice.performancePeriod?.companySnapshot || companySettings,
+            }) as any
+        ).toBlob();
+    };
+
+    const generateInvoicePdfWithAttachment = async () => {
+        const documentPdf = await generateInvoicePdf();
+        return appendStoredDraftAttachment(documentPdf, 'invoice', invoice.id, draftAttachment);
+    };
 
     const handleSendEmail = () => {
         const emailSubject = invoiceSettings?.emailSubject || "Rechnung {documentNumber}";
@@ -163,15 +184,7 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
 
         setIsPrinting(true);
         try {
-            const { pdf } = await import('@react-pdf/renderer');
-            const { InvoiceReactPDF } = await import('@/components/InvoiceReactPDF');
-            const blob = await pdf(
-                React.createElement(InvoiceReactPDF, { 
-                    invoice, 
-                    customer, 
-                    companySettings: invoice.performancePeriod?.companySnapshot || companySettings 
-                }) as any
-            ).toBlob();
+            const blob = await generateInvoicePdfWithAttachment();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -290,10 +303,19 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
                         pdfUrlEndpoint={isStoredInvoice ? `/api/invoices/pdf-url?id=${encodeURIComponent(invoice.id)}` : undefined}
                         title={`Rechnung ${invoice.invoiceNumber}`}
                         fallback={
-                            <InvoicePDFPreview
-                                invoice={invoice}
-                                customer={customer}
-                                companySettings={invoice.performancePeriod?.companySnapshot || companySettings}
+                            <DraftAttachmentPdfPreview
+                                kind="invoice"
+                                documentId={invoice.id}
+                                attachment={draftAttachment}
+                                title={`Rechnung ${invoice.invoiceNumber}`}
+                                generateDocumentPdf={generateInvoicePdf}
+                                fallback={
+                                    <InvoicePDFPreview
+                                        invoice={invoice}
+                                        customer={customer}
+                                        companySettings={invoice.performancePeriod?.companySnapshot || companySettings}
+                                    />
+                                }
                             />
                         }
                     />
@@ -341,10 +363,19 @@ export function InvoicePreviewModal({ isOpen, onClose, invoice, customer, compan
                                     pdfUrlEndpoint={`/api/invoices/pdf-url?id=${encodeURIComponent(invoice.id)}`}
                                     title={`Rechnung ${invoice.invoiceNumber}`}
                                     fallback={
-                                        <InvoicePDFPreview
-                                            invoice={invoice}
-                                            customer={customer}
-                                            companySettings={invoice.performancePeriod?.companySnapshot || companySettings}
+                                        <DraftAttachmentPdfPreview
+                                            kind="invoice"
+                                            documentId={invoice.id}
+                                            attachment={draftAttachment}
+                                            title={`Rechnung ${invoice.invoiceNumber}`}
+                                            generateDocumentPdf={generateInvoicePdf}
+                                            fallback={
+                                                <InvoicePDFPreview
+                                                    invoice={invoice}
+                                                    customer={customer}
+                                                    companySettings={invoice.performancePeriod?.companySnapshot || companySettings}
+                                                />
+                                            }
                                         />
                                     }
                                 />

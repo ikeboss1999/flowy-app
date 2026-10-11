@@ -134,6 +134,7 @@ export async function GET() {
                 logo: companyData.logo || null,
                 zipCode: companyData.zipCode || '',
                 city: companyData.city || '',
+                country: companyData.country || '',
             },
             account: {
                 name: accountSettings.name || 'Benutzer',

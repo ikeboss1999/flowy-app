@@ -34,7 +34,7 @@ export async function GET(request: Request, props: { params: Promise<{ month: st
 
         const entries = entriesResult.data || [];
         const totalMinutes = entries.reduce((sum: number, entry: any) => sum + Number(entry.duration || 0), 0);
-        const totalOvertime = entries.reduce((sum: number, entry: any) => sum + Number(entry.overtime || 0), 0);
+        const totalOvertime = entries.reduce((sum: number, entry: any) => sum + Math.max(0, Number(entry.overtime) || 0), 0);
         const workDays = new Set(entries.filter((entry: any) => Number(entry.duration || 0) > 0).map((entry: any) => entry.date)).size;
 
         return NextResponse.json({

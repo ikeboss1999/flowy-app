@@ -208,7 +208,7 @@ export function TimesheetReactPDF({ entries, employee, month, companySettings }:
     const days = generateDays();
     const totalHours = entries.reduce((s, e) => s + calcWorkHours(e), 0);
     const totalSW = entries.reduce((s, e) => s + calcSWHours(e), 0);
-    const totalOvertime = days.reduce((s, { entry }) => s + (entry?.overtime || 0), 0);
+    const totalOvertime = days.reduce((s, { entry }) => s + Math.max(0, entry?.overtime || 0), 0);
 
     return (
         <Document>
@@ -268,7 +268,7 @@ export function TimesheetReactPDF({ entries, employee, month, companySettings }:
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                         const hours = entry ? calcWorkHours(entry) : 0;
                         const sw = entry ? calcSWHours(entry) : 0;
-                        const overtime = entry?.overtime ?? 0;
+                        const overtime = Math.max(0, entry?.overtime ?? 0);
                         const rowBg = isWeekend ? { backgroundColor: '#f8fafc' } : {};
 
                         return (

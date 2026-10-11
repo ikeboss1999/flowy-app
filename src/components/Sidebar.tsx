@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
@@ -593,7 +594,7 @@ export function Sidebar() {
                     isDrawerMode ? "mb-6 py-6 xl:gap-4 xl:py-8" : "shrink-0 py-5"
                 )}>
                     <div className="group/logo relative">
-                        <img src="/logo.png" alt="Logo" className="h-12 w-12 shrink-0 rounded-2xl bg-white/10 object-contain p-1 xl:h-12 xl:w-12" />
+                        <Image src="/logo.png" alt="Logo" width={48} height={48} priority className="h-12 w-12 shrink-0 rounded-2xl bg-white/10 object-contain p-1 xl:h-12 xl:w-12" />
                         {!isDrawerMode && (
                             <div className="pointer-events-none absolute left-[calc(100%+0.8rem)] top-1/2 z-[120] -translate-y-1/2 translate-x-1 rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-left text-white opacity-0 shadow-2xl shadow-slate-950/40 backdrop-blur-xl ring-1 ring-white/10 transition-all duration-200 group-hover/logo:translate-x-0 group-hover/logo:opacity-100">
                                 <div suppressHydrationWarning className="whitespace-nowrap text-sm font-black">{companySettings?.companyName || "FlowY"}</div>

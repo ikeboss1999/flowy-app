@@ -19,6 +19,7 @@ import { useEmailSettings } from "@/hooks/useEmailSettings";
 import { nanoid } from "nanoid";
 import { offerPdfFileName } from "@/lib/document-filenames";
 import { LockedPdfPreview } from "@/components/LockedPdfPreview";
+import { DraftAttachmentPdfPreview, appendStoredDraftAttachment } from "@/components/DraftAttachmentPdfPreview";
 import { triggerMailto, replacePlaceholders } from "@/lib/email-helpers";
 import { formatYearlyNumber, nextYearlySequence } from "@/lib/document-numbering";
 
@@ -137,6 +138,9 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
     const fmt = (d?: string) => d ? new Date(d).toLocaleDateString('de-DE') : '-';
     const isStoredOffer = offer.status !== 'draft' && !!offer.pdfUrl;
     const isSmtpConfigured = !!delivery.smtpHost && !!delivery.smtpPort && !!delivery.smtpUser && !!delivery.fromEmail && !!delivery.hasSmtpPassword;
+    const draftAttachment = offer.attachmentPath
+        ? { path: offer.attachmentPath, mimeType: offer.attachmentMimeType }
+        : undefined;
 
     const handleSendEmail = () => {
         const emailSubject = offerSettings?.emailSubject || "Angebot {documentNumber}";
@@ -208,6 +212,11 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
         ).toBlob();
     };
 
+    const generatePdfWithAttachment = async () => {
+        const documentPdf = await generatePDF();
+        return appendStoredDraftAttachment(documentPdf, 'offer', offer.id, draftAttachment);
+    };
+
     const handleDownloadPDF = async () => {
         setIsDownloading(true);
         try {
@@ -231,7 +240,7 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                 return;
             }
 
-            const blob = await generatePDF();
+            const blob = await generatePdfWithAttachment();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -514,11 +523,20 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                         pdfUrlEndpoint={isStoredOffer ? `/api/offers/pdf-url?id=${encodeURIComponent(offer.id)}` : undefined}
                         title={`${offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot'} ${offer.offerNumber}`}
                         fallback={
-                            <OfferPDFPreview
-                                offer={offer}
-                                customer={customer}
-                                companySettings={companySettings}
-                                offerSettings={offerSettings}
+                            <DraftAttachmentPdfPreview
+                                kind="offer"
+                                documentId={offer.id}
+                                attachment={draftAttachment}
+                                title={`${offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot'} ${offer.offerNumber}`}
+                                generateDocumentPdf={generatePDF}
+                                fallback={
+                                    <OfferPDFPreview
+                                        offer={offer}
+                                        customer={customer}
+                                        companySettings={companySettings}
+                                        offerSettings={offerSettings}
+                                    />
+                                }
                             />
                         }
                     />
@@ -589,11 +607,20 @@ export function OfferPreviewModal({ isOpen, onClose, offer, customer, companySet
                                     pdfUrlEndpoint={isStoredOffer ? `/api/offers/pdf-url?id=${encodeURIComponent(offer.id)}` : undefined}
                                     title={`${offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot'} ${offer.offerNumber}`}
                                     fallback={
-                                        <OfferPDFPreview
-                                            offer={offer}
-                                            customer={customer}
-                                            companySettings={companySettings}
-                                            offerSettings={offerSettings}
+                                        <DraftAttachmentPdfPreview
+                                            kind="offer"
+                                            documentId={offer.id}
+                                            attachment={draftAttachment}
+                                            title={`${offer.documentType === 'estimate' ? 'Kostenvoranschlag' : 'Angebot'} ${offer.offerNumber}`}
+                                            generateDocumentPdf={generatePDF}
+                                            fallback={
+                                                <OfferPDFPreview
+                                                    offer={offer}
+                                                    customer={customer}
+                                                    companySettings={companySettings}
+                                                    offerSettings={offerSettings}
+                                                />
+                                            }
                                         />
                                     }
                                 />

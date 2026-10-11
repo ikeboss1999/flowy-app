@@ -8,6 +8,7 @@ export type StartupData = {
         logo: string | null;
         zipCode: string;
         city: string;
+        country: string;
     };
     account: {
         name: string;
@@ -29,6 +30,7 @@ export const fallbackStartupData: StartupData = {
         logo: null,
         zipCode: "",
         city: "",
+        country: "",
     },
     account: {
         name: "Benutzer",

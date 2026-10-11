@@ -46,14 +46,17 @@ type WeatherResponse = {
   };
 };
 
+type GeocodingPlace = {
+  name: string;
+  admin1?: string;
+  country?: string;
+  postcodes?: string[];
+  latitude: number;
+  longitude: number;
+};
+
 type GeocodingResponse = {
-  results?: Array<{
-    name: string;
-    admin1?: string;
-    country?: string;
-    latitude: number;
-    longitude: number;
-  }>;
+  results?: GeocodingPlace[];
 };
 
 const conditionFor = (weatherCode: number, isDay: boolean) => {
@@ -70,7 +73,7 @@ const conditionFor = (weatherCode: number, isDay: boolean) => {
 
 const roundedTemperature = (value: number) => `${Math.round(value)}\u00b0`;
 
-export function WeatherCard({ city, country }: { city?: string; country?: string }) {
+export function WeatherCard({ city, zipCode, country }: { city?: string; zipCode?: string; country?: string }) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [isLoading, setIsLoading] = useState(Boolean(city?.trim()));
   const [error, setError] = useState<string | null>(null);
@@ -88,16 +91,29 @@ export function WeatherCard({ city, country }: { city?: string; country?: string
     setError(null);
 
     try {
-      const geocodingUrl = new URL("https://geocoding-api.open-meteo.com/v1/search");
-      geocodingUrl.searchParams.set("name", location);
-      geocodingUrl.searchParams.set("count", "1");
-      geocodingUrl.searchParams.set("language", "de");
-      geocodingUrl.searchParams.set("format", "json");
+      const countryCode = /^(at|austria|\u00f6sterreich)$/i.test(country?.trim() || "") ? "AT" : undefined;
+      const searchTerms = [location, zipCode?.trim()].filter((term, index, values): term is string => Boolean(term) && values.indexOf(term) === index);
+      let place: GeocodingPlace | undefined;
 
-      const geocodingResponse = await fetch(geocodingUrl, { signal });
-      if (!geocodingResponse.ok) throw new Error("Der Standort konnte nicht geladen werden.");
-      const geocodingData = (await geocodingResponse.json()) as GeocodingResponse;
-      const place = geocodingData.results?.[0];
+      for (const searchTerm of searchTerms) {
+        const geocodingUrl = new URL("https://geocoding-api.open-meteo.com/v1/search");
+        geocodingUrl.searchParams.set("name", searchTerm);
+        geocodingUrl.searchParams.set("count", "10");
+        geocodingUrl.searchParams.set("language", "de");
+        geocodingUrl.searchParams.set("format", "json");
+        if (countryCode) geocodingUrl.searchParams.set("countryCode", countryCode);
+
+        const geocodingResponse = await fetch(geocodingUrl, { signal });
+        if (!geocodingResponse.ok) throw new Error("Der Standort konnte nicht geladen werden.");
+        const geocodingData = (await geocodingResponse.json()) as GeocodingResponse;
+        const matchingPlace = geocodingData.results?.find((result) => !zipCode?.trim() || result.postcodes?.includes(zipCode.trim()))
+          || geocodingData.results?.[0];
+        if (matchingPlace) {
+          place = matchingPlace;
+          break;
+        }
+      }
+
       if (!place) throw new Error("Der Firmenstandort wurde nicht gefunden.");
 
       const forecastUrl = new URL("https://api.open-meteo.com/v1/forecast");
@@ -115,7 +131,7 @@ export function WeatherCard({ city, country }: { city?: string; country?: string
       if (typeof current?.temperature_2m !== "number") throw new Error("Unvollst\u00e4ndige Wetterdaten.");
 
       setWeather({
-        location: [place.name, place.admin1 || place.country || country].filter(Boolean).join(", "),
+        location: [location, place.admin1 || place.country || country].filter(Boolean).join(", "),
         temperature: current.temperature_2m,
         apparentTemperature: current.apparent_temperature ?? current.temperature_2m,
         weatherCode: current.weather_code ?? 0,
@@ -132,7 +148,7 @@ export function WeatherCard({ city, country }: { city?: string; country?: string
     } finally {
       if (!signal?.aborted) setIsLoading(false);
     }
-  }, [city, country]);
+  }, [city, country, zipCode]);
 
   useEffect(() => {
     const controller = new AbortController();

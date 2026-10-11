@@ -87,6 +87,10 @@ export interface Invoice {
     }[];
 
     notes?: string;
+    attachmentName?: string;
+    attachmentPath?: string;
+    attachmentMimeType?: string;
+    attachmentSize?: number;
     dunningLevel?: number; // 0 = Keine Mahnung, 1 = Zahlungserinnerung, 2 = 1. Mahnung, 3 = 2. Mahnung, 4 = Letzte Mahnung
     lastDunningDate?: string;
     dunningHistory?: {
