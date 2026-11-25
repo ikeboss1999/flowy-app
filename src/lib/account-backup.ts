@@ -18,6 +18,14 @@ export const TENANT_TABLES = [
     'employee_documents',
     'employee_mobile_sessions',
     'employees',
+    'incoming_bank_transactions',
+    'incoming_bank_statements',
+    'incoming_invoice_mailboxes',
+    'incoming_invoice_mail_parts',
+    'incoming_invoice_audit_log',
+    'incoming_invoice_imports',
+    'incoming_invoice_items',
+    'incoming_invoices',
     'invoices',
     'mobile_activation_codes',
     'offers',
@@ -32,6 +40,7 @@ export const TENANT_TABLES = [
     'service_folders',
     'services',
     'settings',
+    'suppliers',
     'time_entries',
     'timesheets',
     'todos',
@@ -39,10 +48,12 @@ export const TENANT_TABLES = [
 ] as const;
 
 export const TENANT_STORAGE_BUCKETS = [
+    'incoming-bank-statements',
     'project-files',
     'employee-avatars',
     'employee-mobile-documents',
     'project-diary-attachments',
+    'incoming-invoices',
 ] as const;
 
 type BackupFile = { bucket: string; path: string; size: number; backupPath: string };

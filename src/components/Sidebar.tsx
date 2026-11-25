@@ -27,7 +27,8 @@ import {
     Inbox,
     FileCheck,
     KeyRound,
-    LockKeyhole
+    LockKeyhole,
+    ReceiptText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/app-version";
@@ -121,6 +122,7 @@ const menuGroups: MenuGroup[] = [
                     { icon: FileText, label: "Leistungsbeschreibungen", href: "/subcontractor-descriptions" },
                     { icon: FileCheck, label: "Aufträge", href: "/orders" },
                     { icon: FileText, label: "Rechnungen", href: "/invoices" },
+                    { icon: ReceiptText, label: "Eingangsrechnungen", href: "/incoming-invoices" },
                     { icon: AlertTriangle, label: "Mahnwesen", href: "/invoices/dunning" },
                     { icon: BarChart3, label: "Auswertungen", href: "/reports" },
                 ]
@@ -208,7 +210,7 @@ export function Sidebar() {
         return () => window.removeEventListener('focus', loadPackageFeatures);
     }, [profile?.companyOwnerId, currentEmployee?.userId]);
 
-    const featureByHref: Record<string, string> = { '/calendar': 'calendar', '/crm': 'crm', '/customers': 'customers', '/subcontractor-descriptions': 'customers', '/projects': 'projects', '/vehicles': 'vehicles', '/services': 'catalog', '/position-presets': 'catalog', '/employees': 'employees', '/time-tracking': 'time_tracking', '/time-tracking/archive': 'time_tracking', '/offers': 'offers', '/orders': 'orders', '/invoices': 'invoices', '/invoices/dunning': 'dunning', '/reports': 'reports', '/archive': 'archive', '/credentials': 'credentials' };
+    const featureByHref: Record<string, string> = { '/calendar': 'calendar', '/crm': 'crm', '/customers': 'customers', '/subcontractor-descriptions': 'customers', '/projects': 'projects', '/vehicles': 'vehicles', '/services': 'catalog', '/position-presets': 'catalog', '/employees': 'employees', '/time-tracking': 'time_tracking', '/time-tracking/archive': 'time_tracking', '/offers': 'offers', '/orders': 'orders', '/invoices': 'invoices', '/incoming-invoices': 'invoices', '/invoices/dunning': 'dunning', '/reports': 'reports', '/archive': 'archive', '/credentials': 'credentials' };
     const isFeatureLocked = (item: MenuItem) => { const feature = item.feature || (item.href ? featureByHref[item.href] : undefined); return !!feature && packageFeatures !== null && !packageFeatures.includes(feature); };
     const handleFeatureClick = (event: React.MouseEvent, item: MenuItem) => { if (!isFeatureLocked(item)) return; event.preventDefault(); setUpgradeFeature(item.label); };
 
@@ -374,6 +376,7 @@ export function Sidebar() {
             if (item.href === '/offers' && !perms.offers_read) return false;
             if (item.href === '/orders' && !perms.orders_read) return false;
             if (item.href === '/invoices' && !perms.invoices_read) return false;
+            if (item.href === '/incoming-invoices' && !perms.invoices_read) return false;
             if (item.href === '/invoices/dunning' && !perms.dunning_read) return false;
             if (item.href === '/reports' && !perms.reports_read) return false;
 

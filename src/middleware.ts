@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 import type { JWTPayload } from 'jose';
+import { INCOMING_FEATURE_ENABLED } from '@/lib/incoming-feature';
 
 const PUBLIC_AUTH_ROUTES = new Set([
     '/api/auth/login',
@@ -19,6 +20,7 @@ const PUBLIC_AUTH_ROUTES = new Set([
 // Vercel Cron requests do not carry a user session cookie. These exact routes
 // authenticate themselves with the CRON_SECRET bearer token in their handlers.
 const CRON_ROUTES = new Set([
+    '/api/cron/incoming-invoices',
     '/api/cron/account-backups',
     '/api/cron/admin-usage',
 ]);
@@ -68,6 +70,12 @@ export async function middleware(request: NextRequest) {
     const sbAccessToken = request.cookies.get('sb-access-token')?.value;
 
     const { pathname } = request.nextUrl;
+
+    // Diese APIs sind für veröffentlichte Builds vollständig gesperrt, auch bei direktem Aufruf.
+    const isUnreleasedApi = pathname === '/api/incoming-invoices' || pathname.startsWith('/api/incoming-invoices/') || pathname === '/api/suppliers' || pathname.startsWith('/api/suppliers/') || pathname === '/api/cron/incoming-invoices';
+    if (!INCOMING_FEATURE_ENABLED && isUnreleasedApi) {
+        return NextResponse.json({ error: 'Dieser Bereich ist noch in Arbeit.' }, { status: 404 });
+    }
 
     const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/auth/callback');
     const isPublicPage = pathname === '/welcome' || pathname === '/impressum' || pathname === '/datenschutz';

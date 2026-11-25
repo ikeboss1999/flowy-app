@@ -94,6 +94,14 @@ export async function wipeAccount(userId: string): Promise<WipeResult> {
         // Children first; settings/user roles last. Missing optional legacy tables are harmless,
         // but every error on an existing table aborts the success response.
         const deletionOrder: string[] = [
+            'incoming_bank_transactions',
+            'incoming_bank_statements',
+            'incoming_invoice_mail_parts',
+            'incoming_invoice_mailboxes',
+            'incoming_invoice_audit_log',
+            'incoming_invoice_items',
+            'incoming_invoices',
+            'incoming_invoice_imports',
             'document_receipts',
             'project_diary_attachments',
             'project_diary_entries',
@@ -120,6 +128,7 @@ export async function wipeAccount(userId: string): Promise<WipeResult> {
             'service_folders',
             'projects',
             'customers',
+            'suppliers',
             'employees',
             'vehicles',
         ];

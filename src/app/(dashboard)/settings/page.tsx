@@ -14,6 +14,8 @@ import { UserManagement } from "@/components/UserManagement";
 import { AppInfo } from "@/components/AppInfo";
 import { CustomerSettings } from "@/components/CustomerSettings";
 import { SubcontractorSettings } from "@/components/SubcontractorSettings";
+import { SupplierSettings } from "@/components/SupplierSettings";
+import { INCOMING_FEATURE_ENABLED } from "@/lib/incoming-feature";
 import { EmailDeliverySettings } from "@/components/EmailDeliverySettings";
 import {
     Settings as SettingsIcon,
@@ -279,7 +281,7 @@ export default function SettingsPage() {
                                         ))}
                                     </div>
 
-                                    {docSubTab === "customer" && <><CustomerSettings readOnly={isEmployee} /><SubcontractorSettings readOnly={isEmployee} /></>}
+                                    {docSubTab === "customer" && <><CustomerSettings readOnly={isEmployee} /><SubcontractorSettings readOnly={isEmployee} />{INCOMING_FEATURE_ENABLED && <SupplierSettings readOnly={isEmployee} />}</>}
                                     {docSubTab === "offer" && <OfferSettings readOnly={isEmployee} />}
                                     {docSubTab === "order" && <OrderSettings readOnly={isEmployee} />}
                                     {docSubTab === "invoice" && <InvoiceSettings readOnly={isEmployee} />}

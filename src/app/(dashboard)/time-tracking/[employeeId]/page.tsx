@@ -383,8 +383,8 @@ export default function EmployeeTimeTrackingPage() {
                 workHours: totals.workHours + workHours,
                 badWeatherHours: totals.badWeatherHours + getBadWeatherHours(entry),
                 overtimeHours: totals.overtimeHours + Math.max(0, entry.overtime || 0),
-                normalWorkDays: totals.normalWorkDays + (workHours > 3 && workHours < 9 ? 1 : 0),
-                longWorkDays: totals.longWorkDays + (workHours >= 9 ? 1 : 0)
+                normalWorkDays: totals.normalWorkDays + (workHours > 3 && workHours <= 9 ? 1 : 0),
+                longWorkDays: totals.longWorkDays + (workHours > 9 ? 1 : 0)
             };
         }, {
             workHours: 0,
@@ -1024,12 +1024,12 @@ export default function EmployeeTimeTrackingPage() {
             <div className="sticky bottom-4 z-30 mt-2 rounded-[1.75rem] bg-white/90 p-3 shadow-2xl shadow-slate-200/70 ring-1 ring-slate-200/70 backdrop-blur-xl">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div className="bg-white border border-indigo-100 rounded-2xl p-4 shadow-sm">
-                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.16em]">Tage 3-8 Std.</p>
+                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.16em]">Tage über 3 bis 9 Std.</p>
                         <p className="text-2xl font-black text-indigo-700 mt-2">{monthTotals.normalWorkDays}</p>
                         <p className="text-xs font-bold text-slate-400 mt-1">Arbeitstage</p>
                     </div>
                     <div className="bg-white border border-rose-100 rounded-2xl p-4 shadow-sm">
-                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-[0.16em]">Tage ab 9 Std.</p>
+                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-[0.16em]">Tage über 9 Std.</p>
                         <p className="text-2xl font-black text-rose-700 mt-2">{monthTotals.longWorkDays}</p>
                         <p className="text-xs font-bold text-slate-400 mt-1">Lange Tage</p>
                     </div>

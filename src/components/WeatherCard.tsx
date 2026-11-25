@@ -92,13 +92,16 @@ export function WeatherCard({ city, zipCode, country }: { city?: string; zipCode
 
     try {
       const countryCode = /^(at|austria|\u00f6sterreich)$/i.test(country?.trim() || "") ? "AT" : undefined;
-      const searchTerms = [location, zipCode?.trim()].filter((term, index, values): term is string => Boolean(term) && values.indexOf(term) === index);
+      const postcode = zipCode?.trim();
+      // Manche Gemeinden sind beim Wetterdienst nur ohne den Zusatz „bei ...“ geführt.
+      const shortenedLocation = location.replace(/\s+(?:bei|b\.)\s+.+$/i, "").trim();
+      const searchTerms = [location, postcode, shortenedLocation].filter((term, index, values): term is string => Boolean(term) && values.indexOf(term) === index);
       let place: GeocodingPlace | undefined;
 
       for (const searchTerm of searchTerms) {
         const geocodingUrl = new URL("https://geocoding-api.open-meteo.com/v1/search");
         geocodingUrl.searchParams.set("name", searchTerm);
-        geocodingUrl.searchParams.set("count", "10");
+        geocodingUrl.searchParams.set("count", "100");
         geocodingUrl.searchParams.set("language", "de");
         geocodingUrl.searchParams.set("format", "json");
         if (countryCode) geocodingUrl.searchParams.set("countryCode", countryCode);
@@ -106,8 +109,11 @@ export function WeatherCard({ city, zipCode, country }: { city?: string; zipCode
         const geocodingResponse = await fetch(geocodingUrl, { signal });
         if (!geocodingResponse.ok) throw new Error("Der Standort konnte nicht geladen werden.");
         const geocodingData = (await geocodingResponse.json()) as GeocodingResponse;
-        const matchingPlace = geocodingData.results?.find((result) => !zipCode?.trim() || result.postcodes?.includes(zipCode.trim()))
-          || geocodingData.results?.[0];
+        const results = geocodingData.results || [];
+        const normalize = (value: string) => value.trim().toLocaleLowerCase("de-AT");
+        const matchingPlace = (postcode ? results.find((result) => result.postcodes?.includes(postcode)) : undefined)
+          || results.find((result) => normalize(result.name) === normalize(location))
+          || (!postcode && results.length === 1 ? results[0] : undefined);
         if (matchingPlace) {
           place = matchingPlace;
           break;

@@ -2,7 +2,7 @@ import { getTenantStorageUsage } from './account-backup';
 import { supabaseAdmin } from './supabase-admin';
 
 const COUNT_TABLES = [
-    'customers', 'projects', 'offers', 'orders', 'invoices', 'employees', 'vehicles',
+    'customers', 'suppliers', 'projects', 'offers', 'orders', 'invoices', 'incoming_invoices', 'employees', 'vehicles',
     'project_diary_entries', 'project_files', 'archive_files', 'employee_documents',
     'time_entries', 'todos',
 ] as const;
@@ -41,6 +41,7 @@ export async function calculateTenantUsage(companyOwnerId: string): Promise<Tena
     counts.storage_employee_avatars = storage.byBucket['employee-avatars']?.files || 0;
     counts.storage_employee_documents = storage.byBucket['employee-mobile-documents']?.files || 0;
     counts.storage_diary_attachments = storage.byBucket['project-diary-attachments']?.files || 0;
+    counts.storage_incoming_invoices = storage.byBucket['incoming-invoices']?.files || 0;
 
     const snapshot: TenantUsageSnapshot = {
         companyOwnerId,

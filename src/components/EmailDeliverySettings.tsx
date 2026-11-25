@@ -3,6 +3,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Bold, CheckCircle2, ChevronDown, ClipboardList, FileText, ImagePlus, Italic, Link, List, Mail, Receipt, Send, ShieldCheck, Trash2, Underline } from 'lucide-react';
 import { useEmailSettings } from '@/hooks/useEmailSettings';
+import { IncomingMailboxSettings } from '@/components/IncomingMailboxSettings';
+import { IncomingMailboxControls } from '@/components/IncomingMailboxControls';
+import { INCOMING_FEATURE_ENABLED } from '@/lib/incoming-feature';
 import { useOfferSettings } from '@/hooks/useOfferSettings';
 import { useOrderSettings } from '@/hooks/useOrderSettings';
 import { useInvoiceSettings } from '@/hooks/useInvoiceSettings';
@@ -241,6 +244,8 @@ export function EmailDeliverySettings() {
                     <p className="text-sm font-semibold text-slate-500">SMTP, Signatur und Versandprotokoll.</p>
                 </div>
             </div>
+
+            {INCOMING_FEATURE_ENABLED && <><IncomingMailboxSettings /><IncomingMailboxControls /></>}
 
             {message && (
                 <div className={cn(

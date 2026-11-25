@@ -76,6 +76,25 @@ async function reconcileSubcontractorNextNumber(client: any, userId: string, set
     }
 }
 
+async function reconcileSupplierNextNumber(client: any, userId: string, settings: any) {
+    const current = readSettingsBlock(settings, 'supplierSettings') || {};
+    if (process.env.NODE_ENV === 'production') return current;
+    try {
+        const { data } = await client
+            .from('suppliers')
+            .select('supplierNumber')
+            .eq('userId', userId)
+            .limit(1000);
+        const highest = (data || []).reduce((max: number, entry: any) => {
+            const match = String(entry?.supplierNumber || '').match(/(\d+)$/);
+            return Math.max(max, match ? Number(match[1]) || 0 : 0);
+        }, 0);
+        return { ...current, nextNumber: Math.max(1, Number(current.nextNumber) || 1, highest + 1) };
+    } catch {
+        return current;
+    }
+}
+
 function isMissingSettingsColumnError(error: any, key: string) {
     return !!error && (
         error.code === 'PGRST204' ||
@@ -147,6 +166,7 @@ export async function GET(request: Request) {
                     projectSettings: readSettingsBlock(data, 'projectSettings'),
                     customerSettings: readSettingsBlock(data, 'customerSettings'),
                     subcontractorSettings: await reconcileSubcontractorNextNumber(client, settingsUserId, data),
+                    supplierSettings: await reconcileSupplierNextNumber(client, settingsUserId, data),
                 };
                 logApiPerformance('/api/settings', startedAt, { payload, note: 'employee' });
                 return NextResponse.json(payload);
@@ -162,18 +182,21 @@ export async function GET(request: Request) {
             processed.projectSettings = readSettingsBlock(processed, 'projectSettings');
             processed.customerSettings = readSettingsBlock(processed, 'customerSettings');
             processed.subcontractorSettings = await reconcileSubcontractorNextNumber(client, settingsUserId, processed);
+            processed.supplierSettings = await reconcileSupplierNextNumber(client, settingsUserId, processed);
             if (processed.invoiceSettings && Object.keys(processed.invoiceSettings).length === 0) processed.invoiceSettings = null;
             if (processed.offerSettings && Object.keys(processed.offerSettings).length === 0) processed.offerSettings = null;
             if (processed.orderSettings && Object.keys(processed.orderSettings).length === 0) processed.orderSettings = null;
             if (processed.projectSettings && Object.keys(processed.projectSettings).length === 0) processed.projectSettings = null;
             if (processed.customerSettings && Object.keys(processed.customerSettings).length === 0) processed.customerSettings = null;
             if (processed.subcontractorSettings && Object.keys(processed.subcontractorSettings).length === 0) processed.subcontractorSettings = null;
+            if (processed.supplierSettings && Object.keys(processed.supplierSettings).length === 0) processed.supplierSettings = null;
             logApiPerformance('/api/settings', startedAt, { payload: processed });
             return NextResponse.json(processed);
         }
 
         const emptyPayload = {
             subcontractorSettings: await reconcileSubcontractorNextNumber(client, settingsUserId, {}),
+            supplierSettings: await reconcileSupplierNextNumber(client, settingsUserId, {}),
         };
         logApiPerformance('/api/settings', startedAt, { payload: emptyPayload, note: 'empty' });
         return NextResponse.json(emptyPayload);
@@ -193,6 +216,7 @@ export async function POST(request: Request) {
 
     try {
         const payload = await request.json();
+        if (process.env.NODE_ENV === 'production' && payload?.type === 'supplier') return NextResponse.json({ error: 'Dieser Bereich ist noch in Arbeit.' }, { status: 404 });
         const employeeWritableTypes: Record<string, string> = {
             account: 'self',
             customer: 'customers_write',
@@ -200,6 +224,7 @@ export async function POST(request: Request) {
             offer: 'offers_write',
             order: 'orders_write',
             project: 'projects_write',
+            supplier: 'customers_write',
         };
 
         if (session?.role === 'employee') {
@@ -259,6 +284,12 @@ export async function POST(request: Request) {
                 updatedSettings.accountSettings = {
                     ...(currentSettings.accountSettings || {}),
                     subcontractorSettings: payload.data,
+                };
+            }
+            if (payload.type === 'supplier') {
+                updatedSettings.accountSettings = {
+                    ...(currentSettings.accountSettings || {}),
+                    supplierSettings: payload.data,
                 };
             }
         } else {

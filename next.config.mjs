@@ -4,6 +4,8 @@ const packageJson = require('./package.json');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    // Optionaler separater Ausgabeordner für Build-Prüfungen neben dem Dev-Server.
+    distDir: process.env.FLOWY_NEXT_DIST_DIR || '.next',
     transpilePackages: ['@react-pdf/renderer'],
     env: {
         NEXT_PUBLIC_APP_VERSION: packageJson.version,

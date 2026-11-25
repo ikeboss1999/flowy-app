@@ -15,9 +15,11 @@ export interface RestoreResult {
 }
 
 const INSERT_ORDER = [
-    'customers', 'employees', 'vehicles', 'service_folders', 'services', 'projects',
+    'customers', 'suppliers', 'employees', 'vehicles', 'service_folders', 'services', 'projects',
     'project_folders', 'project_files', 'archive_folders', 'archive_files', 'crm_inquiries',
-    'offers', 'orders', 'order_confirmations', 'invoices', 'timesheets', 'time_entries',
+    'offers', 'orders', 'order_confirmations', 'invoices',
+    'incoming_invoice_mailboxes', 'incoming_invoice_mail_parts', 'incoming_invoice_imports', 'incoming_invoices', 'incoming_invoice_items', 'incoming_invoice_audit_log', 'incoming_bank_statements', 'incoming_bank_transactions',
+    'timesheets', 'time_entries',
     'calendar_events', 'credentials', 'todos', 'settings', 'project_assignments',
     'project_diary_entries', 'project_diary_attachments', 'employee_document_folders',
     'employee_documents', 'document_receipts', 'crm_inquiry_notes', 'user_roles',
@@ -58,10 +60,19 @@ async function insertRows(table: string, rows: JsonRow[]): Promise<void> {
 async function rollbackRestore(newOwnerId: string, newAuthIds: string[], newSubUserIds: string[]) {
     if (!supabaseAdmin) return;
     try {
+        // The incoming-invoice records have explicit foreign keys. Remove their
+        // children first, so a failed restore cannot leave a partial tenant behind.
+        for (const table of ['incoming_bank_transactions', 'incoming_bank_statements', 'incoming_invoice_audit_log', 'incoming_invoice_items', 'incoming_invoices', 'incoming_invoice_imports'] as const) {
+            await supabaseAdmin.from(table).delete().eq('userId', newOwnerId);
+        }
         const { data: inquiries } = await supabaseAdmin.from('crm_inquiries').select('id').eq('userId', newOwnerId);
         const inquiryIds = (inquiries || []).map(item => item.id);
         if (inquiryIds.length) await supabaseAdmin.from('crm_inquiry_notes').delete().in('inquiryId', inquiryIds);
-        for (const table of [...TENANT_TABLES].reverse()) await supabaseAdmin.from(table).delete().eq('userId', newOwnerId);
+        const incomingInvoiceTables = new Set(['incoming_bank_transactions', 'incoming_bank_statements', 'incoming_invoice_audit_log', 'incoming_invoice_items', 'incoming_invoices', 'incoming_invoice_imports']);
+        for (const table of [...TENANT_TABLES].reverse()) {
+            if (incomingInvoiceTables.has(table)) continue;
+            await supabaseAdmin.from(table).delete().eq('userId', newOwnerId);
+        }
         for (const id of newSubUserIds) {
             await supabaseAdmin.from('todos').delete().eq('userId', id);
             await supabaseAdmin.from('settings').delete().eq('userId', id);
@@ -123,7 +134,10 @@ export async function restoreAccountBackup(backupId: string): Promise<RestoreRes
         for (const table of INSERT_ORDER) {
             // Active login artifacts are intentionally never restored.
             const sourceRows = database.tables[table] || [];
-            const rows = sourceRows.map(row => remapValue(row, idMap) as JsonRow);
+            const rows = sourceRows.map(row => {
+                const mapped = remapValue(row, idMap) as JsonRow;
+                return table === 'incoming_invoice_mailboxes' ? { ...mapped, enabled: false, lockedUntil: null } : mapped;
+            });
             await insertRows(table, rows);
             restoredRows += rows.length;
         }

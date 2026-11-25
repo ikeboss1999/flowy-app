@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
     Briefcase,
     Building2,
@@ -33,6 +34,9 @@ import { useSubcontractors } from "@/hooks/useSubcontractors";
 import { Subcontractor } from "@/types/subcontractor";
 import { SubcontractorModal } from "@/components/SubcontractorModal";
 import { SubcontractorDetailModal } from "@/components/SubcontractorDetailModal";
+import { SupplierContactsPanel } from "@/components/SupplierContactsPanel";
+import { useSuppliers } from "@/hooks/useSuppliers";
+import { INCOMING_FEATURE_ENABLED } from "@/lib/incoming-feature";
 
 const filterOptions: Array<{ id: CustomerType | "all"; label: string; icon: React.ElementType }> = [
     { id: "all", label: "Alle", icon: Filter },
@@ -41,10 +45,12 @@ const filterOptions: Array<{ id: CustomerType | "all"; label: string; icon: Reac
 ];
 
 export default function CustomersPage() {
+    const searchParams = useSearchParams();
     usePermissionGuard("customers_read");
     const { profile } = useAuth();
     const { customers, addCustomer, updateCustomer, deleteCustomer, isLoading } = useCustomers();
     const { subcontractors, saveSubcontractor, deleteSubcontractor } = useSubcontractors();
+    const { suppliers } = useSuppliers();
     const { showToast, showConfirm } = useNotification();
     const [searchQuery, setSearchQuery] = useState("");
     const deferredSearchQuery = React.useDeferredValue(searchQuery);
@@ -54,7 +60,8 @@ export default function CustomersPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | undefined>(undefined);
     const [selectedDetailCustomer, setSelectedDetailCustomer] = useState<Customer | undefined>(undefined);
-    const [activeContactType, setActiveContactType] = useState<"customers" | "subcontractors">("customers");
+    const [activeContactType, setActiveContactType] = useState<"customers" | "subcontractors" | "suppliers">("customers");
+    const [supplierCreateRequest, setSupplierCreateRequest] = useState(0);
     const [isSubcontractorModalOpen, setIsSubcontractorModalOpen] = useState(false);
     const [editingSubcontractor, setEditingSubcontractor] = useState<Subcontractor | undefined>(undefined);
     const [selectedSubcontractor, setSelectedSubcontractor] = useState<Subcontractor | undefined>(undefined);
@@ -66,6 +73,10 @@ export default function CustomersPage() {
         if (savedView === "grid" || savedView === "list") setContactView(savedView);
         setHasLoadedContactView(true);
     }, []);
+
+    React.useEffect(() => {
+        if (INCOMING_FEATURE_ENABLED && searchParams.get("tab") === "suppliers") setActiveContactType("suppliers");
+    }, [searchParams]);
 
     React.useEffect(() => {
         if (!hasLoadedContactView) return;
@@ -222,11 +233,15 @@ export default function CustomersPage() {
                         {canWriteCustomers && activeContactType === "subcontractors" && (
                             <button onClick={() => { setEditingSubcontractor(undefined); setIsSubcontractorModalOpen(true); }} className="flex w-fit items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 shadow-xl shadow-black/10 transition-all hover:-translate-y-0.5"><Plus className="h-5 w-5" /> Neuer Subunternehmer</button>
                         )}
+                        {canWriteCustomers && activeContactType === "suppliers" && (
+                            <button onClick={() => setSupplierCreateRequest((value) => value + 1)} className="flex w-fit items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 shadow-xl shadow-black/10 transition-all hover:-translate-y-0.5"><Plus className="h-5 w-5" /> Neuer Lieferant</button>
+                        )}
                     </div>
 
                     <div className="relative mt-8 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/10 p-1">
                         <button onClick={() => { setActiveContactType("customers"); setSearchQuery(""); }} className={cn("rounded-xl px-5 py-3 text-sm font-black", activeContactType === "customers" ? "bg-white text-slate-950" : "text-white/70 hover:bg-white/10")}>Kunden <span className="ml-2 opacity-60">{customers.length}</span></button>
                         <button onClick={() => { setActiveContactType("subcontractors"); setSearchQuery(""); }} className={cn("rounded-xl px-5 py-3 text-sm font-black", activeContactType === "subcontractors" ? "bg-white text-slate-950" : "text-white/70 hover:bg-white/10")}>Subunternehmer <span className="ml-2 opacity-60">{subcontractors.length}</span></button>
+                        {INCOMING_FEATURE_ENABLED && <button onClick={() => { setActiveContactType("suppliers"); setSearchQuery(""); }} className={cn("rounded-xl px-5 py-3 text-sm font-black", activeContactType === "suppliers" ? "bg-white text-slate-950" : "text-white/70 hover:bg-white/10")}>Lieferanten <span className="ml-2 opacity-60">{suppliers.length}</span></button>}
                     </div>
 
                     {activeContactType === "customers" && <div className="relative mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -263,7 +278,7 @@ export default function CustomersPage() {
                             />
                         </div>
 
-                        {activeContactType === "customers" && (
+                        {activeContactType !== "subcontractors" && (
                             <div className="flex items-center gap-2">
                                 <div className="flex gap-2 overflow-x-auto rounded-2xl bg-white p-1 ring-1 ring-slate-200">
                                     {filterOptions.map(({ id, label, icon: Icon }) => (
@@ -297,7 +312,9 @@ export default function CustomersPage() {
                 </div>
             </div>
 
-            {activeContactType === "subcontractors" ? (
+            {activeContactType === "suppliers" ? (
+                <SupplierContactsPanel searchQuery={searchQuery} view={contactView} canWrite={canWriteCustomers} createRequest={supplierCreateRequest} />
+            ) : activeContactType === "subcontractors" ? (
                 filteredSubcontractors.length > 0 ? (
                     contactView === "grid" ? (
                         <div className="grid gap-4 xl:grid-cols-2">
